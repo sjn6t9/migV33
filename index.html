@@ -126,7 +126,7 @@ h2{margin:6px 12px 10px;font-size:20px;color:#2a3340}
 #log.navy .rl,#log.dark .rl{color:#e8eefc}
 .lvt{color:#7a8696;font-weight:600;font-size:.9em}
 #log.navy .lvt,#log.dark .lvt{color:#aab}
-.ri{width:18px;height:18px;vertical-align:-3px;margin-left:4px}
+.ri{width:1.15em;height:1.15em;vertical-align:-.22em;margin-left:.25em}
 .dot{display:inline-block;width:12px;height:12px;border-radius:50%;margin-right:6px;box-shadow:0 0 0 1px #0003,inset 0 -2px 3px #0003}
 .online{background:radial-gradient(circle at 35% 30%,#d7ff8a,#58b523)}.away{background:radial-gradient(circle at 35% 30%,#ffe59a,#f2a900)}.busy{background:radial-gradient(circle at 35% 30%,#ffb3b3,#d62d2d)}.offline{background:radial-gradient(circle at 35% 30%,#e5e5e5,#888)}
 .ucard{display:inline-grid;place-items:center;width:44px;height:64px;margin:3px;border-radius:8px;font-weight:800;color:#fff;border:3px solid #fff;box-shadow:0 1px 4px #0005;cursor:pointer}
@@ -399,7 +399,7 @@ async function on(m){
   if(m.t==='history'&&$('log')&&(!m.room||m.room===room))m.items.forEach(add)
   if(m.t==='msg'&&m.room===room&&$('log'))add(m);
   if(m.t==='uno')renderUno(m);
-  if(m.t==='kicked'){OPEN=OPEN.filter(x=>x!==m.room);saveOpen();alert(`You were removed from #${m.room} by ${m.by}.`);go('rooms')}
+  if(m.t==='kicked'){OPEN=OPEN.filter(x=>x!==m.room);saveOpen();alert(`You were removed from ${m.room} by ${m.by}.`);go('rooms')}
   if(m.t==='denied'){OPEN=OPEN.filter(x=>x!==m.room);saveOpen();alert(m.error);go('rooms')}
 }
 let G={},RM=[],RI=null,OPEN=[];try{OPEN=JSON.parse(sessionStorage.open||'[]')}catch{}
@@ -564,13 +564,13 @@ V.rooms=async()=>{const rs=await api('GET','/rooms');
   const q=($('rq')?.value||'').toLowerCase();
   const S=[['Favorite rooms','#f7931e',rs.filter(x=>x.fav)],['Official rooms','#4aa8e8',rs.filter(x=>x.cat==='official')],['Game rooms','#9b59d0',rs.filter(x=>x.cat==='game')],['Your & community rooms','#2e9d4f',rs.filter(x=>x.cat==='user')],["What's hot",'#e8431a',[...rs].filter(x=>x.count>0).sort((a,b)=>b.count-a.count).slice(0,5)]];
   view(`<div class="cmp"><input id="rq" placeholder="Search room" value="${esc(q)}"><button id="rr">⟳</button><button id="rn" class="o">+</button></div>`+
-    S.map(([t,c,l],i)=>`<div class="dk" style="--c:${c}" data-s="${i}"><div>${t}<span class="n">${l.length}</span></div><span>▾</span></div><div id="s${i}" style="${l.length?'':'display:none'}">${l.filter(x=>x.name.toLowerCase().includes(q)).map(x=>`<div class="rm" data-r="${x.name}"><span><span class="rn">#${x.name}</span> <span class="mu">· ${x.count} online</span></span><button data-f="${x.name}">${x.fav?'★':'☆'}</button></div>`).join('')}</div>`).join(''));
+    S.map(([t,c,l],i)=>`<div class="dk" style="--c:${c}" data-s="${i}"><div>${t}<span class="n">${l.length}</span></div><span>▾</span></div><div id="s${i}" style="${l.length?'':'display:none'}">${l.filter(x=>x.name.toLowerCase().includes(q)).map(x=>`<div class="rm" data-r="${x.name}"><span><span class="rn">${x.name}</span> <span class="mu">· ${x.count} online</span></span><button data-f="${x.name}">${x.fav?'★':'☆'}</button></div>`).join('')}</div>`).join(''));
   $('rq').oninput=()=>V.rooms();$('rr').onclick=()=>V.rooms();
   $('rn').onclick=async()=>{const n=prompt('New room name (5–20 characters: English letters, numbers, spaces)');if(!n)return;try{await api('POST','/rooms',{name:n.trim()});V.rooms()}catch(e){fail(e)}};
   $('view').onclick=async e=>{const f=e.target.closest('[data-f]');if(f){await api('POST',`/rooms/${encodeURIComponent(f.dataset.f)}/fav`);return V.rooms()}
     const r=e.target.closest('[data-r]');if(r)return go('chat',r.dataset.r);const s=e.target.closest('[data-s]');if(s){const d=$('s'+s.dataset.s);d.style.display=d.style.display==='none'?'':'none'}}};
 /* ---------- chat ---------- */
-const rtitle=r=>r.startsWith('dm:')?r.slice(3).split(':').find(x=>x!==me)||'DM':'#'+r;
+const rtitle=r=>r.startsWith('dm:')?r.slice(3).split(':').find(x=>x!==me)||'DM':r;
 const lvtag=(n,xp)=>` <span class="lvt">[${lv(xp||0)}]</span>`;
 V.chat=async(r)=>{room=r;if(!r.startsWith('dm:'))lastRoom=r;target='';pend=null;RM=[];RI=null;const dm=r.startsWith('dm:');const title=rtitle(r);
   if(!OPEN.includes(r)){OPEN.push(r);saveOpen()}
@@ -637,10 +637,10 @@ async function micStart(){if(REC)return;
   const tick=()=>{const s=Math.round((Date.now()-t0)/1000);$('rect').textContent=fmtDur(s);if(s>=60)micStop(true)};tick();REC.tm=setInterval(tick,500)}
 function micStop(send){if(!REC)return;REC.send=send;try{REC.mr.stop()}catch{}}
 const sheetOpen=h=>{$('sh').innerHTML=h;$('sheet').classList.add('open')};
-function memSheet(){sheetOpen(`<h2>#${esc(lastRoom)} · ${RM.length} online</h2><div style="max-height:55vh;overflow:auto;display:grid;gap:6px">`+(RM.map(u=>`<button data-n="${esc(u.name)}" style="text-align:left;display:flex;gap:8px;align-items:center">${av(u.name,32)}<b style="color:${nc(u.name)}">${esc(u.name)}</b>${lvtag(u.name,u.xp)}${rt(u.role,u.name)}</button>`).join('')||'<div class="mu">Nobody here yet.</div>')+'</div>');
+function memSheet(){sheetOpen(`<h2>${esc(lastRoom)} · ${RM.length} online</h2><div style="max-height:55vh;overflow:auto;display:grid;gap:6px">`+(RM.map(u=>`<button data-n="${esc(u.name)}" style="text-align:left;display:flex;gap:8px;align-items:center">${av(u.name,32)}<b style="color:${nc(u.name)}">${esc(u.name)}</b>${lvtag(u.name,u.xp)}${rt(u.role,u.name)}</button>`).join('')||'<div class="mu">Nobody here yet.</div>')+'</div>');
   $('sh').onclick=e=>{const n=e.target.closest('[data-n]')?.dataset.n;if(!n)return;$('sheet').classList.remove('open');if(n!==me)setTarget(n)}}
 function modInfo(){const o=RI?.owner||'—';sheetOpen(`<h2>Room staff</h2><div>Managed by: <b style="color:${nc(o)}">${esc(o)}</b></div><div class="mu">Moderators: ${(RI?.mods||[]).map(esc).join(', ')||'none'}</div><div class="mu">Staff and admins can kick, ban and silence in public rooms.</div>`)}
-function moreSheet(){sheetOpen(`<h2>#${esc(lastRoom)}</h2><button data-m="cmds">⌨️ Command List</button><button data-m="rooms">💬 All rooms</button><button data-m="close">✕ Close this tab</button>`);
+function moreSheet(){sheetOpen(`<h2>${esc(lastRoom)}</h2><button data-m="cmds">⌨️ Command List</button><button data-m="rooms">💬 All rooms</button><button data-m="close">✕ Close this tab</button>`);
   $('sh').onclick=e=>{const k=e.target.closest('[data-m]')?.dataset.m;if(!k)return;$('sheet').classList.remove('open');if(k==='close')closeTab(room);else go(k)}}
 const L=(who,html,cls='')=>{const d=document.createElement('div');d.className='rl '+cls;d.innerHTML=`<span class="rn2">${esc(who)}:</span> ${html}`;$('log').append(d);$('log').scrollTop=1e9};
 function roomIntro(m){RI=m;const nm=m.room[0].toUpperCase()+m.room.slice(1);
@@ -654,9 +654,9 @@ function enterLine(m){ROLES[m.user]=m.role;const light=$('log').classList.contai
 function setTarget(u){target=u;$('to').innerHTML=`→ <b>${esc(u)}</b> <button id="dm">Private chat</button> <button id="pf">Profile</button>${['staff','admin'].includes(ST.role)&&ROLES[u]!=='staff'&&!room.startsWith('dm:')?' <button id="md">Moderate</button>':''}`;
   $('dm').onclick=()=>go('chat','dm:'+[me,target].sort().join(':'));$('pf').onclick=()=>go('profile',target);if($('md'))$('md').onclick=()=>modSheet(u)}
 function modSheet(n){const A=[['kick','Kick from room'],['ban','Ban from room'],['unban','Unban'],['silence','Silence 10 min',10],['silence','Silence 1 hour',60],['unsilence','Unsilence']];
-  $('sh').innerHTML=`<h2>Moderate ${esc(n)}</h2><div class="mu">Room: #${esc(lastRoom)}</div>`+A.map(([a,t,m])=>`<button data-a="${a}" data-m="${m||''}" style="text-align:left">${t}</button>`).join('');
+  $('sh').innerHTML=`<h2>Moderate ${esc(n)}</h2><div class="mu">Room: ${esc(lastRoom)}</div>`+A.map(([a,t,m])=>`<button data-a="${a}" data-m="${m||''}" style="text-align:left">${t}</button>`).join('');
   $('sheet').classList.add('open');
-  $('sh').onclick=e=>{const b=e.target.closest('[data-a]');if(!b)return;const a=b.dataset.a;if((a==='kick'||a==='ban')&&!confirm(`${a==='ban'?'Ban':'Kick'} ${n} from #${lastRoom}?`))return;
+  $('sh').onclick=e=>{const b=e.target.closest('[data-a]');if(!b)return;const a=b.dataset.a;if((a==='kick'||a==='ban')&&!confirm(`${a==='ban'?'Ban':'Kick'} ${n} from ${lastRoom}?`))return;
     tx({t:'join',room:lastRoom});tx({t:'mod',act:a,user:n,minutes:+b.dataset.m||10});$('sheet').classList.remove('open')}}
 function add(m){ROLES[m.user]=m.role;const d=document.createElement('div');if(m.kind==='sys'||m.kind==='action'){d.className=m.kind==='sys'?'g2':'act';d.textContent=m.text;$('log').append(d);$('log').scrollTop=1e9;return}const t=new Date(m.ts).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
   if(m.kind==='gift'){d.className='g2';d.textContent=m.user+': '+m.text}
@@ -686,7 +686,7 @@ function renderUno(s){
 }
 /* ---------- profile ---------- */
 V.profile=async(n)=>{n=n||me;const u=await api('GET','/users/'+n);ROLES[u.name]=u.role;const mine=u.state==='me';$('stt').textContent=u.name;
-  view(`<div class="ph"><div style="display:grid;gap:6px;justify-items:center;align-content:start">${av(u.name,120)}${mine?`<button id="cp">📷 Photo</button>${AV[me]?'<button id="cr">Remove</button>':''}<input type="file" id="pfl" accept="image/*" hidden>`:''}</div><div class="g" style="min-width:0"><div class="nm" style="color:${nc(u.name)}">${esc(u.name)}${rt(u.role,u.name)}</div>
+  view(`<div class="ph"><div style="display:grid;gap:6px;justify-items:center;align-content:start">${av(u.name,120)}${mine?`<button id="cp" class="o">📷 Set profile photo</button>${AV[me]?'<button id="cr">Remove</button>':''}<input type="file" id="pfl" accept="image/*" hidden>`:''}</div><div class="g" style="min-width:0"><div class="nm" style="color:${nc(u.name)}">${esc(u.name)}${rt(u.role,u.name)}</div>
    <div class="mu" style="font-size:17px;color:#777">${esc(u.full_name||'')}</div>
    <div style="font-size:17px;margin:4px 0"><span class="dot ${u.presence}"></span>${u.presence[0].toUpperCase()+u.presence.slice(1)}</div>
    <div style="font-size:17px">Level ${u.level}</div><div class="mu" style="font-size:15px">${esc(u.gender||'')}</div>
@@ -743,12 +743,13 @@ V.spin=async()=>{const d=await api('GET','/spin');const n=d.prizes.length,cols=[
   $('go').onclick=async()=>{try{$('go').disabled=true;const r=await api('POST','/spin');rot+=360*5+(360-(r.index+.5)*360/n)-(rot%360);$('wh').style.transform=`rotate(${rot}deg)`;
     setTimeout(()=>{$('res').textContent=r.prize==='Try again'?'Try again tomorrow!':'You won '+r.prize+'!';ST.coins=r.coins;$('coins').textContent=r.coins+' coins';$('go').disabled=false;if($('sl'))$('sl').textContent=r.spins},3600)}catch(e){fail(e);$('go').disabled=false}}};
 V.settings=async()=>{const bg=localStorage.cbg||'light';
-  view(`<h2 style="margin-top:12px">Settings</h2><div class="card row" id="sp" style="cursor:pointer">${av(me)}<div class="g"><b>${esc(me)}</b><span class="lv">Lv ${lv(ST.xp||0)}</span><div class="mu">Edit profile, status, avatar</div></div>›</div>
+  view(`<h2 style="margin-top:12px">Settings</h2><div class="card row" id="spp" style="cursor:pointer">${av(me,48)}<div class="g"><b>Profile photo</b><div class="mu">${AV[me]?'Change or remove your photo':'Add a photo so friends recognise you'}</div></div>📷</div>
+  <div class="card row" id="sp" style="cursor:pointer">${av(me)}<div class="g"><b>${esc(me)}</b><span class="lv">Lv ${lv(ST.xp||0)}</span><div class="mu">Edit profile, status, avatar</div></div>›</div>
   <div class="card"><b>Chat background</b><div class="chips">${['light','navy','dark'].map(k=>`<button data-bg="${k}" class="${bg===k?'on':''}">${k[0].toUpperCase()+k.slice(1)}</button>`).join('')}</div></div>
   <div class="card"><b>Status</b><div class="chips"><button id="ss">${ST.presence||'online'} — change</button></div></div>
   <form id="pw" class="card" style="display:grid;gap:8px"><b>Change password</b><input id="po" type="password" placeholder="Current password" autocomplete="current-password"><input id="pn" type="password" placeholder="New password (6+ characters)" autocomplete="new-password"><button class="o">Update password</button></form>
   <button class="mi out card" id="lo">⎋ Log out</button>`);
-  $('sp').onclick=()=>go('profile',me);$('ss').onclick=statusSheet;$('lo').onclick=logout;
+  $('sp').onclick=()=>go('profile',me);$('spp').onclick=()=>go('profile',me);$('ss').onclick=statusSheet;$('lo').onclick=logout;
   $('pw').onsubmit=async e=>{e.preventDefault();try{await api('POST','/password',{old:$('po').value,pass:$('pn').value});alert('Password updated.');V.settings()}catch(er){fail(er)}};
   $('view').onclick=e=>{const b=e.target.dataset.bg;if(b){localStorage.cbg=b;V.settings()}}};
 if(tok())connect();
