@@ -41,7 +41,7 @@ select option{color:#000}
 .alt button{background:none;border:0;box-shadow:none;color:#fff;font:600 21px Fredoka,"Open Sans",sans-serif;text-decoration:underline;letter-spacing:.4px;text-shadow:0 1px 2px #0006}
 #err{color:#ffd3cf;min-height:24px;font-weight:700;padding:10px 4px 0;text-align:center;text-shadow:0 1px 2px #0008}
 /* ---------- app shell ---------- */
-#app{display:none;height:100%;flex-direction:column;max-width:760px;margin:0 auto;background:var(--sf);box-shadow:0 0 0 1px var(--ln),0 0 30px #0002}
+#app{display:none;height:100%;flex-direction:column;width:100%;max-width:none;margin:0;background:var(--sf);box-shadow:0 0 0 1px var(--ln),0 0 30px #0002}
 #top{display:flex;align-items:stretch;height:52px;background:linear-gradient(#4a4a4a,#1e1e1e);border-bottom:1px solid #000;flex:none}
 #top button{border:0;border-right:1px solid #0009;border-left:1px solid #ffffff1a;border-radius:0;background:none;box-shadow:none;color:#fff;width:54px;padding:0;display:grid;place-items:center;font-size:20px;text-shadow:none}
 #top button:hover{background:#ffffff14}#top button.on{background:linear-gradient(#ffd43a,#f2b500)}#top button.on svg{stroke:#222}
@@ -118,7 +118,7 @@ h2{margin:6px 12px 10px;font-size:20px;color:#2a3340}
 .ucard{display:inline-grid;place-items:center;width:44px;height:64px;margin:3px;border-radius:8px;font-weight:800;color:#fff;border:3px solid #fff;box-shadow:0 1px 4px #0005;cursor:pointer}
 .R{background:#e5484d}.Y{background:#e8b100;color:#222}.G{background:#2faa5f}.B{background:#2f78e8}.W{background:#222}
 #sheet{position:fixed;inset:0;display:none;align-items:flex-end;background:#0008;z-index:6}#sheet.open{display:flex}
-#sheet div{width:100%;max-width:760px;margin:0 auto;background:#fff;border-radius:16px 16px 0 0;padding:18px;display:grid;gap:8px}
+#sheet div{width:100%;max-width:720px;margin:0 auto;background:#fff;border-radius:16px 16px 0 0;padding:18px;display:grid;gap:8px}
 #sheet h2{margin:0 0 4px}
 .cmd{padding:8px 0;border-bottom:1px solid var(--ln)}.cmd code{color:#c8340f;font-weight:700}
 /* profile */
@@ -136,17 +136,16 @@ h2{margin:6px 12px 10px;font-size:20px;color:#2a3340}
 /* ---------- responsive: phone / tablet / desktop ---------- */
 @media (max-width:759px){#app{box-shadow:none;max-width:none}.card{margin-left:8px;margin-right:8px}}
 @media (max-width:400px){#top button{width:46px}#coins{padding:0 8px;font-size:13px}.ph .av{width:92px!important;height:92px!important;font-size:42px!important}.ph .nm{font-size:19px}.tiles{gap:6px;padding:6px 8px 10px}.tiles b{font-size:18px}.fr .nm{font-size:17px}.box .lg{width:200px;height:122px}}
-@media (min-width:760px) and (max-width:999px){#app{max-width:860px}#sheet div{max-width:860px}}
+
 @media (min-width:1000px){
- body.in{display:grid;grid-template-columns:300px minmax(0,860px);grid-template-rows:100%;justify-content:center;gap:0;background:var(--bg)}
+ body.in{display:grid;grid-template-columns:300px minmax(0,1fr);grid-template-rows:100%;gap:0;background:var(--bg)}
  body.in #drawer{display:block;position:static;background:none;z-index:auto;grid-column:1;grid-row:1;min-height:0;border-right:1px solid var(--ln)}
  body.in #drawer nav{width:100%;max-width:none;box-shadow:none;height:100%}
- body.in #app{grid-column:2;grid-row:1;max-width:none;box-shadow:none}
+ body.in #app{grid-column:2;grid-row:1;box-shadow:none}
  #mb{display:none!important}
- #sheet div{max-width:860px}
  #auth{align-items:center}.box{max-width:440px}
 }
-@media (min-width:1500px){body.in{grid-template-columns:320px minmax(0,980px)}}
+
 </style>
 </head>
 <body>
