@@ -885,8 +885,8 @@ const members = new Map(); // room -> Set<ws>
 const send = (ws, o) => ws.readyState === 1 && ws.send(JSON.stringify(o));
 const cast = (room, o) => {
   members.get(room)?.forEach(w => { if (o.user && w.user !== o.user && isBlocked(o.user, w.user)) return; send(w, o); });
-  // people who have this room open as a tab but are looking at another room get an "unread" ping
-  if (o.t === 'msg' && ['msg', 'image', 'voice'].includes(o.kind)) wss.clients.forEach(w => { if (w.user && w.user !== o.user && w.room !== room && w.tabs && w.tabs.has(room) && !isBlocked(o.user, w.user)) send(w, { t: 'unread', room, user: o.user }); });
+  // people who have this room open as a tab but are looking at another room get the message too (shown as unread)
+  if (o.t === 'msg' && ['msg', 'image', 'voice'].includes(o.kind)) wss.clients.forEach(w => { if (w.user && w.user !== o.user && w.room !== room && w.tabs && w.tabs.has(room) && !isBlocked(o.user, w.user)) send(w, { ...o, bg: 1 }); });
 };
 const online = () => {
   const l = [...new Set([...wss.clients].filter(w => w.user).map(w => w.user))]
@@ -910,7 +910,17 @@ const leaveRoom = (ws, quiet = false) => {
   const r0 = ws.room; if (!r0) return; members.get(r0)?.delete(ws); ws.room = null;
   if (!quiet && !r0.startsWith('dm:') && ws.user && ![...(members.get(r0) || [])].some(w => w.user === ws.user)) cast(r0, { t: 'leave', room: r0, user: ws.user, role: roleOf(ws.user), xp: xpOf(ws.user), ts: Date.now() });
   castRoster(r0);
+  if (!quiet) purgeRoomMsgs(r0);
 };
+// Chat rooms keep no history: when the last person leaves, every text / photo / voice note of that room is deleted
+const purgeRoomMsgs = room => {
+  if (!room || room.startsWith('dm:') || (members.get(room)?.size || 0) > 0) return;
+  const rows = db.prepare('select text,kind from msgs where room=?').all(room);
+  if (!rows.length) return;
+  db.prepare('delete from msgs where room=?').run(room);
+  for (const x of rows) if (x.kind === 'image' || x.kind === 'voice') { const u = String(x.text).split('|')[0]; if (MEDIA_URL.test(u)) fs.unlink('.' + u, () => {}); }
+};
+for (const { room } of db.prepare("select distinct room from msgs where room not like 'dm:%'").all()) purgeRoomMsgs(room);   // nobody is in a room right after a restart
 // ---------- Teen Patti Gold (Legendary room) — virtual coins, fun only, no cash value ----------
 const TP_BOOT = Math.max(1, parseInt(process.env.TP_BOOT || '10', 10));
 const isTpRoom = n => gameOf(n) === 'tp';
@@ -1413,7 +1423,7 @@ wss.on('connection', ws => {
       const isDm = /^dm:/.test(m.room);
       if (!isDm) send(ws, { t: 'roominfo', room: m.room, owner: ownerOf(m.room) || STAFF_USER, mods: db.prepare('select user from room_mods where room=?').all(m.room).map(x => x.user), supers: db.prepare('select user from room_mods where room=? and super=1').all(m.room).map(x => x.user), cap: db.prepare('select cap from rooms where name=?').get(m.room)?.cap || 0, descr: db.prepare('select descr from rooms where name=?').get(m.room)?.descr || '', minlv: db.prepare('select minlv from rooms where name=?').get(m.room)?.minlv || 0, announce: cfg(m.room).announce || '', users: roster(m.room), fav: !!db.prepare('select 1 from favs where user=? and room=?').get(ws.user, m.room) });
       const hist = db.prepare('select user,text,kind,ts,(select role from users where name=msgs.user) role,(select xp from users where name=msgs.user) xp from msgs where room=? and not exists(select 1 from blocks where (a=? and b=msgs.user) or (b=? and a=msgs.user)) order by id desc limit 50').all(m.room, ws.user, ws.user).reverse();
-      send(ws, { t: 'history', room: m.room, items: hist });
+      send(ws, { t: 'history', room: m.room, items: isDm ? hist : [] });   // rooms: you only see what is said while you are inside
       if (!isDm) { cast(m.room, { t: 'enter', room: m.room, user: ws.user, role: roleOf(ws.user), xp: xpOf(ws.user), ts: Date.now() }); castRoster(m.room); }
       if (tp && isTpRoom(m.room)) { ensureTp(m.room); setTimeout(() => send(ws, { t: 'tp', room: m.room, view: tp.getView(m.room, ws.user) }), 50); }
       if (games.has(m.room)) send(ws, unoState(games.get(m.room), ws.user));
