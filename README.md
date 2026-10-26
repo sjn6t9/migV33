@@ -17,3 +17,9 @@ Fun-only card game with virtual coins (no cash value, no purchases or cash-outs)
 
 ## Royale Battle (royale room)
 `royale-battle.cjs` (engine, unchanged) + `server.js` wiring (coins and pending bets live in SQLite: table `rb_pending`, refunded at the next start after a crash). Room `royale`: the bot is added automatically on the first `!` command; staff/admin type `!start`. Player: `!bet red 500`, `!bet double run 1k`, `!bal`, `!top`. Staff: `/bot royalebattle`, `/bot stop`.
+
+## Game bots in any room, room roles, auto-leave
+- `/bot cricket|lowcard|dice` (room admin, moderators, super moderators, staff/admin) and `/bot teenpatti|royalebattle` (staff/admin) turn a game on in the current room; `/bot stop` turns it off. One game per room. Game rooms (legendary, cricket, lowcard, royale) start with their game.
+- Dice Bot: `dice.cjs`. `!start [amount]`, `!j`, `!d` (two dice, highest total wins, ties roll again).
+- `/smod` and `/dsmod`: Super Moderator = everything the room admin can do except changing the admin.
+- Staff: Admin Panel → Manage rooms (rename, user limit). Normal users leave a room automatically 30 minutes after joining; admin/moderators/staff stay.

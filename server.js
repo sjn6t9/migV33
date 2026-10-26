@@ -12,6 +12,8 @@ const require = createRequire(import.meta.url);
 let TP = null;   // Teen Patti Gold engine (virtual coins, for fun only); the site still runs if the file is missing
 let RB = null;   // Royale Battle engine (room "royale")
 try { RB = require('./royale-battle.cjs'); } catch (e) { console.error('[Royale] engine not loaded:', e.message); }
+let DC = null;   // Dice Bot engine
+try { DC = require('./dice.cjs'); } catch (e) { console.error('[Dice] engine not loaded:', e.message); }
 let LC = null;   // LowCard Bot engine (room "lowcard")
 try { LC = require('./lowcard.cjs'); } catch (e) { console.error('[LowCard] engine not loaded:', e.message); }
 let CB = null;   // Cricket Bot engine (room "cricket")
@@ -122,8 +124,16 @@ create table if not exists tp_hands(id integer primary key, ts int, info text);
 create table if not exists rb_pending(room text, round int, user text, option text, amount int);
 create table if not exists lc_pending(room text, user text, amount int);
 create table if not exists mutes(room text, user text, until int, primary key(room,user))`);
+for (const a of ['alter table room_mods add column super int default 0', 'alter table rooms add column cap int default 0']) { try { db.exec(a); } catch {} }
+db.exec(`create table if not exists room_game(room text primary key, game text);
+create table if not exists kv(k text primary key, v text)`);
+const gameOf = room => db.prepare('select game from room_game where room=?').get(room)?.game || '';
 for (const [n, c] of [['lobby', 'official'], ['adda', 'official'], ['music', 'official'], ['games', 'game'], ['legendary', 'game'], ['cricket', 'game'], ['lowcard', 'game'], ['royale', 'game']])
-  db.prepare('insert or ignore into rooms values(?,?,?)').run(n, c, null);
+  db.prepare('insert or ignore into rooms(name,cat,owner) values(?,?,?)').run(n, c, null);
+if (!db.prepare("select 1 from kv where k='games_seeded'").get()) {   // first start only: the four game rooms get their game
+  for (const [r, g] of [['legendary', 'tp'], ['cricket', 'cricket'], ['lowcard', 'lowcard'], ['royale', 'royale']]) db.prepare('insert or ignore into room_game values(?,?)').run(r, g);
+  db.prepare("insert into kv values('games_seeded','1')").run();
+}
 const roomOk = n => /^dm:/.test(n) || !!db.prepare('select 1 from rooms where name=?').get(n);
 const auth = (q, r, next) => {
   let u;
@@ -151,7 +161,7 @@ function addXp(name, n) {
   if (after > before) wss.clients.forEach(w => { if (w.user === name) { send(w, { t: 'levelup', level: after, reward: total }); send(w, { t: 'coins', coins: coins(name) }); } });
 }
 const profile = n => { const u = db.prepare('select name,full_name,gender,country,bio,status_text,presence,xp,coins,role from users where name=?').get(n); return u && { ...u, level: level(u.xp) }; };
-const ok = fn => (q, r) => { try { fn(q, r); } catch (e) { console.error(e); bad(r, 'Server error', 500); } };
+const ok = fn => (q, r) => { const f = e => { console.error(e); if (!r.headersSent) bad(r, 'Server error', 500); }; try { const x = fn(q, r); if (x && x.catch) x.catch(f); } catch (e) { f(e); } };
 const fstate = (a, b) => {
   const x = db.prepare('select * from friends where (a=? and b=?) or (a=? and b=?)').get(a, b, b, a);
   return !x ? 'none' : x.status === 'accepted' ? 'friends' : x.a === a ? 'sent' : 'incoming';
@@ -318,13 +328,13 @@ app.delete('/api/stories/:id', auth, ok((q, r) => {
 
 app.get('/api/rooms', auth, ok((q, r) => {
   const fav = new Set(db.prepare('select room from favs where user=?').all(q.user).map(x => x.room));
-  r.json(db.prepare('select name,cat from rooms').all().map(x => ({ ...x, count: members.get(x.name)?.size || 0, fav: fav.has(x.name) })));
+  r.json(db.prepare('select name,cat,cap from rooms').all().map(x => ({ ...x, count: members.get(x.name)?.size || 0, fav: fav.has(x.name) })));
 }));
 app.post('/api/rooms', auth, ok((q, r) => {
   const name = String(q.body?.name || '').trim().replace(/\s+/g, ' ');
   if (!/^[A-Za-z0-9 ]{5,20}$/.test(name)) return bad(r, 'Room name: 5–20 characters, English letters, numbers and spaces only');
   if (db.prepare('select 1 from rooms where lower(name)=lower(?)').get(name)) return bad(r, 'That room already exists', 409);
-  db.prepare('insert into rooms values(?,?,?)').run(name, 'user', q.user); r.json({ ok: true });
+  db.prepare('insert into rooms(name,cat,owner) values(?,?,?)').run(name, 'user', q.user); r.json({ ok: true });
 }));
 app.post('/api/rooms/:n/fav', auth, ok((q, r) => {
   const d = db.prepare('delete from favs where user=? and room=?').run(q.user, q.params.n);
@@ -564,6 +574,38 @@ app.post('/api/tag', auth, ok((q, r) => {
 }));
 
 
+
+// ---------- Staff: rooms (rename, capacity) ----------
+const ROOM_TABLES = [['rooms', 'name'], ['favs', 'room'], ['bans', 'room'], ['room_mods', 'room'], ['room_cfg', 'room'], ['mutes', 'room'], ['msgs', 'room'], ['room_game', 'room'], ['tp_pending', 'room'], ['rb_pending', 'room'], ['lc_pending', 'room']];
+app.get('/api/admin/rooms', auth, ok((q, r) => {
+  if (!staffOnly(q, r)) return;
+  r.json(db.prepare('select name,cat,owner,cap from rooms order by cat,name').all().map(x => ({ ...x, count: new Set([...(members.get(x.name) || [])].map(w => w.user)).size, game: gameOf(x.name) })));
+}));
+app.post('/api/admin/rooms/rename', auth, ok(async (q, r) => {
+  if (!staffOnly(q, r)) return;
+  const from = String(q.body?.from || ''), to = String(q.body?.to || '').trim().replace(/\s+/g, ' ');
+  if (!db.prepare('select 1 from rooms where name=?').get(from)) return bad(r, 'Room not found', 404);
+  if (!/^[A-Za-z0-9 ]{3,20}$/.test(to)) return bad(r, 'Room name: 3–20 characters, English letters, numbers and spaces only.');
+  if (to !== from && db.prepare('select 1 from rooms where lower(name)=lower(?)').get(to)) return bad(r, 'That room name is already used.', 409);
+  if (to === from) return r.json({ ok: true });
+  const game = gameOf(from);
+  if (!(await stopGame(from))) return bad(r, 'A game is running in that room. Try again when it ends.');
+  [...(members.get(from) || [])].forEach(w => { w.room = null; send(w, { t: 'kicked', room: from, by: 'staff', renamed: to }); }); members.delete(from);
+  db.transaction(() => {
+    for (const [t, c] of ROOM_TABLES) db.prepare(`update ${t} set ${c}=? where ${c}=?`).run(to, from);
+    if (game) db.prepare('insert or replace into room_game values(?,?)').run(to, game);
+  })();
+  alog(q.user, from, 'room_rename', `${from} → ${to}`); r.json({ ok: true });
+}));
+app.post('/api/admin/rooms/cap', auth, ok((q, r) => {
+  if (!staffOnly(q, r)) return;
+  const name = String(q.body?.room || ''), cap = Math.floor(+q.body?.cap);
+  if (!db.prepare('select 1 from rooms where name=?').get(name)) return bad(r, 'Room not found', 404);
+  if (!(cap >= 0 && cap <= 5000)) return bad(r, 'User limit must be between 0 (no limit) and 5000.');
+  db.prepare('update rooms set cap=? where name=?').run(cap, name);
+  alog(q.user, name, 'room_cap', cap ? String(cap) : 'unlimited'); cast(name, { t: 'roomcap', room: name, cap }); r.json({ ok: true });
+}));
+
 // ---------- Staff: custom gifts ----------
 const staffOnly = (q, r) => roleOf(q.user) === 'staff' || (bad(r, 'Only staff can manage gifts', 403), false);
 const bcastGifts = () => wss.clients.forEach(w => w.user && send(w, { t: 'gifts', gifts: allGifts() }));
@@ -601,7 +643,7 @@ app.delete('/api/admin/gifts/:k', auth, ok((q, r) => {
 // ---------- Staff admin panel ----------
 const COUNTRIES = ['Afghanistan','Albania','Algeria','Argentina','Armenia','Australia','Austria','Azerbaijan','Bahrain','Bangladesh','Belarus','Belgium','Bhutan','Bolivia','Bosnia and Herzegovina','Brazil','Brunei','Bulgaria','Cambodia','Cameroon','Canada','Chile','China','Colombia','Costa Rica','Croatia','Cuba','Cyprus','Czech Republic','Denmark','Dominican Republic','Ecuador','Egypt','El Salvador','Estonia','Ethiopia','Finland','France','Georgia','Germany','Ghana','Greece','Guatemala','Hong Kong','Hungary','Iceland','India','Indonesia','Iran','Iraq','Ireland','Israel','Italy','Ivory Coast','Jamaica','Japan','Jordan','Kazakhstan','Kenya','Kuwait','Kyrgyzstan','Laos','Latvia','Lebanon','Libya','Lithuania','Luxembourg','Malaysia','Maldives','Malta','Mexico','Moldova','Mongolia','Morocco','Myanmar','Nepal','Netherlands','New Zealand','Nigeria','North Macedonia','Norway','Oman','Pakistan','Palestine','Panama','Paraguay','Peru','Philippines','Poland','Portugal','Qatar','Romania','Russia','Saudi Arabia','Senegal','Serbia','Singapore','Slovakia','Slovenia','Somalia','South Africa','South Korea','Spain','Sri Lanka','Sudan','Sweden','Switzerland','Syria','Taiwan','Tajikistan','Tanzania','Thailand','Tunisia','Turkey','Turkmenistan','Uganda','Ukraine','United Arab Emirates','United Kingdom','United States','Uruguay','Uzbekistan','Venezuela','Vietnam','Yemen','Zambia','Zimbabwe'];
 const RENAME_COLS = [['msgs', 'user'], ['posts', 'user'], ['comments', 'user'], ['reacts', 'user'], ['txs', 'user'], ['favs', 'user'], ['bans', 'user'], ['bans', 'by'], ['room_mods', 'user'],
-  ['mutes', 'user'], ['tp_pending', 'user'], ['post_shares', 'user'], ['post_hidden', 'user'], ['stories', 'user'], ['story_views', 'user'], ['friends', 'a'], ['friends', 'b'], ['blocks', 'a'], ['blocks', 'b'], ['rooms', 'owner'], ['users', 'parent'], ['role_requests', 'from_user'], ['role_requests', 'to_user'], ['role_requests', 'decided_by'], ['tags', 'user'], ['tags', 'parent'], ['commissions', 'spender'], ['commissions', 'parent'], ['mevents', 'user'], ['payouts', 'user'], ['role_history', 'user'], ['role_history', 'by'], ['gift_inv', 'user'], ['lc_pending', 'user'], ['rb_pending', 'user']];
+  ['mutes', 'user'], ['tp_pending', 'user'], ['post_shares', 'user'], ['post_hidden', 'user'], ['stories', 'user'], ['story_views', 'user'], ['friends', 'a'], ['friends', 'b'], ['blocks', 'a'], ['blocks', 'b'], ['rooms', 'owner'], ['users', 'parent'], ['role_requests', 'from_user'], ['role_requests', 'to_user'], ['role_requests', 'decided_by'], ['tags', 'user'], ['tags', 'parent'], ['commissions', 'spender'], ['commissions', 'parent'], ['mevents', 'user'], ['payouts', 'user'], ['role_history', 'user'], ['role_history', 'by'], ['gift_inv', 'user'], ['lc_pending', 'user'], ['rb_pending', 'user']];   // room-name tables are handled by the room rename
 const alog = (staff, target, action, detail = '') => db.prepare('insert into admin_log(staff,target,action,detail,ts) values(?,?,?,?,?)').run(staff, target, action, String(detail).slice(0, 200), Date.now());
 const kickUser = (name, why) => wss.clients.forEach(w => { if (w.user === name) { send(w, { t: 'error', error: why }); try { w.close(); } catch {} } });
 function staffTarget(q, r, name) {
@@ -803,12 +845,26 @@ const online = () => {
   wss.clients.forEach(w => send(w, { t: 'online', list: l }));
 };
 const coins = n => db.prepare('select coins from users where name=?').get(n).coins;
+// Normal users are removed from a public room 30 minutes after joining. Staff/admins and the room's admin/moderators stay.
+const ROOM_STAY_MS = 30 * 60e3;
+setInterval(() => {
+  const now = Date.now();
+  wss.clients.forEach(w => {
+    if (!w.room || !w.user || w.room.startsWith('dm:') || !w.roomAt || now - w.roomAt < ROOM_STAY_MS) return;
+    if (canMod(w.room, w.user)) return;
+    const r = w.room; leaveRoom(w); send(w, { t: 'kicked', room: r, by: 'system', auto: true });
+  });
+}, 60e3).unref();
 const roster = room => [...new Set([...(members.get(room) || [])].map(w => w.user))].map(n => ({ name: n, ...db.prepare('select role,xp,presence from users where name=?').get(n) })).filter(u => u.presence !== 'offline');
 const castRoster = room => { if (room && !/^dm:/.test(room)) cast(room, { t: 'members', room, list: roster(room) }); };
-const leaveRoom = ws => { const r0 = ws.room; if (!r0) return; members.get(r0)?.delete(ws); ws.room = null; castRoster(r0); };
+const leaveRoom = (ws, quiet = false) => {
+  const r0 = ws.room; if (!r0) return; members.get(r0)?.delete(ws); ws.room = null;
+  if (!quiet && !r0.startsWith('dm:') && ws.user && ![...(members.get(r0) || [])].some(w => w.user === ws.user)) cast(r0, { t: 'leave', room: r0, user: ws.user, role: roleOf(ws.user), xp: xpOf(ws.user), ts: Date.now() });
+  castRoster(r0);
+};
 // ---------- Teen Patti Gold (Legendary room) — virtual coins, fun only, no cash value ----------
 const TP_BOOT = Math.max(1, parseInt(process.env.TP_BOOT || '10', 10));
-const isTpRoom = n => String(n || '').toLowerCase() === 'legendary';
+const isTpRoom = n => gameOf(n) === 'tp';
 const pushCoins = (...names) => wss.clients.forEach(w => names.includes(w.user) && send(w, { t: 'coins', coins: coins(w.user) }));
 const tpStore = {
   async touch() {},
@@ -869,28 +925,31 @@ const cricket = !CB ? null : new CB.CricketBot({
 });
 const isLowRoom = n => String(n || '').toLowerCase() === 'lowcard';
 const lcRefundRoom = room => db.transaction(() => {
-  for (const b of db.prepare('select user,amount from lc_pending where room=?').all(room)) { db.prepare('update users set coins=coins+? where name=?').run(b.amount, b.user); addTx(b.user, 'game', 'LowCard Bot: refund', b.amount); }
+  for (const b of db.prepare('select user,amount from lc_pending where room=?').all(room)) { db.prepare('update users set coins=coins+? where name=?').run(b.amount, b.user); addTx(b.user, 'game', 'Game bot: refund', b.amount); }
   db.prepare('delete from lc_pending where room=?').run(room);
 })();
-const lowcard = !LC ? null : new LC.LowCardBot({
-  say: async (room, text) => cast(room, { t: 'msg', room, user: 'LowCard Bot', text, kind: 'game', ts: Date.now(), role: '' }),
+// Shared wallet API for the pot games (LowCard, Dice): entries are journaled in lc_pending so a crash refunds them at the next start.
+const gameApi = label => ({
+  say: async (room, text) => cast(room, { t: 'msg', room, user: label, text, kind: 'game', ts: Date.now(), role: '' }),
   debit: async (room, user, amount) => {
     const ok = db.transaction(() => {
       if (!db.prepare('update users set coins=coins-? where name=? and coins>=?').run(amount, user, amount).changes) return false;
       db.prepare('insert into lc_pending values(?,?,?)').run(room, user, amount);
-      const tx = addTx(user, 'game', 'LowCard Bot: entry fee', -amount); mev(user, 'game'); commissionOn(user, amount, 'game', tx.lastInsertRowid); return true;
+      const tx = addTx(user, 'game', `${label}: entry fee`, -amount); mev(user, 'game'); commissionOn(user, amount, 'game', tx.lastInsertRowid); return true;
     })();
     if (ok) pushCoins(user); return ok;
   },
   settle: async (room, winner, prize) => {
     const names = db.prepare('select user from lc_pending where room=?').all(room).map(x => x.user);
-    db.transaction(() => { db.prepare('update users set coins=coins+? where name=?').run(prize, winner); addTx(winner, 'game', 'LowCard Bot: win', prize); db.prepare('delete from lc_pending where room=?').run(room); })();
+    db.transaction(() => { db.prepare('update users set coins=coins+? where name=?').run(prize, winner); addTx(winner, 'game', `${label}: win`, prize); db.prepare('delete from lc_pending where room=?').run(room); })();
     pushCoins(winner, ...names);
   },
   refund: async room => { const names = db.prepare('select user from lc_pending where room=?').all(room).map(x => x.user); lcRefundRoom(room); pushCoins(...names); },
 });
+const lowcard = !LC ? null : new LC.LowCardBot(gameApi('LowCard Bot'));
+const dice = !DC ? null : new DC.DiceBot(gameApi('Dice Bot'));
 // A crash in the middle of a LowCard game: give every pending entry back at the next start.
-if (lowcard) for (const { room } of db.prepare('select distinct room from lc_pending').all()) { lcRefundRoom(room); console.log('[LowCard] refunded interrupted game in', room); }
+if (lowcard || dice) for (const { room } of db.prepare('select distinct room from lc_pending').all()) { lcRefundRoom(room); console.log('[LowCard] refunded interrupted game in', room); }
 const isRoyaleRoom = n => String(n || '').toLowerCase() === 'royale';
 const rbStore = {
   async touch() {},
@@ -931,7 +990,66 @@ const royale = !RB ? null : new RB.RoyaleBattleManager({
 });
 royale?.init().catch(e => console.error('[Royale] init failed', e));
 setInterval(() => { try { royale?.savePlanners(); } catch {} }, 30e3).unref();
-const rbStopped = new Set();   // rooms where an admin removed the bot with /bot stop
+
+const POT_GAMES = ['cricket', 'lowcard', 'dice'];   // room admins / moderators may run these in their own room
+const GAME_NAMES = { teenpatti: 'tp', tp: 'tp', cricket: 'cricket', lowcard: 'lowcard', dice: 'dice', royalebattle: 'royale', royale: 'royale' };
+const GAME_LABEL = { tp: 'Teen Patti Gold', cricket: 'Cricket Bot', lowcard: 'LowCard Bot', dice: 'Dice Bot', royale: 'Royale Battle' };
+const SYSADMIN = { id: 'system', name: 'System', isAdmin: true };
+const gameBusy = room => {
+  const g = gameOf(room);
+  if (g === 'cricket') { const x = cricket?.games.get(room); return !!x && x.state !== 'ended'; }
+  if (g === 'lowcard') return !!lowcard?.running(room);
+  if (g === 'dice') return !!dice?.running(room);
+  return false;
+};
+// Stops the game bot of a room. Returns false when a game/hand/round is still running.
+async function stopGame(room) {
+  const cur = gameOf(room); if (!cur) return true;
+  if (gameBusy(room)) return false;
+  if (cur === 'tp' && tp?.rooms.has(room)) { await tp.handleMessage(room, SYSADMIN, '/bot stop'); if (tp.rooms.has(room)) return false; }
+  if (cur === 'royale' && royale?.rooms.has(room)) { await royale.handleMessage(room, SYSADMIN, '/bot stop'); if (royale.rooms.has(room)) return false; }
+  db.prepare('delete from room_game where room=?').run(room); return true;
+}
+async function botCommand(ws, text) {
+  const room = ws.room, u = ws.user, [, name = '', arg = ''] = text.trim().toLowerCase().split(/\s+/);
+  if (room.startsWith('dm:')) return reply(ws, 'Game bots work in public rooms only.');
+  if (!canMod(room, u)) return reply(ws, 'Only staff, the room admin or room moderators can use /bot.');
+  const cur = gameOf(room);
+  if (name === 'stop') {
+    if (!cur) return reply(ws, 'No game bot is running in this room.');
+    if (!isSA(u) && !POT_GAMES.includes(cur)) return reply(ws, 'Only staff or admins can stop that bot.');
+    if (!(await stopGame(room))) return reply(ws, 'A game is running right now. Try again when it ends.');
+    return say(room, u, `🛑 ${GAME_LABEL[cur]} was stopped by ${u}`, 'sys');
+  }
+  const g = GAME_NAMES[name];
+  if (!g) return reply(ws, 'Usage: /bot cricket | lowcard | dice   (staff/admins also: teenpatti | royalebattle)   ·   /bot stop');
+  if (!isSA(u) && !POT_GAMES.includes(g)) return reply(ws, 'Only staff or admins can start Teen Patti and Royale Battle.');
+  if (!{ tp, cricket, lowcard, dice, royale }[g]) return reply(ws, 'That game is not installed on the server.');
+  if (cur && cur !== g && !(await stopGame(room))) return reply(ws, `${GAME_LABEL[cur]} is running right now. Try again when it ends.`);
+  db.prepare('insert or replace into room_game values(?,?)').run(room, g);
+  if (g === 'tp') await tp.handleMessage(room, SYSADMIN, '/bot teenpatti ' + (/^\d+$/.test(arg) ? arg : TP_BOOT));
+  else if (g === 'royale') await royale.handleMessage(room, SYSADMIN, '/bot royalebattle');
+  else if (g === 'lowcard' && /^\d+$/.test(arg)) lowcard.admin(room, true, `/bot lowcard ${arg}`);
+  if (cur !== g) say(room, u, `🎮 ${GAME_LABEL[g]} is on in this room (started by ${u}). Type !start to play.`, 'sys');
+}
+const potTop = () => 'Top players: ' + db.prepare('select name,coins from users where lower(name)!=? order by coins desc limit 5').all(STAFF_USER).map((x, i) => `${i + 1}. ${x.name} (${x.coins})`).join(' · ');
+function gameRoute(ws, text) {
+  const room = ws.room, g = gameOf(room);
+  if (!g) return reply(ws, 'No game bot is running in this room. Staff, the room admin or moderators can start one with /bot cricket, /bot lowcard or /bot dice.');
+  if (!speakOk(ws)) return;
+  const u = { id: ws.user, name: ws.user, isAdmin: isSA(ws.user) }, lo = text.trim().toLowerCase().replace(/\s+/g, ' ');
+  if (g === 'tp') { ensureTp(room); return tp.handleMessage(room, u, text).catch(e => console.error('[TeenPatti]', e)); }
+  if (g === 'royale') {
+    const pre = !royale.rooms.has(room) ? royale.handleMessage(room, SYSADMIN, '/bot royalebattle') : Promise.resolve();
+    return pre.then(() => royale.handleMessage(room, u, text)).catch(e => console.error('[Royale]', e));
+  }
+  if (g === 'cricket' || g === 'lowcard' || g === 'dice') {
+    if (lo === '!bal') return reply(ws, `Your balance: ${coins(ws.user)} coins.`);
+    if (lo === '!top') return reply(ws, potTop());
+    const bot = { cricket, lowcard, dice }[g];
+    return bot.handle(room, ws.user, text, isSA(ws.user)).catch(e => console.error('[' + g + ']', e));
+  }
+}
 const ensureTp = room => { if (tp && isTpRoom(room) && !tp.rooms.has(room)) tp.handleMessage(room, { id: 'system', name: 'System', isAdmin: true }, '/bot teenpatti ' + TP_BOOT); };
 const shutdownTp = async () => { try { await tp?.shutdown(); } catch {} process.exit(0); };
 process.on('SIGTERM', shutdownTp); process.on('SIGINT', shutdownTp);
@@ -997,11 +1115,12 @@ const setCfg = (room, k, v) => { db.prepare('insert or ignore into room_cfg(room
 const isBlocked = (a, b) => !!db.prepare('select 1 from blocks where (a=? and b=?) or (a=? and b=?)').get(a, b, b, a);
 const ownerOf = room => db.prepare('select owner from rooms where name=?').get(room)?.owner;
 const isRoomMod = (room, u) => !!db.prepare('select 1 from room_mods where room=? and user=?').get(room, u);
+const isSuper = (room, u) => !!db.prepare('select 1 from room_mods where room=? and user=? and super=1').get(room, u);
 const isSA = u => ['staff', 'admin'].includes(roleOf(u));
 const canMod = (room, u) => isSA(u) || ownerOf(room) === u || isRoomMod(room, u);
 const reply = (ws, text) => send(ws, { t: 'msg', room: ws.room, user: '', text: '🔒 ' + text, kind: 'sys', ts: Date.now() });
 const say = (room, user, text, kind = 'action') => {
-  const o = { user, text, kind, ts: Date.now(), role: roleOf(user) };
+  const o = { user, text, kind, ts: Date.now(), role: roleOf(user), xp: xpOf(user) };
   if (kind !== 'sys') db.prepare('insert into msgs(room,user,text,kind,ts) values(?,?,?,?,?)').run(room, user, text, kind, o.ts);
   cast(room, { t: 'msg', room, ...o });
 };
@@ -1015,7 +1134,8 @@ function canTarget(room, actor, target) {
   if (tr === 'staff') return false;
   if (isSA(actor)) return true;
   if (tr === 'admin' || ownerOf(room) === target) return false;
-  return !(isRoomMod(room, target) && ownerOf(room) !== actor);
+  if (isRoomMod(room, target) && ownerOf(room) !== actor) return isSuper(room, actor) && !isSuper(room, target);   // super mods can act on normal mods, never on the room admin or other super mods
+  return true;
 }
 function speakOk(ws) {
   const mu = db.prepare('select until from mutes where room=? and user=?').get(ws.room, ws.user);
@@ -1029,29 +1149,36 @@ function moderate(ws, act, t, secs, text) {
   if (!room || room.startsWith('dm:')) return err('Moderation works in public rooms only.');
   if (!canMod(room, u)) return err('You need room moderator permission for that.');
   if (act === 'unkick' && !isSA(u)) return err('Only staff and admins can remove suspensions.');
-  if ((act === 'mod' || act === 'dmod') && !(ownerOf(room) === u || isSA(u))) return err('Only the room owner can do that.');
-  if (['kick', 'bump', 'ban', 'unban', 'unkick', 'silence', 'unsilence', 'mod', 'dmod'].includes(act)) {
+  if ((act === 'mod' || act === 'dmod') && !(ownerOf(room) === u || isSA(u) || isSuper(room, u))) return err('Only the room admin or a super moderator can do that.');
+  if ((act === 'smod' || act === 'dsmod') && !(ownerOf(room) === u || isSA(u))) return err('Only the room admin can do that.');
+  if (['kick', 'bump', 'ban', 'unban', 'unkick', 'silence', 'unsilence', 'mod', 'dmod', 'smod', 'dsmod'].includes(act)) {
     if (!t || !profile(t)) return err('User not found. Usage: /' + act + ' username');
     if (t === u) return err("You can't do that to yourself.");
     if (['kick', 'bump', 'ban', 'silence'].includes(act) && !canTarget(room, u, t)) return err(`${t} is protected.`);
   }
   const note = x => say(room, u, x, 'sys');
+  const L = n => `${n} [${level(xpOf(n))}]`;
   const evict = () => [...(members.get(room) || [])].filter(w => w.user === t).forEach(w => { members.get(room).delete(w); w.room = null; send(w, { t: 'kicked', room, by: u }); });
   const suspend = ms => { db.prepare('insert or replace into bans values(?,?,?,?,?)').run(room, t, u, Date.now(), ms ? Date.now() + ms : 0); evict(); };
   const s = Math.min(86400, Math.max(1, Math.floor(secs) || 600));
-  if (act === 'kick') { suspend(3600e3); note(`${t} was kicked for 1 hour by ${u}`); }
-  else if (act === 'bump') { suspend(300e3); note(`${t} was bumped for 5 minutes by ${u}`); }
-  else if (act === 'ban') { suspend(0); note(`${t} was banned by ${u}`); }
-  else if (act === 'unban') { db.prepare('delete from bans where room=? and user=? and until=0').run(room, t); note(`${t} was unbanned by ${u}`); }
-  else if (act === 'unkick') { db.prepare('delete from bans where room=? and user=? and until>0').run(room, t); note(`${t}'s suspension was removed by ${u}`); }
-  else if (act === 'silence') { db.prepare('insert or replace into mutes values(?,?,?)').run(room, t, Date.now() + s * 1000); note(`${t} was silenced for ${fmt(s)} by ${u}`); }
-  else if (act === 'unsilence') { db.prepare('delete from mutes where room=? and user=?').run(room, t); note(`${t} can talk again (by ${u})`); }
+  if (act === 'kick') { suspend(3600e3); note(`${L(t)} was kicked for 1 hour by ${L(u)}`); }
+  else if (act === 'bump') { suspend(300e3); note(`${L(t)} was bumped for 5 minutes by ${L(u)}`); }
+  else if (act === 'ban') { suspend(0); note(`${L(t)} was banned by ${L(u)}`); }
+  else if (act === 'unban') { db.prepare('delete from bans where room=? and user=? and until=0').run(room, t); note(`${L(t)} was unbanned by ${L(u)}`); }
+  else if (act === 'unkick') { db.prepare('delete from bans where room=? and user=? and until>0').run(room, t); note(`${L(t)}'s suspension was removed by ${L(u)}`); }
+  else if (act === 'silence') { db.prepare('insert or replace into mutes values(?,?,?)').run(room, t, Date.now() + s * 1000); note(`${L(t)} was silenced for ${fmt(s)} by ${L(u)}`); }
+  else if (act === 'unsilence') { db.prepare('delete from mutes where room=? and user=?').run(room, t); note(`${L(t)} can talk again (by ${L(u)})`); }
   else if (act === 'silenceall') { setCfg(room, 'silence_until', Date.now() + s * 1000); note(`Room silenced for ${fmt(s)} by ${u}`); }
   else if (act === 'unsilenceall') { setCfg(room, 'silence_until', 0); note(`Room silence lifted by ${u}`); }
   else if (act === 'lock') { setCfg(room, 'locked', 1); note(`Room locked by ${u}`); }
   else if (act === 'unlock') { setCfg(room, 'locked', 0); note(`Room unlocked by ${u}`); }
-  else if (act === 'mod') { db.prepare('insert or ignore into room_mods values(?,?)').run(room, t); note(`${t} is now a room moderator (by ${u})`); }
-  else if (act === 'dmod') { db.prepare('delete from room_mods where room=? and user=?').run(room, t); note(`${t} is no longer a room moderator`); }
+  else if (act === 'mod') { db.prepare('insert or ignore into room_mods values(?,?)').run(room, t); note(`${L(t)} is now a room moderator (by ${L(u)})`); }
+  else if (act === 'dmod') {
+    if (isSuper(room, t) && !(ownerOf(room) === u || isSA(u))) return err('Only the room admin can remove a super moderator.');
+    db.prepare('delete from room_mods where room=? and user=?').run(room, t); note(`${t} is no longer a room moderator`);
+  }
+  else if (act === 'smod') { if (t === ownerOf(room)) return err('That is the room admin.'); db.prepare('insert into room_mods(room,user,super) values(?,?,1) on conflict(room,user) do update set super=1').run(room, t); note(`${L(t)} is now a super moderator (by ${L(u)})`); }
+  else if (act === 'dsmod') { db.prepare('update room_mods set super=0 where room=? and user=?').run(room, t); note(`${t} is no longer a super moderator (still a moderator)`); }
   else if (act === 'broadcast') { if (!text) return err('Usage: /broadcast message'); note('📢 ' + text.slice(0, 300)); }
   else if (act === 'announce') { setCfg(room, 'announce', text.slice(0, 300)); note(text ? `📌 Announcement set by ${u}` : `Announcement removed by ${u}`); }
 }
@@ -1083,7 +1210,7 @@ function giftOne(ws, to, key, note = '') {
   if (isBlocked(ws.user, to)) return reply(ws, "You can't gift this user.");
   if (!speakOk(ws)) return;
   if (!payGift(ws.user, to, gf, ws.room?.startsWith('dm:') ? 'dm' : 'room')) return reply(ws, 'Not enough coins.');
-  say(ws.room, ws.user, `${giftIcon(gf)}sent ${gf.n} to ${to}`, 'gift');
+  say(ws.room, ws.user, `${giftIcon(gf)}sent ${gf.n} to ${to} [${level(xpOf(to))}]`, 'gift');
   if (note) wss.clients.forEach(w => w.user === to && w.room === ws.room && reply(w, `Private note from ${ws.user}: ${note}`));
   refreshCoins(ws.user, to);
 }
@@ -1123,6 +1250,38 @@ const EMO = { kiss: '😘', hug: '🤗', bearhug: '🤗', wave: '👋', cry: '�
 const SONGS = ['La la laa, the server is humming a tune!', 'Doo-be-doo, coins in my pocket and friends in the room!', 'Na na na, typing songs with both thumbs!', 'Hey ho, hey ho, a chat room we shall go!', 'Sha-la-la, nobody told the wifi to stop!'];
 app.get('/api/commands', auth, (q, r) => r.json({ optional: [...ACT_OPT], required: [...ACT_REQ], solo: [...ACT_SOLO] }));
 
+
+// ---------- Lucky Packet: /packet <total> <people> drops coins in a room, /grab takes a random share. Unclaimed coins return after 5 minutes. ----------
+const packets = new Map(); let packetId = 0;
+function dropPacket(ws, total, n) {
+  const room = ws.room, u = ws.user;
+  if (room.startsWith('dm:')) return reply(ws, 'Lucky packets work in public rooms only.');
+  total = Math.floor(total); n = Math.floor(n);
+  if (!(n >= 2 && n <= 30)) return reply(ws, 'Usage: /packet <coins> <people>   (2 to 30 people)');
+  if (!(total >= n * 10 && total <= 1e7)) return reply(ws, `Total must be at least ${n * 10} coins (10 per person) and at most 10,000,000.`);
+  if (!speakOk(ws)) return;
+  if (!db.transaction(() => { if (!db.prepare('update users set coins=coins-? where name=? and coins>=?').run(total, u, total).changes) return false; addTx(u, 'other', `Lucky Packet in ${room}`, -total); return true; })()) return reply(ws, 'Not enough coins.');
+  const pk = { id: ++packetId, room, from: u, left: total, n, got: new Set() }; packets.set(pk.id, pk);
+  pk.timer = setTimeout(() => {
+    packets.delete(pk.id);
+    if (pk.left > 0) { db.prepare('update users set coins=coins+? where name=?').run(pk.left, u); addTx(u, 'other', 'Lucky Packet refund', pk.left); pushCoins(u); say(room, u, `🧧 The Lucky Packet expired. ${pk.left} unclaimed coins went back to ${u}.`, 'sys'); }
+  }, 5 * 60e3);
+  pk.timer.unref?.();
+  pushCoins(u);
+  say(room, u, `🧧 dropped a Lucky Packet: ${total} coins for ${n} people! Type /grab`, 'gift');
+}
+function grabPacket(ws) {
+  const room = ws.room, u = ws.user;
+  const pk = [...packets.values()].reverse().find(x => x.room === room && x.n > x.got.size && !x.got.has(u) && x.from !== u);
+  if (!pk) return reply(ws, 'No Lucky Packet to grab right now.');
+  const remaining = pk.n - pk.got.size;
+  const amt = remaining === 1 ? pk.left : 1 + Math.floor(Math.random() * Math.max(1, Math.min(pk.left - remaining, Math.floor(2 * pk.left / remaining) - 1)));
+  pk.got.add(u); pk.left -= amt;
+  db.prepare('update users set coins=coins+? where name=?').run(amt, u); addTx(u, 'other', `Lucky Packet from ${pk.from}`, amt); pushCoins(u);
+  say(room, u, `🧧 grabbed ${amt} coins from ${pk.from}'s Lucky Packet!${pk.got.size >= pk.n ? ' (all taken)' : ''}`, 'gift');
+  if (pk.got.size >= pk.n) { clearTimeout(pk.timer); packets.delete(pk.id); }
+}
+
 function command(ws, line) {
   const [raw, ...a] = line.slice(1).trim().split(/\s+/);
   const c = (raw || '').toLowerCase(), u = ws.user, room = ws.room, dm = room.startsWith('dm:');
@@ -1130,6 +1289,8 @@ function command(ws, line) {
   const online = () => [...new Set([...(members.get(room) || [])].map(w => w.user))].filter(n => n !== u);
   const speak = fn => { if (speakOk(ws)) fn(); };
   if (c === 'balance') return reply(ws, `Your balance: ${coins(u)} coins.`);
+  if (c === 'packet' || c === 'luckypacket') return dropPacket(ws, +a[0], +a[1]);
+  if (c === 'grab') return grabPacket(ws);
   if (c === 'gift' || c === 'g') {
     const mi = a.indexOf('-m'), note = mi > -1 ? a.slice(mi + 1).join(' ').slice(0, 100) : '', p = mi > -1 ? a.slice(0, mi) : a;
     if (p[0] === 'all') return dm ? reply(ws, 'Gift shower is unavailable in private chat.') : speak(() => shower(ws, p[1]));
@@ -1141,7 +1302,7 @@ function command(ws, line) {
     if (c === 'block') { db.prepare('insert or ignore into blocks values(?,?)').run(u, tgt); return reply(ws, `${tgt} is blocked. Neither of you will see the other's room messages.`); }
     db.prepare('delete from blocks where a=? and b=?').run(u, tgt); return reply(ws, `${tgt} is unblocked.`);
   }
-  if (c === 'tag') { const p = tgt && profile(tgt); return reply(ws, p ? `${tgt} ${p.role === 'merchant' ? 'has an active merchant tag.' : 'is not a merchant.'}` : 'Usage: /tag username'); }
+  if (c === 'tag') { const p = tgt && profile(tgt); const tb = p && db.prepare('select parent from tags where user=?').get(tgt)?.parent; return reply(ws, p ? (tb ? `${tgt} is tagged by ${tb}.` : `${tgt} is not tagged.`) : 'Usage: /tag username'); }
   if (c === 'whois') { const p = tgt && profile(tgt); return reply(ws, p ? `${p.name}: role ${p.role}, level ${p.level}, gender ${p.gender || 'not set'}, country ${p.country || 'not set'}.` : 'Usage: /whois username'); }
   if (c === 'me') return speak(() => say(room, u, `✨ ${u} ✨`));
   if (c === 'roll') return speak(() => say(room, u, `🎲 ${u} rolled ${1 + Math.floor(Math.random() * 100)} (1–100)`));
@@ -1153,7 +1314,7 @@ function command(ws, line) {
     return speak(() => say(room, u, c === 'flames' ? `🔥 FLAMES: ${u} & ${who} = ${flames(u, who)}` : `💘 ${u} & ${who}: ${40 + seed([u, who].sort().join() + day()) % 61}% compatible`));
   }
   // moderation
-  if (['ban', 'unban', 'unkick', 'bump', 'mod', 'dmod'].includes(c)) return moderate(ws, c, tgt);
+  if (['ban', 'unban', 'unkick', 'bump', 'mod', 'dmod', 'smod', 'dsmod'].includes(c)) return moderate(ws, c, tgt);
   if (c === 'kick') return tgt ? moderate(ws, 'kick', tgt) : speak(() => say(room, u, '⚽ ' + u + ' kick'));
   if (c === 'silence') return !a[0] ? moderate(ws, 'silenceall', null, 600) : /^\d+$/.test(a[0]) ? moderate(ws, 'silenceall', null, +a[0]) : moderate(ws, 'silence', tgt, +a[1] || 600);
   if (c === 'unsilence') return tgt ? moderate(ws, 'unsilence', tgt) : moderate(ws, 'unsilenceall');
@@ -1187,12 +1348,16 @@ wss.on('connection', ws => {
       if (!ok) return;
       const bn = db.prepare('select until from bans where room=? and user=?').get(m.room, ws.user);
       if (bn) { if (bn.until === 0 || bn.until > Date.now()) return send(ws, { t: 'denied', room: m.room, error: bn.until ? 'You are suspended from this room for a while.' : 'You are banned from this room.' }); db.prepare('delete from bans where room=? and user=?').run(m.room, ws.user); }
-      leaveRoom(ws);
-      ws.room = m.room;
+      if (!/^dm:/.test(m.room) && !isSA(ws.user)) {
+        const cap = db.prepare('select cap from rooms where name=?').get(m.room)?.cap || 0;
+        if (cap) { const here = new Set([...(members.get(m.room) || [])].filter(w => w !== ws).map(w => w.user)); if (!here.has(ws.user) && here.size >= cap) return send(ws, { t: 'denied', room: m.room, error: `This room is full (${cap} users).` }); }
+      }
+      leaveRoom(ws, ws.room === m.room);
+      ws.room = m.room; ws.roomAt = Date.now();
       if (!members.has(m.room)) members.set(m.room, new Set());
       members.get(m.room).add(ws);
       const isDm = /^dm:/.test(m.room);
-      if (!isDm) send(ws, { t: 'roominfo', room: m.room, owner: ownerOf(m.room) || STAFF_USER, mods: db.prepare('select user from room_mods where room=?').all(m.room).map(x => x.user), announce: cfg(m.room).announce || '', users: roster(m.room), fav: !!db.prepare('select 1 from favs where user=? and room=?').get(ws.user, m.room) });
+      if (!isDm) send(ws, { t: 'roominfo', room: m.room, owner: ownerOf(m.room) || STAFF_USER, mods: db.prepare('select user from room_mods where room=?').all(m.room).map(x => x.user), supers: db.prepare('select user from room_mods where room=? and super=1').all(m.room).map(x => x.user), cap: db.prepare('select cap from rooms where name=?').get(m.room)?.cap || 0, announce: cfg(m.room).announce || '', users: roster(m.room), fav: !!db.prepare('select 1 from favs where user=? and room=?').get(ws.user, m.room) });
       const hist = db.prepare('select user,text,kind,ts,(select role from users where name=msgs.user) role,(select xp from users where name=msgs.user) xp from msgs where room=? and not exists(select 1 from blocks where (a=? and b=msgs.user) or (b=? and a=msgs.user)) order by id desc limit 50').all(m.room, ws.user, ws.user).reverse();
       send(ws, { t: 'history', room: m.room, items: hist });
       if (!isDm) { cast(m.room, { t: 'enter', room: m.room, user: ws.user, role: roleOf(ws.user), xp: xpOf(ws.user), ts: Date.now() }); castRoster(m.room); }
@@ -1202,35 +1367,9 @@ wss.on('connection', ws => {
     else if (m.t === 'msg') {
       const text = String(m.text || '').trim().slice(0, 500);
       if (!text) return;
-      if (/^\/bot(\s|$)/i.test(text)) {
-        if (royale && isRoyaleRoom(ws.room)) {
-          const lo = text.trim().toLowerCase().replace(/\s+/g, ' ');
-          if (lo === '/bot royalebattle') rbStopped.delete(ws.room);
-          const u = { id: ws.user, name: ws.user, isAdmin: isSA(ws.user) };
-          return royale.handleMessage(ws.room, u, text).then(() => { if (lo === '/bot stop' && !royale.rooms.has(ws.room)) rbStopped.add(ws.room); }).catch(e => console.error('[Royale]', e));
-        }
-        if (lowcard && isLowRoom(ws.room)) return lowcard.admin(ws.room, isSA(ws.user), text);
-        if (tp && isTpRoom(ws.room)) { ensureTp(ws.room); return tp.handleMessage(ws.room, { id: ws.user, name: ws.user, isAdmin: isSA(ws.user) }, text).catch(e => console.error('[TeenPatti]', e)); }
-        return reply(ws, 'The Teen Patti bot can only be used in the Legendary room.');
-      }
+      if (/^\/bot(\s|$)/i.test(text)) return botCommand(ws, text).catch(e => console.error('[bot]', e));
       if (text[0] === '/') return command(ws, text);
-      if (text[0] === '!' && royale && isRoyaleRoom(ws.room)) {
-        if (!speakOk(ws)) return;
-        const room = ws.room, u = { id: ws.user, name: ws.user, isAdmin: isSA(ws.user) };
-        const pre = !royale.rooms.has(room) && !rbStopped.has(room) ? royale.handleMessage(room, { id: 'system', name: 'System', isAdmin: true }, '/bot royalebattle') : Promise.resolve();
-        return pre.then(() => royale.handleMessage(room, u, text)).catch(e => console.error('[Royale]', e));
-      }
-      if (text[0] === '!' && lowcard && isLowRoom(ws.room)) {
-        if (!speakOk(ws)) return; const lc = text.trim().toLowerCase();
-        if (lc === '!bal') return reply(ws, `Your balance: ${coins(ws.user)} coins.`);
-        if (lc === '!top') return reply(ws, 'Top players: ' + db.prepare('select name,coins from users where lower(name)!=? order by coins desc limit 5').all(STAFF_USER).map((x, i) => `${i + 1}. ${x.name} (${x.coins})`).join(' · '));
-        return lowcard.handle(ws.room, ws.user, text, isSA(ws.user)).catch(e => console.error('[LowCard]', e));
-      }
-      if (text[0] === '!' && cricket && isCricketRoom(ws.room)) { if (!speakOk(ws)) return; return cricket.handle(ws.room, ws.user, text).catch(e => console.error('[Cricket]', e)); }
-      if (text[0] === '!') {
-        if (tp && isTpRoom(ws.room)) { ensureTp(ws.room); return tp.handleMessage(ws.room, { id: ws.user, name: ws.user, isAdmin: isSA(ws.user) }, text).catch(e => console.error('[TeenPatti]', e)); }
-        return reply(ws, 'This game is only played in the Legendary room.');
-      }
+      if (text[0] === '!') return gameRoute(ws, text);
       if (!speakOk(ws)) return;
       const o = { user: ws.user, text, kind: 'msg', ts: Date.now(), role: roleOf(ws.user), xp: xpOf(ws.user) };
       db.prepare('insert into msgs(room,user,text,kind,ts) values(?,?,?,?,?)').run(ws.room, o.user, o.text, o.kind, o.ts);

@@ -600,8 +600,45 @@ html[data-theme=dark] .sc.mk{background:#1e2a4a;color:#eaf0ff}html[data-theme=da
 html[data-theme=dark] .cmpx .cb button:not(.o){color:#c8d6f2}html[data-theme=dark] .cmpx .cb button:not(.o):hover{background:rgba(255,255,255,.1)}
 html[data-theme=dark] .cmpx .cb #pph{color:#7fd48d}html[data-theme=dark] .cmpx .cb #pmn{color:#7fb8ff}html[data-theme=dark] .cmpx .cb #pht{color:#ffab4a}
 html[data-theme=dark] #emp{background:rgba(255,255,255,.1)}html[data-theme=dark] #emp button:hover{background:rgba(255,255,255,.15)}
+
+/* hide the top and bottom bars while scrolling down, show them again when scrolling up (phones/tablets) */
+#top,#sub,#strip,#bnav{transition:max-height .28s ease,height .28s ease,margin .28s ease,padding .28s ease,opacity .22s ease,transform .28s ease,border-width .28s ease}
+body.hb #top{height:0!important;margin-top:0!important;margin-bottom:0!important;opacity:0;border-width:0!important;pointer-events:none}
+body.hb #sub{height:0!important;opacity:0;overflow:hidden;pointer-events:none}
+body.hb #strip{max-height:0!important;margin-top:0!important;margin-bottom:0!important;padding-top:0!important;padding-bottom:0!important;opacity:0;border-width:0!important;overflow:hidden;pointer-events:none}
+body.hb #bnav{transform:translate(-50%,160%)!important;pointer-events:none}
+#log .bts{align-self:flex-start;font-size:10.5px;font-weight:600;opacity:.62;margin:-3px 10px 5px;line-height:1.2}#log .bts.mine{align-self:flex-end}
+#tools:has(#to:empty){display:none}#rmn{font-size:20px;font-weight:900;padding:0 10px}
+/* ===== App colour skins: flat colour + liquid glass ===== */
+html[data-skin=navy]{--bg:#27467f;--sf:#31528f;--sf2:#38599a;--ln:#5776b4;--tx:#f2f6ff;--mu:#b5c6e6;--gl:rgba(255,255,255,.13);--gl2:rgba(255,255,255,.2);--glb:rgba(255,255,255,.16);--gdk:rgba(255,255,255,.13);--lg:rgba(255,255,255,.13);--lg2:rgba(255,255,255,.2)}
+html[data-skin=navy] body,html[data-skin=navy] #auth{background:#27467f!important;background-image:none!important;color:#f2f6ff}
+html[data-skin=navy] :is(#top,#sub,#strip,#bnav .bg,#bnav .fab .disc,.card,.fr,.cmp,.cmpx,.rm,#rbar,#tools,.ph,.dme,.tiles div,.box,#f,#recbar,#log,#rtabs,#dtg,.tabbar,.tagbar,.xpc,.mi i,.lgo,#sheet div,#drawer nav,.dh,.b,.b.mine,.b.game,.chips button,.tabbar button,.tabbar button.on,.acts button,.rm button,#rbar .ib,#rbar .on1,button,button.o,input,select,textarea,#sug,.rpk,.g2,.lv,.sc.mk .top,.svc .cap,.svf,.offline,.online,.away,.busy){background-image:none!important;text-shadow:none!important}
+html[data-skin=navy] :is(.card,.fr,.cmp,.cmpx,.rm,#rbar,#tools,.ph,.dme,.tiles div,.box,.xpc,.tagbar,#sheet div,#drawer nav,#sug,.rpk,#top,#sub,#strip,#bnav .bg,#f,#recbar,#rtabs,#dtg,.tabbar,.dh){background:rgba(255,255,255,.13)!important;border:1px solid rgba(255,255,255,.3)!important;backdrop-filter:blur(22px) saturate(170%)!important;-webkit-backdrop-filter:blur(22px) saturate(170%)!important;box-shadow:inset 1.5px 1.5px 1px rgba(255,255,255,.35),inset -1px -1px 1px rgba(255,255,255,.1),0 10px 28px rgba(8,20,50,.3)!important}
+html[data-skin=navy] #log{background:rgba(255,255,255,.05)!important}
+html[data-skin=navy] :is(button,.chips button,.acts button,.rm button,.tabbar button,#rbar .ib,.mi i,.lgo,.lv,.g2,.svc .cap,.svf,#bnav .fab .disc){background:rgba(255,255,255,.16)!important;border:1px solid rgba(255,255,255,.3)!important;color:#f2f6ff;backdrop-filter:blur(10px)!important;-webkit-backdrop-filter:blur(10px)!important;box-shadow:inset 1.5px 1.5px 1px rgba(255,255,255,.35),inset -1px -1px 1px rgba(255,255,255,.1)!important}
+html[data-skin=navy] :is(input,select,textarea,#f input,.cmp input,.dsr input,.box input,.cmpx textarea){background:rgba(255,255,255,.12)!important;border:1px solid rgba(255,255,255,.3)!important;color:#f2f6ff!important;box-shadow:inset 0 2px 5px rgba(0,0,0,.25)!important}
+html[data-skin=navy] .b{background:rgba(255,255,255,.15)!important;border:1px solid rgba(255,255,255,.3)!important;color:#f2f6ff;box-shadow:inset 1.5px 1.5px 1px rgba(255,255,255,.35),inset -1px -1px 1px rgba(255,255,255,.1)!important;backdrop-filter:blur(14px)!important;-webkit-backdrop-filter:blur(14px)!important}
+html[data-skin=navy] .b.mine{background:rgba(80,190,120,.32)!important}
+html[data-skin=navy] :is(#top,#top *,#sub,#sub *,#view>h2,#view h2,#strip,#strip *,#bnav button,.box,.box *:not(button.o)){color:#f2f6ff!important;text-shadow:none!important}
+html[data-skin=navy] #top svg{stroke:#f2f6ff}
+html[data-skin=navy] #bnav button.on{color:#f7931e!important}
+html[data-skin=white]{--bg:#f4f1ea;--sf:#fbf9f4;--sf2:#eeeae0;--ln:#e3dfd2;--tx:#59606b;--mu:#8c919a;--gl:rgba(255,255,255,.55);--gl2:rgba(255,255,255,.75);--glb:rgba(255,255,255,.65);--gdk:rgba(255,255,255,.6);--lg:rgba(255,255,255,.55);--lg2:rgba(255,255,255,.75)}
+html[data-skin=white] body,html[data-skin=white] #auth{background:#f4f1ea!important;background-image:none!important;color:#59606b}
+html[data-skin=white] :is(#top,#sub,#strip,#bnav .bg,#bnav .fab .disc,.card,.fr,.cmp,.cmpx,.rm,#rbar,#tools,.ph,.dme,.tiles div,.box,#f,#recbar,#log,#rtabs,#dtg,.tabbar,.tagbar,.xpc,.mi i,.lgo,#sheet div,#drawer nav,.dh,.b,.b.mine,.b.game,.chips button,.tabbar button,.tabbar button.on,.acts button,.rm button,#rbar .ib,#rbar .on1,button,button.o,input,select,textarea,#sug,.rpk,.g2,.lv,.sc.mk .top,.svc .cap,.svf,.offline,.online,.away,.busy){background-image:none!important;text-shadow:none!important}
+html[data-skin=white] :is(.card,.fr,.cmp,.cmpx,.rm,#rbar,#tools,.ph,.dme,.tiles div,.box,.xpc,.tagbar,#sheet div,#drawer nav,#sug,.rpk,#top,#sub,#strip,#bnav .bg,#f,#recbar,#rtabs,#dtg,.tabbar,.dh){background:rgba(255,255,255,.6)!important;border:1px solid rgba(255,255,255,.95)!important;backdrop-filter:blur(22px) saturate(170%)!important;-webkit-backdrop-filter:blur(22px) saturate(170%)!important;box-shadow:inset 1.5px 1.5px 1px rgba(255,255,255,.95),inset -1px -1px 1px rgba(255,255,255,.5),0 8px 24px rgba(90,80,50,.14)!important}
+html[data-skin=white] #log{background:rgba(255,255,255,.25)!important}
+html[data-skin=white] :is(button,.chips button,.acts button,.rm button,.tabbar button,#rbar .ib,.mi i,.lgo,.lv,.g2,.svc .cap,.svf,#bnav .fab .disc){background:rgba(255,255,255,.7)!important;border:1px solid rgba(255,255,255,.95)!important;color:#59606b;backdrop-filter:blur(10px)!important;-webkit-backdrop-filter:blur(10px)!important;box-shadow:inset 1.5px 1.5px 1px rgba(255,255,255,.95),inset -1px -1px 1px rgba(255,255,255,.5)!important}
+html[data-skin=white] :is(input,select,textarea,#f input,.cmp input,.dsr input,.box input,.cmpx textarea){background:rgba(255,255,255,.8)!important;border:1px solid rgba(255,255,255,.95)!important;color:#59606b!important;box-shadow:inset 0 2px 5px rgba(90,80,50,.14)!important}
+html[data-skin=white] .b{background:rgba(255,255,255,.75)!important;border:1px solid rgba(255,255,255,.95)!important;color:#59606b;box-shadow:inset 1.5px 1.5px 1px rgba(255,255,255,.95),inset -1px -1px 1px rgba(255,255,255,.5)!important;backdrop-filter:blur(14px)!important;-webkit-backdrop-filter:blur(14px)!important}
+html[data-skin=white] .b.mine{background:rgba(200,235,200,.7)!important}
+html[data-skin=white] :is(#top,#top *,#sub,#sub *,#view>h2,#view h2,#strip,#strip *,#bnav button,.box,.box *:not(button.o)){color:#59606b!important;text-shadow:none!important}
+html[data-skin=white] #top svg{stroke:#59606b}
+html[data-skin=white] #bnav button.on{color:#f7931e!important}
+html[data-skin] #auth:before,html[data-skin] #auth:after{display:none!important}
+html[data-skin][data-theme] #app button.o,html[data-skin][data-theme] #auth .box button.o,html[data-skin][data-theme] #view .chips button.on,html[data-skin][data-theme] #rtabs .rt.on,html[data-skin][data-theme] .tabbar button.on,html[data-skin][data-theme] #top button.on{background:#f7931e!important;border-color:#f7931e!important;color:#fff!important}
+html[data-skin][data-theme] #bnav button:not(.fab){background:none!important;border:0!important;box-shadow:none!important;backdrop-filter:none!important;-webkit-backdrop-filter:none!important}
 </style>
-<script>try{var t=localStorage.theme||(matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light');document.documentElement.dataset.theme=t}catch(e){document.documentElement.dataset.theme='light'}</script>
+<script>try{var t=localStorage.theme||(matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light');var k=localStorage.skin;if(k==='navy'){t='dark'}else if(k==='white'){t='light'}if(k==='navy'||k==='white')document.documentElement.dataset.skin=k;document.documentElement.dataset.theme=t}catch(e){document.documentElement.dataset.theme='light'}</script>
 </head>
 <body>
 <div id="auth"><div class="box">
@@ -678,7 +715,7 @@ const toast=t=>{const d=document.createElement('div');d.textContent=t;d.style.cs
 const ago=t=>{const s=(Date.now()-t)/1e3;return s<60?'now':s<3600?Math.floor(s/60)+'m':s<86400?Math.floor(s/3600)+'h':Math.floor(s/86400)+'d'};
 const tok=()=>localStorage.tk||sessionStorage.tk;
 const isOff=()=>!!(localStorage.tk?localStorage.off:sessionStorage.off);
-const logout=()=>{const t=localStorage.theme,n=localStorage.navoff;localStorage.clear();sessionStorage.clear();try{if(t)localStorage.theme=t;if(n)localStorage.navoff=n}catch(e){}location.reload()};
+const logout=()=>{const t=localStorage.theme,n=localStorage.navoff,s=localStorage.skin;localStorage.clear();sessionStorage.clear();try{if(t)localStorage.theme=t;if(n)localStorage.navoff=n;if(s)localStorage.skin=s}catch(e){}location.reload()};
 const api=async(m,u,b)=>{const r=await fetch('/api'+u,{method:m,headers:{'Content-Type':'application/json',Authorization:'Bearer '+tok()},body:b?JSON.stringify(b):undefined});
   const d=await r.json().catch(()=>({}));if(r.status===401)logout();if(!r.ok)throw new Error(d.error||'Something went wrong');return d};
 const fail=e=>alert(e.message);
@@ -711,13 +748,14 @@ async function on(m){
   if(m.t==='coins'){ST.coins=m.coins;$('coins').textContent=cn(m.coins);if(cur==='account')go('account')}
   if(m.t==='online'){ONL=m.list;m.list.forEach(u=>ROLES[u.name]=u.role)}
   if(m.t==='roominfo'&&m.room===room&&$('log'))roomIntro(m);
+  if(m.t==='leave'&&m.room===room&&$('log'))leaveLine(m);
   if(m.t==='enter'&&m.room===room&&$('log'))enterLine(m);
   if(m.t==='tp'&&m.room===room){TPV=m.view;if($('tp'))Panel.render(TPV)}
   if(m.t==='members'&&m.room===room){RM=m.list;m.list.forEach(u=>ROLES[u.name]=u.role);drawOnline()}
   if(m.t==='history'&&$('log')&&(!m.room||m.room===room))m.items.forEach(add)
   if(m.t==='msg'&&m.room===room&&$('log'))add(m);
   if(m.t==='uno')renderUno(m);
-  if(m.t==='kicked'){OPEN=OPEN.filter(x=>x!==m.room);saveOpen();alert(`You were removed from ${m.room} by ${m.by}.`);go('rooms')}
+  if(m.t==='kicked'){OPEN=OPEN.filter(x=>x!==m.room);saveOpen();if(m.auto)toast(`You left ${m.room} after 30 minutes. Join again any time.`);else if(m.renamed)toast(`${m.room} was renamed to ${m.renamed}.`);else alert(`You were removed from ${m.room} by ${m.by}.`);go('rooms')}
   if(m.t==='denied'){OPEN=OPEN.filter(x=>x!==m.room);saveOpen();alert(m.error);go('rooms')}
 }
 let G={},RM=[],RI=null,OPEN=[];try{OPEN=JSON.parse(sessionStorage.open||'[]')}catch{}
@@ -727,7 +765,7 @@ const cn=c=>ST.unlimited?'∞ coins':c+' coins';
 const V={};const TT={panel:'Panel',admin:'Admin Panel',home:'Home',rooms:'Chat Rooms',chat:'Chat',profile:'Profile',account:'My Account',friends:'Friends',explore:'Explore',spin:'Daily Spin',cmds:'Command List',settings:'Settings'};
 async function go(v,a){cur=v;$('drawer').classList.remove('open');bnSet(v,a);
   $('th').classList.toggle('on',v==='home');$('tr').classList.toggle('on',v==='rooms'||v==='chat');
-  if(innerWidth>=1000)drawNav();$('view').scrollTop=0;$('stt').textContent=TT[v]||'';$('strip').style.display='none';$('view').onclick=null;try{await refreshVer();await V[v](a)}catch(e){fail(e)}}
+  if(innerWidth>=1000)drawNav();$('view').scrollTop=0;$('stt').textContent=TT[v]||'';$('strip').style.display='none';$('view').onclick=null;document.body.classList.remove('hb');try{await refreshVer();await V[v](a)}catch(e){fail(e)}}
 addEventListener('resize',()=>{if(me&&innerWidth>=1000)drawNav()});$('th').onclick=()=>go('home');$('tr').onclick=()=>go('rooms');$('mb').onclick=()=>{drawNav();$('drawer').classList.add('open');navAnim()};
 $('drawer').onclick=e=>{if(e.target.id==='drawer')$('drawer').classList.remove('open')};
 function navAnim(){const d=$('dn');d.classList.remove('anim');void d.offsetWidth;d.classList.add('anim');setTimeout(()=>d.classList.remove('anim'),1200)}
@@ -991,7 +1029,7 @@ V.rooms=async()=>{const rs=await api('GET','/rooms');
   const q=($('rq')?.value||'').toLowerCase();
   const S=[['Favorite rooms','#f7931e',rs.filter(x=>x.fav)],['Official rooms','#4aa8e8',rs.filter(x=>x.cat==='official')],['Game rooms','#9b59d0',rs.filter(x=>x.cat==='game')],['Your & community rooms','#2e9d4f',rs.filter(x=>x.cat==='user')],["What's hot",'#e8431a',[...rs].filter(x=>x.count>0).sort((a,b)=>b.count-a.count).slice(0,5)]];
   view(`<div class="cmp"><input id="rq" placeholder="Search room" value="${esc(q)}"><button id="rr">⟳</button><button id="rn" class="o">+</button></div>`+
-    S.map(([t,c,l],i)=>`<div class="dk" style="--c:${c}" data-s="${i}"><div>${t}<span class="n">${l.length}</span></div><span>▾</span></div><div id="s${i}" style="${l.length?'':'display:none'}">${l.filter(x=>x.name.toLowerCase().includes(q)).map(x=>`<div class="rm" data-r="${x.name}"><span><span class="rn">${x.name}</span> <span class="mu">· ${x.count} online</span></span><button data-f="${x.name}">${x.fav?'★':'☆'}</button></div>`).join('')}</div>`).join(''));
+    S.map(([t,c,l],i)=>`<div class="dk" style="--c:${c}" data-s="${i}"><div>${t}<span class="n">${l.length}</span></div><span>▾</span></div><div id="s${i}" style="${l.length?'':'display:none'}">${l.filter(x=>x.name.toLowerCase().includes(q)).map(x=>`<div class="rm" data-r="${x.name}"><span><span class="rn">${x.name}</span> <span class="mu">· ${x.count}${x.cap?'/'+x.cap:''} online</span></span><button data-f="${x.name}">${x.fav?'★':'☆'}</button></div>`).join('')}</div>`).join(''));
   $('rq').oninput=()=>V.rooms();$('rr').onclick=()=>V.rooms();
   $('rn').onclick=async()=>{const n=prompt('New room name (5–20 characters: English letters, numbers, spaces)');if(!n)return;try{await api('POST','/rooms',{name:n.trim()});V.rooms()}catch(e){fail(e)}};
   $('view').onclick=async e=>{const f=e.target.closest('[data-f]');if(f){await api('POST',`/rooms/${encodeURIComponent(f.dataset.f)}/fav`);return V.rooms()}
@@ -1004,12 +1042,11 @@ V.chat=async(r)=>{room=r;if(!r.startsWith('dm:'))lastRoom=r;target='';pend=null;
   $('stt').textContent=title;
   view(`<div id="chatbox"><div id="rtabs"></div>${dm?'':'<div id="rbar"></div>'}
    <div id="log" class="${localStorage.cbg||'light'}"></div>${isTp(r)?'<div id="tp" aria-label="Teen Patti Gold table"></div>':''}<div id="uno" class="card" style="display:none"></div>
-   <div class="row mu" id="tools" style="flex-wrap:wrap"><span>Gift:</span><span id="gifts"></span><span id="to"></span></div>
-   <form id="f" class="row"><button type="button" id="phb" aria-label="Send a photo">📷</button><input id="t" placeholder="Type a message…" autocomplete="off" maxlength="500"><button type="button" id="mic" aria-label="Record a voice note">🎤</button><button class="o">Send</button></form>
+   <div class="row mu" id="tools" style="flex-wrap:wrap"><span id="to"></span></div>
+   <form id="f" class="row"><button type="button" id="phb" aria-label="Send a photo">📷</button><button type="button" id="rmn" aria-label="More options">⋯</button><input id="t" placeholder="Type a message…" autocomplete="off" maxlength="500"><button type="button" id="mic" aria-label="Record a voice note">🎤</button><button class="o">Send</button></form>
    <div id="recbar" class="row" hidden><button type="button" id="rcx" aria-label="Cancel recording">✕</button><span class="rdot"></span><b id="rect">0:00</b><span class="mu g">Recording…</span><button type="button" class="o" id="rcs">Send ➤</button></div><input type="file" id="pfile" accept="image/*" hidden></div>`);
   drawTabs();
-  $('gifts').innerHTML=Object.entries(G).map(([k,g])=>`<button data-g="${k}" title="${esc(g.n)} (${k}) · ${g.c} coins">${g.img?`<img src="${esc(g.img)}" alt="" style="height:20px;width:20px;object-fit:contain;vertical-align:middle">`:g.e} ${g.c}</button>`).join(' ');
-  $('gifts').onclick=e=>{const k=e.target.closest('button')?.dataset.g;if(!k)return;if(!target)return alert('Tap a username in the chat first, then pick a gift.');tx({t:'gift',gift:k,to:target})};
+  $('rmn').onclick=chatMenu;
   $('f').onsubmit=e=>{e.preventDefault();const t=$('t').value.trim();if(t)tx({t:'msg',text:t});$('t').value=''};
   $('log').onclick=e=>{if(e.target.dataset.big)return lightbox(e.target.dataset.big);const u=e.target.dataset.u;if(u&&u!==me)setTarget(u)};
   swipe($('chatbox'));TPV=null;
@@ -1067,6 +1104,36 @@ const sheetOpen=h=>{$('sh').innerHTML=h;$('sheet').classList.add('open')};
 function memSheet(){sheetOpen(`<h2>${esc(lastRoom)} · ${RM.length} online</h2><div style="max-height:55vh;overflow:auto;display:grid;gap:6px">`+(RM.map(u=>`<button data-n="${esc(u.name)}" style="text-align:left;display:flex;gap:8px;align-items:center">${av(u.name,32)}<b style="color:${nc(u.name)}">${esc(u.name)}</b>${lvtag(u.name,u.xp)}${rt(u.role,u.name)}</button>`).join('')||'<div class="mu">Nobody here yet.</div>')+'</div>');
   $('sh').onclick=e=>{const n=e.target.closest('[data-n]')?.dataset.n;if(!n)return;$('sheet').classList.remove('open');if(n!==me)setTarget(n)}}
 function modInfo(){const o=RI?.owner||'—';sheetOpen(`<h2>Room staff</h2><div>Managed by: <b style="color:${nc(o)}">${esc(o)}</b></div><div class="mu">Moderators: ${(RI?.mods||[]).map(esc).join(', ')||'none'}</div><div class="mu">Staff and admins can kick, ban and silence in public rooms.</div>`)}
+
+function chatMenu(){
+  const dm=room.startsWith('dm:');
+  sheetOpen(`<h2>${esc(rtitle(room))}</h2>
+  ${dm?'':'<button data-c="ppl"><b style="font-size:20px">👥</b> Participants</button>'}
+  <button data-c="bal" style="color:#f0a63a"><b style="font-size:20px">🪙</b> Check Balance</button>
+  <button data-c="gift" style="color:#f0a63a"><b style="font-size:20px">🎁</b> Send Gift</button>
+  ${dm?'':'<button data-c="pkt" style="color:#e0475b"><b style="font-size:20px">🧧</b> Lucky Packet</button>'}
+  <button data-c="clr" style="opacity:.75"><b style="font-size:20px">🧹</b> Clear Chat</button>
+  ${dm?'':'<button data-c="leave" style="color:#e5533d"><b style="font-size:20px">🚪</b> Leave Room</button>'}`);
+  $('sh').onclick=e=>{const k=e.target.closest('[data-c]')?.dataset.c;if(!k)return;$('sheet').classList.remove('open');
+    if(k==='ppl')return memSheet();
+    if(k==='bal')return tx({t:'msg',text:'/balance'});
+    if(k==='clr'){$('log').innerHTML='';return toast('Chat cleared on this device')}
+    if(k==='leave')return closeTab(room);
+    if(k==='gift')return giftSheet();
+    if(k==='pkt')return packetSheet()}}
+function giftSheet(){
+  const dm=room.startsWith('dm:'),to=dm?room.slice(3).split(':').find(x=>x!==me):target;
+  sheetOpen(`<h2>Send Gift</h2>${dm?`<small>To: <b>${esc(to)}</b></small>`:`<small>To (username):</small><input id="gto" value="${esc(to||'')}" maxlength="16" placeholder="Username (or tap a name in the chat first)">`}
+  ${dm?'':'<label style="display:flex;gap:8px;align-items:center;margin:8px 0"><input type="checkbox" id="gall" style="width:auto"> Everyone in this room</label>'}
+  <nav class="chips">${Object.entries(G).map(([k,g])=>`<button data-g="${k}" title="${esc(g.n)}">${g.img?`<img src="${esc(g.img)}" alt="" style="height:22px;width:22px;object-fit:contain;vertical-align:middle">`:g.e} ${esc(g.n)} · ${g.c}</button>`).join('')}</nav>`);
+  $('sh').onclick=e=>{const k=e.target.closest('[data-g]')?.dataset.g;if(!k)return;
+    if(!dm&&$('gall')?.checked){$('sheet').classList.remove('open');return tx({t:'msg',text:`/gift all ${k}`})}
+    const who=dm?to:$('gto').value.trim();if(!who)return alert('Type a username first.');
+    $('sheet').classList.remove('open');tx({t:'gift',gift:k,to:who})}}
+function packetSheet(){
+  sheetOpen(`<h2>🧧 Lucky Packet</h2><small>Drop coins in this room. People type /grab (or tap Grab) and each gets a random share. Unclaimed coins come back to you after 5 minutes.</small>
+  <input id="pkc" type="number" min="20" placeholder="Total coins" inputmode="numeric"><input id="pkn" type="number" min="2" max="30" placeholder="How many people (2–30)" inputmode="numeric"><button class="o" id="pks">Drop packet</button>`);
+  $('pks').onclick=()=>{const c=+$('pkc').value,n=+$('pkn').value;if(!(c>0&&n>=2))return alert('Enter the coins and the number of people (2–30).');$('sheet').classList.remove('open');tx({t:'msg',text:`/packet ${c} ${n}`})}}
 function moreSheet(){sheetOpen(`<h2>${esc(lastRoom)}</h2><button data-m="cmds">⌨️ Command List</button><button data-m="rooms">💬 All rooms</button><button data-m="close">✕ Close this tab</button>`);
   $('sh').onclick=e=>{const k=e.target.closest('[data-m]')?.dataset.m;if(!k)return;$('sheet').classList.remove('open');if(k==='close')closeTab(room);else go(k)}}
 const L=(who,html,cls='')=>{const d=document.createElement('div');d.className='rl '+cls;d.innerHTML=`<span class="rn2">${esc(who)}:</span> ${html}`;$('log').append(d);$('log').scrollTop=1e9};
@@ -1078,6 +1145,8 @@ function roomIntro(m){RI=m;const nm=m.room[0].toUpperCase()+m.room.slice(1);
   drawOnline()}
 function enterLine(m){ROLES[m.user]=m.role;const light=$('log').classList.contains('light');const nm=m.room[0].toUpperCase()+m.room.slice(1);
   L(nm,`<b data-u="${esc(m.user)}" style="color:${nc(m.user,light?40:72)}">${esc(m.user)}</b>${lvtag(m.user,m.xp)}${rt(m.role,m.user)} has entered.`,'ent')}
+function leaveLine(m){ROLES[m.user]=m.role;const light=$('log').classList.contains('light');const nm=m.room[0].toUpperCase()+m.room.slice(1);
+  L(nm,`<b data-u="${esc(m.user)}" style="color:${nc(m.user,light?40:72)}">${esc(m.user)}</b>${lvtag(m.user,m.xp)}${rt(m.role,m.user)} has left.`,'ent')}
 function setTarget(u){target=u;$('to').innerHTML=`→ <b>${esc(u)}</b> <button id="dm">Private chat</button> <button id="pf">Profile</button>${['staff','admin'].includes(ST.role)&&ROLES[u]!=='staff'&&!room.startsWith('dm:')?' <button id="md">Moderate</button>':''}`;
   $('dm').onclick=()=>go('chat','dm:'+[me,target].sort().join(':'));$('pf').onclick=()=>go('profile',target);if($('md'))$('md').onclick=()=>modSheet(u)}
 function modSheet(n){const A=[['kick','Kick from room'],['ban','Ban from room'],['unban','Unban'],['silence','Silence 10 min',10],['silence','Silence 1 hour',60],['unsilence','Unsilence']];
@@ -1085,15 +1154,15 @@ function modSheet(n){const A=[['kick','Kick from room'],['ban','Ban from room'],
   $('sheet').classList.add('open');
   $('sh').onclick=e=>{const b=e.target.closest('[data-a]');if(!b)return;const a=b.dataset.a;if((a==='kick'||a==='ban')&&!confirm(`${a==='ban'?'Ban':'Kick'} ${n} from ${lastRoom}?`))return;
     tx({t:'join',room:lastRoom});tx({t:'mod',act:a,user:n,minutes:+b.dataset.m||10});$('sheet').classList.remove('open')}}
-function add(m){ROLES[m.user]=m.role;const d=document.createElement('div');if(m.kind==='sys'||m.kind==='action'){d.className=m.kind==='sys'?'g2':'act';d.textContent=m.text;$('log').append(d);$('log').scrollTop=1e9;return}const t=new Date(m.ts).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
-  if(m.kind==='gift'){d.className='g2';const gm=/^\[g:(\/uploads\/[a-f0-9]{32}\.\w+)\] ?(.*)$/.exec(m.text);if(gm){d.append(m.user+': ');const im=document.createElement('img');im.src=gm[1];im.alt='';im.style.cssText='height:26px;width:26px;object-fit:contain;vertical-align:middle;margin:0 4px';d.append(im,gm[2])}else d.textContent=m.user+': '+m.text}
+function add(m){ROLES[m.user]=m.role;const d=document.createElement('div');if(m.kind==='sys'||m.kind==='action'){d.className=m.kind==='sys'?'g2':'act';d.textContent=m.text;$('log').append(d);$('log').scrollTop=1e9;return}const t=new Date(m.ts).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})+' · '+new Date(m.ts).toLocaleDateString([],{day:'numeric',month:'short'}),stamp=()=>{const s=document.createElement('div');s.className='bts'+(m.user===me?' mine':'');s.textContent=t;return s};
+  if(m.kind==='gift'){d.className='g2';const gm=/^\[g:(\/uploads\/[a-f0-9]{32}\.\w+)\] ?(.*)$/.exec(m.text);if(gm){d.innerHTML=`<b>${esc(m.user)}</b>${lvtag(m.user,m.xp)}: `;const im=document.createElement('img');im.src=gm[1];im.alt='';im.style.cssText='height:26px;width:26px;object-fit:contain;vertical-align:middle;margin:0 4px';d.append(im,gm[2])}else{d.innerHTML=`<b>${esc(m.user)}</b>${lvtag(m.user,m.xp)}: ${esc(m.text)}`;if(/Type \/grab/.test(m.text)){const gb=document.createElement('button');gb.className='o';gb.textContent='🧧 Grab';gb.style.cssText='margin-left:8px;padding:2px 12px';gb.onclick=()=>tx({t:'msg',text:'/grab'});d.append(gb)}}}
   else if(m.kind==='image'||m.kind==='voice'){const light=$('log').classList.contains('light');d.className='b'+(m.user===me?' mine':'');
     const [u,dur]=String(m.text).split('|');const safe=/^\/uploads\/[a-f0-9]{32}\.\w+$/.test(u)?u:'';
     const body=m.kind==='image'?`<img class="chimg" src="${esc(safe)}" alt="Photo" loading="lazy" data-big="${esc(safe)}">`:`<audio controls preload="none" src="${esc(safe)}"></audio>${dur?` <small>${fmtDur(+dur)}</small>`:''}`;
-    d.innerHTML=`<b data-u="${esc(m.user)}" style="color:${nc(m.user,light?40:72)}">${esc(m.user)}</b>${lvtag(m.user,m.xp)}${rt(m.role,m.user)} <small>(${t})</small><div class="mdia">${m.kind==='image'?'📷 ':'🎤 '}</div><div>${body}</div>`;d.querySelector('.mdia').remove()}
+    d.innerHTML=`<b data-u="${esc(m.user)}" style="color:${nc(m.user,light?40:72)}">${esc(m.user)}</b>${rt(m.role,m.user)}<div class="mdia">${m.kind==='image'?'📷 ':'🎤 '}</div><div>${body}</div>`;d.querySelector('.mdia').remove()}
   else if(m.kind==='game'){d.className='b game';d.style.whiteSpace='pre-wrap';d.innerHTML=`<span class="gn">${m.priv?'🔒 ':''}${esc(m.user||'Teen Patti Gold')}:</span> ${esc(m.text)}`}
-  else{const light=$('log').classList.contains('light');d.className='b'+(m.user===me?' mine':'');d.innerHTML=`<b data-u="${esc(m.user)}" style="color:${nc(m.user,light?40:72)}">${esc(m.user)}</b>${lvtag(m.user,m.xp)}${rt(m.role,m.user)} <small>(${t})</small>: ${esc(m.text)}`}
-  $('log').append(d);$('log').scrollTop=1e9}
+  else{const light=$('log').classList.contains('light');d.className='b'+(m.user===me?' mine':'');d.innerHTML=`<b data-u="${esc(m.user)}" style="color:${nc(m.user,light?40:72)}">${esc(m.user)}</b>${rt(m.role,m.user)}: ${esc(m.text)}`}
+  $('log').append(d);if(m.kind==='msg'||m.kind==='image'||m.kind==='voice')$('log').append(stamp());$('log').scrollTop=1e9}
 const uno=o=>tx({t:'uno',...o});
 const lbl=c=>c==='W'?'Wild':c==='F'?'+4':({S:'Skip',V:'Rev',D:'+2'}[c[1]]||c[1]);
 function renderUno(s){
@@ -1146,9 +1215,11 @@ V.account=async()=>{const a=await api('GET','/account');ST.coins=a.coins;$('coin
 V.admin=async(name)=>{
   if(ST.role!=='staff'){view('<div class="card mu">Staff only.</div>');return}
   if(name==='@gifts')return adminGifts();
+  if(name==='@rooms')return adminRooms();
   if(name)return adminUser(name);
   const q=window.AQ||'';const [us,lg,rq]=await Promise.all([api('GET','/admin/users?q='+encodeURIComponent(q)),api('GET','/admin/log'),api('GET','/admin/requests')]);
   view(`<div class="card"><b>🛡️ Admin Panel</b><div class="mu">Search a user, then open to edit everything about the account.</div></div>
+  <div class="card row" data-u="@rooms" style="cursor:pointer"><div class="g"><b>🏠 Manage rooms</b><div class="mu">Rename rooms and set how many users fit</div></div><span class="mu">Open ›</span></div>
   <div class="card row" data-u="@gifts" style="cursor:pointer"><div class="g"><b>🎁 Manage gifts</b><div class="mu">Upload gift icons, set price and what the receiver gets</div></div><span class="mu">Open ›</span></div>
   <form id="aq" class="card row"><input id="aqi" placeholder="Search by ID, name, email or mobile" maxlength="40" value="${esc(q)}"><button class="o">Search</button></form>
   ${rq.length?`<h2>Head Mentor requests <span class="lv">${rq.length}</span></h2>`+rq.map(x=>`<div class="card row"><div class="g"><b>${esc(x.from_user)}</b><div class="mu">Mentor · Level ${x.level} · ${new Date(x.ts).toLocaleDateString()}</div></div><button class="o" data-rq="${x.id}" data-ac="1">Accept</button><button data-rq="${x.id}" data-ac="0">Reject</button></div>`).join(''):''}
@@ -1206,6 +1277,19 @@ async function adminUser(name){
   $('atf').onclick=async()=>{try{await api('POST','/admin/transfer',{from:$('tf1').value.trim(),to:$('tf2').value.trim(),amount:$('tfa').value,mpin:$('tfp').value});toast('Transferred ✔');go('admin',name)}catch(er){fail(er)}}}
 
 
+
+async function adminRooms(){
+  const rs=await api('GET','/admin/rooms');
+  view(`<div class="card row"><button class="o" id="abk">‹ Back</button><div class="g"><b>🏠 Room manager</b><div class="mu">Renaming moves everyone out of the room (they can join again). The user limit applies to new joins; 0 = no limit. Staff are never blocked by the limit.</div></div></div>
+  ${rs.map(x=>`<div class="card"><div class="row"><b class="g">${esc(x.name)}</b><span class="mu">${x.cat} · ${x.count}${x.cap?'/'+x.cap:''} online${x.game?' · 🎮 '+esc(x.game):''}</span></div>
+    <div class="row"><input data-rn="${esc(x.name)}" value="${esc(x.name)}" maxlength="20"><button class="o" data-r1="${esc(x.name)}">Rename</button></div>
+    <div class="row"><input data-cp="${esc(x.name)}" type="number" min="0" max="5000" value="${x.cap||0}" title="Max users (0 = no limit)"><button class="o" data-r2="${esc(x.name)}">Set user limit</button></div></div>`).join('')}`);
+  $('abk').onclick=()=>go('admin');
+  $('view').onclick=async e=>{const b=e.target.closest('[data-r1],[data-r2]');if(!b)return;
+    try{if(b.dataset.r1){const n=b.dataset.r1;await api('POST','/admin/rooms/rename',{from:n,to:document.querySelector(`[data-rn="${CSS.escape(n)}"]`).value});toast('Room renamed ✔')}
+      else{const n=b.dataset.r2;await api('POST','/admin/rooms/cap',{room:n,cap:document.querySelector(`[data-cp="${CSS.escape(n)}"]`).value});toast('Saved ✔')}
+      adminRooms()}catch(er){fail(er)}};
+}
 async function adminGifts(){
   const gs=await api('GET','/admin/gifts');let icon='';
   view(`<div class="card row"><button class="o" id="abk">‹ Back</button><div class="g"><b>🎁 Gift manager</b><div class="mu">Users send with <b>/gift all name</b> or <b>/gift username name</b>. The name below becomes the command word (letters/numbers only).</div></div></div>
@@ -1278,7 +1362,9 @@ V.panel=async()=>{
 };
 /* ---------- friends ---------- */
 V.friends=async()=>{const d=await api('GET','/friends');['friends','requests','discover'].forEach(k=>d[k].forEach(u=>ROLES[u.name]=u.role));const t=window.FT||'friends';
-  const list=d[t].map(u=>`<div class="fr" data-u="${esc(u.name)}" style="cursor:pointer;padding:10px 12px;gap:10px;align-items:center;border-left:10px solid ${RC[u.role]||'#4aa8e8'}">${av(u.name,48)}<div class="g"><b style="color:${nc(u.name)}">${esc(u.name)}</b>${rt(u.role,u.name)} <span class="lv">${lvi(lv(u.xp),16)}Lv ${lv(u.xp)}</span><div class="mu"><span class="dot ${u.presence}"></span>${esc(u.status_text||u.presence)}</div></div>${t==='requests'?`<button class="o" data-x="accept" data-n="${esc(u.name)}">Accept</button>`:t==='discover'?`<button data-x="request" data-n="${esc(u.name)}">Add</button>`:''}</div>`).join('');
+  const row=u=>`<div class="fr" data-u="${esc(u.name)}" style="cursor:pointer;padding:10px 12px;gap:10px;align-items:center;border-left:10px solid ${RC[u.role]||'#4aa8e8'}">${av(u.name,48)}<div class="g"><b style="color:${nc(u.name)}">${esc(u.name)}</b>${rt(u.role,u.name)} <span class="lv">${lvi(lv(u.xp),16)}Lv ${lv(u.xp)}</span><div class="mu"><span class="dot ${u.presence}"></span>${esc(u.status_text||u.presence)}</div></div>${t==='requests'?`<button class="o" data-x="accept" data-n="${esc(u.name)}">Accept</button>`:t==='discover'?`<button data-x="request" data-n="${esc(u.name)}">Add</button>`:''}</div>`;
+  const sec=(title,l,c)=>`<h2 style="margin:14px 12px 6px;display:flex;align-items:center;gap:8px"><span class="dot ${c}"></span>${title} <span class="lv">${l.length}</span></h2>`+(l.length?l.map(row).join(''):`<div class="card mu" style="text-align:center">No ${title.toLowerCase()}.</div>`);
+  const list=t==='friends'?(d.friends.length?sec('Online Friends',d.friends.filter(u=>u.presence!=='offline'),'online')+sec('Offline Friends',d.friends.filter(u=>u.presence==='offline'),'offline'):''):d[t].map(row).join('');
   view(`<div class="tabbar">${['friends','requests','discover'].map(k=>`<button class="${t===k?'on':''}" data-t="${k}">${k[0].toUpperCase()+k.slice(1)} (${d[k].length})</button>`).join('')}</div><div>${list||`<div class="card mu" style="text-align:center">Nothing here yet.</div>`}</div>`);
   $('view').onclick=async e=>{const tb=e.target.closest('[data-t]');if(tb){window.FT=tb.dataset.t;return V.friends()}
     const x=e.target.closest('[data-x]');if(x){try{await api('POST','/friends/'+x.dataset.x,{name:x.dataset.n});V.friends()}catch(er){fail(er)}return}
@@ -1291,7 +1377,7 @@ V.explore=async()=>{const lb=await api('GET','/leaderboard');lb.forEach(u=>ROLES
   <div class="card row" data-go="cmds" style="cursor:pointer"><div class="g"><b>⌨️ Command List</b><div class="mu">All chat commands and what they do</div></div>›</div>
   <div class="card"><b>Coming soon</b><div class="mu">Gift store · Color shop · Effect shop · Pets · Daily spin · Lucky draw · Contests</div></div>`);
   $('view').onclick=e=>{const g=e.target.closest('[data-go]');if(g)return go(g.dataset.go);const c=e.target.closest('[data-u]');if(c)go('profile',c.dataset.u)}};
-const CMDS=[['/balance','Show your coin balance (private)','Everyone'],['/gift username gift [-m message]','Send a gift (rose, heart, crown) with an optional private note','Everyone'],['/g all gift','Gift shower to everyone in the room','Everyone'],['/f username','Follow a user; mutual follows become friends','Everyone'],['/block username · /unblock username','Block or unblock: neither side sees the other in rooms','Everyone'],['/tag username','Check a merchant tag','Everyone'],['/whois username','Role, level and gender of a user (private)','Everyone'],['/me','Broadcast your username as a styled action','Everyone'],['/roll','Roll a number from 1 to 100','Everyone'],['/sing','Sing a random fun line','Everyone'],['/flames [username]','Random FLAMES relationship','Everyone'],['/findmymatch','Match with a random member','Everyone'],['/getmyluck','Daily love, money, health and success luck','Everyone'],['/kick','Football kick emote (with a username it is moderation)','Everyone'],['/ban username · /unban username','Ban or unban a user in the room','Room owner/mod, staff, admin'],['/kick username','Remove and suspend for 1 hour','Room owner/mod, staff, admin'],['/bump username','Remove and suspend for 5 minutes','Room owner/mod, staff, admin'],['/unkick username','Remove a suspension','Staff, admin'],['/mod username · /dmod username','Add or remove a room moderator','Room owner'],['/silence [seconds]','Silence ordinary chat for the whole room','Room owner/mod, staff, admin'],['/silence username [seconds]','Silence one user','Room owner/mod, staff, admin'],['/unsilence [username]','Unsilence the room or a user','Room owner/mod, staff, admin'],['/lock · /unlock','Lock or unlock ordinary messages','Room owner/mod, staff, admin'],['/broadcast message','One-time highlighted message','Room owner/mod, staff, admin'],['/announcement message|off','Set or remove the room announcement','Room owner/mod, staff, admin']];
+const CMDS=[['/balance','Show your coin balance (private)','Everyone'],['/packet coins people · /grab','Drop a Lucky Packet of coins in the room (2–30 people); others type /grab for a random share','Everyone'],['/gift username gift [-m message]','Send a gift (rose, heart, crown) with an optional private note','Everyone'],['/g all gift','Gift shower to everyone in the room','Everyone'],['/f username','Follow a user; mutual follows become friends','Everyone'],['/block username · /unblock username','Block or unblock: neither side sees the other in rooms','Everyone'],['/tag username','Check a merchant tag','Everyone'],['/whois username','Role, level and gender of a user (private)','Everyone'],['/me','Broadcast your username as a styled action','Everyone'],['/roll','Roll a number from 1 to 100','Everyone'],['/sing','Sing a random fun line','Everyone'],['/flames [username]','Random FLAMES relationship','Everyone'],['/findmymatch','Match with a random member','Everyone'],['/getmyluck','Daily love, money, health and success luck','Everyone'],['/kick','Football kick emote (with a username it is moderation)','Everyone'],['/ban username · /unban username','Ban or unban a user in the room','Room owner/mod, staff, admin'],['/kick username','Remove and suspend for 1 hour','Room owner/mod, staff, admin'],['/bump username','Remove and suspend for 5 minutes','Room owner/mod, staff, admin'],['/unkick username','Remove a suspension','Staff, admin'],['/mod username · /dmod username','Add or remove a room moderator','Room admin, super moderator, staff'],['/smod username · /dsmod username','Make or remove a Super Moderator (can do everything the room admin can, except change the admin)','Room admin, staff'],['/bot cricket · /bot lowcard · /bot dice','Turn a pot game bot on in this room, then type !start [amount], !j, !d','Room admin/moderators, staff, admin'],['/bot teenpatti [boot] · /bot royalebattle','Turn Teen Patti Gold or Royale Battle on in this room','Staff, admin'],['/bot stop','Turn the room\'s game bot off (not while a game is running)','Room admin/moderators (pot games), staff, admin'],['/silence [seconds]','Silence ordinary chat for the whole room','Room owner/mod, staff, admin'],['/silence username [seconds]','Silence one user','Room owner/mod, staff, admin'],['/unsilence [username]','Unsilence the room or a user','Room owner/mod, staff, admin'],['/lock · /unlock','Lock or unlock ordinary messages','Room owner/mod, staff, admin'],['/broadcast message','One-time highlighted message','Room owner/mod, staff, admin'],['/announcement message|off','Set or remove the room announcement','Room owner/mod, staff, admin']];
 V.cmds=async()=>{const d=await api('GET','/commands');const q=($('cq')?.value||'').toLowerCase();
   view(`<div class="cmp"><button id="cb">←</button><input id="cq" placeholder="Search commands" value="${esc(q)}"></div><div class="card">${CMDS.filter(c=>(c[0]+c[1]).toLowerCase().includes(q)).map(c=>`<div class="cmd"><code>${esc(c[0])}</code><div>${esc(c[1])}</div><div class="mu">${esc(c[2])}</div></div>`).join('')||'<div class="mu">No match</div>'}</div>
   ${[['Action commands — username required',d.required,' username'],['Action commands — optional username',d.optional,' [username]'],['Action commands — solo',d.solo,'']].map(([t,l,x])=>`<div class="card"><b>${t}</b><div class="chips">${l.filter(a=>a.includes(q.replace('/',''))).map(a=>`<span class="lv" style="margin:0">/${a}${x}</span>`).join('')}</div></div>`).join('')}
@@ -1306,21 +1392,35 @@ V.spin=async()=>{const d=await api('GET','/spin');const n=d.prizes.length,cols=[
   $('sb').onclick=()=>go('explore');let rot=0;
   $('go').onclick=async()=>{try{$('go').disabled=true;const r=await api('POST','/spin');rot+=360*5+(360-(r.index+.5)*360/n)-(rot%360);$('wh').style.transform=`rotate(${rot}deg)`;
     setTimeout(()=>{$('res').textContent=r.prize==='Try again'?'Try again tomorrow!':'You won '+r.prize+'!';ST.coins=r.coins;$('coins').textContent=r.coins+' coins';$('go').disabled=false;if($('sl'))$('sl').textContent=r.spins},3600)}catch(e){fail(e);$('go').disabled=false}}};
+const setSkin=k=>{const r=document.documentElement;try{if(k)localStorage.skin=k;else localStorage.removeItem('skin')}catch{}
+  if(k){r.dataset.skin=k;r.dataset.theme=k==='navy'?'dark':'light'}else{delete r.dataset.skin;let t='light';try{t=localStorage.theme||(matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light')}catch{}r.dataset.theme=t}
+  try{paintTn()}catch{}document.querySelector('meta[name=theme-color]')?.setAttribute('content',k==='navy'?'#0f2147':k==='white'?'#fbf9f3':r.dataset.theme==='dark'?'#0d1430':'#222')};
 V.settings=async()=>{const bg=localStorage.cbg||'light';
   view(`<h2 style="margin-top:12px">Settings</h2><div class="card row" id="spp" style="cursor:pointer">${av(me,48)}<div class="g"><b>Profile photo</b><div class="mu">${AV[me]?'Change or remove your photo':'Add a photo so friends recognise you'}</div></div>📷</div>
   <div class="card row" id="sp" style="cursor:pointer">${av(me)}<div class="g"><b>${esc(me)}</b><span class="lv">${lvi(lv(ST.xp||0),16)}Lv ${lv(ST.xp||0)}</span><div class="mu">Edit profile, status, avatar</div></div>›</div>
   <div class="card"><b>Chat background</b><div class="chips">${['light','navy','dark'].map(k=>`<button data-bg="${k}" class="${bg===k?'on':''}">${k[0].toUpperCase()+k.slice(1)}</button>`).join('')}</div></div>
+  <div class="card"><b>App colour</b><div class="chips">${[['','Default'],['navy','Navy Blue'],['white','Off-White']].map(([k,n])=>`<button data-skin="${k}" class="${(localStorage.skin||'')===k?'on':''}">${n}</button>`).join('')}</div><div class="mu" style="margin-top:6px">Navy Blue and Off-White use a flat colour (no gradient) with the liquid-glass design.</div></div>
   <div class="card"><b>Status</b><div class="chips"><button id="ss">${ST.presence||'online'} — change</button></div></div>
   <form id="pw" class="card" style="display:grid;gap:8px"><b>Change password</b><input id="po" type="password" placeholder="Current password" autocomplete="current-password"><input id="pn" type="password" placeholder="New password (6+ characters)" autocomplete="new-password"><button class="o">Update password</button></form>
   <button class="mi out card" id="lo">⎋ Log out</button>`);
   $('sp').onclick=()=>go('profile',me);$('spp').onclick=()=>go('profile',me);$('ss').onclick=statusSheet;$('lo').onclick=logout;
   $('pw').onsubmit=async e=>{e.preventDefault();try{await api('POST','/password',{old:$('po').value,pass:$('pn').value});alert('Password updated.');V.settings()}catch(er){fail(er)}};
-  $('view').onclick=e=>{const b=e.target.dataset.bg;if(b){localStorage.cbg=b;V.settings()}}};
+  $('view').onclick=e=>{const b=e.target.dataset.bg;if(b){localStorage.cbg=b;V.settings()}const s=e.target.closest('[data-skin]');if(s){setSkin(s.dataset.skin);V.settings()}}};
 const MOON='<svg viewBox="0 0 24 24"><path d="M20 14.5A8.5 8.5 0 019.5 4 8.5 8.5 0 1020 14.5z"/></svg>',SUN='<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>';
 const paintTn=()=>{const d=document.documentElement.dataset.theme==='dark';$('tn').innerHTML=d?SUN:MOON;$('tn').title=d?'Switch to day mode':'Switch to night mode';document.querySelector('meta[name=theme-color]')?.setAttribute('content',d?'#0d1430':'#222')};
-$('tn').onclick=()=>{const t=document.documentElement.dataset.theme==='dark'?'light':'dark';document.documentElement.dataset.theme=t;try{localStorage.theme=t}catch{}paintTn()};
+$('tn').onclick=()=>{if(document.documentElement.dataset.skin){setSkin('');return}const t=document.documentElement.dataset.theme==='dark'?'light':'dark';document.documentElement.dataset.theme=t;try{localStorage.theme=t}catch{}paintTn()};
 paintTn();
 if(tok())connect();
+
+/* auto-hide bars on scroll (phones/tablets): down = hide, up = show */
+(()=>{const v=$('view');let last=0,lock=0;
+  const set=on=>{if(document.body.classList.contains('hb')===on)return;document.body.classList.toggle('hb',on);lock=Date.now()+420;last=v.scrollTop};
+  v.addEventListener('scroll',()=>{if(innerWidth>=1000){set(false);return}
+    if(Date.now()<lock){last=v.scrollTop;return}
+    const y=v.scrollTop,dy=y-last;
+    if(y<50||v.scrollHeight-v.clientHeight<160){set(false);last=y;return}
+    if(dy>10){set(true);last=y}else if(dy<-10){set(false);last=y}},{passive:true});
+  addEventListener('resize',()=>{if(innerWidth>=1000)document.body.classList.remove('hb')})})();
 </script>
 </body>
 </html>
