@@ -691,6 +691,12 @@ html[data-skin][data-theme] #bnav button:not(.fab){background:none!important;bor
 #rpop button,:root[data-skin][data-theme] #rpop button{background:none!important;border:0!important;box-shadow:none!important;backdrop-filter:none!important;-webkit-backdrop-filter:none!important;text-align:left;justify-content:flex-start;width:100%;padding:9px 12px;font-size:15px;font-weight:700;border-radius:12px!important;color:var(--tx)!important;display:block}
 #rpop button:active{background:rgba(247,147,30,.2)!important}#rpop button.dg{color:#e5533d!important}
 :root[data-skin][data-theme] #sheet button.o{background:#f7931e!important;border-color:#f7931e!important;color:#fff!important}
+#rtabs .rt.on{max-width:none!important;overflow:visible!important;text-overflow:clip!important;flex:none}
+#rtabs .rt.on i{margin-left:4px;padding:0 2px}
+#rtabs .rt.mini{overflow:visible!important;position:relative;width:34px;height:30px;padding:0!important;justify-content:center;gap:0}
+#rtabs .rt.mini svg{display:block}
+#rtabs .rt.mini .ub{position:absolute;top:-5px;right:-4px;min-width:17px;height:17px;padding:0 4px;border-radius:99px;background:#e5382f;color:#fff;font-size:11px;font-weight:800;line-height:17px;text-align:center;box-shadow:0 0 0 2px rgba(10,20,50,.6)}
+#rtabs .rt.mini.has{border-color:#f7931e}
 #tp:empty{display:none}
 </style>
 <script>try{var t=localStorage.theme||(matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light');if(localStorage.tk||sessionStorage.tk)document.documentElement.dataset.boot=1;var k=localStorage.skin||'navy';if(k==='navy'){t='dark'}else if(k==='white'){t='light'}if(k==='navy'||k==='white')document.documentElement.dataset.skin=k;document.documentElement.dataset.theme=t}catch(e){document.documentElement.dataset.theme='light'}</script>
@@ -797,7 +803,8 @@ const tx=o=>ws.readyState===1&&ws.send(JSON.stringify(o));
 async function on(m){
   if(m.t==='error'){if(m.error==='auth'||m.error==='banned'){if(m.error==='banned')alert('Your account has been banned.');logout()}else alert(m.error)}
   if(m.t==='ready'){const first=!me;me=m.user;G=m.gifts;$('auth').style.display='none';$('app').style.display='flex';document.body.classList.add('in');
-    ST=await api('GET','/me').catch(()=>({}));ROLES[me]=ST.role;await refreshVer();$('coins').textContent=cn(ST.coins);drawNav();document.documentElement.removeAttribute('data-boot');if(first)api('GET','/announcement').then(showAnn).catch(()=>{});if(first){let r=null;try{r=JSON.parse(sessionStorage.lastv||'null')}catch{}if(r&&V[r[0]]&&r[0]!=='admin')go(r[0],r[1]===null?undefined:r[1]);else go('home')}}
+    ST=await api('GET','/me').catch(()=>({}));ROLES[me]=ST.role;await refreshVer();$('coins').textContent=cn(ST.coins);drawNav();document.documentElement.removeAttribute('data-boot');saveOpen();if(first)api('GET','/announcement').then(showAnn).catch(()=>{});if(first){let r=null;try{r=JSON.parse(sessionStorage.lastv||'null')}catch{}if(r&&V[r[0]]&&r[0]!=='admin')go(r[0],r[1]===null?undefined:r[1]);else go('home')}}
+  if(m.t==='unread'&&m.room!==room&&OPEN.includes(m.room)){UNR[m.room]=(UNR[m.room]||0)+1;drawTabs()}
   if(m.t==='announce')showAnn(m.a);
   if(m.t==='roomcfg'&&m.room===room&&RI){const ch=(RI.descr||'')!==m.descr;Object.assign(RI,{descr:m.descr,minlv:m.minlv,mods:m.mods,supers:m.supers});if(ch&&m.descr&&$('log'))L(m.room[0].toUpperCase()+m.room.slice(1),`📝 ${esc(m.descr)}`)}
   if(m.t==='levelup'){ST.xp=Math.max(ST.xp||0,CUM[m.level]);toast(`🎉 Level ${m.level}!${m.reward?` +${m.reward.toLocaleString()} coins`:''}`)}
@@ -817,7 +824,8 @@ async function on(m){
   if(m.t==='denied'){OPEN=OPEN.filter(x=>x!==m.room);saveOpen();alert(m.error);go('rooms')}
 }
 let G={},RM=[],RI=null,OPEN=[];try{OPEN=JSON.parse(sessionStorage.open||'[]')}catch{}
-const saveOpen=()=>{try{sessionStorage.open=JSON.stringify(OPEN)}catch{}};
+const UNR={};
+const saveOpen=()=>{try{sessionStorage.open=JSON.stringify(OPEN)}catch{}try{if(ws&&ws.readyState===1)ws.send(JSON.stringify({t:'tabs',rooms:OPEN}))}catch{}};
 /* ---------- navigation ---------- */
 const cn=c=>ST.unlimited?'∞ coins':c+' coins';
 const V={};const TT={panel:'Panel',admin:'Admin Panel',home:'Home',rooms:'Chat Rooms',chat:'Chat',profile:'Profile',account:'My Account',friends:'Friends',explore:'Explore',spin:'Daily Spin',cmds:'Command List',settings:'Settings'};
@@ -1101,7 +1109,7 @@ V.chat=async(r)=>{room=r;if(!r.startsWith('dm:'))lastRoom=r;target='';pend=null;
   view(`<div id="chatbox"><div id="rtabs"></div>${dm?'':'<div id="rbar"></div>'}
    <div id="log" class="${localStorage.cbg||'light'}"></div>${isTp(r)?'<div id="tp" aria-label="Teen Patti Gold table"></div>':''}<div id="uno" class="card" style="display:none"></div>
    <div class="row mu" id="tools" style="flex-wrap:wrap"><span id="to"></span></div>
-   <form id="f" class="row"><button type="button" id="phb" aria-label="Send a photo">📷</button><button type="button" id="rmn" aria-label="More options">⋯</button><input id="t" placeholder="Type a message…" autocomplete="off" maxlength="500"><button type="button" id="mic" aria-label="Record a voice note">🎤</button><button class="o">Send</button></form>
+   <form id="f" class="row"><button type="button" id="rmn" aria-label="More options">⋯</button><button type="button" id="phb" aria-label="Send a photo">📷</button><input id="t" placeholder="Type a message…" autocomplete="off" maxlength="500"><button type="button" id="mic" aria-label="Record a voice note">🎤</button><button class="o">Send</button></form>
    <div id="recbar" class="row" hidden><button type="button" id="rcx" aria-label="Cancel recording">✕</button><span class="rdot"></span><b id="rect">0:00</b><span class="mu g">Recording…</span><button type="button" class="o" id="rcs">Send ➤</button></div><input type="file" id="pfile" accept="image/*" hidden></div>`);
   drawTabs();
   $('rmn').onclick=chatMenu;
@@ -1114,7 +1122,8 @@ V.chat=async(r)=>{room=r;if(!r.startsWith('dm:'))lastRoom=r;target='';pend=null;
   if(r==='games'){$('uno').style.display='block';$('uno').innerHTML='<button class="o" id="jn">Join UNO</button>';$('jn').onclick=()=>uno({a:'join'})}};
 /* room tabs: tap to switch, swipe left/right to move between open rooms */
 function drawTabs(){const t=$('rtabs');if(!t)return;
-  t.innerHTML=OPEN.map(x=>`<button class="rt ${x===room?'on':''}" data-r="${esc(x)}">${esc(rtitle(x))}<i data-x="${esc(x)}" aria-label="Close tab">×</i></button>`).join('')+'<button class="rt" data-add="1">+ Rooms</button>';
+  UNR[room]=0;
+  t.innerHTML=OPEN.map(x=>x===room?`<button class="rt on" data-r="${esc(x)}">${esc(rtitle(x))}</button>`:`<button class="rt mini${UNR[x]?' has':''}" data-r="${esc(x)}" title="${esc(rtitle(x))}" aria-label="${esc(rtitle(x))}${UNR[x]?' — '+UNR[x]+' new':''}"><svg viewBox="0 0 24 24" width="18" height="18"><path d="M4 5h16v11H9l-5 4z" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"/></svg>${UNR[x]?`<b class="ub">${UNR[x]>9?'9+':UNR[x]}</b>`:''}</button>`).join('')+'<button class="rt" data-add="1">+ Rooms</button>';
   t.onclick=e=>{const c=e.target.closest('[data-x]');if(c){e.stopPropagation();return closeTab(c.dataset.x)}
     if(e.target.closest('[data-add]'))return go('rooms');const b=e.target.closest('[data-r]');if(b&&b.dataset.r!==room)go('chat',b.dataset.r)};
   t.querySelector('.on')?.scrollIntoView({inline:'center',block:'nearest'})}

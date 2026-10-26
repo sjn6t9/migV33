@@ -883,7 +883,11 @@ const server = http.createServer(app);
 const wss = new WebSocketServer({ server, path: '/ws' });
 const members = new Map(); // room -> Set<ws>
 const send = (ws, o) => ws.readyState === 1 && ws.send(JSON.stringify(o));
-const cast = (room, o) => members.get(room)?.forEach(w => { if (o.user && w.user !== o.user && isBlocked(o.user, w.user)) return; send(w, o); });
+const cast = (room, o) => {
+  members.get(room)?.forEach(w => { if (o.user && w.user !== o.user && isBlocked(o.user, w.user)) return; send(w, o); });
+  // people who have this room open as a tab but are looking at another room get an "unread" ping
+  if (o.t === 'msg' && ['msg', 'image', 'voice'].includes(o.kind)) wss.clients.forEach(w => { if (w.user && w.user !== o.user && w.room !== room && w.tabs && w.tabs.has(room) && !isBlocked(o.user, w.user)) send(w, { t: 'unread', room, user: o.user }); });
+};
 const online = () => {
   const l = [...new Set([...wss.clients].filter(w => w.user).map(w => w.user))]
     .map(n => ({ name: n, ...db.prepare('select presence,role,xp from users where name=?').get(n) })).filter(u => u.presence !== 'offline');
@@ -1388,6 +1392,7 @@ wss.on('connection', ws => {
       return online();
     }
     if (!ws.user) return;
+    if (m.t === 'tabs') { ws.tabs = new Set((Array.isArray(m.rooms) ? m.rooms : []).slice(0, 30).map(x => String(x).slice(0, 60))); return; }
     if (m.t === 'join') {
       const ok = roomOk(m.room) && (!/^dm:/.test(m.room) || m.room.slice(3).split(':').includes(ws.user));
       if (!ok) return;
