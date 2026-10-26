@@ -372,8 +372,8 @@ body.in #drawer nav{margin:10px 0 10px 10px;max-width:none;width:calc(100% - 10p
 #chatbox #log{min-height:70px}
 #tp .felt{min-height:110px;padding:6px}#tp .hand{margin:4px 0 0}#tp .hand .tpc,#tp .hand .tpb{width:50px;height:70px;font-size:22px}#tp .turnbar{margin:6px 0 2px;padding:6px}#tp .note{display:none}#tp{padding:6px 6px 8px;margin:4px 6px}
 /* ================= Night mode ================= */
-:root{--nm-admin:#e8591f;--nm-staff:#2f9a3d;--nm-mentor:#d4182a;--nm-merchant:#6a4aa6;--nm-user:#2a7bd8}
-html[data-theme=dark],#log.navy,#log.dark{--nm-admin:#ff7a33;--nm-staff:#4cc24f;--nm-mentor:#f2394a;--nm-merchant:#a284e0;--nm-user:#6db3ff}
+:root{--nm-admin:#e8591f;--nm-staff:#2f9a3d;--nm-mentor:#d4182a;--nm-headmentor:#b3122b;--nm-merchant:#6a4aa6;--nm-user:#2a7bd8}
+html[data-theme=dark],#log.navy,#log.dark{--nm-admin:#ff7a33;--nm-staff:#4cc24f;--nm-mentor:#f2394a;--nm-headmentor:#ff5a68;--nm-merchant:#a284e0;--nm-user:#6db3ff}
 #tn svg{width:24px;height:24px;stroke:#fff;fill:none;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
 html[data-theme=dark]{--lg:linear-gradient(135deg,rgba(62,78,122,.6),rgba(26,34,66,.5));--lg2:linear-gradient(135deg,rgba(34,46,88,.97),rgba(18,26,56,.97));--rim:inset 1.5px 1.5px 1px rgba(255,255,255,.3),inset -1px -1px 1px rgba(255,255,255,.08),inset 0 0 22px rgba(255,255,255,.05);--drop:0 14px 34px rgba(0,0,0,.45),0 2px 6px rgba(0,0,0,.3);--tx:#eaf0ff;--mu:#9db0d3;--ln:#ffffff26}
 html[data-theme=dark] body{color:#eaf0ff;background-color:#0d1430;background-image:radial-gradient(70vmax 70vmax at 6% 4%,#33489f 0,#33489f00 60%),radial-gradient(60vmax 60vmax at 98% 14%,#a2501f88 0,#a2501f00 58%),radial-gradient(75vmax 75vmax at 14% 108%,#1a2a78 0,#1a2a7800 62%),radial-gradient(50vmax 50vmax at 92% 98%,#c9601f55 0,#c9601f00 60%),linear-gradient(165deg,#0c1229,#121a3c 58%,#171d48)}
@@ -664,10 +664,10 @@ const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',
 const col=(n,l=38)=>{let h=0;for(const c of n)h=(h*31+c.charCodeAt(0))%360;return `hsl(${h} 55% ${l}%)`};
 let AV={};
 const av=(n,s=40)=>AV[n]?`<span class="av" style="width:${s}px;height:${s}px;background:#cfd8e6 url(${esc(AV[n])}) center/cover" role="img" aria-label="${esc(n)}"></span>`:`<span class="av" style="width:${s}px;height:${s}px;background:${col(n)};font-size:${s/2.2}px">${esc(n[0]||'?').toUpperCase()}</span>`;
-const ROLES={},RC={admin:'#ff7a33',staff:'#4cc24f',mentor:'#f2394a',merchant:'#a284e0'},RL={admin:'#e8591f',staff:'#2f9a3d',mentor:'#d4182a',merchant:'#6a4aa6'};
+const ROLES={},RC={admin:'#ff7a33',staff:'#4cc24f',mentor:'#f2394a',headmentor:'#ff5a68',merchant:'#a284e0'},RL={admin:'#e8591f',staff:'#2f9a3d',mentor:'#d4182a',headmentor:'#b3122b',merchant:'#6a4aa6'};
 const nc=n=>`var(--nm-${RC[ROLES[n]]?ROLES[n]:'user'})`;
 const VERS=new Set();const refreshVer=()=>Promise.all([api('GET','/verified').then(l=>{VERS.clear();l.forEach(n=>VERS.add(n))}).catch(()=>{}),api('GET','/avatars').then(o=>{AV=o||{}}).catch(()=>{})]);
-const rt=(r,n)=>(RC[r]?`<img class="ri" src="/badges/${r}.png" alt="${r}" title="${r}">`:'')+(VERS.has(n)?'<img class="ri" src="/badges/verified.png" alt="verified" title="Verified">':'');
+const rt=(r,n)=>(RC[r]?`<img class="ri" src="/badges/${r==='headmentor'?'mentor':r}.png" alt="${r}" title="${r==='headmentor'?'head mentor':r}">`:'')+(VERS.has(n)?'<img class="ri" src="/badges/verified.png" alt="verified" title="Verified">':'');
 const LST=[20,98,176,253,331,409,487,564,640,641,760,878,996,1113,1231,1349,1467,1584,1702,1820,1938,2056,2172,2290,2291,2684,3076];
 const lvStep=L=>LST[L-1]??Math.round(3076+392.5*(L-27));const CUM=[0,0];for(let L=1;L<1000;L++)CUM[L+1]=CUM[L]+lvStep(L);
 /* Level icons: [first level, icon]. Edit the numbers to change when an icon appears. */
@@ -702,11 +702,13 @@ function connect(){
 }
 const tx=o=>ws.readyState===1&&ws.send(JSON.stringify(o));
 async function on(m){
-  if(m.t==='error'){if(m.error==='auth')logout();else alert(m.error)}
+  if(m.t==='error'){if(m.error==='auth'||m.error==='banned'){if(m.error==='banned')alert('Your account has been banned.');logout()}else alert(m.error)}
   if(m.t==='ready'){const first=!me;me=m.user;G=m.gifts;$('auth').style.display='none';$('app').style.display='flex';document.body.classList.add('in');
-    ST=await api('GET','/me').catch(()=>({}));ROLES[me]=ST.role;await refreshVer();$('coins').textContent=ST.coins+' coins';drawNav();if(first)go('home')}
+    ST=await api('GET','/me').catch(()=>({}));ROLES[me]=ST.role;await refreshVer();$('coins').textContent=cn(ST.coins);drawNav();if(first)go('home')}
   if(m.t==='levelup'){ST.xp=Math.max(ST.xp||0,CUM[m.level]);toast(`🎉 Level ${m.level}!${m.reward?` +${m.reward.toLocaleString()} coins`:''}`)}
-  if(m.t==='coins'){ST.coins=m.coins;$('coins').textContent=m.coins+' coins';if(cur==='account')go('account')}
+  if(m.t==='gifts'){G=m.gifts;if($('gifts'))$('gifts').innerHTML=Object.entries(G).map(([k,g])=>`<button data-g="${k}" title="${esc(g.n)} (${k}) · ${g.c} coins">${g.img?`<img src="${esc(g.img)}" alt="" style="height:20px;width:20px;object-fit:contain;vertical-align:middle">`:g.e} ${g.c}</button>`).join(' ')}
+  if(m.t==='xp'){ST.xp=m.xp;drawNav();if(cur==='profile')go('profile',me)}
+  if(m.t==='coins'){ST.coins=m.coins;$('coins').textContent=cn(m.coins);if(cur==='account')go('account')}
   if(m.t==='online'){ONL=m.list;m.list.forEach(u=>ROLES[u.name]=u.role)}
   if(m.t==='roominfo'&&m.room===room&&$('log'))roomIntro(m);
   if(m.t==='enter'&&m.room===room&&$('log'))enterLine(m);
@@ -721,7 +723,8 @@ async function on(m){
 let G={},RM=[],RI=null,OPEN=[];try{OPEN=JSON.parse(sessionStorage.open||'[]')}catch{}
 const saveOpen=()=>{try{sessionStorage.open=JSON.stringify(OPEN)}catch{}};
 /* ---------- navigation ---------- */
-const V={};const TT={home:'Home',rooms:'Chat Rooms',chat:'Chat',profile:'Profile',account:'My Account',friends:'Friends',explore:'Explore',spin:'Daily Spin',cmds:'Command List',settings:'Settings'};
+const cn=c=>ST.unlimited?'∞ coins':c+' coins';
+const V={};const TT={panel:'Panel',admin:'Admin Panel',home:'Home',rooms:'Chat Rooms',chat:'Chat',profile:'Profile',account:'My Account',friends:'Friends',explore:'Explore',spin:'Daily Spin',cmds:'Command List',settings:'Settings'};
 async function go(v,a){cur=v;$('drawer').classList.remove('open');bnSet(v,a);
   $('th').classList.toggle('on',v==='home');$('tr').classList.toggle('on',v==='rooms'||v==='chat');
   if(innerWidth>=1000)drawNav();$('view').scrollTop=0;$('stt').textContent=TT[v]||'';$('strip').style.display='none';$('view').onclick=null;try{await refreshVer();await V[v](a)}catch(e){fail(e)}}
@@ -730,9 +733,10 @@ $('drawer').onclick=e=>{if(e.target.id==='drawer')$('drawer').classList.remove('
 function navAnim(){const d=$('dn');d.classList.remove('anim');void d.offsetWidth;d.classList.add('anim');setTimeout(()=>d.classList.remove('anim'),1200)}
 try{if(localStorage.navoff)document.body.classList.add('nav-off')}catch(e){}
 $('dtg').onclick=e=>{e.stopPropagation();if(innerWidth>=1000){const off=document.body.classList.toggle('nav-off');try{localStorage.navoff=off?1:''}catch(e){}if(!off)setTimeout(navAnim,120)}else $('drawer').classList.remove('open')};
-function drawNav(){const items=[['🪪','My Profile','profile'],['🏠','Home','home'],['💬','Chat Rooms','rooms'],['👥','Friends','friends'],['💰','My Account','account'],['🧭','Explore','explore'],['🎡','Daily Spin','spin'],['⌨️','Command List','cmds'],['⚙️','Settings','settings']];
+function drawNav(){const items=[['🪪','My Profile','profile'],['🏠','Home','home'],['💬','Chat Rooms','rooms'],['👥','Friends','friends'],['💰','My Account','account'],['🧭','Explore','explore'],['🎡','Daily Spin','spin'],['⌨️','Command List','cmds'],['⚙️','Settings','settings']];if(ST.role==='staff')items.splice(items.length-1,0,['🛡️','Admin Panel','admin']);
+  else if(ST.role!=='admin')items.splice(items.length-1,0,['🏪',{user:'Become a Merchant',merchant:'Merchant Panel',mentor:'Mentor Panel',headmentor:'Head Mentor Panel'}[ST.role]||'Panel','panel']);
   $('dn').innerHTML=`<form class="dsr" id="ds"><input id="dq" placeholder="Search for a user" maxlength="16" aria-label="Search for a user"><button class="o" aria-label="Search"><svg viewBox="0 0 24 24"><circle cx="10" cy="10" r="6"/><path d="M15 15l6 6"/></svg></button></form>
-  <div class="dme" id="mc">${av(me,84)}<div class="g"><span class="nm" style="color:${nc(me)}">${esc(me)}</span>${rt(ST.role,me)}<div class="mu"><span class="dot ${ST.presence||'online'}"></span>${ST.presence||'online'}</div><div class="mu">${lvi(lv(ST.xp||0),22)} Level ${lv(ST.xp||0)}</div><div class="mu">${ST.xp||0} XP · ${ST.coins||0} coins</div></div></div><div class="dh">Discover</div>`+
+  <div class="dme" id="mc">${av(me,84)}<div class="g"><span class="nm" style="color:${nc(me)}">${esc(me)}</span>${rt(ST.role,me)}<div class="mu"><span class="dot ${ST.presence||'online'}"></span>${ST.presence||'online'}</div><div class="mu">${lvi(lv(ST.xp||0),22)} Level ${lv(ST.xp||0)}</div><div class="mu">${ST.xp||0} XP · ${cn(ST.coins||0)}</div></div></div><div class="dh">Discover</div>`+
   items.map(([i,t,v])=>`<button class="mi${(cur===v||(cur==='chat'&&v==='rooms'))?' on':''}" data-v="${v}"><i>${i}</i>${t}</button>`).join('')+`<button class="lgo" data-v="out" type="button"><span>Log Out</span><svg viewBox="0 0 60 44" aria-hidden="true"><g class="rn"><circle cx="14" cy="10" r="4.5"/><path d="M15 16l-3 8-6 3M15 16l5 6 5 1M12 24l-2 10M12 24l6 5 1 9"/></g><rect class="fr" x="34" y="4" width="20" height="36" rx="2"/><path class="dp" d="M36 6h16v32H36z"/><circle class="kn" cx="48" cy="22" r="1.5"/></svg></button>`;
   if(!window.__na){window.__na=1;setTimeout(navAnim)}
   $('ds').onsubmit=e=>{e.preventDefault();const q=$('dq').value.trim();if(q)go('profile',q)};
@@ -1004,7 +1008,7 @@ V.chat=async(r)=>{room=r;if(!r.startsWith('dm:'))lastRoom=r;target='';pend=null;
    <form id="f" class="row"><button type="button" id="phb" aria-label="Send a photo">📷</button><input id="t" placeholder="Type a message…" autocomplete="off" maxlength="500"><button type="button" id="mic" aria-label="Record a voice note">🎤</button><button class="o">Send</button></form>
    <div id="recbar" class="row" hidden><button type="button" id="rcx" aria-label="Cancel recording">✕</button><span class="rdot"></span><b id="rect">0:00</b><span class="mu g">Recording…</span><button type="button" class="o" id="rcs">Send ➤</button></div><input type="file" id="pfile" accept="image/*" hidden></div>`);
   drawTabs();
-  $('gifts').innerHTML=Object.entries(G).map(([k,g])=>`<button data-g="${k}" title="${g.n}">${g.e} ${g.c}</button>`).join(' ');
+  $('gifts').innerHTML=Object.entries(G).map(([k,g])=>`<button data-g="${k}" title="${esc(g.n)} (${k}) · ${g.c} coins">${g.img?`<img src="${esc(g.img)}" alt="" style="height:20px;width:20px;object-fit:contain;vertical-align:middle">`:g.e} ${g.c}</button>`).join(' ');
   $('gifts').onclick=e=>{const k=e.target.closest('button')?.dataset.g;if(!k)return;if(!target)return alert('Tap a username in the chat first, then pick a gift.');tx({t:'gift',gift:k,to:target})};
   $('f').onsubmit=e=>{e.preventDefault();const t=$('t').value.trim();if(t)tx({t:'msg',text:t});$('t').value=''};
   $('log').onclick=e=>{if(e.target.dataset.big)return lightbox(e.target.dataset.big);const u=e.target.dataset.u;if(u&&u!==me)setTarget(u)};
@@ -1082,12 +1086,12 @@ function modSheet(n){const A=[['kick','Kick from room'],['ban','Ban from room'],
   $('sh').onclick=e=>{const b=e.target.closest('[data-a]');if(!b)return;const a=b.dataset.a;if((a==='kick'||a==='ban')&&!confirm(`${a==='ban'?'Ban':'Kick'} ${n} from ${lastRoom}?`))return;
     tx({t:'join',room:lastRoom});tx({t:'mod',act:a,user:n,minutes:+b.dataset.m||10});$('sheet').classList.remove('open')}}
 function add(m){ROLES[m.user]=m.role;const d=document.createElement('div');if(m.kind==='sys'||m.kind==='action'){d.className=m.kind==='sys'?'g2':'act';d.textContent=m.text;$('log').append(d);$('log').scrollTop=1e9;return}const t=new Date(m.ts).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
-  if(m.kind==='gift'){d.className='g2';d.textContent=m.user+': '+m.text}
+  if(m.kind==='gift'){d.className='g2';const gm=/^\[g:(\/uploads\/[a-f0-9]{32}\.\w+)\] ?(.*)$/.exec(m.text);if(gm){d.append(m.user+': ');const im=document.createElement('img');im.src=gm[1];im.alt='';im.style.cssText='height:26px;width:26px;object-fit:contain;vertical-align:middle;margin:0 4px';d.append(im,gm[2])}else d.textContent=m.user+': '+m.text}
   else if(m.kind==='image'||m.kind==='voice'){const light=$('log').classList.contains('light');d.className='b'+(m.user===me?' mine':'');
     const [u,dur]=String(m.text).split('|');const safe=/^\/uploads\/[a-f0-9]{32}\.\w+$/.test(u)?u:'';
     const body=m.kind==='image'?`<img class="chimg" src="${esc(safe)}" alt="Photo" loading="lazy" data-big="${esc(safe)}">`:`<audio controls preload="none" src="${esc(safe)}"></audio>${dur?` <small>${fmtDur(+dur)}</small>`:''}`;
     d.innerHTML=`<b data-u="${esc(m.user)}" style="color:${nc(m.user,light?40:72)}">${esc(m.user)}</b>${lvtag(m.user,m.xp)}${rt(m.role,m.user)} <small>(${t})</small><div class="mdia">${m.kind==='image'?'📷 ':'🎤 '}</div><div>${body}</div>`;d.querySelector('.mdia').remove()}
-  else if(m.kind==='game'){d.className='b game';d.innerHTML=`<span class="gn">${m.priv?'🔒 ':''}Teen Patti Gold:</span> ${esc(m.text)}`}
+  else if(m.kind==='game'){d.className='b game';d.style.whiteSpace='pre-wrap';d.innerHTML=`<span class="gn">${m.priv?'🔒 ':''}${esc(m.user||'Teen Patti Gold')}:</span> ${esc(m.text)}`}
   else{const light=$('log').classList.contains('light');d.className='b'+(m.user===me?' mine':'');d.innerHTML=`<b data-u="${esc(m.user)}" style="color:${nc(m.user,light?40:72)}">${esc(m.user)}</b>${lvtag(m.user,m.xp)}${rt(m.role,m.user)} <small>(${t})</small>: ${esc(m.text)}`}
   $('log').append(d);$('log').scrollTop=1e9}
 const uno=o=>tx({t:'uno',...o});
@@ -1112,11 +1116,12 @@ V.profile=async(n)=>{n=n||me;const u=await api('GET','/users/'+n);ROLES[u.name]=
   view(`<div class="ph"><div style="display:grid;gap:6px;justify-items:center;align-content:start">${av(u.name,120)}${mine?`<button id="cp" class="o">📷 Set profile photo</button>${AV[me]?'<button id="cr">Remove</button>':''}<input type="file" id="pfl" accept="image/*" hidden>`:''}</div><div class="g" style="min-width:0"><div class="nm" style="color:${nc(u.name)}">${esc(u.name)}${rt(u.role,u.name)}</div>
    <div class="mu" style="font-size:17px;color:#777">${esc(u.full_name||'')}</div>
    <div style="font-size:17px;margin:4px 0"><span class="dot ${u.presence}"></span>${u.presence[0].toUpperCase()+u.presence.slice(1)}</div>
-   <div style="font-size:17px">${lvi(u.level,26)} Level ${u.level}</div><div class="mu" style="font-size:15px">${esc(u.gender||'')}</div>
+   <div style="font-size:17px">${lvi(u.level,26)} Level ${u.level}</div><div class="mu" style="font-size:15px">${esc([u.gender,u.country].filter(Boolean).join(' · '))}</div>
    ${u.status_text?`<div class="say">${esc(u.status_text)}</div>`:''}</div></div>
    ${u.bio?`<p style="margin:0;padding:0 12px 10px">${esc(u.bio)}</p>`:''}${mine&&ST.email?`<p class="mu" style="padding:0 12px">✉ ${esc(ST.email)} · only you</p>`:''}
    <div id="pa" class="pa"></div>
    <div class="tiles"><div><b>${u.friends}</b>Friends</div><div><b>${lvi(u.level,22)} ${u.level}</b>Level</div><div><b>${u.xp}</b>XP</div><div><b>${u.coins}</b>Coins</div></div>
+   ${u.gifts&&u.gifts.length?`<div class="card"><b>🎁 Gifts received</b><div class="chips">${u.gifts.map(g=>`<span style="display:inline-flex;align-items:center;gap:5px;padding:4px 10px;border-radius:99px;background:rgba(128,128,128,.18)">${g.img?`<img src="${esc(g.img)}" alt="" style="height:22px;width:22px;object-fit:contain">`:g.e} ${esc(g.name)} ×${g.n}</span>`).join('')}</div></div>`:''}
    ${(()=>{const L=lv(u.xp);if(L>=1000)return`<div class="xpc"><div class="top">${lvi(L,24)} Max level reached <span>${u.xp.toLocaleString()} XP</span></div></div>`;const lo=CUM[L],hi=CUM[L+1],need=hi-u.xp,pc=Math.max(2,Math.min(100,Math.round((u.xp-lo)/(hi-lo)*100)));return`<div class="xpc"><div class="top"><b>${u.xp.toLocaleString()} XP</b><span>${need.toLocaleString()} XP more to reach Level ${L+1}</span></div><div class="bar2"><i style="width:${pc}%"></i></div><div class="lvs"><span>${lvi(L,20)} Lv ${L}</span><span>${u.xp.toLocaleString()} / ${hi.toLocaleString()} XP</span><span>Lv ${L+1} ${lvi(L+1,20)}</span></div></div>`})()}`);
   if(mine){$('cp').onclick=()=>$('pfl').click();
     $('pfl').onchange=async e=>{const f=e.target.files[0];e.target.value='';if(!f)return;try{const b=await imgToBlob(f,320,true);AV[me]=await upload('avatar',b);V.profile(me)}catch(er){fail(er)}};
@@ -1128,14 +1133,149 @@ V.profile=async(n)=>{n=n||me;const u=await api('GET','/users/'+n);ROLES[u.name]=
     $('pm').onclick=()=>go('chat','dm:'+[me,u.name].sort().join(':'));if($('mdb'))$('mdb').onclick=()=>modSheet(u.name);
     pa.onclick=async e=>{const x=e.target.dataset.x;if(!x)return;try{if(x==='role')await api('POST','/admin/role',{name:u.name,role:$('rs').value});else if(x==='verify')await api('POST','/admin/verify',{name:u.name,on:!VERS.has(u.name)});else await api('POST','/friends/'+x,{name:u.name});V.profile(u.name)}catch(er){fail(er)}}}};
 /* ---------- account ---------- */
-V.account=async()=>{const a=await api('GET','/account');ST.coins=a.coins;$('coins').textContent=a.coins+' coins';const f=window.AF||'all';
+V.account=async()=>{const a=await api('GET','/account');ST.coins=a.coins;$('coins').textContent=cn(a.coins);const f=window.AF||'all';
   const ok=x=>f==='all'||(f==='gifts'&&x.kind==='gift')||(f==='transfers'&&x.kind==='transfer')||(f==='games'&&x.kind==='game')||(f==='other'&&x.kind==='other');
-  view(`<div class="card"><div class="mu">MY BALANCE</div><div class="big">¢ ${a.coins}</div><div class="row"><span class="pos">▲ +${a.earned} earned today</span><span class="neg">▼ −${a.spent} spent today</span></div></div>
-  <form id="tf" class="card row"><input id="tt" placeholder="Send to username" maxlength="16"><input id="ta" type="number" min="1" placeholder="Amount" style="max-width:110px"><button class="o">Transfer</button></form>
+  view(`<div class="card"><div class="mu">MY BALANCE</div><div class="big">¢ ${ST.unlimited?'∞ Unlimited':a.coins}</div><div class="row"><span class="pos">▲ +${a.earned} earned today</span><span class="neg">▼ −${a.spent} spent today</span></div></div>
+  <form id="tf" class="card row"><input id="tt" placeholder="Send to username" maxlength="16"><input id="ta" type="number" min="1" placeholder="Amount" style="max-width:110px">${ST.hasPin?'<input id="tp" type="password" inputmode="numeric" maxlength="6" placeholder="MPIN" style="max-width:90px" autocomplete="off">':''}<button class="o">Transfer</button></form>
   <h2>Activity <span class="lv">${a.activity.length}</span></h2><div class="chips">${['all','games','gifts','transfers','other'].map(k=>`<button data-k="${k}" class="${f===k?'on':''}">${k[0].toUpperCase()+k.slice(1)}</button>`).join('')}</div>
   ${a.activity.filter(ok).map(x=>`<div class="card row"><div class="g"><b>${esc(x.title)}</b><div class="mu">${new Date(x.ts).toLocaleString()}</div></div><b class="${x.amount>0?'pos':'neg'}">${x.amount>0?'+':'−'}${Math.abs(x.amount)}</b></div>`).join('')||'<div class="card mu">No activity yet.</div>'}`);
-  $('tf').onsubmit=async e=>{e.preventDefault();try{await api('POST','/transfer',{to:$('tt').value.trim(),amount:$('ta').value});V.account()}catch(er){fail(er)}};
+  $('tf').onsubmit=async e=>{e.preventDefault();try{await api('POST','/transfer',{to:$('tt').value.trim(),amount:$('ta').value,mpin:$('tp')?.value});V.account()}catch(er){fail(er)}};
   $('view').onclick=e=>{const k=e.target.dataset.k;if(k){window.AF=k;V.account()}}};
+
+/* ---------- staff admin panel ---------- */
+V.admin=async(name)=>{
+  if(ST.role!=='staff'){view('<div class="card mu">Staff only.</div>');return}
+  if(name==='@gifts')return adminGifts();
+  if(name)return adminUser(name);
+  const q=window.AQ||'';const [us,lg,rq]=await Promise.all([api('GET','/admin/users?q='+encodeURIComponent(q)),api('GET','/admin/log'),api('GET','/admin/requests')]);
+  view(`<div class="card"><b>🛡️ Admin Panel</b><div class="mu">Search a user, then open to edit everything about the account.</div></div>
+  <div class="card row" data-u="@gifts" style="cursor:pointer"><div class="g"><b>🎁 Manage gifts</b><div class="mu">Upload gift icons, set price and what the receiver gets</div></div><span class="mu">Open ›</span></div>
+  <form id="aq" class="card row"><input id="aqi" placeholder="Search by ID, name, email or mobile" maxlength="40" value="${esc(q)}"><button class="o">Search</button></form>
+  ${rq.length?`<h2>Head Mentor requests <span class="lv">${rq.length}</span></h2>`+rq.map(x=>`<div class="card row"><div class="g"><b>${esc(x.from_user)}</b><div class="mu">Mentor · Level ${x.level} · ${new Date(x.ts).toLocaleDateString()}</div></div><button class="o" data-rq="${x.id}" data-ac="1">Accept</button><button data-rq="${x.id}" data-ac="0">Reject</button></div>`).join(''):''}
+  <h2>Users <span class="lv">${us.length}</span></h2>
+  ${us.map(u=>`<div class="card row" data-u="${esc(u.name)}" style="cursor:pointer"><div class="g"><b style="color:${nc(u.name)}">${esc(u.name)}</b> ${rt(u.role,u.name)} ${u.banned?'<span class="neg">🚫 banned</span>':''}<div class="mu">${lvi(u.level,16)} Level ${u.level} · ${u.unlimited?'∞':u.coins} coins${u.email?' · '+esc(u.email):''}</div></div><span class="mu">Edit ›</span></div>`).join('')||'<div class="card mu">No users found.</div>'}
+  <h2>Recent staff actions</h2>
+  ${lg.map(x=>`<div class="card"><b>${esc(x.action)}</b> · ${esc(x.target)}<div class="mu">by ${esc(x.staff)} · ${new Date(x.ts).toLocaleString()}${x.detail?' · '+esc(x.detail):''}</div></div>`).join('')||'<div class="card mu">No actions yet.</div>'}`);
+  $('aq').onsubmit=e=>{e.preventDefault();window.AQ=$('aqi').value.trim();V.admin()};
+  $('view').onclick=async e=>{const b=e.target.closest('[data-rq]');if(b){try{await api('POST','/role/respond',{id:+b.dataset.rq,accept:b.dataset.ac==='1'});toast(b.dataset.ac==='1'?'Accepted ✔':'Rejected');V.admin()}catch(er){fail(er)}return}const c=e.target.closest('[data-u]');if(c)go('admin',c.dataset.u)}};
+async function adminUser(name){
+  const [u,cs]=await Promise.all([api('GET','/admin/users/'+encodeURIComponent(name)),window.ACN?Promise.resolve(window.ACN):api('GET','/admin/countries')]);window.ACN=cs;
+  const main=ST.unlimited,prot=u.unlimited;
+  const f=(id,label,val,extra='')=>`<label class="mu">${label}</label><input id="${id}" value="${esc(val||'')}" ${extra}>`;
+  view(`<div class="card row"><button class="o" id="abk">‹ Back</button><div class="g"><b style="color:${nc(u.name)}">${esc(u.name)}</b> ${rt(u.role,u.name)} ${u.banned?'<span class="neg">🚫 banned</span>':''}<div class="mu">${lvi(u.level,16)} Level ${u.level} · ${u.xp} XP · ${u.unlimited?'∞ Unlimited':u.coins} coins</div></div></div>
+  <div class="card"><b>Account</b>
+    <div class="row"><input id="rn" placeholder="New user ID" maxlength="16" value="${esc(u.name)}"><button class="o" data-a="rename">Rename</button></div>
+    <div class="row"><input id="em" placeholder="Email" maxlength="100" value="${esc(u.email)}"><button class="o" data-a="email">Change email</button></div>
+    <div class="row"><input id="mb" placeholder="Mobile number" maxlength="20" value="${esc(u.mobile)}"><button class="o" data-a="mobile">Save mobile</button></div>
+    <div class="row"><select id="cy"><option value="">— Country —</option>${cs.map(c=>`<option${c===u.country?' selected':''}>${esc(c)}</option>`).join('')}</select><button class="o" data-a="country">Set country</button></div></div>
+  <div class="card"><b>Profile</b>
+    ${f('pf','Full name',u.full_name,'maxlength=40')}
+    <label class="mu">Gender</label><select id="pg">${['','Male','Female','Other'].map(g=>`<option${g===u.gender?' selected':''}>${g}</option>`).join('')}</select>
+    ${f('pb','Bio',u.bio,'maxlength=200')}${f('ps','Status text',u.status_text,'maxlength=60')}
+    <div class="row"><button class="o" data-a="profile">Save profile</button><button class="o" data-a="verify">${u.verified?'Remove verified ✔':'Mark verified ✔'}</button>${u.avatar?'<button class="o" data-a="avatar_remove">Remove photo</button>':''}</div></div>
+  <div class="card"><b>Level</b><div class="mu">Currently Level ${u.level} (${u.xp} XP). Setting a level sets XP to that level's starting point.</div>
+    <div class="row"><input id="lv" type="number" min="1" max="1000" placeholder="Level (1–1000)" value="${u.level}"><button class="o" data-a="level">Set level</button></div></div>
+  <div class="card"><b>Coins</b><div class="mu">${prot?'The main staff ID has unlimited coins.':'Balance: '+u.coins}</div>
+    ${prot?'':`<div class="row"><input id="ca" type="number" min="0" placeholder="Amount"><button class="o" data-a="coins" data-m="add">Add</button><button class="o" data-a="coins" data-m="remove">Remove</button><button class="o" data-a="coins" data-m="set">Set</button></div>`}
+    <div class="mu" style="margin-top:8px">Transfer coins (optional MPIN of the sender)</div>
+    <div class="row"><input id="tf1" placeholder="From" value="${esc(u.name)}" maxlength="16"><input id="tf2" placeholder="To" maxlength="16"></div>
+    <div class="row"><input id="tfa" type="number" min="1" placeholder="Amount"><input id="tfp" type="password" inputmode="numeric" maxlength="6" placeholder="MPIN (optional)" autocomplete="off"><button class="o" id="atf">Transfer</button></div></div>
+  <div class="card"><b>Security</b>
+    <div class="row"><input id="pw" type="text" placeholder="New password (min 6)" maxlength="100" autocomplete="off"><button class="o" data-a="password">Set password</button></div>
+    <div class="mu">Security question: ${u.secQ?esc(u.secQ):'not set'}</div>
+    <input id="sq" placeholder="Security question" maxlength="100"><div class="row"><input id="sa" placeholder="Answer" maxlength="60" autocomplete="off"><button class="o" data-a="secq_set">Set</button>${u.secQ?'<button class="o" data-a="secq_reset">Reset</button>':''}</div>
+    <div class="mu">Money transfer PIN: ${u.hasPin?'set':'not set'}</div>
+    <div class="row"><input id="mp" type="text" inputmode="numeric" maxlength="6" placeholder="New MPIN (4–6 digits)" autocomplete="off"><button class="o" data-a="pin_set">Set MPIN</button>${u.hasPin?'<button class="o" data-a="pin_reset">Reset MPIN</button>':''}</div></div>
+  <div class="card"><b>Moderation</b><div class="mu">Role: ${esc(u.role)}</div>
+    <div class="mu">Mentor line: parent ${u.parent?esc(u.parent):'none'} · tagged by ${u.taggedBy?esc(u.taggedBy):'nobody'}</div>
+    <div class="row"><input id="pa" placeholder="Parent (merchant/mentor ID, empty = none)" maxlength="16" value="${esc(u.parent)}"><button class="o" data-a="parent">Set parent</button></div>
+    <div class="row"><input id="tb" placeholder="Tagged by (ID, empty = untag)" maxlength="16" value="${esc(u.taggedBy)}"><button class="o" data-a="tag">Set tag</button></div>
+    ${u.history.length?'<div class="mu">Role history: '+u.history.map(x=>esc(x.from_role)+' → '+esc(x.to_role)+' ('+new Date(x.ts).toLocaleDateString()+(x.by?' by '+esc(x.by):'')+')').join(' · ')+'</div>':''}
+    <div class="row"><select id="ro">${['user','merchant','mentor','headmentor','admin'].concat(main?['staff']:[]).map(r=>`<option${r===u.role?' selected':''}>${r}</option>`).join('')}</select><button class="o" data-a="role">Apply role</button>${['mentor','headmentor','admin','merchant'].includes(u.role)?'<button class="o" data-a="role" data-r="user">De-moderate (→ user)</button>':''}</div></div>
+  <div class="card"><b>Ban</b><div class="mu">${u.banned?'Banned'+(u.ban_reason?' — '+esc(u.ban_reason):''):'Account is active'}</div>
+    ${u.banned?'<button class="o" data-a="unban">Unban</button>':'<div class="row"><input id="br" placeholder="Reason (optional)" maxlength="100"><button class="o" data-a="ban">Ban</button></div>'}</div>`);
+  const run=async(b)=>{const a=b.dataset.a,v=id=>$(id)?.value;const P={
+    rename:{newName:v('rn')},email:{email:v('em')},mobile:{mobile:v('mb')},country:{country:v('cy')},level:{level:v('lv')},
+    profile:{full_name:v('pf'),gender:v('pg'),bio:v('pb'),status_text:v('ps')},verify:{on:!u.verified},avatar_remove:{},
+    coins:{mode:b.dataset.m,amount:v('ca')},password:{password:v('pw')},secq_set:{question:v('sq'),answer:v('sa')},secq_reset:{},
+    pin_set:{pin:v('mp')},parent:{parent:v('pa')},tag:{by:v('tb')},pin_reset:{},role:{role:b.dataset.r||v('ro')},ban:{reason:v('br')},unban:{}}[a];
+    if(['ban','pin_reset','secq_reset','password'].includes(a)&&!confirm('Are you sure?'))return;
+    try{const r=await api('POST','/admin/users/'+encodeURIComponent(name)+'/edit',{action:a,...P});toast('Saved ✔');go('admin',a==='rename'?r.name:name)}catch(er){fail(er)}};
+  $('view').onclick=e=>{const b=e.target.closest('[data-a]');if(b)run(b)};
+  $('abk').onclick=()=>go('admin');
+  $('atf').onclick=async()=>{try{await api('POST','/admin/transfer',{from:$('tf1').value.trim(),to:$('tf2').value.trim(),amount:$('tfa').value,mpin:$('tfp').value});toast('Transferred ✔');go('admin',name)}catch(er){fail(er)}}}
+
+
+async function adminGifts(){
+  const gs=await api('GET','/admin/gifts');let icon='';
+  view(`<div class="card row"><button class="o" id="abk">‹ Back</button><div class="g"><b>🎁 Gift manager</b><div class="mu">Users send with <b>/gift all name</b> or <b>/gift username name</b>. The name below becomes the command word (letters/numbers only).</div></div></div>
+  <div class="card"><b>New gift</b>
+    <div class="row"><img id="gprev" alt="" style="height:48px;width:48px;object-fit:contain;display:none"><button class="o" id="gpick" type="button">📷 Upload gift icon</button><input type="file" id="gfile" accept="image/*" hidden></div>
+    <input id="gname" placeholder="Gift name (e.g. Diamond)" maxlength="24">
+    <div class="row"><input id="gcost" type="number" min="1" placeholder="Price (coins sender pays)"><input id="grecv" type="number" min="0" placeholder="Receiver gets (coins)"></div>
+    <button class="o" id="gadd">Add gift</button></div>
+  <h2>Custom gifts <span class="lv">${gs.length}</span></h2>
+  ${gs.map(g=>`<div class="card"><div class="row"><img src="${esc(g.icon)}" alt="" style="height:42px;width:42px;object-fit:contain"><div class="g"><b>${esc(g.name)}</b> <span class="mu">/gift … ${esc(g.key)}</span>${g.active?'':' <span class="neg">hidden</span>'}</div></div>
+    <div class="row"><input data-f="cost" data-k="${esc(g.key)}" type="number" min="1" value="${g.cost}" title="Price"><input data-f="recv" data-k="${esc(g.key)}" type="number" min="0" value="${g.recv}" title="Receiver gets"></div>
+    <div class="row"><button class="o" data-gs="${esc(g.key)}">Save coins</button><button data-gt="${esc(g.key)}" data-on="${g.active?0:1}">${g.active?'Hide':'Show'}</button><button data-gd="${esc(g.key)}">Delete</button></div></div>`).join('')||'<div class="card mu">No custom gifts yet.</div>'}
+  <div class="mu" style="padding:0 12px">Built-in gifts: rose, heart, crown (receiver gets half the price).</div>`);
+  $('abk').onclick=()=>go('admin');
+  $('gpick').onclick=()=>$('gfile').click();
+  $('gfile').onchange=async()=>{const f=$('gfile').files[0];if(!f)return;try{icon=await upload('gift',f);$('gprev').src=icon;$('gprev').style.display='block'}catch(er){fail(er)}};
+  $('gadd').onclick=async()=>{try{await api('POST','/admin/gifts',{name:$('gname').value,icon,cost:$('gcost').value,recv:$('grecv').value});toast('Gift added ✔');adminGifts()}catch(er){fail(er)}};
+  $('view').onclick=async e=>{const b=e.target.closest('[data-gs],[data-gt],[data-gd]');if(!b)return;
+    try{if(b.dataset.gs){const k=b.dataset.gs,v=f=>document.querySelector(`[data-f=${f}][data-k="${k}"]`).value;await api('POST','/admin/gifts/'+k,{cost:v('cost'),recv:v('recv')});toast('Saved ✔')}
+      else if(b.dataset.gt){await api('POST','/admin/gifts/'+b.dataset.gt,{active:b.dataset.on==='1'});adminGifts()}
+      else if(confirm('Delete this gift?')){await api('DELETE','/admin/gifts/'+b.dataset.gd);adminGifts()}}catch(er){fail(er)}};
+}
+/* ---------- merchant / mentor panel ---------- */
+const TIERC={purple:'#8a4fd6',pink:'#ec5aa8',red:'#e0342b'},RN={user:'General User',merchant:'Merchant',mentor:'Mentor',headmentor:'Head Mentor'};
+const dur=ms=>{ms=Math.max(0,ms);const d=Math.floor(ms/864e5),h=Math.floor(ms%864e5/36e5),m=Math.floor(ms%36e5/6e4);return d?`${d}d ${h}h ${m}m`:`${h}h ${m}m`};
+const bar=(v,t,c='#e8591f')=>`<div style="height:9px;border-radius:99px;background:rgba(128,128,128,.25);overflow:hidden;margin:6px 0"><div style="height:100%;width:${Math.min(100,v/t*100)}%;background:${c};border-radius:99px"></div></div>`;
+const tierB=t=>t?`<span style="background:${TIERC[t]};color:#fff;padding:2px 10px;border-radius:99px;font-weight:800;font-size:12px;text-transform:uppercase">${t}</span>`:'<span class="mu">No tier yet</span>';
+V.panel=async()=>{
+  if(['staff','admin'].includes(ST.role)){view('<div class="card mu">Staff and admins use the Admin Panel.</div>');return}
+  const d=await api('GET','/panel');const R=d.role,tab=window.PT||'tagged';if(ST.role!==d.role){ST.role=d.role;ROLES[me]=d.role;drawNav()}
+  $('stt').textContent=({user:'Become a Merchant',merchant:'Merchant Panel',mentor:'Mentor Panel',headmentor:'Head Mentor Panel'})[R];
+  const steps=['merchant','mentor','headmentor'];const rank={user:0,merchant:1,mentor:2,headmentor:3}[R];
+  const nextTxt=({user:'Become a Merchant',merchant:'Become a Mentor',mentor:'Apply to Head Mentor'})[R];
+  const o=d.outgoing,pend=o&&o.status==='pending';
+  const flow=`<div class="card"><div class="row" style="justify-content:center;flex-wrap:wrap;gap:6px">${['user','merchant','mentor','headmentor'].map((s,i)=>`${i?'<span class="mu">→</span>':''}<span style="padding:5px 12px;border-radius:99px;font-weight:800;${i<=rank?'background:linear-gradient(#f9a13a,#e8431a);color:#fff':'background:rgba(128,128,128,.2)'}">${RN[s]}</span>`).join('')}</div>
+    <div style="margin-top:10px">${R==='headmentor'?'<div class="mu">You are at the top of the line. 👑</div>':pend?`<div class="mu">⏳ Request to <b>${o.to_user==='system'?'Staff / Admin':esc(o.to_user)}</b> is pending.</div><button data-x="cancel" data-id="${o.id}">Cancel request</button>`:
+      `${o&&o.status==='rejected'?'<div class="neg">Your last request was rejected.</div>':''}${R==='user'?`<div class="row"><select id="rm"><option value="">Choose a Mentor…</option>${d.mentors.map(m=>`<option>${esc(m.name)}</option>`).join('')}</select><button class="o" data-x="req">Send request</button></div><div class="mu">Your Mentor will accept or reject. Once accepted you become a Merchant under them.</div>`:`<button class="o" data-x="req">${nextTxt}</button><div class="mu">${R==='merchant'?(d.head?'Goes to your Head Mentor: '+esc(d.head):'No Head Mentor above you yet — ask staff to assign one.'):'Goes to Staff / Admin.'}</div>`}`}</div></div>`;
+  let h=flow;
+  if(d.incoming.length)h+=`<h2>Requests for you <span class="lv">${d.incoming.length}</span></h2>`+d.incoming.map(x=>`<div class="card row"><div class="g"><b style="color:${nc(x.from_user)}">${esc(x.from_user)}</b><div class="mu">wants to become a ${x.kind==='merchant'?'Merchant':'Mentor'} · Level ${x.level}</div></div><button class="o" data-x="ans" data-id="${x.id}" data-ac="1">Accept</button><button data-x="ans" data-id="${x.id}" data-ac="0">Reject</button></div>`).join('');
+  if(R==='merchant'){
+    const c=d.cycle,tc=TIERC[d.tier]||'#999';
+    h+=`<div class="card"><div class="row"><div class="g"><b>${rt(R,me)} Merchant</b> · ${c.days}-day cycle<div class="mu">Tagged by: ${d.parent?esc(d.parent):'—'}</div></div>${tierB(d.tier)}</div>
+      <div class="xl" style="font-size:34px;font-weight:900">${d.points} <span class="mu" style="font-size:14px">points</span></div>${bar(d.points,1000,tc)}
+      <div class="mu">${d.nextTier?`${d.nextTier.need} more points to reach <b>${d.nextTier.name.toUpperCase()}</b>`:'Top tier reached 🔥'} · Projected: ${d.tier?d.tier.toUpperCase():'below minimum'}</div>
+      <div class="row" style="margin-top:8px"><div class="g"><div class="mu">Cycle ends / payout in</div><b>${dur(c.remaining)}</b></div><div class="g"><div class="mu">Minimum to keep role</div><b>${d.minPoints} pts</b></div></div>
+      ${d.warning?`<div class="neg" style="margin-top:8px">⚠️ You'll lose the Merchant role at cycle end unless you reach ${d.minPoints} points — ${d.warning.need} to go. (Mentors are never demoted.)</div>`:'<div class="pos" style="margin-top:8px">✔ You are safe this cycle.</div>'}</div>
+      <h2>Tasks</h2>`+d.tasks.map(t=>`<div class="card"><div class="row"><b class="g">${esc(t.t)}</b><span class="${t.done?'pos':'mu'}">${t.earned}/${t.pts} pts</span></div>${bar(t.value,t.target,t.done?'#2f9a3d':'#e8591f')}<div class="mu">${t.value.toLocaleString()} / ${t.target.toLocaleString()} ${t.unit}</div></div>`).join('')+
+      `<div class="card"><div class="row"><b class="g">Receive trail commission</b><span class="pos">+${d.trailTask.earned} pts</span></div>${bar(d.trailTask.into,d.trailTask.step,'#2f9a3d')}<div class="mu">${d.trailTask.into.toLocaleString()} / ${d.trailTask.step.toLocaleString()} eligible coins → +${d.trailTask.pts} pts, unlimited</div></div>`;
+  }
+  if(d.stats){
+    const s=d.stats;
+    h+=`<h2>Statistics</h2><div class="card row" style="flex-wrap:wrap;text-align:center"><div class="g"><div class="mu">Trail this cycle</div><b>${s.trailCycle.toLocaleString()}</b></div><div class="g"><div class="mu">Trail all-time</div><b>${s.trailAll.toLocaleString()}</b></div><div class="g"><div class="mu">Payouts this cycle</div><b>${s.payoutsCycle}</b></div><div class="g"><div class="mu">Active tags</div><b>${s.activeTags}</b></div></div>
+    <form id="tg" class="card row"><input id="tgu" placeholder="Username to tag" maxlength="16">${d.hasPin?'<input id="tgp" type="password" inputmode="numeric" maxlength="6" placeholder="MPIN" style="max-width:90px" autocomplete="off">':''}<button class="o">Tag · ${d.tagCost.toLocaleString()} coins</button></form>
+    <div class="chips">${[['tagged','Tagged'],['byuser','By User'],['payouts','Payouts']].map(([k,t])=>`<button data-x="tab" data-k="${k}" class="${tab===k?'on':''}">${t}</button>`).join('')}</div>`;
+    if(tab==='tagged')h+=d.tagged.map(t=>`<div class="card row"><div class="g"><b style="color:${nc(t.name)}">${esc(t.name)}</b><div class="mu">${lvi(t.level,16)} Level ${t.level} · tagged ${new Date(t.ts).toLocaleDateString()}</div></div></div>`).join('')||'<div class="card" style="text-align:center"><b>No tagged users</b><div class="mu">Send 50,000 coins to an untagged user to tag them.</div></div>';
+    if(tab==='byuser')h+=d.byUser.map(t=>`<div class="card row"><div class="g"><b style="color:${nc(t.name)}">${esc(t.name)}</b><div class="mu">${t.eligible.toLocaleString()} eligible coins · ${t.n} commissions · last ${new Date(t.last).toLocaleDateString()}</div></div><b class="pos">+${t.amount.toLocaleString()}</b></div>`).join('')||'<div class="card mu">No commissions yet. You earn 5% when your tagged users spend coins.</div>';
+    if(tab==='payouts')h+=(d.payouts.map(p=>`<div class="card"><div class="row"><b class="g">${new Date(p.cycle_start).toLocaleDateString()} – ${new Date(p.cycle_end).toLocaleDateString()}</b>${tierB(p.tier==='none'?null:p.tier)}</div><div class="mu">${p.points} pts · trail ${p.trail.toLocaleString()} coins · ${p.result}</div></div>`).join('')+(d.recent.length?'<h2>Recent commissions</h2>'+d.recent.map(c=>`<div class="card row"><div class="g"><b>${esc(c.spender)}</b><div class="mu">${c.eligible.toLocaleString()} ${c.kind} · ${c.pct}% · #${c.tx_id} · ${new Date(c.ts).toLocaleString()}</div></div><b class="pos">+${c.amount.toLocaleString()}</b></div>`).join(''):''))||'<div class="card mu">No payouts yet.</div>';
+  }
+  if(d.children)h+=`<h2>My team <span class="lv">${d.children.length}</span></h2>`+(d.children.map(c=>`<div class="card row"><div class="g"><b style="color:${nc(c.name)}">${esc(c.name)}</b> <span class="mu">${RN[c.role]||c.role} · Level ${c.level}</span>${c.points!==undefined?`<div class="mu">${c.points} pts ${c.tier?'· '+c.tier:''} · cycle ends in ${dur(c.left)}</div>`:''}</div>${c.points!==undefined?tierB(c.tier):''}</div>`).join('')||'<div class="card mu">Nobody under you yet. Accept Merchant requests to build your team.</div>');
+  view(h);
+  const re=()=>V.panel();
+  $('view').onclick=async e=>{const b=e.target.closest('[data-x]');if(!b)return;const x=b.dataset.x;
+    try{
+      if(x==='tab'){window.PT=b.dataset.k;return re()}
+      if(x==='req'){const body=R==='user'?{to:$('rm').value}:{};if(R==='user'&&!body.to)return alert('Choose a Mentor first.');await api('POST','/role/request',body);toast('Request sent ✔');return re()}
+      if(x==='cancel'){await api('POST','/role/cancel',{id:+b.dataset.id});return re()}
+      if(x==='ans'){await api('POST','/role/respond',{id:+b.dataset.id,accept:b.dataset.ac==='1'});ST=await api('GET','/me');drawNav();toast(b.dataset.ac==='1'?'Accepted ✔':'Rejected');return re()}
+    }catch(er){fail(er)}};
+  if($('tg'))$('tg').onsubmit=async e=>{e.preventDefault();try{await api('POST','/tag',{to:$('tgu').value.trim(),mpin:$('tgp')?.value});toast('User tagged ✔');re()}catch(er){fail(er)}};
+};
 /* ---------- friends ---------- */
 V.friends=async()=>{const d=await api('GET','/friends');['friends','requests','discover'].forEach(k=>d[k].forEach(u=>ROLES[u.name]=u.role));const t=window.FT||'friends';
   const list=d[t].map(u=>`<div class="fr" data-u="${esc(u.name)}" style="cursor:pointer;padding:10px 12px;gap:10px;align-items:center;border-left:10px solid ${RC[u.role]||'#4aa8e8'}">${av(u.name,48)}<div class="g"><b style="color:${nc(u.name)}">${esc(u.name)}</b>${rt(u.role,u.name)} <span class="lv">${lvi(lv(u.xp),16)}Lv ${lv(u.xp)}</span><div class="mu"><span class="dot ${u.presence}"></span>${esc(u.status_text||u.presence)}</div></div>${t==='requests'?`<button class="o" data-x="accept" data-n="${esc(u.name)}">Accept</button>`:t==='discover'?`<button data-x="request" data-n="${esc(u.name)}">Add</button>`:''}</div>`).join('');

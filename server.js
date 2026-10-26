@@ -10,6 +10,12 @@ import fs from 'fs';
 import { createRequire } from 'module';
 const require = createRequire(import.meta.url);
 let TP = null;   // Teen Patti Gold engine (virtual coins, for fun only); the site still runs if the file is missing
+let RB = null;   // Royale Battle engine (room "royale")
+try { RB = require('./royale-battle.cjs'); } catch (e) { console.error('[Royale] engine not loaded:', e.message); }
+let LC = null;   // LowCard Bot engine (room "lowcard")
+try { LC = require('./lowcard.cjs'); } catch (e) { console.error('[LowCard] engine not loaded:', e.message); }
+let CB = null;   // Cricket Bot engine (room "cricket")
+try { CB = require('./cricket-bot.cjs'); } catch (e) { console.error('[Cricket] engine not loaded:', e.message); }
 try { TP = require('./teen-patti.cjs'); } catch (e) { console.error('[TeenPatti] engine not loaded:', e.message); }
 
 const STAFF_USER = (process.env.STAFF_USER || 'migv33').toLowerCase();
@@ -20,6 +26,18 @@ const db = new Database('migv33.db');
 db.exec(`create table if not exists users(id integer primary key, name text unique, pass text, coins int default 0, full_name text, email text unique, gender text, bio text default '', status_text text default '', presence text default 'online', xp int default 0, role text default 'user', verified int default 0, spins int default 0, last_spin text default '');
 create table if not exists msgs(id integer primary key, room text, user text, text text, kind text default 'msg', ts int)`);
 
+for (const a of ["alter table users add column country text default ''", "alter table users add column mobile text default ''", "alter table users add column sec_q text default ''",
+  "alter table users add column sec_a text default ''", "alter table users add column mpin text default ''", 'alter table users add column banned int default 0', "alter table users add column ban_reason text default ''"]) { try { db.exec(a); } catch {} }
+db.exec('create table if not exists admin_log(id integer primary key, staff text, target text, action text, detail text, ts int)');
+const isMain = n => String(n || '').toLowerCase() === STAFF_USER;
+// The main staff account (migv33) has unlimited coins: its balance is topped up automatically after any change.
+const UNL_COINS = 1000000000000, UN = STAFF_USER.replace(/[^a-z0-9._-]/g, '');
+db.exec('drop trigger if exists unl_coins');
+db.exec(`create trigger unl_coins after update of coins on users when lower(new.name)='${UN}' and new.coins<${UNL_COINS} begin update users set coins=${UNL_COINS} where id=new.id; end`);
+db.prepare('update users set coins=? where lower(name)=? and coins<?').run(UNL_COINS, UN, UNL_COINS);
+
+db.exec(`create table if not exists gifts(key text primary key, name text, icon text, cost int, recv int, active int default 1, ts int);
+create table if not exists gift_inv(user text, gift text, n int default 0, primary key(user,gift))`);
 const GIFTS = { rose: { n: 'Rose', c: 10, e: '🌹' }, heart: { n: 'Heart', c: 20, e: '💖' }, crown: { n: 'Crown', c: 100, e: '👑' } };
 
 const app = express();
@@ -62,7 +80,7 @@ app.post('/api/signup/start', async (q, r) => {
   if (pass.length < 6) return bad(r, 'Password must be at least 6 characters.');
   const em = email.toLowerCase(), ln = name.toLowerCase();
   const claim = ln === STAFF_USER && STAFF_EMAIL && em === STAFF_EMAIL;
-  if (!claim && (ln.includes(STAFF_USER) || ['admin', 'staff', 'mentor', 'merchant', 'support'].includes(ln))) return bad(r, 'That username is reserved.');
+  if (!claim && (ln.includes(STAFF_USER) || ['admin', 'staff', 'mentor', 'headmentor', 'merchant', 'support'].includes(ln))) return bad(r, 'That username is reserved.');
   if (db.prepare('select 1 from users where lower(name)=? or email=?').get(ln, em)) return bad(r, 'That username or email is already registered.', 409);
   if (!mailer) return bad(r, 'Email verification is not set up yet. Please try again later.', 503); // never create an account without the email code
   const code = String(crypto.randomInt(100000, 1000000));
@@ -82,6 +100,7 @@ app.post('/api/login', (q, r) => {
   const { name, pass } = q.body || {};
   const u = db.prepare('select * from users where lower(name)=lower(?)').get(name || '');
   if (!u || !bcrypt.compareSync(pass || '', u.pass)) return bad(r, 'Wrong username or password', 401);
+  if (u.banned) return bad(r, 'This account has been banned.' + (u.ban_reason ? ' Reason: ' + u.ban_reason : ''), 403);
   r.json({ token: sign(u.id, u.name) });
 });
 
@@ -100,11 +119,19 @@ create table if not exists room_cfg(room text primary key, locked int default 0,
 create table if not exists blocks(a text, b text, primary key(a,b));
 create table if not exists tp_pending(room text, hand text, user text, amount int);
 create table if not exists tp_hands(id integer primary key, ts int, info text);
+create table if not exists rb_pending(room text, round int, user text, option text, amount int);
+create table if not exists lc_pending(room text, user text, amount int);
 create table if not exists mutes(room text, user text, until int, primary key(room,user))`);
-for (const [n, c] of [['lobby', 'official'], ['adda', 'official'], ['music', 'official'], ['games', 'game'], ['legendary', 'game']])
+for (const [n, c] of [['lobby', 'official'], ['adda', 'official'], ['music', 'official'], ['games', 'game'], ['legendary', 'game'], ['cricket', 'game'], ['lowcard', 'game'], ['royale', 'game']])
   db.prepare('insert or ignore into rooms values(?,?,?)').run(n, c, null);
 const roomOk = n => /^dm:/.test(n) || !!db.prepare('select 1 from rooms where name=?').get(n);
-const auth = (q, r, next) => { try { q.user = jwt.verify((q.headers.authorization || '').slice(7), SECRET).name; next(); } catch { bad(r, 'Please log in again', 401); } };
+const auth = (q, r, next) => {
+  let u;
+  try { const t = jwt.verify((q.headers.authorization || '').slice(7), SECRET); u = db.prepare('select name,banned,ban_reason from users where id=?').get(t.id); } catch {}
+  if (!u) return bad(r, 'Please log in again', 401);
+  if (u.banned) return bad(r, 'Your account has been banned.' + (u.ban_reason ? ' Reason: ' + u.ban_reason : ''), 403);
+  q.user = u.name; next();
+};
 const addTx = (user, kind, title, amount) => db.prepare('insert into txs(user,kind,title,amount,ts) values(?,?,?,?,?)').run(user, kind, title, amount, Date.now());
 const roleOf = n => db.prepare('select role from users where name=?').get(n)?.role || 'user';
 // ---- Levels: STEPS[L-1] = XP needed to go from level L to L+1. Past level 27 the cost grows by 392.5 per level. ----
@@ -123,14 +150,14 @@ function addXp(name, n) {
   for (let L = before + 1; L <= after; L++) { const rw = levelReward(L); if (rw) { total += rw; db.prepare('update users set coins=coins+? where name=?').run(rw, name); addTx(name, 'other', `Level ${L} reward`, rw); } }
   if (after > before) wss.clients.forEach(w => { if (w.user === name) { send(w, { t: 'levelup', level: after, reward: total }); send(w, { t: 'coins', coins: coins(name) }); } });
 }
-const profile = n => { const u = db.prepare('select name,full_name,gender,bio,status_text,presence,xp,coins,role from users where name=?').get(n); return u && { ...u, level: level(u.xp) }; };
+const profile = n => { const u = db.prepare('select name,full_name,gender,country,bio,status_text,presence,xp,coins,role from users where name=?').get(n); return u && { ...u, level: level(u.xp) }; };
 const ok = fn => (q, r) => { try { fn(q, r); } catch (e) { console.error(e); bad(r, 'Server error', 500); } };
 const fstate = (a, b) => {
   const x = db.prepare('select * from friends where (a=? and b=?) or (a=? and b=?)').get(a, b, b, a);
   return !x ? 'none' : x.status === 'accepted' ? 'friends' : x.a === a ? 'sent' : 'incoming';
 };
 
-app.get('/api/me', auth, ok((q, r) => r.json({ ...profile(q.user), email: db.prepare('select email from users where name=?').get(q.user).email })));
+app.get('/api/me', auth, ok((q, r) => { const x = db.prepare('select email,mobile,mpin from users where name=?').get(q.user); r.json({ ...profile(q.user), email: x.email, mobile: x.mobile, hasPin: !!x.mpin, unlimited: isMain(q.user) }); }));
 app.put('/api/me', auth, ok((q, r) => {
   const { bio, status_text, presence } = q.body || {};
   if (typeof bio === 'string') db.prepare('update users set bio=? where name=?').run(bio.slice(0, 200), q.user);
@@ -141,7 +168,7 @@ app.put('/api/me', auth, ok((q, r) => {
 app.get('/api/users/:n', auth, ok((q, r) => {
   const p = profile(q.params.n); if (!p) return bad(r, 'User not found', 404);
   const fc = db.prepare("select count(*) c from friends where status='accepted' and (a=? or b=?)").get(p.name, p.name).c;
-  r.json({ ...p, friends: fc, state: q.user === p.name ? 'me' : fstate(q.user, p.name) });
+  r.json({ ...p, gifts: db.prepare('select gift,n from gift_inv where user=? order by n desc').all(p.name).map(x => { const g = allGiftsAny(x.gift); return g && { key: x.gift, n: x.n, name: g.n, e: g.e, img: g.img }; }).filter(Boolean), friends: fc, state: q.user === p.name ? 'me' : fstate(q.user, p.name) });
 }));
 app.post('/api/password', auth, ok((q, r) => {
   const { old = '', pass = '' } = q.body || {};
@@ -330,10 +357,21 @@ app.get('/api/account', auth, ok((q, r) => {
   const t = db.prepare('select coalesce(sum(case when amount>0 then amount end),0) e, coalesce(-sum(case when amount<0 then amount end),0) s from txs where user=? and ts>=?').get(q.user, day.getTime());
   r.json({ coins: profile(q.user).coins, earned: t.e, spent: t.s, activity: db.prepare('select kind,title,amount,ts from txs where user=? order by id desc limit 50').all(q.user) });
 }));
+const pinFails = new Map();
+function checkPin(name, pin) { // true = ok (or no PIN set), false = wrong, 'locked' = too many tries
+  const row = db.prepare('select mpin from users where name=?').get(name); if (!row?.mpin) return true;
+  const f = pinFails.get(name) || { n: 0, t: 0 }, now = Date.now(); if (now - f.t > 600e3) { f.n = 0; }
+  if (f.n >= 5) return 'locked';
+  if (bcrypt.compareSync(String(pin || ''), row.mpin)) { pinFails.delete(name); return true; }
+  pinFails.set(name, { n: f.n + 1, t: now }); return false;
+}
 app.post('/api/transfer', auth, ok((q, r) => {
   const to = String(q.body?.to || ''), amt = Math.floor(+q.body?.amount);
   if (!to || to === q.user || !profile(to)) return bad(r, 'Recipient not found');
   if (!(amt >= 1)) return bad(r, 'Enter an amount of at least 1');
+  const pc = checkPin(q.user, q.body?.mpin);
+  if (pc === 'locked') return bad(r, 'Too many wrong MPIN attempts. Try again in 10 minutes.', 429);
+  if (!pc) return bad(r, 'Wrong or missing MPIN', 403);
   const go = db.transaction(() => {
     if (!db.prepare('update users set coins=coins-? where name=? and coins>=?').run(amt, q.user, amt).changes) throw new Error('funds');
     db.prepare('update users set coins=coins+? where name=?').run(amt, to);
@@ -343,14 +381,14 @@ app.post('/api/transfer', auth, ok((q, r) => {
   wss.clients.forEach(w => (w.user === q.user || w.user === to) && send(w, { t: 'coins', coins: coins(w.user) }));
   r.json({ coins: coins(q.user) });
 }));
-app.get('/api/members', auth, ok((q, r) => r.json(db.prepare("select name,role,xp from users where role in ('admin','staff','mentor','merchant') order by case role when 'admin' then 0 when 'staff' then 1 when 'mentor' then 2 else 3 end, name").all())));
+app.get('/api/members', auth, ok((q, r) => r.json(db.prepare("select name,role,xp from users where role in ('admin','staff','headmentor','mentor','merchant') order by case role when 'admin' then 0 when 'staff' then 1 when 'headmentor' then 2 when 'mentor' then 3 else 4 end, name").all())));
 app.post('/api/admin/role', auth, ok((q, r) => {
   if (roleOf(q.user) !== 'staff') return bad(r, 'Only staff can change roles', 403);
   const { name = '', role = '' } = q.body || {};
-  if (!['user', 'merchant', 'mentor', 'admin', 'staff'].includes(role)) return bad(r, 'Invalid role');
+  if (!ROLE_LIST.includes(role)) return bad(r, 'Invalid role');
   if (name === q.user) return bad(r, "You can't change your own role", 403);
   if (!profile(name)) return bad(r, 'User not found', 404);
-  db.prepare('update users set role=? where name=?').run(role, name); online(); r.json({ ok: true });
+  setRole(name, role, q.user, 'Staff change'); online(); r.json({ ok: true });
 }));
 app.get('/api/verified', auth, ok((q, r) => r.json(db.prepare('select name from users where verified=1').all().map(u => u.name))));
 app.post('/api/admin/verify', auth, ok((q, r) => {
@@ -359,6 +397,339 @@ app.post('/api/admin/verify', auth, ok((q, r) => {
   if (!profile(name)) return bad(r, 'User not found', 404);
   db.prepare('update users set verified=? where name=?').run(on ? 1 : 0, name); r.json({ ok: true });
 }));
+
+
+// ---------- Merchant / Mentor / Head Mentor hierarchy ----------
+for (const a of ["alter table users add column parent text default ''", 'alter table users add column role_started_at int default 0', 'alter table users add column cycle_start int default 0']) { try { db.exec(a); } catch {} }
+db.exec(`create table if not exists role_requests(id integer primary key, from_user text, to_user text, kind text, status text default 'pending', ts int, decided_ts int, decided_by text);
+create unique index if not exists one_pending on role_requests(from_user) where status='pending';
+create table if not exists tags(user text primary key, parent text, tagged_at int, tx_id int);
+create table if not exists commissions(id integer primary key, spender text, parent text, eligible int, pct real, amount int, tx_id int, kind text, ts int, unique(tx_id,kind));
+create index if not exists comm_p on commissions(parent,ts);
+create table if not exists mevents(id integer primary key, user text, k text, n int default 1, ts int);
+create index if not exists mev on mevents(user,k,ts);
+create table if not exists payouts(id integer primary key, user text, cycle_start int, cycle_end int, points int, tier text, eligible int, trail int, result text, ts int);
+create table if not exists role_history(id integer primary key, user text, from_role text, to_role text, reason text, by text, ts int)`);
+const ROLE_LIST = ['user', 'merchant', 'mentor', 'headmentor', 'admin', 'staff'];
+const RANK = { user: 0, merchant: 1, mentor: 2, headmentor: 3 };
+const TAG_COST = 50000, COMM_PCT = 5, CYCLE_MS = 30 * 864e5, MIN_PTS = 300, TRAIL_STEP = 100000, TRAIL_PTS = 20;
+const TIERS = [['red', 1000], ['pink', 500], ['purple', 300]];
+const tierOf = p => (TIERS.find(t => p >= t[1]) || [null])[0];
+const TASKS = [
+  { k: 'gift_sent', t: 'Send gifts in chatrooms', target: 100000, pts: 100, unit: 'gifts' },
+  { k: 'gift_recv', t: 'Receive gifts in chatrooms', target: 50000, pts: 100, unit: 'gifts' },
+  { k: 'game', t: 'Play games in chatrooms', target: 1000, pts: 100, unit: 'games' },
+  { k: 'dm_gift', t: 'Send migmeet gifts', target: 20, pts: 200, unit: 'gifts' }];
+const mev = (user, k, n = 1) => db.prepare('insert into mevents(user,k,n,ts) values(?,?,?,?)').run(user, k, n, Date.now());
+function setRole(name, role, by, reason) {
+  const u = db.prepare('select role from users where name=?').get(name); if (!u || u.role === role) return;
+  const now = Date.now();
+  db.prepare('update users set role=?, role_started_at=?, cycle_start=? where name=?').run(role, now, role === 'merchant' ? now : 0, name);
+  db.prepare('insert into role_history(user,from_role,to_role,reason,by,ts) values(?,?,?,?,?,?)').run(name, u.role, role, reason || '', by || 'system', now);
+  // A tagger who loses merchant/mentor/head-mentor status loses all tag relationships.
+  if (RANK[u.role] >= 1 && !(RANK[role] >= 1)) db.prepare('delete from tags where parent=?').run(name);
+}
+function pointsOf(name, start, end) {
+  const cnt = k => db.prepare('select coalesce(sum(n),0) c from mevents where user=? and k=? and ts>=? and ts<?').get(name, k, start, end).c;
+  const tasks = TASKS.map(t => { const v = cnt(t.k); return { ...t, value: Math.min(v, t.target), done: v >= t.target, earned: v >= t.target ? t.pts : 0 }; });
+  const el = cnt('trail_eligible'), tp = Math.floor(el / TRAIL_STEP) * TRAIL_PTS;
+  return { tasks, trail: { eligible: el, step: TRAIL_STEP, pts: TRAIL_PTS, earned: tp, into: el % TRAIL_STEP }, points: tasks.reduce((s, t) => s + t.earned, 0) + tp };
+}
+// 5% of eligible spending (gifts, game bets) goes to the direct tagger. One commission per transaction (unique tx_id+kind).
+function commissionOn(spender, amount, kind, txId) {
+  const t = db.prepare('select parent from tags where user=?').get(spender); if (!t) return;
+  const p = db.prepare('select name,role from users where name=?').get(t.parent);
+  if (!p || p.name === spender || !(RANK[p.role] >= 1)) return;
+  const c = Math.floor(amount * COMM_PCT / 100); if (c < 1) return;
+  if (db.prepare('select 1 from commissions where tx_id=? and kind=?').get(txId, kind)) return;
+  db.prepare('update users set coins=coins+? where name=?').run(c, p.name);
+  addTx(p.name, 'other', `Trail commission from ${spender}`, c);
+  db.prepare('insert into commissions(spender,parent,eligible,pct,amount,tx_id,kind,ts) values(?,?,?,?,?,?,?,?)').run(spender, p.name, amount, COMM_PCT, c, txId, kind, Date.now());
+  mev(p.name, 'trail_eligible', amount); setImmediate(() => pushCoins(p.name));
+}
+let demoted = false;
+function processCycles() {
+  const now = Date.now();
+  db.prepare("update users set cycle_start=? where role='merchant' and cycle_start=0").run(now);
+  for (const m of db.prepare("select name,cycle_start from users where role='merchant' and cycle_start>0 and cycle_start+?<=?").all(CYCLE_MS, now)) {
+    db.transaction(() => {
+      let start = m.cycle_start;
+      while (start + CYCLE_MS <= now) {
+        const end = start + CYCLE_MS, pp = pointsOf(m.name, start, end), keep = pp.points >= MIN_PTS;
+        const trail = db.prepare('select coalesce(sum(amount),0) s from commissions where parent=? and ts>=? and ts<?').get(m.name, start, end).s;
+        db.prepare('insert into payouts(user,cycle_start,cycle_end,points,tier,eligible,trail,result,ts) values(?,?,?,?,?,?,?,?,?)').run(m.name, start, end, pp.points, tierOf(pp.points) || 'none', pp.trail.eligible, trail, keep ? 'kept' : 'demoted', now);
+        if (!keep) { setRole(m.name, 'user', 'system', `Under ${MIN_PTS} points (${pp.points}) at cycle end`); demoted = true; return; }
+        start = end; db.prepare('update users set cycle_start=? where name=?').run(start, m.name);
+      }
+    })();
+  }
+  if (demoted) { demoted = false; try { online(); } catch {} }
+}
+setTimeout(processCycles, 5000); setInterval(processCycles, 3600e3).unref();
+const headOf = name => { let n = db.prepare('select parent from users where name=?').get(name)?.parent; for (let i = 0; n && i < 4; i++) { const x = db.prepare('select role,parent from users where name=?').get(n); if (!x) return null; if (x.role === 'headmentor') return n; n = x.parent; } return null; };
+const lvOf = n => level(db.prepare('select xp from users where name=?').get(n)?.xp || 0);
+
+app.get('/api/panel', auth, ok((q, r) => {
+  processCycles();
+  const me = q.user, u = db.prepare('select role,parent,cycle_start,role_started_at,mpin from users where name=?').get(me), now = Date.now();
+  const out = { role: u.role, parent: u.parent, hasPin: !!u.mpin, now, tagCost: TAG_COST, pct: COMM_PCT, minPoints: MIN_PTS, roleStarted: u.role_started_at };
+  out.outgoing = db.prepare('select id,to_user,kind,status,ts from role_requests where from_user=? order by id desc limit 1').get(me) || null;
+  out.incoming = db.prepare("select id,from_user,kind,ts from role_requests where to_user=? and status='pending' order by id").all(me).map(x => ({ ...x, level: lvOf(x.from_user) }));
+  if (u.role === 'user') out.mentors = db.prepare("select name,role,xp from users where role in ('mentor','headmentor') and banned=0 order by name limit 200").all().map(x => ({ name: x.name, role: x.role, level: level(x.xp) }));
+  if (u.role === 'merchant') {
+    const start = u.cycle_start || now, end = start + CYCLE_MS, pp = pointsOf(me, start, end), tier = tierOf(pp.points);
+    const nxt = [...TIERS].reverse().find(t => pp.points < t[1]);
+    out.head = headOf(me);
+    out.cycle = { start, end, remaining: Math.max(0, end - now), days: 30 };
+    out.points = pp.points; out.tier = tier; out.nextTier = nxt ? { name: nxt[0], need: nxt[1] - pp.points } : null;
+    out.tasks = pp.tasks; out.trailTask = pp.trail;
+    out.warning = pp.points < MIN_PTS ? { need: MIN_PTS - pp.points } : null;
+  }
+  if (RANK[u.role] >= 1) {
+    const cs = u.role === 'merchant' ? u.cycle_start : now - CYCLE_MS, ce = u.role === 'merchant' ? u.cycle_start + CYCLE_MS : now + 1;
+    const sum = (sql, ...a) => db.prepare(sql).get(...a);
+    out.stats = {
+      trailCycle: sum('select coalesce(sum(amount),0) s from commissions where parent=? and ts>=? and ts<?', me, cs, ce).s,
+      trailAll: sum('select coalesce(sum(amount),0) s from commissions where parent=?', me).s,
+      payoutsCycle: sum('select count(*) c from commissions where parent=? and ts>=? and ts<?', me, cs, ce).c,
+      activeTags: sum('select count(*) c from tags where parent=?', me).c };
+    out.tagged = db.prepare('select t.user name,t.tagged_at ts,u.xp,u.banned from tags t join users u on u.name=t.user where t.parent=? order by t.tagged_at desc limit 200').all(me).map(x => ({ name: x.name, ts: x.ts, level: level(x.xp) }));
+    out.byUser = db.prepare('select spender name,sum(eligible) eligible,sum(amount) amount,count(*) n,max(ts) last from commissions where parent=? group by spender order by amount desc limit 100').all(me);
+    out.payouts = db.prepare('select cycle_start,cycle_end,points,tier,eligible,trail,result from payouts where user=? order by id desc limit 20').all(me);
+    out.recent = db.prepare('select spender,eligible,pct,amount,tx_id,kind,ts from commissions where parent=? order by id desc limit 30').all(me);
+  }
+  if (u.role === 'mentor' || u.role === 'headmentor') {
+    out.children = db.prepare("select name,role,xp,cycle_start from users where parent=? order by role,name limit 200").all(me).map(x => {
+      const o = { name: x.name, role: x.role, level: level(x.xp) };
+      if (x.role === 'merchant') { const pp = pointsOf(x.name, x.cycle_start || now, (x.cycle_start || now) + CYCLE_MS); o.points = pp.points; o.tier = tierOf(pp.points); o.left = Math.max(0, (x.cycle_start || now) + CYCLE_MS - now); }
+      return o; });
+  }
+  r.json(out);
+}));
+app.post('/api/role/request', auth, ok((q, r) => {
+  const me = q.user, role = roleOf(me);
+  if (db.prepare("select 1 from role_requests where from_user=? and status='pending'").get(me)) return bad(r, 'You already have a pending request.');
+  let kind, to;
+  if (role === 'user') { kind = 'merchant'; to = String(q.body?.to || ''); const t = db.prepare('select role,banned from users where name=?').get(to); if (!t || !['mentor', 'headmentor'].includes(t.role) || t.banned || to === me) return bad(r, 'Choose a valid Mentor.'); }
+  else if (role === 'merchant') { kind = 'mentor'; to = headOf(me); if (!to) return bad(r, 'You have no Head Mentor above you yet. Ask staff to assign one.'); }
+  else if (role === 'mentor') { kind = 'head'; to = 'system'; }
+  else return bad(r, 'Your role cannot send a request.');
+  try { db.prepare('insert into role_requests(from_user,to_user,kind,status,ts) values(?,?,?,?,?)').run(me, to, kind, 'pending', Date.now()); } catch { return bad(r, 'You already have a pending request.'); }
+  r.json({ ok: true });
+}));
+app.post('/api/role/cancel', auth, ok((q, r) => { db.prepare("delete from role_requests where id=? and from_user=? and status='pending'").run(+q.body?.id, q.user); r.json({ ok: true }); }));
+app.post('/api/role/respond', auth, ok((q, r) => {
+  const me = q.user, myRole = roleOf(me), accept = !!q.body?.accept;
+  const rq = db.prepare("select * from role_requests where id=? and status='pending'").get(+q.body?.id);
+  if (!rq) return bad(r, 'Request not found or already handled.', 404);
+  const allowed = rq.kind === 'merchant' ? rq.to_user === me && ['mentor', 'headmentor'].includes(myRole)
+    : rq.kind === 'mentor' ? rq.to_user === me && myRole === 'headmentor' : ['staff', 'admin'].includes(myRole);
+  if (!allowed) return bad(r, 'You cannot answer this request.', 403);
+  const need = { merchant: 'user', mentor: 'merchant', head: 'mentor' }[rq.kind], next = { merchant: 'merchant', mentor: 'mentor', head: 'headmentor' }[rq.kind];
+  db.transaction(() => {
+    const cur = roleOf(rq.from_user), valid = cur === need;
+    const st = accept && valid ? 'accepted' : 'rejected';
+    db.prepare('update role_requests set status=?, decided_ts=?, decided_by=? where id=?').run(st, Date.now(), me, rq.id);
+    if (st === 'accepted') {
+      setRole(rq.from_user, next, me, `Accepted ${rq.kind} request`);
+      if (rq.kind !== 'head') db.prepare('update users set parent=? where name=?').run(me, rq.from_user); else db.prepare("update users set parent='' where name=?").run(rq.from_user);
+    }
+  })();
+  online(); r.json({ ok: true });
+}));
+app.get('/api/admin/requests', auth, ok((q, r) => {
+  if (!['staff', 'admin'].includes(roleOf(q.user))) return bad(r, 'Not allowed', 403);
+  r.json(db.prepare("select id,from_user,kind,ts from role_requests where status='pending' and kind='head' order by id").all().map(x => ({ ...x, level: lvOf(x.from_user) })));
+}));
+app.post('/api/tag', auth, ok((q, r) => {
+  const me = q.user, to = String(q.body?.to || '').trim();
+  if (!(RANK[roleOf(me)] >= 1)) return bad(r, 'Only Merchants and Mentors can tag users.', 403);
+  const t = db.prepare('select name,role,banned from users where name=?').get(to);
+  if (!t || to === me) return bad(r, 'User not found');
+  if (t.role !== 'user' || t.banned) return bad(r, 'This user is not eligible to be tagged.');
+  if (db.prepare('select parent from tags where user=?').get(to)) return bad(r, 'This user is already tagged.', 409);
+  if (isBlocked(me, to)) return bad(r, "You can't tag this user.");
+  const pc = checkPin(me, q.body?.mpin);
+  if (pc === 'locked') return bad(r, 'Too many wrong MPIN attempts. Try again in 10 minutes.', 429);
+  if (!pc) return bad(r, 'Wrong or missing MPIN', 403);
+  try {
+    db.transaction(() => {
+      if (!db.prepare('update users set coins=coins-? where name=? and coins>=?').run(TAG_COST, me, TAG_COST).changes) throw new Error('funds');
+      db.prepare('update users set coins=coins+? where name=?').run(TAG_COST, to);
+      const tx = addTx(me, 'transfer', `Tagged ${to} (50,000 coins)`, -TAG_COST); addTx(to, 'transfer', `Tag gift from ${me}`, TAG_COST);
+      db.prepare('insert into tags(user,parent,tagged_at,tx_id) values(?,?,?,?)').run(to, me, Date.now(), tx.lastInsertRowid);
+    })();
+  } catch (e) { return bad(r, e.message === 'funds' ? `You need ${TAG_COST.toLocaleString()} coins to tag a user.` : 'This user is already tagged.', e.message === 'funds' ? 400 : 409); }
+  pushCoins(me, to); r.json({ ok: true });
+}));
+
+
+// ---------- Staff: custom gifts ----------
+const staffOnly = (q, r) => roleOf(q.user) === 'staff' || (bad(r, 'Only staff can manage gifts', 403), false);
+const bcastGifts = () => wss.clients.forEach(w => w.user && send(w, { t: 'gifts', gifts: allGifts() }));
+app.get('/api/admin/gifts', auth, ok((q, r) => { if (!staffOnly(q, r)) return; r.json(db.prepare('select key,name,icon,cost,recv,active from gifts order by ts desc').all()); }));
+app.post('/api/admin/gifts', auth, ok((q, r) => {
+  if (!staffOnly(q, r)) return;
+  const b = q.body || {}, name = String(b.name || '').trim().slice(0, 24), cost = Math.floor(+b.cost), recv = Math.floor(+b.recv);
+  const key = name.toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 16);
+  if (name.length < 2 || key.length < 2) return bad(r, 'Gift name needs at least 2 English letters or numbers.');
+  if (!imgUrl(b.icon)) return bad(r, 'Upload a gift icon first.');
+  if (!(cost >= 1 && cost <= 1e9)) return bad(r, 'Gift price must be between 1 and 1,000,000,000 coins.');
+  if (!(recv >= 0 && recv <= 1e9)) return bad(r, 'Receiver coins must be between 0 and 1,000,000,000.');
+  if (GIFTS[key] || db.prepare('select 1 from gifts where key=?').get(key)) return bad(r, 'A gift with this name already exists.', 409);
+  db.prepare('insert into gifts(key,name,icon,cost,recv,active,ts) values(?,?,?,?,?,1,?)').run(key, name, b.icon, cost, recv, Date.now());
+  alog(q.user, key, 'gift_create', `${name}: ${cost} / ${recv}`); bcastGifts(); r.json({ ok: true, key });
+}));
+app.post('/api/admin/gifts/:k', auth, ok((q, r) => {
+  if (!staffOnly(q, r)) return;
+  const g = db.prepare('select * from gifts where key=?').get(q.params.k); if (!g) return bad(r, 'Gift not found', 404);
+  const b = q.body || {}, cost = b.cost === undefined ? g.cost : Math.floor(+b.cost), recv = b.recv === undefined ? g.recv : Math.floor(+b.recv);
+  const name = b.name === undefined ? g.name : String(b.name).trim().slice(0, 24), icon = b.icon === undefined ? g.icon : b.icon;
+  if (!(cost >= 1 && cost <= 1e9) || !(recv >= 0 && recv <= 1e9) || name.length < 2 || !imgUrl(icon)) return bad(r, 'Check the gift name, icon and coin values.');
+  db.prepare('update gifts set name=?,icon=?,cost=?,recv=?,active=? where key=?').run(name, icon, cost, recv, b.active === undefined ? g.active : (b.active ? 1 : 0), g.key);
+  if (icon !== g.icon && MEDIA_URL.test(g.icon) && !db.prepare('select 1 from gifts where icon=?').get(g.icon)) fs.unlink('.' + g.icon, () => {});
+  alog(q.user, g.key, 'gift_edit', `${name}: ${cost} / ${recv}`); bcastGifts(); r.json({ ok: true });
+}));
+app.delete('/api/admin/gifts/:k', auth, ok((q, r) => {
+  if (!staffOnly(q, r)) return;
+  const g = db.prepare('select * from gifts where key=?').get(q.params.k); if (!g) return bad(r, 'Gift not found', 404);
+  db.prepare('delete from gifts where key=?').run(g.key); db.prepare('delete from gift_inv where gift=?').run(g.key);
+  if (MEDIA_URL.test(g.icon)) fs.unlink('.' + g.icon, () => {});
+  alog(q.user, g.key, 'gift_delete', g.name); bcastGifts(); r.json({ ok: true });
+}));
+
+// ---------- Staff admin panel ----------
+const COUNTRIES = ['Afghanistan','Albania','Algeria','Argentina','Armenia','Australia','Austria','Azerbaijan','Bahrain','Bangladesh','Belarus','Belgium','Bhutan','Bolivia','Bosnia and Herzegovina','Brazil','Brunei','Bulgaria','Cambodia','Cameroon','Canada','Chile','China','Colombia','Costa Rica','Croatia','Cuba','Cyprus','Czech Republic','Denmark','Dominican Republic','Ecuador','Egypt','El Salvador','Estonia','Ethiopia','Finland','France','Georgia','Germany','Ghana','Greece','Guatemala','Hong Kong','Hungary','Iceland','India','Indonesia','Iran','Iraq','Ireland','Israel','Italy','Ivory Coast','Jamaica','Japan','Jordan','Kazakhstan','Kenya','Kuwait','Kyrgyzstan','Laos','Latvia','Lebanon','Libya','Lithuania','Luxembourg','Malaysia','Maldives','Malta','Mexico','Moldova','Mongolia','Morocco','Myanmar','Nepal','Netherlands','New Zealand','Nigeria','North Macedonia','Norway','Oman','Pakistan','Palestine','Panama','Paraguay','Peru','Philippines','Poland','Portugal','Qatar','Romania','Russia','Saudi Arabia','Senegal','Serbia','Singapore','Slovakia','Slovenia','Somalia','South Africa','South Korea','Spain','Sri Lanka','Sudan','Sweden','Switzerland','Syria','Taiwan','Tajikistan','Tanzania','Thailand','Tunisia','Turkey','Turkmenistan','Uganda','Ukraine','United Arab Emirates','United Kingdom','United States','Uruguay','Uzbekistan','Venezuela','Vietnam','Yemen','Zambia','Zimbabwe'];
+const RENAME_COLS = [['msgs', 'user'], ['posts', 'user'], ['comments', 'user'], ['reacts', 'user'], ['txs', 'user'], ['favs', 'user'], ['bans', 'user'], ['bans', 'by'], ['room_mods', 'user'],
+  ['mutes', 'user'], ['tp_pending', 'user'], ['post_shares', 'user'], ['post_hidden', 'user'], ['stories', 'user'], ['story_views', 'user'], ['friends', 'a'], ['friends', 'b'], ['blocks', 'a'], ['blocks', 'b'], ['rooms', 'owner'], ['users', 'parent'], ['role_requests', 'from_user'], ['role_requests', 'to_user'], ['role_requests', 'decided_by'], ['tags', 'user'], ['tags', 'parent'], ['commissions', 'spender'], ['commissions', 'parent'], ['mevents', 'user'], ['payouts', 'user'], ['role_history', 'user'], ['role_history', 'by'], ['gift_inv', 'user'], ['lc_pending', 'user'], ['rb_pending', 'user']];
+const alog = (staff, target, action, detail = '') => db.prepare('insert into admin_log(staff,target,action,detail,ts) values(?,?,?,?,?)').run(staff, target, action, String(detail).slice(0, 200), Date.now());
+const kickUser = (name, why) => wss.clients.forEach(w => { if (w.user === name) { send(w, { t: 'error', error: why }); try { w.close(); } catch {} } });
+function staffTarget(q, r, name) {
+  if (roleOf(q.user) !== 'staff') { bad(r, 'Only staff can use the admin panel', 403); return null; }
+  const u = db.prepare('select * from users where name=?').get(name);
+  if (!u) { bad(r, 'User not found', 404); return null; }
+  if (isMain(u.name) && !isMain(q.user)) { bad(r, 'The main staff account is protected', 403); return null; }
+  if (u.role === 'staff' && !isMain(q.user) && u.name !== q.user) { bad(r, 'Only the main staff account can edit other staff', 403); return null; }
+  return u;
+}
+const adminView = u => ({ name: u.name, full_name: u.full_name, email: u.email, mobile: u.mobile, country: u.country, gender: u.gender, bio: u.bio, status_text: u.status_text, presence: u.presence,
+  role: u.role, verified: !!u.verified, banned: !!u.banned, ban_reason: u.ban_reason, xp: u.xp, level: level(u.xp), coins: u.coins, unlimited: isMain(u.name), hasPin: !!u.mpin, secQ: u.sec_q, avatar: u.avatar || '', parent: u.parent || '', taggedBy: db.prepare('select parent from tags where user=?').get(u.name)?.parent || '', history: db.prepare('select from_role,to_role,reason,by,ts from role_history where user=? order by id desc limit 8').all(u.name) });
+app.get('/api/admin/countries', auth, ok((q, r) => r.json(COUNTRIES)));
+app.get('/api/admin/users', auth, ok((q, r) => {
+  if (roleOf(q.user) !== 'staff') return bad(r, 'Only staff can use the admin panel', 403);
+  const s = String(q.query.q || '').replace(/[%_\\]/g, '').slice(0, 40);
+  const rows = db.prepare("select name,role,xp,coins,banned,email,full_name,verified from users where name like '%'||@s||'%' or email like '%'||@s||'%' or full_name like '%'||@s||'%' or mobile like '%'||@s||'%' order by banned desc, case role when 'staff' then 0 when 'admin' then 1 else 2 end, name limit 60").all({ s });
+  r.json(rows.map(u => ({ ...u, level: level(u.xp), unlimited: isMain(u.name) })));
+}));
+app.get('/api/admin/log', auth, ok((q, r) => {
+  if (roleOf(q.user) !== 'staff') return bad(r, 'Only staff can use the admin panel', 403);
+  r.json(db.prepare('select staff,target,action,detail,ts from admin_log order by id desc limit 40').all());
+}));
+app.get('/api/admin/users/:n', auth, ok((q, r) => { const u = staffTarget(q, r, q.params.n); if (u) r.json(adminView(u)); }));
+app.post('/api/admin/transfer', auth, ok((q, r) => {
+  if (roleOf(q.user) !== 'staff') return bad(r, 'Only staff can use the admin panel', 403);
+  const from = db.prepare('select * from users where name=?').get(String(q.body?.from || '')), to = db.prepare('select * from users where name=?').get(String(q.body?.to || ''));
+  const amt = Math.floor(+q.body?.amount);
+  if (!from || !to) return bad(r, 'User not found', 404);
+  if (from.name === to.name) return bad(r, 'Choose two different users');
+  if (!(amt >= 1)) return bad(r, 'Enter an amount of at least 1');
+  if (isMain(from.name) && !isMain(q.user)) return bad(r, 'The main staff account is protected', 403);
+  if (q.body?.mpin) { const pc = checkPin(from.name, q.body.mpin); if (pc === 'locked') return bad(r, 'Too many wrong MPIN attempts. Try again in 10 minutes.', 429); if (!pc) return bad(r, 'Wrong MPIN for ' + from.name, 403); }
+  const go = db.transaction(() => {
+    if (!db.prepare('update users set coins=coins-? where name=? and coins>=?').run(amt, from.name, amt).changes) throw new Error('funds');
+    db.prepare('update users set coins=coins+? where name=?').run(amt, to.name);
+    addTx(from.name, 'transfer', `Sent to ${to.name} (by staff)`, -amt); addTx(to.name, 'transfer', `Received from ${from.name} (by staff)`, amt);
+  });
+  try { go(); } catch { return bad(r, `${from.name} does not have enough coins`); }
+  alog(q.user, from.name, 'transfer', `${amt} coins to ${to.name}${q.body?.mpin ? ' (MPIN verified)' : ''}`);
+  pushCoins(from.name); pushCoins(to.name); r.json({ ok: true });
+}));
+app.post('/api/admin/users/:n/edit', auth, ok((q, r) => {
+  const u = staffTarget(q, r, q.params.n); if (!u) return;
+  const b = q.body || {}, a = String(b.action || ''), me = q.user, done = (detail = '') => { alog(me, q.params.n, a, detail); const f = db.prepare('select * from users where id=?').get(u.id); r.json(adminView(f)); };
+  const str = (v, max) => String(v ?? '').trim().slice(0, max);
+  if (a === 'rename') {
+    const nn = str(b.newName, 16);
+    if (isMain(u.name)) return bad(r, 'The main staff ID cannot be renamed');
+    if (!/^[A-Za-z0-9._-]{3,16}$/.test(nn)) return bad(r, 'ID must be 3–16 characters: English letters, numbers, dot, dash or underscore.');
+    if (isMain(nn) || ['admin', 'staff', 'mentor', 'headmentor', 'merchant', 'support'].includes(nn.toLowerCase())) return bad(r, 'That ID is reserved.');
+    if (db.prepare('select 1 from users where lower(name)=lower(?) and id!=?').get(nn, u.id)) return bad(r, 'That ID is already taken.', 409);
+    const old = u.name;
+    db.transaction(() => {
+      db.prepare('update users set name=? where id=?').run(nn, u.id);
+      for (const [t, c] of RENAME_COLS) db.prepare(`update ${t} set ${c}=? where ${c}=?`).run(nn, old);
+      for (const { room } of db.prepare("select distinct room from msgs where room like 'dm:%'").all()) {
+        const parts = room.slice(3).split(':'); if (!parts.includes(old)) continue;
+        db.prepare('update msgs set room=? where room=?').run('dm:' + parts.map(x => x === old ? nn : x).sort().join(':'), room);
+      }
+    })();
+    kickUser(old, 'auth'); alog(me, old, 'rename', `${old} → ${nn}`);
+    return r.json(adminView(db.prepare('select * from users where id=?').get(u.id)));
+  }
+  if (a === 'country') { const c = str(b.country, 40); if (c && !COUNTRIES.includes(c)) return bad(r, 'Choose a country from the list'); db.prepare('update users set country=? where id=?').run(c, u.id); return done(c || 'cleared'); }
+  if (a === 'level') {
+    const L = Math.floor(+b.level); if (!(L >= 1 && L <= MAXLV)) return bad(r, `Level must be between 1 and ${MAXLV}`);
+    db.prepare('update users set xp=? where id=?').run(CUM[L], u.id);
+    wss.clients.forEach(w => w.user === u.name && send(w, { t: 'xp', xp: CUM[L] })); return done(`Level ${L} (${CUM[L]} XP)`);
+  }
+  if (a === 'mobile') { const m = str(b.mobile, 20).replace(/[\s-]/g, ''); if (m && !/^\+?[0-9]{6,15}$/.test(m)) return bad(r, 'Enter a valid mobile number (6–15 digits, optional +).'); db.prepare('update users set mobile=? where id=?').run(m, u.id); return done(m || 'cleared'); }
+  if (a === 'secq_set') {
+    const qn = str(b.question, 100), an = str(b.answer, 60).toLowerCase();
+    if (qn.length < 3) return bad(r, 'Write the security question (at least 3 characters).'); if (!an) return bad(r, 'Write the answer.');
+    db.prepare('update users set sec_q=?, sec_a=? where id=?').run(qn, bcrypt.hashSync(an, 10), u.id); return done('set');
+  }
+  if (a === 'secq_reset') { db.prepare("update users set sec_q='', sec_a='' where id=?").run(u.id); return done('reset'); }
+  if (a === 'pin_set') { const pin = String(b.pin || ''); if (!/^[0-9]{4,6}$/.test(pin)) return bad(r, 'MPIN must be 4 to 6 digits.'); db.prepare('update users set mpin=? where id=?').run(bcrypt.hashSync(pin, 10), u.id); pinFails.delete(u.name); return done('set'); }
+  if (a === 'pin_reset') { db.prepare("update users set mpin='' where id=?").run(u.id); pinFails.delete(u.name); return done('reset'); }
+  if (a === 'email') {
+    const em = str(b.email, 100).toLowerCase(); if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(em)) return bad(r, 'Enter a valid email address.');
+    if (db.prepare('select 1 from users where email=? and id!=?').get(em, u.id)) return bad(r, 'That email is already used by another account.', 409);
+    db.prepare('update users set email=? where id=?').run(em, u.id); return done(em);
+  }
+  if (a === 'password') { const pw = String(b.password || ''); if (pw.length < 6 || pw.length > 100) return bad(r, 'Password must be at least 6 characters.'); db.prepare('update users set pass=? where id=?').run(bcrypt.hashSync(pw, 10), u.id); return done('changed'); }
+  if (a === 'role') {
+    const role = String(b.role || ''); if (!ROLE_LIST.includes(role)) return bad(r, 'Invalid role');
+    if (isMain(u.name)) return bad(r, 'The main staff role cannot be changed');
+    if (role === 'staff' && !isMain(me)) return bad(r, 'Only the main staff account can create other staff', 403);
+    setRole(u.name, role, me, 'Staff change'); online(); return done(`${u.role} → ${role}`);
+  }
+  if (a === 'coins') {
+    const amt = Math.floor(+b.amount), mode = String(b.mode || '');
+    if (isMain(u.name)) return bad(r, 'The main staff account already has unlimited coins.');
+    if (!['add', 'remove', 'set'].includes(mode)) return bad(r, 'Invalid action'); if (!(amt >= 0) || amt > 1e12 || (mode !== 'set' && amt < 1)) return bad(r, 'Enter a valid amount');
+    const before = u.coins;
+    if (mode === 'add') db.prepare('update users set coins=coins+? where id=?').run(amt, u.id);
+    else if (mode === 'remove') db.prepare('update users set coins=max(0,coins-?) where id=?').run(amt, u.id);
+    else db.prepare('update users set coins=? where id=?').run(amt, u.id);
+    const after = db.prepare('select coins from users where id=?').get(u.id).coins; addTx(u.name, 'other', `Staff adjustment (${mode})`, after - before);
+    pushCoins(u.name); return done(`${mode} ${amt}: ${before} → ${after}`);
+  }
+  if (a === 'ban') {
+    if (isMain(u.name) || u.name === me) return bad(r, 'This account cannot be banned');
+    db.prepare('update users set banned=1, ban_reason=? where id=?').run(str(b.reason, 100), u.id); kickUser(u.name, 'banned'); online(); return done(str(b.reason, 100));
+  }
+  if (a === 'parent') {
+    const pn = str(b.parent, 16); if (pn) { const pr = db.prepare('select role from users where name=?').get(pn); if (!pr || !(RANK[pr.role] >= 1) || pn === u.name) return bad(r, 'Parent must be an existing merchant, mentor or head mentor'); }
+    db.prepare('update users set parent=? where id=?').run(pn, u.id); return done(pn || 'cleared');
+  }
+  if (a === 'tag') {
+    const pn = str(b.by, 16); db.prepare('delete from tags where user=?').run(u.name);
+    if (pn) { const pr = db.prepare('select role from users where name=?').get(pn); if (!pr || !(RANK[pr.role] >= 1) || pn === u.name) return bad(r, 'Tagger must be an existing merchant, mentor or head mentor'); db.prepare('insert into tags(user,parent,tagged_at,tx_id) values(?,?,?,0)').run(u.name, pn, Date.now()); }
+    return done(pn || 'untagged');
+  }
+  if (a === 'unban') { db.prepare("update users set banned=0, ban_reason='' where id=?").run(u.id); return done(); }
+  if (a === 'profile') {
+    const g = ['Male', 'Female', 'Other', ''].includes(b.gender) ? b.gender : u.gender;
+    db.prepare('update users set full_name=?, gender=?, bio=?, status_text=? where id=?').run(str(b.full_name, 40), g, str(b.bio, 200), str(b.status_text, 60), u.id); return done();
+  }
+  if (a === 'verify') { db.prepare('update users set verified=? where id=?').run(b.on ? 1 : 0, u.id); return done(b.on ? 'on' : 'off'); }
+  if (a === 'avatar_remove') {
+    const old = u.avatar; db.prepare("update users set avatar='' where id=?").run(u.id);
+    if (old && MEDIA_URL.test(old)) fs.unlink('.' + old, () => {}); return done();
+  }
+  bad(r, 'Unknown action');
+}));
+
 const PRIZES = [{ l: '100 coins', c: 100 }, { l: '200 coins', c: 200 }, { l: '400 coins', c: 400 }, { l: '500 coins', c: 500 }, { l: '+100 XP', x: 100 }, { l: '+250 XP', x: 250 }, { l: 'Try again' }];
 const today = () => new Date().toISOString().slice(0, 10);
 app.get('/api/spin', auth, ok((q, r) => { const u = db.prepare('select spins,last_spin from users where name=?').get(q.user); r.json({ prizes: PRIZES.map(p => p.l), spins: u.spins, free: u.last_spin !== today() }); }));
@@ -394,7 +765,7 @@ const upHits = new Map();
 const MEDIA_URL = /^\/uploads\/[a-f0-9]{32}\.(jpg|png|gif|webp|webm|ogg|m4a|mp3|wav)$/;
 app.post('/api/upload', auth, express.raw({ type: () => true, limit: '6mb' }), (q, r) => {
   const now = Date.now(), h = (upHits.get(q.user) || []).filter(t => now - t < 600e3);
-  if (h.length >= 4) return bad(r, 'Upload limit reached: 4 uploads per 10 minutes. Please wait a little.', 429);
+  if (h.length >= 4 && roleOf(q.user) !== 'staff') return bad(r, 'Upload limit reached: 4 uploads per 10 minutes. Please wait a little.', 429);
   upHits.set(q.user, [...h, now]);
   const kind = String(q.query.kind || '');
   const b = q.body;
@@ -448,7 +819,7 @@ const tpStore = {
       const c = db.prepare('update users set coins=coins-? where name=? and coins>=?').run(amount, userId, amount);
       if (!c.changes) return null;
       db.prepare('insert into tp_pending values(?,?,?,?)').run(key, String(handId), userId, amount);
-      addTx(userId, 'game', 'Teen Patti Gold: bet', -amount);
+      const btx = addTx(userId, 'game', 'Teen Patti Gold: bet', -amount); mev(userId, 'game'); commissionOn(userId, amount, 'game', btx.lastInsertRowid);
       return db.prepare('select coins from users where name=?').get(userId).coins;
     });
     const bal = run(); if (bal !== null) pushCoins(userId); return bal;
@@ -476,11 +847,91 @@ const tp = !TP ? null : new TP.TeenPattiManager({
   config: { ...TP.CONFIG, DEFAULT_BOOT: TP_BOOT, RAKE_PERCENT: 0, TURN_SECONDS: 15 },
   send: (room, text) => cast(room, { t: 'msg', room, user: 'Teen Patti Gold', text, kind: 'game', ts: Date.now(), role: '' }),
   sendPrivate: (room, userId, text) => members.get(room)?.forEach(w => w.user === userId && send(w, { t: 'msg', room, user: 'Teen Patti Gold', text, kind: 'game', priv: true, ts: Date.now(), role: '' })),
-  isAdmin: async (u) => isSA(u.id),
+  isAdmin: async u => !!u.isAdmin,   // set from the authenticated session (or true for the internal auto-start)
   onState: tpPanels,
   onHand: info => { try { db.prepare('insert into tp_hands(ts,info) values(?,?)').run(Date.now(), JSON.stringify(info)); } catch {} },
 });
 tp?.init().catch(e => console.error('[TeenPatti] init failed', e));
+const isCricketRoom = n => String(n || '').toLowerCase() === 'cricket';
+const cricket = !CB ? null : new CB.CricketBot({
+  say: async (room, text) => cast(room, { t: 'msg', room, user: 'Cricket Bot', text, kind: 'game', ts: Date.now(), role: '' }),
+  takeCredits: async (user, amount) => {
+    const ok = db.transaction(() => {
+      if (!db.prepare('update users set coins=coins-? where name=? and coins>=?').run(amount, user, amount).changes) return false;
+      const tx = addTx(user, 'game', 'Cricket Bot: entry fee', -amount); mev(user, 'game'); commissionOn(user, amount, 'game', tx.lastInsertRowid); return true;
+    })();
+    if (ok) pushCoins(user); return ok;
+  },
+  addCredits: async (user, amount) => {
+    db.transaction(() => { db.prepare('update users set coins=coins+? where name=?').run(amount, user); addTx(user, 'game', 'Cricket Bot: payout / refund', amount); })();
+    pushCoins(user);
+  },
+});
+const isLowRoom = n => String(n || '').toLowerCase() === 'lowcard';
+const lcRefundRoom = room => db.transaction(() => {
+  for (const b of db.prepare('select user,amount from lc_pending where room=?').all(room)) { db.prepare('update users set coins=coins+? where name=?').run(b.amount, b.user); addTx(b.user, 'game', 'LowCard Bot: refund', b.amount); }
+  db.prepare('delete from lc_pending where room=?').run(room);
+})();
+const lowcard = !LC ? null : new LC.LowCardBot({
+  say: async (room, text) => cast(room, { t: 'msg', room, user: 'LowCard Bot', text, kind: 'game', ts: Date.now(), role: '' }),
+  debit: async (room, user, amount) => {
+    const ok = db.transaction(() => {
+      if (!db.prepare('update users set coins=coins-? where name=? and coins>=?').run(amount, user, amount).changes) return false;
+      db.prepare('insert into lc_pending values(?,?,?)').run(room, user, amount);
+      const tx = addTx(user, 'game', 'LowCard Bot: entry fee', -amount); mev(user, 'game'); commissionOn(user, amount, 'game', tx.lastInsertRowid); return true;
+    })();
+    if (ok) pushCoins(user); return ok;
+  },
+  settle: async (room, winner, prize) => {
+    const names = db.prepare('select user from lc_pending where room=?').all(room).map(x => x.user);
+    db.transaction(() => { db.prepare('update users set coins=coins+? where name=?').run(prize, winner); addTx(winner, 'game', 'LowCard Bot: win', prize); db.prepare('delete from lc_pending where room=?').run(room); })();
+    pushCoins(winner, ...names);
+  },
+  refund: async room => { const names = db.prepare('select user from lc_pending where room=?').all(room).map(x => x.user); lcRefundRoom(room); pushCoins(...names); },
+});
+// A crash in the middle of a LowCard game: give every pending entry back at the next start.
+if (lowcard) for (const { room } of db.prepare('select distinct room from lc_pending').all()) { lcRefundRoom(room); console.log('[LowCard] refunded interrupted game in', room); }
+const isRoyaleRoom = n => String(n || '').toLowerCase() === 'royale';
+const rbStore = {
+  async touch() {},
+  async getBalance(id) { return coins(id); },
+  async placeBet({ roomId, roundId, userId, option, amount }) {
+    const left = db.transaction(() => {
+      if (!db.prepare('update users set coins=coins-? where name=? and coins>=?').run(amount, userId, amount).changes) return null;
+      db.prepare('insert into rb_pending values(?,?,?,?,?)').run(roomId, roundId, userId, option, amount);
+      const tx = addTx(userId, 'game', `Royale Battle: bet on ${option}`, -amount); mev(userId, 'game'); commissionOn(userId, amount, 'game', tx.lastInsertRowid);
+      return coins(userId);
+    })();
+    if (left !== null) pushCoins(userId); return left;
+  },
+  async settleRound({ roomId, roundId, payouts }) {
+    db.transaction(() => {
+      for (const p of payouts) { db.prepare('update users set coins=coins+? where name=?').run(p.amount, p.userId); addTx(p.userId, 'game', 'Royale Battle: win', p.amount); }
+      db.prepare('delete from rb_pending where room=? and round=?').run(roomId, roundId);
+    })();
+    pushCoins(...payouts.map(p => p.userId));
+  },
+  async refundPending(roomId) {
+    const rows = roomId === undefined ? db.prepare('select * from rb_pending').all() : db.prepare('select * from rb_pending where room=?').all(roomId);
+    db.transaction(() => {
+      for (const b of rows) { db.prepare('update users set coins=coins+? where name=?').run(b.amount, b.user); addTx(b.user, 'game', 'Royale Battle: refund', b.amount); }
+      if (roomId === undefined) db.prepare('delete from rb_pending').run(); else db.prepare('delete from rb_pending where room=?').run(roomId);
+    })();
+    pushCoins(...rows.map(b => b.user));
+    return rows.map(b => ({ roomId: b.room, roundId: b.round, userId: b.user, name: b.user, option: b.option, amount: b.amount }));
+  },
+  async top(n = 10) { return db.prepare('select name, coins balance from users where lower(name)!=? order by coins desc limit ?').all(STAFF_USER, n); },
+};
+const royale = !RB ? null : new RB.RoyaleBattleManager({
+  send: (room, text) => cast(room, { t: 'msg', room, user: 'Royale Battle', text, kind: 'game', ts: Date.now(), role: '' }),
+  store: rbStore,
+  isAdmin: async u => !!u.isAdmin,
+  config: { ...RB.CONFIG, COIN_NAME: 'coins' },
+  onRound: info => { try { db.prepare('insert into tp_hands(ts,info) values(?,?)').run(Date.now(), JSON.stringify({ game: 'royale', ...info })); } catch {} },
+});
+royale?.init().catch(e => console.error('[Royale] init failed', e));
+setInterval(() => { try { royale?.savePlanners(); } catch {} }, 30e3).unref();
+const rbStopped = new Set();   // rooms where an admin removed the bot with /bot stop
 const ensureTp = room => { if (tp && isTpRoom(room) && !tp.rooms.has(room)) tp.handleMessage(room, { id: 'system', name: 'System', isAdmin: true }, '/bot teenpatti ' + TP_BOOT); };
 const shutdownTp = async () => { try { await tp?.shutdown(); } catch {} process.exit(0); };
 process.on('SIGTERM', shutdownTp); process.on('SIGINT', shutdownTp);
@@ -605,31 +1056,49 @@ function moderate(ws, act, t, secs, text) {
   else if (act === 'announce') { setCfg(room, 'announce', text.slice(0, 300)); note(text ? `📌 Announcement set by ${u}` : `Announcement removed by ${u}`); }
 }
 
-const payGift = (from, to, gf) => {
-  if (!db.prepare('update users set coins=coins-? where name=? and coins>=?').run(gf.c, from, gf.c).changes) return false;
-  db.prepare('update users set coins=coins+? where name=?').run(Math.floor(gf.c / 2), to);
-  addTx(from, 'gift', `Sent ${gf.n} to ${to}`, -gf.c); addTx(to, 'gift', `${gf.n} from ${from}`, Math.floor(gf.c / 2));
-  return true;
+const giftDef = key => {
+  key = String(key || '').toLowerCase();
+  if (GIFTS[key]) return { ...GIFTS[key], key, r: Math.floor(GIFTS[key].c / 2) };
+  const g = db.prepare('select * from gifts where key=? and active=1').get(key);
+  return g ? { key, n: g.name, c: g.cost, r: g.recv, e: '🎁', img: g.icon } : null;
 };
+const allGifts = () => { const o = {}; for (const [k, g] of Object.entries(GIFTS)) o[k] = { ...g, r: Math.floor(g.c / 2) };
+  for (const g of db.prepare('select * from gifts where active=1 order by ts').all()) o[g.key] = { n: g.name, c: g.cost, r: g.recv, e: '🎁', img: g.icon }; return o; };
+const allGiftsAny = key => { if (GIFTS[key]) return GIFTS[key]; const g = db.prepare('select name n,icon img from gifts where key=?').get(key); return g && { ...g, e: '🎁' }; };
+const giftIcon = gf => gf.img ? `[g:${gf.img}] ` : gf.e + ' ';
+const payGift = (from, to, gf, ctx = 'room') => db.transaction(() => {
+  if (!db.prepare('update users set coins=coins-? where name=? and coins>=?').run(gf.c, from, gf.c).changes) return false;
+  const rc = gf.r ?? Math.floor(gf.c / 2);
+  db.prepare('update users set coins=coins+? where name=?').run(rc, to);
+  db.prepare('insert into gift_inv(user,gift,n) values(?,?,1) on conflict(user,gift) do update set n=n+1').run(to, gf.key || gf.n.toLowerCase());
+  const tx = addTx(from, 'gift', `Sent ${gf.n} to ${to}`, -gf.c); addTx(to, 'gift', `${gf.n} from ${from}`, rc);
+  mev(from, ctx === 'dm' ? 'dm_gift' : 'gift_sent'); if (ctx !== 'dm') mev(to, 'gift_recv');
+  commissionOn(from, gf.c, 'gift', tx.lastInsertRowid);
+  return true;
+})();
 function giftOne(ws, to, key, note = '') {
-  const gf = GIFTS[String(key || '').toLowerCase()];
-  if (!gf) return reply(ws, `Unknown gift. Try: ${Object.keys(GIFTS).join(', ')}`);
+  const gf = giftDef(key);
+  if (!gf) return reply(ws, `Unknown gift. Try: ${Object.keys(allGifts()).join(', ')}`);
   if (!to || to === ws.user || !profile(to)) return reply(ws, 'Pick another valid user.');
   if (isBlocked(ws.user, to)) return reply(ws, "You can't gift this user.");
   if (!speakOk(ws)) return;
-  if (!payGift(ws.user, to, gf)) return reply(ws, 'Not enough coins.');
-  say(ws.room, ws.user, `${gf.e} sent ${gf.n} to ${to}`, 'gift');
+  if (!payGift(ws.user, to, gf, ws.room?.startsWith('dm:') ? 'dm' : 'room')) return reply(ws, 'Not enough coins.');
+  say(ws.room, ws.user, `${giftIcon(gf)}sent ${gf.n} to ${to}`, 'gift');
   if (note) wss.clients.forEach(w => w.user === to && w.room === ws.room && reply(w, `Private note from ${ws.user}: ${note}`));
   refreshCoins(ws.user, to);
 }
+const showerAt = new Map();
 function shower(ws, key) {
-  const gf = GIFTS[String(key || '').toLowerCase()];
-  if (!gf) return reply(ws, `Unknown gift. Try: ${Object.keys(GIFTS).join(', ')}`);
-  const to = [...new Set([...(members.get(ws.room) || [])].map(w => w.user))].filter(n => n !== ws.user && !isBlocked(ws.user, n)).slice(0, 25);
+  const gf = giftDef(key);
+  if (!gf) return reply(ws, `Unknown gift. Try: ${Object.keys(allGifts()).join(', ')}`);
+  const to = [...new Set([...(members.get(ws.room) || [])].map(w => w.user))].filter(n => n !== ws.user && !isBlocked(ws.user, n));
   if (!to.length) return reply(ws, 'Nobody else is here to receive it.');
+  const wait = 10e3 - (Date.now() - (showerAt.get(ws.user) || 0));
+  if (wait > 0) return reply(ws, `Please wait ${Math.ceil(wait / 1000)} more seconds before sending another gift shower.`);
   if (coins(ws.user) < gf.c * to.length) return reply(ws, `You need ${gf.c * to.length} coins to send ${gf.n} to ${to.length} members.`);
-  to.forEach(n => payGift(ws.user, n, gf));
-  say(ws.room, ws.user, `${gf.e} sent a ${gf.n} shower to ${to.length} members`, 'gift'); refreshCoins(ws.user, ...to);
+  showerAt.set(ws.user, Date.now());
+  to.forEach(n => payGift(ws.user, n, gf, 'room'));
+  say(ws.room, ws.user, `${giftIcon(gf)}sent a ${gf.n} to all ${to.length} members here`, 'gift'); refreshCoins(ws.user, ...to);
 }
 function friendAct(ws, n) {
   const u = ws.user;
@@ -673,7 +1142,7 @@ function command(ws, line) {
     db.prepare('delete from blocks where a=? and b=?').run(u, tgt); return reply(ws, `${tgt} is unblocked.`);
   }
   if (c === 'tag') { const p = tgt && profile(tgt); return reply(ws, p ? `${tgt} ${p.role === 'merchant' ? 'has an active merchant tag.' : 'is not a merchant.'}` : 'Usage: /tag username'); }
-  if (c === 'whois') { const p = tgt && profile(tgt); return reply(ws, p ? `${p.name}: role ${p.role}, level ${p.level}, gender ${p.gender || 'not set'}, country not set.` : 'Usage: /whois username'); }
+  if (c === 'whois') { const p = tgt && profile(tgt); return reply(ws, p ? `${p.name}: role ${p.role}, level ${p.level}, gender ${p.gender || 'not set'}, country ${p.country || 'not set'}.` : 'Usage: /whois username'); }
   if (c === 'me') return speak(() => say(room, u, `✨ ${u} ✨`));
   if (c === 'roll') return speak(() => say(room, u, `🎲 ${u} rolled ${1 + Math.floor(Math.random() * 100)} (1–100)`));
   if (c === 'sing') return speak(() => say(room, u, `🎤 ${u}: ${SONGS[Math.floor(Math.random() * SONGS.length)]}`));
@@ -706,10 +1175,10 @@ wss.on('connection', ws => {
   ws.on('message', raw => {
     let m; try { m = JSON.parse(raw); } catch { return; }
     if (m.t === 'auth') {
-      try { ws.user = jwt.verify(m.token, SECRET).name; } catch { return send(ws, { t: 'error', error: 'auth' }); }
+      try { const t = jwt.verify(m.token, SECRET), u = db.prepare('select name,banned from users where id=?').get(t.id); if (!u || u.banned) throw 0; ws.user = u.name; } catch { return send(ws, { t: 'error', error: 'auth' }); }
       if (m.offline) db.prepare("update users set presence='offline' where name=?").run(ws.user);
       else db.prepare("update users set presence='online' where name=? and presence='offline'").run(ws.user);
-      send(ws, { t: 'ready', user: ws.user, coins: coins(ws.user), gifts: GIFTS });
+      send(ws, { t: 'ready', user: ws.user, coins: coins(ws.user), gifts: allGifts() });
       return online();
     }
     if (!ws.user) return;
@@ -733,7 +1202,31 @@ wss.on('connection', ws => {
     else if (m.t === 'msg') {
       const text = String(m.text || '').trim().slice(0, 500);
       if (!text) return;
+      if (/^\/bot(\s|$)/i.test(text)) {
+        if (royale && isRoyaleRoom(ws.room)) {
+          const lo = text.trim().toLowerCase().replace(/\s+/g, ' ');
+          if (lo === '/bot royalebattle') rbStopped.delete(ws.room);
+          const u = { id: ws.user, name: ws.user, isAdmin: isSA(ws.user) };
+          return royale.handleMessage(ws.room, u, text).then(() => { if (lo === '/bot stop' && !royale.rooms.has(ws.room)) rbStopped.add(ws.room); }).catch(e => console.error('[Royale]', e));
+        }
+        if (lowcard && isLowRoom(ws.room)) return lowcard.admin(ws.room, isSA(ws.user), text);
+        if (tp && isTpRoom(ws.room)) { ensureTp(ws.room); return tp.handleMessage(ws.room, { id: ws.user, name: ws.user, isAdmin: isSA(ws.user) }, text).catch(e => console.error('[TeenPatti]', e)); }
+        return reply(ws, 'The Teen Patti bot can only be used in the Legendary room.');
+      }
       if (text[0] === '/') return command(ws, text);
+      if (text[0] === '!' && royale && isRoyaleRoom(ws.room)) {
+        if (!speakOk(ws)) return;
+        const room = ws.room, u = { id: ws.user, name: ws.user, isAdmin: isSA(ws.user) };
+        const pre = !royale.rooms.has(room) && !rbStopped.has(room) ? royale.handleMessage(room, { id: 'system', name: 'System', isAdmin: true }, '/bot royalebattle') : Promise.resolve();
+        return pre.then(() => royale.handleMessage(room, u, text)).catch(e => console.error('[Royale]', e));
+      }
+      if (text[0] === '!' && lowcard && isLowRoom(ws.room)) {
+        if (!speakOk(ws)) return; const lc = text.trim().toLowerCase();
+        if (lc === '!bal') return reply(ws, `Your balance: ${coins(ws.user)} coins.`);
+        if (lc === '!top') return reply(ws, 'Top players: ' + db.prepare('select name,coins from users where lower(name)!=? order by coins desc limit 5').all(STAFF_USER).map((x, i) => `${i + 1}. ${x.name} (${x.coins})`).join(' · '));
+        return lowcard.handle(ws.room, ws.user, text, isSA(ws.user)).catch(e => console.error('[LowCard]', e));
+      }
+      if (text[0] === '!' && cricket && isCricketRoom(ws.room)) { if (!speakOk(ws)) return; return cricket.handle(ws.room, ws.user, text).catch(e => console.error('[Cricket]', e)); }
       if (text[0] === '!') {
         if (tp && isTpRoom(ws.room)) { ensureTp(ws.room); return tp.handleMessage(ws.room, { id: ws.user, name: ws.user, isAdmin: isSA(ws.user) }, text).catch(e => console.error('[TeenPatti]', e)); }
         return reply(ws, 'This game is only played in the Legendary room.');
