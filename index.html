@@ -449,6 +449,46 @@ html[data-theme=dark] .mi i{background:linear-gradient(145deg,rgba(255,255,255,.
 }
 @media (max-width:999px){#dtg svg{transform:none}}
 @media (prefers-reduced-motion:reduce){#dn.anim .mi,#dn.anim .dsr,#dn.anim .dme,#dn.anim .dh{animation:none}body.in,#dtg{transition:none}}
+
+/* ===== OTP boxes, bottom bar, logout animation ===== */
+@property --ang{syntax:'<angle>';inherits:false;initial-value:0deg}
+@keyframes spinr{to{--ang:360deg}}
+.box .otp{position:relative;display:flex;gap:8px;justify-content:center;margin:14px 0 6px}
+.box .otp .od{flex:0 1 48px;height:58px;border-radius:16px;position:relative;font-style:normal;display:grid;place-items:center;font:700 26px Fredoka,"Open Sans",sans-serif;color:#fff;background:rgba(255,255,255,.2);border:1px solid rgba(255,255,255,.55);box-shadow:inset 0 1px 0 rgba(255,255,255,.7),0 6px 16px rgba(8,30,90,.25);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);transition:transform .2s,background .2s}
+.box .otp .od.f{background:rgba(255,255,255,.34);animation:pop .25s}
+@keyframes pop{50%{transform:scale(1.12)}}
+.box .otp .od.act::before{content:"";position:absolute;inset:-2px;border-radius:18px;padding:2px;background:conic-gradient(from var(--ang),#ffb15c 0,#2f95e0 30%,#fff 50%,#2f95e0 70%,#ffb15c 100%);-webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;mask-composite:exclude;animation:spinr 2.4s linear infinite;pointer-events:none}
+.box .otp .od.act::after{content:"";position:absolute;inset:-4px;border-radius:20px;background:conic-gradient(from var(--ang),#ffb15c66,#2f95e066,#ffb15c66);filter:blur(8px);z-index:-1;animation:spinr 2.4s linear infinite;pointer-events:none}
+.box .otp input.real{position:absolute;inset:0;width:100%;height:100%;opacity:0;padding:0;border:0;box-shadow:none;font-size:16px;caret-color:transparent;cursor:pointer}
+.box .otp.bad{animation:shk .4s}.box .otp.bad .od{border-color:#ff6b6b}
+@keyframes shk{20%,60%{transform:translateX(-8px)}40%,80%{transform:translateX(8px)}}
+.box .rs{text-align:center;color:#dbe9f5;font-size:15px}.box .rs button.go2{display:inline;padding:0 2px;font-size:15px}.box .rs button:disabled{opacity:.6;text-decoration:none}
+#bnav{display:none;position:fixed;left:50%;bottom:max(12px,env(safe-area-inset-bottom));transform:translateX(-50%);width:min(430px,calc(100% - 24px));height:62px;z-index:3}
+#bnav .bg{position:absolute;inset:0;border-radius:31px;background:linear-gradient(160deg,rgba(255,255,255,.9),rgba(226,238,255,.78));border:1px solid rgba(255,255,255,.9);box-shadow:0 14px 34px rgba(8,30,90,.35),inset 0 1px 0 #fff;backdrop-filter:blur(22px) saturate(180%);-webkit-backdrop-filter:blur(22px) saturate(180%);-webkit-mask:radial-gradient(circle 37px at 50% 0,#0000 97%,#000 100%);mask:radial-gradient(circle 37px at 50% 0,#0000 97%,#000 100%)}
+#bnav button{position:relative;z-index:2;float:left;width:20%;height:100%;border:0;background:none;box-shadow:none;border-radius:0;padding:6px 0 0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;color:#4a5b78;font:700 10.5px "Open Sans",system-ui,sans-serif;transition:color .25s,transform .3s cubic-bezier(.3,1.6,.5,1)}
+#bnav button svg{width:23px;height:23px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;transition:transform .3s cubic-bezier(.3,1.6,.5,1)}
+#bnav button.on{color:#f7931e}#bnav button.on svg{transform:translateY(-3px) scale(1.12);filter:drop-shadow(0 4px 6px rgba(247,147,30,.55))}
+#bnav button:active svg{transform:scale(.88)}
+#bnav .fab{background:none!important;box-shadow:none!important;border-radius:0;color:#fff;position:relative;overflow:visible}
+#bnav .fab .disc{position:absolute;left:50%;top:-31px;margin-left:-29px;width:58px;height:58px;border-radius:50%;display:grid;place-items:center;font-style:normal;background:linear-gradient(145deg,#ffb15c,#f7931e 55%,#e8431a);box-shadow:0 10px 24px rgba(232,67,26,.5),inset 0 1px 0 rgba(255,255,255,.6);transition:transform .3s cubic-bezier(.3,1.6,.5,1)}
+#bnav .fab:active .disc{transform:scale(.92)}
+#bnav .fab svg{width:27px;height:27px;stroke-width:2.2;color:#fff}#bnav .fab.on .disc{transform:scale(1.08);box-shadow:0 12px 28px rgba(232,67,26,.65),0 0 0 4px rgba(255,255,255,.55),inset 0 1px 0 rgba(255,255,255,.6)}#bnav .fab.on svg{transform:none;filter:none}
+#bnav .ind{position:absolute;bottom:3px;left:0;width:20%;height:6px;z-index:2;display:flex;justify-content:center;transition:left .4s cubic-bezier(.3,1.3,.5,1),opacity .2s;pointer-events:none}
+#bnav .ind b{width:20px;height:4px;border-radius:4px;background:linear-gradient(90deg,#f7931e,#e8431a);box-shadow:0 0 8px #f7931e}
+html[data-theme=dark] #bnav .bg{background:linear-gradient(160deg,rgba(40,56,100,.9),rgba(16,26,58,.82));border-color:rgba(255,255,255,.2);box-shadow:0 14px 34px rgba(0,0,0,.55),inset 0 1px 0 rgba(255,255,255,.2)}
+html[data-theme=dark] #bnav button{color:#aebfe3}html[data-theme=dark] #bnav button.on{color:#ffab4a}html[data-theme=dark] #bnav .fab{color:#fff}
+@media (max-width:999px){body.in.bn #bnav{display:block}body.in.bn #view{padding-bottom:110px}}
+.lgo{display:flex;align-items:center;justify-content:space-between;width:calc(100% - 28px);margin:14px;padding:13px 18px;border-radius:18px;border:1px solid rgba(255,255,255,.25);background:linear-gradient(135deg,#27325a,#161d3d);color:#fff;font:700 19px "Open Sans",system-ui,sans-serif;box-shadow:0 8px 20px rgba(14,24,70,.4),inset 0 1px 0 rgba(255,255,255,.25);cursor:pointer;overflow:hidden;transition:transform .3s cubic-bezier(.3,1.6,.5,1),box-shadow .3s}
+.lgo:hover{transform:translateY(-2px);box-shadow:0 12px 26px rgba(14,24,70,.5)}.lgo:active{transform:scale(.97)}
+.lgo svg{width:58px;height:42px;overflow:visible;fill:none}
+.lgo .fr{stroke:#8ea2ff;stroke-width:2.4}.lgo .dp{fill:#f7931e;stroke:#ffd09a;stroke-width:1.2;transform-origin:36px 22px;transition:transform .45s cubic-bezier(.3,1.2,.5,1)}.lgo .kn{fill:#fff}
+.lgo .rn{stroke:#9fd0ff;stroke-width:2.8;stroke-linecap:round;stroke-linejoin:round;opacity:0;transform:translateX(-14px);transition:transform .5s cubic-bezier(.3,1,.5,1),opacity .3s}
+.lgo:hover .dp,.lgo.go .dp{transform:scaleX(.28) skewY(-8deg)}
+.lgo:hover .rn{opacity:1;transform:translateX(8px)}
+.lgo.go .rn{opacity:0;transform:translateX(30px);transition:transform .5s ease-in,opacity .45s .1s}
+.lgo.go .dp{transition-delay:.3s;transform:none}
+html[data-theme=dark] .lgo{background:linear-gradient(135deg,#eef3ff,#cfdcff);color:#1d2750}
+@media (prefers-reduced-motion:reduce){.box .otp .od.act::before,.box .otp .od.act::after{animation:none}}
 </style>
 <script>try{var t=localStorage.theme||(matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light');document.documentElement.dataset.theme=t}catch(e){document.documentElement.dataset.theme='light'}</script>
 </head>
@@ -474,7 +514,8 @@ html[data-theme=dark] .mi i{background:linear-gradient(145deg,rgba(255,255,255,.
   </form>
   <form id="s2" style="display:none">
     <small>We sent a 6-digit code to <b id="em"></b>.</small>
-    <input id="sc" placeholder="Enter Verification Code" inputmode="numeric" autocomplete="one-time-code" maxlength="6">
+    <div class="otp" id="otp"><i class="od"></i><i class="od"></i><i class="od"></i><i class="od"></i><i class="od"></i><i class="od"></i><input id="sc" class="real" inputmode="numeric" pattern="[0-9]*" autocomplete="one-time-code" maxlength="6" aria-label="6-digit verification code"></div>
+    <div class="rs">Didn't receive the code? <button id="rsb" class="go2" type="button" disabled>Resend in 30s</button></div>
     <button class="o">Create Account</button>
     <button id="ce" class="go2" type="button">Change Email</button>
   </form>
@@ -495,6 +536,13 @@ html[data-theme=dark] .mi i{background:linear-gradient(145deg,rgba(255,255,255,.
   <div id="strip"></div>
   <div id="view"></div>
 </div>
+<nav id="bnav" aria-label="Main"><div class="bg"></div><div class="ind" id="bind"><b></b></div>
+  <button data-b="home" aria-label="Home"><svg viewBox="0 0 24 24"><path d="M4 11l8-7 8 7v8a1 1 0 0 1-1 1h-4v-6H9v6H5a1 1 0 0 1-1-1z"/></svg><span>Home</span></button>
+  <button data-b="friends" aria-label="Friends"><svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c0-3.6 2.9-6 6.5-6s6.5 2.4 6.5 6"/><path d="M16 5a3.3 3.3 0 0 1 0 6.3M18.5 14.4c1.7.8 3 2.7 3 5.6"/></svg><span>Friends</span></button>
+  <button data-b="rooms" class="fab" aria-label="Chat Rooms"><em class="disc"><svg viewBox="0 0 24 24"><path d="M4 5h16a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1h-8l-5 4v-4H4a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1z"/></svg></em></button>
+  <button data-b="explore" aria-label="Explore"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M15.5 8.5l-2 5-5 2 2-5z"/></svg><span>Explore</span></button>
+  <button data-b="profile" aria-label="Profile"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-7 8-7s8 2.6 8 7"/></svg><span>Profile</span></button>
+</nav>
 <div id="drawer"><nav id="dn"></nav><button id="dtg" type="button" aria-label="Hide or show menu"><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></button></div>
 <div id="sheet"><div id="sh"></div></div>
 
@@ -519,7 +567,7 @@ const toast=t=>{const d=document.createElement('div');d.textContent=t;d.style.cs
 const ago=t=>{const s=(Date.now()-t)/1e3;return s<60?'now':s<3600?Math.floor(s/60)+'m':s<86400?Math.floor(s/3600)+'h':Math.floor(s/86400)+'d'};
 const tok=()=>localStorage.tk||sessionStorage.tk;
 const isOff=()=>!!(localStorage.tk?localStorage.off:sessionStorage.off);
-const logout=()=>{localStorage.clear();sessionStorage.clear();location.reload()};
+const logout=()=>{const t=localStorage.theme,n=localStorage.navoff;localStorage.clear();sessionStorage.clear();try{if(t)localStorage.theme=t;if(n)localStorage.navoff=n}catch(e){}location.reload()};
 const api=async(m,u,b)=>{const r=await fetch('/api'+u,{method:m,headers:{'Content-Type':'application/json',Authorization:'Bearer '+tok()},body:b?JSON.stringify(b):undefined});
   const d=await r.json().catch(()=>({}));if(r.status===401)logout();if(!r.ok)throw new Error(d.error||'Something went wrong');return d};
 const fail=e=>alert(e.message);
@@ -532,8 +580,8 @@ function done(d){const s=$('auto').checked?localStorage:sessionStorage;s.tk=d.to
 $('lf').onsubmit=async e=>{e.preventDefault();const[r,d]=await post('/api/login',{name:$('lu').value.trim(),pass:$('lp').value});if(!r.ok)return $('err').textContent=d.error;done(d)};
 $('s1').onsubmit=async e=>{e.preventDefault();if($('sp').value!==$('sp2').value)return $('err').textContent='Passwords do not match.';
   const[r,d]=await post('/api/signup/start',{fullName:$('sf').value,name:$('su').value.trim(),email:$('se').value.trim(),gender:$('sg').value,pass:$('sp').value});
-  if(!r.ok)return $('err').textContent=d.error;if(d.token)return done(d);$('em').textContent=$('se').value.trim();show('s2')};
-$('s2').onsubmit=async e=>{e.preventDefault();const[r,d]=await post('/api/signup/verify',{name:$('su').value.trim(),code:$('sc').value.trim()});if(!r.ok)return $('err').textContent=d.error;done(d)};
+  if(!r.ok)return $('err').textContent=d.error;if(d.token)return done(d);$('em').textContent=$('se').value.trim();show('s2');otpStart()};
+$('s2').onsubmit=async e=>{e.preventDefault();const[r,d]=await post('/api/signup/verify',{name:$('su').value.trim(),code:$('sc').value.trim()});if(!r.ok){$('err').textContent=d.error;const o=$('otp');o.classList.remove('bad');void o.offsetWidth;o.classList.add('bad');$('sc').value='';otpPaint();return}done(d)};
 /* ---------- socket ---------- */
 function connect(){
   ws=new WebSocket((location.protocol==='https:'?'wss':'ws')+'://'+location.host+'/ws');
@@ -563,7 +611,7 @@ let G={},RM=[],RI=null,OPEN=[];try{OPEN=JSON.parse(sessionStorage.open||'[]')}ca
 const saveOpen=()=>{try{sessionStorage.open=JSON.stringify(OPEN)}catch{}};
 /* ---------- navigation ---------- */
 const V={};const TT={home:'Home',rooms:'Chat Rooms',chat:'Chat',profile:'Profile',account:'My Account',friends:'Friends',explore:'Explore',spin:'Daily Spin',cmds:'Command List',settings:'Settings'};
-async function go(v,a){cur=v;$('drawer').classList.remove('open');
+async function go(v,a){cur=v;$('drawer').classList.remove('open');bnSet(v,a);
   $('th').classList.toggle('on',v==='home');$('tr').classList.toggle('on',v==='rooms'||v==='chat');
   if(innerWidth>=1000)drawNav();$('view').scrollTop=0;$('stt').textContent=TT[v]||'';$('strip').style.display='none';$('view').onclick=null;try{await refreshVer();await V[v](a)}catch(e){fail(e)}}
 addEventListener('resize',()=>{if(me&&innerWidth>=1000)drawNav()});$('th').onclick=()=>go('home');$('tr').onclick=()=>go('rooms');$('mb').onclick=()=>{drawNav();$('drawer').classList.add('open');navAnim()};
@@ -574,11 +622,24 @@ $('dtg').onclick=e=>{e.stopPropagation();if(innerWidth>=1000){const off=document
 function drawNav(){const items=[['🪪','My Profile','profile'],['🏠','Home','home'],['💬','Chat Rooms','rooms'],['👥','Friends','friends'],['💰','My Account','account'],['🧭','Explore','explore'],['🎡','Daily Spin','spin'],['⌨️','Command List','cmds'],['⚙️','Settings','settings']];
   $('dn').innerHTML=`<form class="dsr" id="ds"><input id="dq" placeholder="Search for a user" maxlength="16" aria-label="Search for a user"><button class="o" aria-label="Search"><svg viewBox="0 0 24 24"><circle cx="10" cy="10" r="6"/><path d="M15 15l6 6"/></svg></button></form>
   <div class="dme" id="mc">${av(me,84)}<div class="g"><span class="nm" style="color:${nc(me)}">${esc(me)}</span>${rt(ST.role,me)}<div class="mu"><span class="dot ${ST.presence||'online'}"></span>${ST.presence||'online'}</div><div class="mu">${lvi(lv(ST.xp||0),22)} Level ${lv(ST.xp||0)}</div><div class="mu">${ST.xp||0} XP · ${ST.coins||0} coins</div></div></div><div class="dh">Discover</div>`+
-  items.map(([i,t,v])=>`<button class="mi${(cur===v||(cur==='chat'&&v==='rooms'))?' on':''}" data-v="${v}"><i>${i}</i>${t}</button>`).join('')+`<button class="mi out" data-v="out"><i>⎋</i>Logout</button>`;
+  items.map(([i,t,v])=>`<button class="mi${(cur===v||(cur==='chat'&&v==='rooms'))?' on':''}" data-v="${v}"><i>${i}</i>${t}</button>`).join('')+`<button class="lgo" data-v="out" type="button"><span>Log Out</span><svg viewBox="0 0 60 44" aria-hidden="true"><g class="rn"><circle cx="14" cy="10" r="4.5"/><path d="M15 16l-3 8-6 3M15 16l5 6 5 1M12 24l-2 10M12 24l6 5 1 9"/></g><rect class="fr" x="34" y="4" width="20" height="36" rx="2"/><path class="dp" d="M36 6h16v32H36z"/><circle class="kn" cx="48" cy="22" r="1.5"/></svg></button>`;
   if(!window.__na){window.__na=1;setTimeout(navAnim)}
   $('ds').onsubmit=e=>{e.preventDefault();const q=$('dq').value.trim();if(q)go('profile',q)};
-  $('dn').onclick=e=>{const b=e.target.closest('[data-v]');if(b){b.dataset.v==='out'?logout():go(b.dataset.v,b.dataset.v==='profile'?me:undefined);return}
+  $('dn').onclick=e=>{const b=e.target.closest('[data-v]');if(b){b.dataset.v==='out'?(b.classList.add('go'),setTimeout(logout,900)):go(b.dataset.v,b.dataset.v==='profile'?me:undefined);return}
     if(e.target.closest('#mc'))statusSheet()}}
+
+/* ---------- OTP boxes ---------- */
+function otpPaint(){const v=$('sc').value.replace(/\D/g,'').slice(0,6),ds=document.querySelectorAll('#otp .od'),foc=document.activeElement===$('sc');$('sc').value=v;ds.forEach((d,i)=>{d.textContent=v[i]||'';d.classList.toggle('f',!!v[i]);d.classList.toggle('act',foc&&i===Math.min(v.length,5))})}
+let otpT=0;
+function otpTimer(){clearInterval(otpT);let s=30;const b=$('rsb');b.disabled=true;b.textContent='Resend in '+s+'s';otpT=setInterval(()=>{s--;if(s<=0){clearInterval(otpT);b.disabled=false;b.textContent='Resend code'}else b.textContent='Resend in '+s+'s'},1000)}
+function otpStart(){$('sc').value='';otpPaint();otpTimer();setTimeout(()=>$('sc').focus(),80)}
+$('sc').addEventListener('input',()=>{otpPaint();if($('sc').value.length===6)setTimeout(()=>$('s2').requestSubmit(),150)});
+$('sc').addEventListener('focus',otpPaint);$('sc').addEventListener('blur',otpPaint);
+$('otp').addEventListener('click',()=>$('sc').focus());
+$('rsb').onclick=async()=>{$('rsb').disabled=true;const[r,d]=await post('/api/signup/start',{fullName:$('sf').value,name:$('su').value.trim(),email:$('se').value.trim(),gender:$('sg').value,pass:$('sp').value});$('err').textContent=r.ok?'A new code has been sent.':d.error;if(r.ok)otpTimer();else $('rsb').disabled=false};
+/* ---------- bottom bar ---------- */
+function bnSet(v,a){document.body.classList.toggle('bn',v!=='chat');const ix={home:0,friends:1,explore:3},mine=v==='profile'&&(!a||a===me);const i=mine?4:ix[v]??-1;document.querySelectorAll('#bnav button[data-b]').forEach(b=>{const k=b.dataset.b;b.classList.toggle('on',k==='rooms'?(v==='rooms'||v==='chat'):(i>=0&&['home','friends','','explore','profile'][i]===k))});const n=$('bind');n.style.opacity=i>=0?1:0;if(i>=0)n.style.left=i*20+'%'}
+$('bnav').onclick=e=>{const b=e.target.closest('[data-b]');if(!b)return;const k=b.dataset.b;go(k,k==='profile'?me:undefined)};
 function statusSheet(){const o=[['online','Online','Available and active'],['away','Away','Be right back'],['busy','Busy','Do not disturb'],['offline','Offline','Appear offline to others']];
   $('sh').innerHTML='<h2>Set your status</h2>'+o.map(([k,t,d])=>`<button data-p="${k}" style="text-align:left"><span class="dot ${k}"></span><b>${t}</b> <span class="mu">${d}</span>${ST.presence===k?' ✓':''}</button>`).join('');
   $('sheet').classList.add('open');
