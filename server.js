@@ -251,10 +251,14 @@ const send = (ws, o) => ws.readyState === 1 && ws.send(JSON.stringify(o));
 const cast = (room, o) => members.get(room)?.forEach(w => { if (o.user && w.user !== o.user && isBlocked(o.user, w.user)) return; send(w, o); });
 const online = () => {
   const l = [...new Set([...wss.clients].filter(w => w.user).map(w => w.user))]
-    .map(n => ({ name: n, ...db.prepare('select presence,role from users where name=?').get(n) })).filter(u => u.presence !== 'offline');
+    .map(n => ({ name: n, ...db.prepare('select presence,role,xp from users where name=?').get(n) })).filter(u => u.presence !== 'offline');
   wss.clients.forEach(w => send(w, { t: 'online', list: l }));
 };
 const coins = n => db.prepare('select coins from users where name=?').get(n).coins;
+const roster = room => [...new Set([...(members.get(room) || [])].map(w => w.user))].map(n => ({ name: n, ...db.prepare('select role,xp,presence from users where name=?').get(n) })).filter(u => u.presence !== 'offline');
+const castRoster = room => { if (room && !/^dm:/.test(room)) cast(room, { t: 'members', room, list: roster(room) }); };
+const leaveRoom = ws => { const r0 = ws.room; if (!r0) return; members.get(r0)?.delete(ws); ws.room = null; castRoster(r0); };
+const xpOf = n => db.prepare('select xp from users where name=?').get(n)?.xp || 0;
 
 // ---------- UNO ----------
 const games = new Map();
@@ -488,13 +492,15 @@ wss.on('connection', ws => {
       if (!ok) return;
       const bn = db.prepare('select until from bans where room=? and user=?').get(m.room, ws.user);
       if (bn) { if (bn.until === 0 || bn.until > Date.now()) return send(ws, { t: 'denied', room: m.room, error: bn.until ? 'You are suspended from this room for a while.' : 'You are banned from this room.' }); db.prepare('delete from bans where room=? and user=?').run(m.room, ws.user); }
-      if (ws.room) members.get(ws.room)?.delete(ws);
+      leaveRoom(ws);
       ws.room = m.room;
       if (!members.has(m.room)) members.set(m.room, new Set());
       members.get(m.room).add(ws);
-      const hist = db.prepare('select user,text,kind,ts,(select role from users where name=msgs.user) role from msgs where room=? and not exists(select 1 from blocks where (a=? and b=msgs.user) or (b=? and a=msgs.user)) order by id desc limit 50').all(m.room, ws.user, ws.user).reverse();
+      const isDm = /^dm:/.test(m.room);
+      if (!isDm) send(ws, { t: 'roominfo', room: m.room, owner: ownerOf(m.room) || STAFF_USER, mods: db.prepare('select user from room_mods where room=?').all(m.room).map(x => x.user), announce: cfg(m.room).announce || '', users: roster(m.room), fav: !!db.prepare('select 1 from favs where user=? and room=?').get(ws.user, m.room) });
+      const hist = db.prepare('select user,text,kind,ts,(select role from users where name=msgs.user) role,(select xp from users where name=msgs.user) xp from msgs where room=? and not exists(select 1 from blocks where (a=? and b=msgs.user) or (b=? and a=msgs.user)) order by id desc limit 50').all(m.room, ws.user, ws.user).reverse();
       send(ws, { t: 'history', room: m.room, items: hist });
-      const an = cfg(m.room).announce; if (an) send(ws, { t: 'msg', room: m.room, user: '', text: '📌 ' + an, kind: 'sys', ts: Date.now() });
+      if (!isDm) { cast(m.room, { t: 'enter', room: m.room, user: ws.user, role: roleOf(ws.user), xp: xpOf(ws.user), ts: Date.now() }); castRoster(m.room); }
       if (games.has(m.room)) send(ws, unoState(games.get(m.room), ws.user));
     } else if (!ws.room) return;
     else if (m.t === 'msg') {
@@ -503,7 +509,7 @@ wss.on('connection', ws => {
       if (text[0] === '/') return command(ws, text);
       if (text[0] === '!') return reply(ws, 'Games with coin stakes are not available on Migv33.');
       if (!speakOk(ws)) return;
-      const o = { user: ws.user, text, kind: 'msg', ts: Date.now(), role: roleOf(ws.user) };
+      const o = { user: ws.user, text, kind: 'msg', ts: Date.now(), role: roleOf(ws.user), xp: xpOf(ws.user) };
       db.prepare('insert into msgs(room,user,text,kind,ts) values(?,?,?,?,?)').run(ws.room, o.user, o.text, o.kind, o.ts);
       addXp(ws.user, 1);
       cast(ws.room, { t: 'msg', room: ws.room, ...o });
@@ -511,7 +517,7 @@ wss.on('connection', ws => {
     else if (m.t === 'mod') moderate(ws, m.act, String(m.user || ''), (+m.minutes || 10) * 60);
     else if (m.t === 'uno') unoAct(ws.room, ws.user, m);
   });
-  ws.on('close', () => { ws.room && members.get(ws.room)?.delete(ws); online(); });
+  ws.on('close', () => { leaveRoom(ws); online(); });
 });
 
 server.listen(PORT, () => console.log('Migv33 running on :' + PORT));

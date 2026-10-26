@@ -112,6 +112,20 @@ h2{margin:6px 12px 10px;font-size:20px;color:#2a3340}
 #f{padding:8px;background:linear-gradient(#f4f6f9,#dfe4ea);border-top:1px solid #c7ced7;flex:none}
 #f input{border-radius:99px;padding:10px 16px}#f button{border-radius:8px;padding:10px 16px;font-size:16px}
 #uno{margin:6px 10px}
+#rtabs{display:flex;gap:6px;overflow-x:auto;padding:6px 8px;background:linear-gradient(#3a3a3a,#232323);flex:none;scrollbar-width:none}#rtabs::-webkit-scrollbar{display:none}
+#rtabs .rt{flex:none;display:flex;align-items:center;gap:6px;border:1px solid #ffffff30;background:#ffffff14;color:#fff;border-radius:8px;padding:5px 10px;font-size:14px;font-weight:700;cursor:pointer;max-width:46vw;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;box-shadow:none;text-shadow:none}
+#rtabs .rt.on{background:linear-gradient(#f9a13a,#e8431a);border-color:#ffd2a0}
+#rtabs .rt i{font-style:normal;opacity:.75;padding:0 2px}
+#rbar{display:flex;align-items:center;gap:4px;margin:8px 8px 0;padding:6px 8px 6px 12px;background:#fff;border-radius:99px;box-shadow:0 2px 8px #0002;flex:none}
+#rbar .on1{display:flex;align-items:center;gap:8px;font-weight:800;cursor:pointer;flex:1;min-width:0;border:0;background:none;box-shadow:none;padding:4px 0;text-align:left;font-size:16px}
+#rbar .ib{width:38px;height:38px;padding:0;border-radius:50%;border:0;background:none;box-shadow:none;display:grid;place-items:center}
+#rbar .ib:hover{background:#0000000d}
+#rbar svg{width:24px;height:24px;stroke:#444;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+#rbar .star.on svg{fill:#f7a600;stroke:#f7a600}
+.rl{padding:1px 2px}.rl .rn2{color:#ee7d34;font-weight:600}.rl.ann{font-weight:800;color:#26324d}.rl.ent{color:#222}
+#log.navy .rl,#log.dark .rl{color:#e8eefc}
+.lvt{color:#7a8696;font-weight:600;font-size:.9em}
+#log.navy .lvt,#log.dark .lvt{color:#aab}
 .ri{width:18px;height:18px;vertical-align:-3px;margin-left:4px}
 .dot{display:inline-block;width:12px;height:12px;border-radius:50%;margin-right:6px;box-shadow:0 0 0 1px #0003,inset 0 -2px 3px #0003}
 .online{background:radial-gradient(circle at 35% 30%,#d7ff8a,#58b523)}.away{background:radial-gradient(circle at 35% 30%,#ffe59a,#f2a900)}.busy{background:radial-gradient(circle at 35% 30%,#ffb3b3,#d62d2d)}.offline{background:radial-gradient(circle at 35% 30%,#e5e5e5,#888)}
@@ -239,14 +253,18 @@ async function on(m){
     ST=await api('GET','/me').catch(()=>({}));ROLES[me]=ST.role;await refreshVer();$('coins').textContent=ST.coins+' coins';drawNav();if(first)go('home')}
   if(m.t==='levelup'){ST.xp=Math.max(ST.xp||0,CUM[m.level]);toast(`🎉 Level ${m.level}!${m.reward?` +${m.reward.toLocaleString()} coins`:''}`)}
   if(m.t==='coins'){ST.coins=m.coins;$('coins').textContent=m.coins+' coins';if(cur==='account')go('account')}
-  if(m.t==='online'){ONL=m.list;m.list.forEach(u=>ROLES[u.name]=u.role);if($('ol'))drawOnline()}
-  if(m.t==='history'&&$('log')){$('log').innerHTML='';m.items.forEach(add)}
+  if(m.t==='online'){ONL=m.list;m.list.forEach(u=>ROLES[u.name]=u.role)}
+  if(m.t==='roominfo'&&m.room===room&&$('log'))roomIntro(m);
+  if(m.t==='enter'&&m.room===room&&$('log'))enterLine(m);
+  if(m.t==='members'&&m.room===room){RM=m.list;m.list.forEach(u=>ROLES[u.name]=u.role);drawOnline()}
+  if(m.t==='history'&&$('log')&&(!m.room||m.room===room))m.items.forEach(add)
   if(m.t==='msg'&&m.room===room&&$('log'))add(m);
   if(m.t==='uno')renderUno(m);
-  if(m.t==='kicked'){alert(`You were removed from #${m.room} by ${m.by}.`);go('rooms')}
-  if(m.t==='denied'){alert(m.error);go('rooms')}
+  if(m.t==='kicked'){OPEN=OPEN.filter(x=>x!==m.room);saveOpen();alert(`You were removed from #${m.room} by ${m.by}.`);go('rooms')}
+  if(m.t==='denied'){OPEN=OPEN.filter(x=>x!==m.room);saveOpen();alert(m.error);go('rooms')}
 }
-let G={};
+let G={},RM=[],RI=null,OPEN=[];try{OPEN=JSON.parse(sessionStorage.open||'[]')}catch{}
+const saveOpen=()=>{try{sessionStorage.open=JSON.stringify(OPEN)}catch{}};
 /* ---------- navigation ---------- */
 const V={};const TT={home:'Home',rooms:'Chat Rooms',chat:'Chat',profile:'Profile',account:'My Account',friends:'Friends',explore:'Explore',spin:'Daily Spin',cmds:'Command List',settings:'Settings'};
 async function go(v,a){cur=v;$('drawer').classList.remove('open');
@@ -294,20 +312,59 @@ V.rooms=async()=>{const rs=await api('GET','/rooms');
   $('view').onclick=async e=>{const f=e.target.closest('[data-f]');if(f){await api('POST',`/rooms/${f.dataset.f}/fav`);return V.rooms()}
     const r=e.target.closest('[data-r]');if(r)return go('chat',r.dataset.r);const s=e.target.closest('[data-s]');if(s){const d=$('s'+s.dataset.s);d.style.display=d.style.display==='none'?'':'none'}}};
 /* ---------- chat ---------- */
-V.chat=async(r)=>{room=r;if(!r.startsWith('dm:'))lastRoom=r;target='';pend=null;const dm=r.startsWith('dm:');const title=dm?'Chat with '+r.slice(3).split(':').find(x=>x!==me):'#'+r;
-  $('stt').textContent=title;view(`<div id="chatbox"><div id="ol" class="chips"></div>
+const rtitle=r=>r.startsWith('dm:')?r.slice(3).split(':').find(x=>x!==me)||'DM':'#'+r;
+const lvtag=(n,xp)=>` <span class="lvt">[${lv(xp||0)}]</span>`;
+V.chat=async(r)=>{room=r;if(!r.startsWith('dm:'))lastRoom=r;target='';pend=null;RM=[];RI=null;const dm=r.startsWith('dm:');const title=rtitle(r);
+  if(!OPEN.includes(r)){OPEN.push(r);saveOpen()}
+  $('stt').textContent=title;
+  view(`<div id="chatbox"><div id="rtabs"></div>${dm?'':'<div id="rbar"></div>'}
    <div id="log" class="${localStorage.cbg||'light'}"></div><div id="uno" class="card" style="display:none"></div>
    <div class="row mu" id="tools" style="flex-wrap:wrap"><span>Gift:</span><span id="gifts"></span><span id="to"></span></div>
    <form id="f" class="row"><input id="t" placeholder="Type a message…" autocomplete="off" maxlength="500"><button class="o">Send</button></form></div>`);
-  
+  drawTabs();
   $('gifts').innerHTML=Object.entries(G).map(([k,g])=>`<button data-g="${k}" title="${g.n}">${g.e} ${g.c}</button>`).join(' ');
   $('gifts').onclick=e=>{const k=e.target.closest('button')?.dataset.g;if(!k)return;if(!target)return alert('Tap a username in the chat first, then pick a gift.');tx({t:'gift',gift:k,to:target})};
   $('f').onsubmit=e=>{e.preventDefault();const t=$('t').value.trim();if(t)tx({t:'msg',text:t});$('t').value=''};
   $('log').onclick=e=>{const u=e.target.dataset.u;if(u&&u!==me)setTarget(u)};
+  swipe($('chatbox'));
   drawOnline();tx({t:'join',room:r});
   if(r==='games'){$('uno').style.display='block';$('uno').innerHTML='<button class="o" id="jn">Join UNO</button>';$('jn').onclick=()=>uno({a:'join'})}};
-function drawOnline(){$('ol').innerHTML='<span class="mu">Online:</span>'+(ONL.map(u=>`<button data-n="${esc(u.name)}"><span class="dot ${u.presence}"></span><span style="color:${nc(u.name)}">${esc(u.name)}</span>${rt(u.role,u.name)}</button>`).join('')||'<span class="mu">nobody</span>');
-  $('ol').onclick=e=>{const n=e.target.closest('[data-n]')?.dataset.n;if(n&&n!==me)setTarget(n)}}
+/* room tabs: tap to switch, swipe left/right to move between open rooms */
+function drawTabs(){const t=$('rtabs');if(!t)return;
+  t.innerHTML=OPEN.map(x=>`<button class="rt ${x===room?'on':''}" data-r="${esc(x)}">${esc(rtitle(x))}<i data-x="${esc(x)}" aria-label="Close tab">×</i></button>`).join('')+'<button class="rt" data-add="1">+ Rooms</button>';
+  t.onclick=e=>{const c=e.target.closest('[data-x]');if(c){e.stopPropagation();return closeTab(c.dataset.x)}
+    if(e.target.closest('[data-add]'))return go('rooms');const b=e.target.closest('[data-r]');if(b&&b.dataset.r!==room)go('chat',b.dataset.r)};
+  t.querySelector('.on')?.scrollIntoView({inline:'center',block:'nearest'})}
+function closeTab(x){const i=OPEN.indexOf(x);OPEN.splice(i,1);saveOpen();if(x!==room)return drawTabs();
+  if(OPEN.length)go('chat',OPEN[Math.min(i,OPEN.length-1)]);else go('rooms')}
+function stepRoom(d){const i=OPEN.indexOf(room);if(i<0||OPEN.length<2)return;const n=OPEN[(i+d+OPEN.length)%OPEN.length];go('chat',n)}
+function swipe(el){let x0=0,y0=0,t0=0;
+  el.addEventListener('touchstart',e=>{if(e.target.closest('input,#rtabs,#uno'))return;const p=e.touches[0];x0=p.clientX;y0=p.clientY;t0=Date.now()},{passive:true});
+  el.addEventListener('touchend',e=>{if(!x0)return;const p=e.changedTouches[0],dx=p.clientX-x0,dy=p.clientY-y0;const ok=Math.abs(dx)>70&&Math.abs(dx)>Math.abs(dy)*2&&Date.now()-t0<700;x0=0;if(ok)stepRoom(dx<0?1:-1)},{passive:true})}
+const IC={ppl:'<svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c0-3.6 2.9-6 6.5-6s6.5 2.4 6.5 6"/><path d="M16 4.7a3.5 3.5 0 010 6.6M18 14.4c2 .8 3.5 2.6 3.5 5.6"/></svg>',star:'<svg viewBox="0 0 24 24"><path d="M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1L3.2 9.5l6.1-.9z"/></svg>',shield:'<svg viewBox="0 0 24 24"><path d="M12 3l8 3v6c0 4.5-3.3 7.6-8 9-4.7-1.4-8-4.5-8-9V6z"/><path d="M8.5 12l2.5 2.5 4.5-5"/></svg>',more:'<svg viewBox="0 0 24 24"><circle cx="5" cy="12" r="1.3"/><circle cx="12" cy="12" r="1.3"/><circle cx="19" cy="12" r="1.3"/></svg>'};
+function drawOnline(){const b=$('rbar');if(!b)return;
+  b.innerHTML=`<button class="on1" data-b="ppl"><span class="dot online" style="width:16px;height:16px"></span>${RM.length} online <span style="color:#888">›</span></button>
+   <button class="ib" data-b="ppl" aria-label="Members">${IC.ppl}</button><button class="ib star ${RI?.fav?'on':''}" data-b="fav" aria-label="Favorite">${IC.star}</button><button class="ib" data-b="mods" aria-label="Room staff">${IC.shield}</button><button class="ib" data-b="more" aria-label="More">${IC.more}</button>`;
+  b.onclick=async e=>{const k=e.target.closest('[data-b]')?.dataset.b;if(!k)return;
+    if(k==='ppl')return memSheet();
+    if(k==='fav'){try{await api('POST',`/rooms/${room}/fav`);if(RI)RI.fav=!RI.fav;drawOnline()}catch(er){fail(er)}return}
+    if(k==='mods')return modInfo();
+    if(k==='more')return moreSheet()}}
+const sheetOpen=h=>{$('sh').innerHTML=h;$('sheet').classList.add('open')};
+function memSheet(){sheetOpen(`<h2>#${esc(lastRoom)} · ${RM.length} online</h2><div style="max-height:55vh;overflow:auto;display:grid;gap:6px">`+(RM.map(u=>`<button data-n="${esc(u.name)}" style="text-align:left;display:flex;gap:8px;align-items:center">${av(u.name,32)}<b style="color:${nc(u.name)}">${esc(u.name)}</b>${lvtag(u.name,u.xp)}${rt(u.role,u.name)}</button>`).join('')||'<div class="mu">Nobody here yet.</div>')+'</div>');
+  $('sh').onclick=e=>{const n=e.target.closest('[data-n]')?.dataset.n;if(!n)return;$('sheet').classList.remove('open');if(n!==me)setTarget(n)}}
+function modInfo(){const o=RI?.owner||'—';sheetOpen(`<h2>Room staff</h2><div>Managed by: <b style="color:${nc(o)}">${esc(o)}</b></div><div class="mu">Moderators: ${(RI?.mods||[]).map(esc).join(', ')||'none'}</div><div class="mu">Staff and admins can kick, ban and silence in public rooms.</div>`)}
+function moreSheet(){sheetOpen(`<h2>#${esc(lastRoom)}</h2><button data-m="cmds">⌨️ Command List</button><button data-m="rooms">💬 All rooms</button><button data-m="close">✕ Close this tab</button>`);
+  $('sh').onclick=e=>{const k=e.target.closest('[data-m]')?.dataset.m;if(!k)return;$('sheet').classList.remove('open');if(k==='close')closeTab(room);else go(k)}}
+const L=(who,html,cls='')=>{const d=document.createElement('div');d.className='rl '+cls;d.innerHTML=`<span class="rn2">${esc(who)}:</span> ${html}`;$('log').append(d);$('log').scrollTop=1e9};
+function roomIntro(m){RI=m;const nm=m.room[0].toUpperCase()+m.room.slice(1);
+  L(nm,`Welcome to ${esc(nm)}`);
+  L(nm,`This chatroom is managed by <b style="color:${nc(m.owner)}">${esc(m.owner)}</b>`);
+  L(nm,`Currently in the room: ${m.users.map(u=>esc(u.name)).join(', ')||'nobody yet'}`);
+  if(m.announce)L(nm,`📢 <b>(Announcement): ${esc(m.announce)}</b>`,'ann');
+  drawOnline()}
+function enterLine(m){ROLES[m.user]=m.role;const light=$('log').classList.contains('light');const nm=m.room[0].toUpperCase()+m.room.slice(1);
+  L(nm,`<b data-u="${esc(m.user)}" style="color:${nc(m.user,light?40:72)}">${esc(m.user)}</b>${lvtag(m.user,m.xp)}${rt(m.role,m.user)} has entered.`,'ent')}
 function setTarget(u){target=u;$('to').innerHTML=`→ <b>${esc(u)}</b> <button id="dm">Private chat</button> <button id="pf">Profile</button>${['staff','admin'].includes(ST.role)&&ROLES[u]!=='staff'&&!room.startsWith('dm:')?' <button id="md">Moderate</button>':''}`;
   $('dm').onclick=()=>go('chat','dm:'+[me,target].sort().join(':'));$('pf').onclick=()=>go('profile',target);if($('md'))$('md').onclick=()=>modSheet(u)}
 function modSheet(n){const A=[['kick','Kick from room'],['ban','Ban from room'],['unban','Unban'],['silence','Silence 10 min',10],['silence','Silence 1 hour',60],['unsilence','Unsilence']];
@@ -317,7 +374,7 @@ function modSheet(n){const A=[['kick','Kick from room'],['ban','Ban from room'],
     tx({t:'join',room:lastRoom});tx({t:'mod',act:a,user:n,minutes:+b.dataset.m||10});$('sheet').classList.remove('open')}}
 function add(m){ROLES[m.user]=m.role;const d=document.createElement('div');if(m.kind==='sys'||m.kind==='action'){d.className=m.kind==='sys'?'g2':'act';d.textContent=m.text;$('log').append(d);$('log').scrollTop=1e9;return}const t=new Date(m.ts).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
   if(m.kind==='gift'){d.className='g2';d.textContent=m.user+': '+m.text}
-  else{const light=$('log').classList.contains('light');d.className='b'+(m.user===me?' mine':'');d.innerHTML=`<b data-u="${esc(m.user)}" style="color:${nc(m.user,light?40:72)}">${esc(m.user)}</b>${rt(m.role,m.user)} <small>(${t})</small>: ${esc(m.text)}`}
+  else{const light=$('log').classList.contains('light');d.className='b'+(m.user===me?' mine':'');d.innerHTML=`<b data-u="${esc(m.user)}" style="color:${nc(m.user,light?40:72)}">${esc(m.user)}</b>${lvtag(m.user,m.xp)}${rt(m.role,m.user)} <small>(${t})</small>: ${esc(m.text)}`}
   $('log').append(d);$('log').scrollTop=1e9}
 const uno=o=>tx({t:'uno',...o});
 const lbl=c=>c==='W'?'Wild':c==='F'?'+4':({S:'Skip',V:'Rev',D:'+2'}[c[1]]||c[1]);
