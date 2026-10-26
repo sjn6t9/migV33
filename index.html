@@ -585,6 +585,21 @@ html[data-theme=dark] .fbp .pimg{background:#101830}
 html[data-theme=dark] .sc.mk{background:#1e2a4a;color:#eaf0ff}html[data-theme=dark] .sc.mk b{color:#eaf0ff}html[data-theme=dark] .sc.mk .top{background:linear-gradient(160deg,#243a6b,#4a3a2e)}
 @media (min-width:700px){.stor{max-width:640px;margin:0 auto}}
 #sh div{margin:0;width:auto;max-width:none;border-radius:0;background:none;border:0;box-shadow:none;backdrop-filter:none;-webkit-backdrop-filter:none;animation:none;padding:0}#sh div:before{content:none;display:none}
+
+/* ===== Composer options + one centred column ===== */
+.stor,.cmpx,.fbp,.tagbar{width:calc(100% - 16px);max-width:680px;margin-left:auto;margin-right:auto;box-sizing:border-box}
+#view>.stor,#view>.cmpx{margin-left:auto;margin-right:auto}.stor{padding:10px 0 0}.cmpx{margin-top:10px;margin-bottom:10px}.fbp,.tagbar{margin-top:10px;margin-bottom:10px}
+.cmpx .cb{flex-wrap:wrap;gap:6px}
+.cmpx .cb button:not(.o){padding:8px 12px;border-radius:99px;background:none;border:0;box-shadow:none;font-weight:700;font-size:15px;color:#3a4a63}
+.cmpx .cb button:not(.o):hover{background:#eef2f8}
+.cmpx .cb #pph{color:#2e9d4f}.cmpx .cb #pmn{color:#2f7fd8}.cmpx .cb #pht{color:#e8731a}
+.cmpx .cb .mu{margin-left:auto}
+#emp{display:grid;grid-template-columns:repeat(8,1fr);gap:2px;margin-top:8px;padding:8px;border-radius:16px;background:#eef2f8}#emp[hidden]{display:none}
+#emp button{padding:4px;font-size:24px;border:0;background:none;box-shadow:none;border-radius:10px}#emp button:hover{background:#fff}
+@media (max-width:480px){.cmpx .cb button:not(.o) span{display:none}.cmpx .cb button:not(.o){padding:8px 11px;font-size:18px}}
+html[data-theme=dark] .cmpx .cb button:not(.o){color:#c8d6f2}html[data-theme=dark] .cmpx .cb button:not(.o):hover{background:rgba(255,255,255,.1)}
+html[data-theme=dark] .cmpx .cb #pph{color:#7fd48d}html[data-theme=dark] .cmpx .cb #pmn{color:#7fb8ff}html[data-theme=dark] .cmpx .cb #pht{color:#ffab4a}
+html[data-theme=dark] #emp{background:rgba(255,255,255,.1)}html[data-theme=dark] #emp button:hover{background:rgba(255,255,255,.15)}
 </style>
 <script>try{var t=localStorage.theme||(matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light');document.documentElement.dataset.theme=t}catch(e){document.documentElement.dataset.theme='light'}</script>
 </head>
@@ -748,9 +763,15 @@ function snack(msg,label,fn){const d=document.createElement('div');d.className='
 let homeTag='',PS={},postImg=null;
 V.home=async(tag)=>{homeTag=typeof tag==='string'?tag:'';postImg=null;
   view(`<div id="stories" class="stor"></div><div class="cmpx"><div class="cr">${av(me,44)}<textarea id="pt" rows="2" maxlength="500" placeholder="What's on your mind, ${esc(me)}? Use @name and #tag"></textarea></div><div id="pprev"></div><div id="sug" hidden></div>
-  <div class="cb"><button id="pph" type="button">📷 Photo</button><input type="file" id="pfi" accept="image/*" hidden><span class="mu" id="pcnt">0/500</span><button class="o" id="pb">Post</button></div></div><div id="feed" class="mu pad">Loading…</div>`);
+  <div class="cb"><button id="pph" type="button" title="Add a photo">📷<span> Photo</span></button><button id="pmn" type="button" title="Mention someone">@<span> Mention</span></button><button id="pht" type="button" title="Add a hashtag">#<span> Tag</span></button><button id="pem" type="button" title="Add an emoji">😊</button><input type="file" id="pfi" accept="image/*" hidden><span class="mu" id="pcnt">0/500</span><button class="o" id="pb">Post</button></div><div id="emp" hidden>${["😀","😂","😍","🥰","😎","🤩","😢","😡","👍","🙏","❤️","🔥","🎉","💯","🎮","🌹"].map(e=>`<button type="button" data-e="${e}">${e}</button>`).join("")}</div></div><div id="feed" class="mu pad">Loading…</div>`);
   const pt=$('pt');
+  const ins=t=>{const a=pt.selectionStart??pt.value.length,b=pt.selectionEnd??a;if(pt.value.length-(b-a)+t.length>500)return;pt.value=pt.value.slice(0,a)+t+pt.value.slice(b);pt.focus();pt.selectionStart=pt.selectionEnd=a+t.length;pt.oninput()};
   $('pph').onclick=()=>$('pfi').click();
+  $('pmn').onclick=()=>{const a=pt.selectionStart||0,pre=pt.value.slice(0,a);ins(pre&&!/\s$/.test(pre)?' @':'@')};
+  $('pht').onclick=()=>{const a=pt.selectionStart||0,pre=pt.value.slice(0,a);ins(pre&&!/\s$/.test(pre)?' #':'#')};
+  $('pem').onclick=e=>{e.stopPropagation();$('emp').hidden=!$('emp').hidden};
+  $('emp').onclick=e=>{const b=e.target.closest('[data-e]');if(b){ins(b.dataset.e);$('emp').hidden=true}};
+  pt.onkeydown=e=>{if(e.key==='Enter'&&(e.ctrlKey||e.metaKey)){e.preventDefault();$('pb').click()}};
   $('pfi').onchange=async e=>{const f=e.target.files[0];e.target.value='';if(!f)return;try{const b=await imgToBlob(f,1280,false);postImg=b;$('pprev').innerHTML=`<div class="pv"><img src="${URL.createObjectURL(b)}" alt=""><button type="button" id="prm" aria-label="Remove photo">✕</button></div>`;$('prm').onclick=()=>{postImg=null;$('pprev').innerHTML=''}}catch(er){fail(er)}};
   let sugT=0;
   pt.oninput=()=>{$('pcnt').textContent=pt.value.length+'/500';clearTimeout(sugT);const m=pt.value.slice(0,pt.selectionStart).match(/(?:^|\s)@([A-Za-z0-9._-]{0,16})$/);if(!m){$('sug').hidden=true;return}
