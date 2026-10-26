@@ -257,7 +257,7 @@ body{letter-spacing:-.01em;background-image:radial-gradient(70vmax 70vmax at 6% 
 #top button:active{transform:scale(.88)}
 #top button.on{background:radial-gradient(circle at 50% 30%,rgba(255,255,255,.55),rgba(255,255,255,.14));box-shadow:inset 0 0 0 1px rgba(255,255,255,.5)}
 #top button.on svg{stroke:#fff;filter:drop-shadow(0 0 6px rgba(255,255,255,.8))}
-#coins{background:rgba(255,255,255,.16);margin:9px 10px 9px 4px;border-radius:99px;padding:0 12px;box-shadow:inset 0 0 0 1px rgba(255,255,255,.35);color:#fff;text-shadow:0 1px 3px rgba(0,0,0,.3)}
+#coins{background:rgba(255,255,255,.12);margin:9px 10px 9px 4px;border-radius:99px;padding:0 12px;box-shadow:inset 0 0 0 1px rgba(255,255,255,.35);color:#fff;text-shadow:0 1px 3px rgba(0,0,0,.3)}
 #sub{background:none;border:0;backdrop-filter:none;-webkit-backdrop-filter:none;height:38px;font-size:17px;font-weight:700;letter-spacing:-.02em}
 #strip{margin:0 10px 4px;border-radius:99px;border:1px solid rgba(255,255,255,.6);background:var(--lg);box-shadow:var(--rim);padding:6px 14px}
 /* controls: capsules */
@@ -402,7 +402,7 @@ html[data-theme=dark] .tabbar button{color:#b6c4e2}html[data-theme=dark] .tabbar
 html[data-theme=dark] #rbar svg{stroke:#dfe8ff}html[data-theme=dark] #rbar .star.on svg{stroke:#f7a600}
 html[data-theme=dark] #rbar .on1,html[data-theme=dark] #tools{color:#eaf0ff}
 html[data-theme=dark] #log,html[data-theme=dark] #log.light,html[data-theme=dark] #log.navy,html[data-theme=dark] #log.dark{background:rgba(8,14,32,.5);color:#eaf0ff}
-html[data-theme=dark] .b{background:linear-gradient(135deg,rgba(255,255,255,.16),rgba(255,255,255,.07));border-color:rgba(255,255,255,.2);color:#eaf0ff;box-shadow:var(--rim),0 4px 14px rgba(0,0,0,.3)}
+html[data-theme=dark] .b{background:linear-gradient(135deg,rgba(255,255,255,.12),rgba(255,255,255,.07));border-color:rgba(255,255,255,.2);color:#eaf0ff;box-shadow:var(--rim),0 4px 14px rgba(0,0,0,.3)}
 html[data-theme=dark] .b.mine{background:linear-gradient(135deg,rgba(60,170,90,.42),rgba(40,130,70,.3));border-color:rgba(120,230,150,.35)}
 html[data-theme=dark] .b.game{background:linear-gradient(135deg,rgba(80,130,240,.3),rgba(60,100,210,.2));color:#bcd3ff}
 html[data-theme=dark] .b small{color:#9aa9c6}
@@ -602,43 +602,47 @@ html[data-theme=dark] .cmpx .cb #pph{color:#7fd48d}html[data-theme=dark] .cmpx .
 html[data-theme=dark] #emp{background:rgba(255,255,255,.1)}html[data-theme=dark] #emp button:hover{background:rgba(255,255,255,.15)}
 
 /* hide the top and bottom bars while scrolling down, show them again when scrolling up (phones/tablets) */
-#top,#sub,#strip,#bnav{transition:max-height .28s ease,height .28s ease,margin .28s ease,padding .28s ease,opacity .22s ease,transform .28s ease,border-width .28s ease}
-body.hb #top{height:0!important;margin-top:0!important;margin-bottom:0!important;opacity:0;border-width:0!important;pointer-events:none}
-body.hb #sub{height:0!important;opacity:0;overflow:hidden;pointer-events:none}
-body.hb #strip{max-height:0!important;margin-top:0!important;margin-bottom:0!important;padding-top:0!important;padding-bottom:0!important;opacity:0;border-width:0!important;overflow:hidden;pointer-events:none}
-body.hb #bnav{transform:translate(-50%,160%)!important;pointer-events:none}
+#bnav{transition:transform .42s cubic-bezier(.22,.8,.25,1),opacity .3s ease}
+body.hb #bnav{transform:translate(-50%,170%)!important;opacity:0;pointer-events:none}
+@media (max-width:999px){
+ #app{position:relative}
+ #hdr{position:absolute;top:0;left:0;right:0;z-index:6;transition:transform .42s cubic-bezier(.22,.8,.25,1),opacity .3s ease;will-change:transform,opacity}
+ body.hb #hdr{transform:translateY(-115%);opacity:0;pointer-events:none}
+ #view{padding-top:var(--hh,100px)}
+}
 #log .bts{align-self:flex-start;font-size:10.5px;font-weight:600;opacity:.62;margin:-3px 10px 5px;line-height:1.2}#log .bts.mine{align-self:flex-end}
 #tools:has(#to:empty){display:none}#rmn{font-size:20px;font-weight:900;padding:0 10px}
 /* ===== App colour skins: flat colour + liquid glass ===== */
-html[data-skin=navy]{--bg:#27467f;--sf:#31528f;--sf2:#38599a;--ln:#5776b4;--tx:#f2f6ff;--mu:#b5c6e6;--gl:rgba(255,255,255,.13);--gl2:rgba(255,255,255,.2);--glb:rgba(255,255,255,.16);--gdk:rgba(255,255,255,.13);--lg:rgba(255,255,255,.13);--lg2:rgba(255,255,255,.2)}
-html[data-skin=navy] body,html[data-skin=navy] #auth{background:#27467f!important;background-image:none!important;color:#f2f6ff}
+html[data-skin=navy]{--bg:#0c1d44;--sf:#14295a;--sf2:#1a3369;--ln:#2d4a86;--tx:#f2f6ff;--mu:#a9bbdf;--gl:rgba(255,255,255,.09);--gl2:rgba(255,255,255,.2);--glb:rgba(255,255,255,.12);--gdk:rgba(255,255,255,.09);--lg:rgba(255,255,255,.09);--lg2:rgba(255,255,255,.2)}
+html[data-skin=navy] body,html[data-skin=navy] #auth{background:#0c1d44!important;background-image:none!important;color:#f2f6ff}
 html[data-skin=navy] :is(#top,#sub,#strip,#bnav .bg,#bnav .fab .disc,.card,.fr,.cmp,.cmpx,.rm,#rbar,#tools,.ph,.dme,.tiles div,.box,#f,#recbar,#log,#rtabs,#dtg,.tabbar,.tagbar,.xpc,.mi i,.lgo,#sheet div,#drawer nav,.dh,.b,.b.mine,.b.game,.chips button,.tabbar button,.tabbar button.on,.acts button,.rm button,#rbar .ib,#rbar .on1,button,button.o,input,select,textarea,#sug,.rpk,.g2,.lv,.sc.mk .top,.svc .cap,.svf,.offline,.online,.away,.busy){background-image:none!important;text-shadow:none!important}
-html[data-skin=navy] :is(.card,.fr,.cmp,.cmpx,.rm,#rbar,#tools,.ph,.dme,.tiles div,.box,.xpc,.tagbar,#sheet div,#drawer nav,#sug,.rpk,#top,#sub,#strip,#bnav .bg,#f,#recbar,#rtabs,#dtg,.tabbar,.dh){background:rgba(255,255,255,.13)!important;border:1px solid rgba(255,255,255,.3)!important;backdrop-filter:blur(22px) saturate(170%)!important;-webkit-backdrop-filter:blur(22px) saturate(170%)!important;box-shadow:inset 1.5px 1.5px 1px rgba(255,255,255,.35),inset -1px -1px 1px rgba(255,255,255,.1),0 10px 28px rgba(8,20,50,.3)!important}
+html[data-skin=navy] :is(.card,.fr,.cmp,.cmpx,.rm,#rbar,#tools,.ph,.dme,.tiles div,.box,.xpc,.tagbar,#sheet div,#drawer nav,#sug,.rpk,#top,#sub,#strip,#bnav .bg,#f,#recbar,#rtabs,#dtg,.tabbar,.dh){background:rgba(255,255,255,.09)!important;border:1px solid rgba(255,255,255,.3)!important;backdrop-filter:blur(22px) saturate(170%)!important;-webkit-backdrop-filter:blur(22px) saturate(170%)!important;box-shadow:inset 1.5px 1.5px 1px rgba(255,255,255,.35),inset -1px -1px 1px rgba(255,255,255,.1),0 10px 28px rgba(8,20,50,.3)!important}
 html[data-skin=navy] #log{background:rgba(255,255,255,.05)!important}
-html[data-skin=navy] :is(button,.chips button,.acts button,.rm button,.tabbar button,#rbar .ib,.mi i,.lgo,.lv,.g2,.svc .cap,.svf,#bnav .fab .disc){background:rgba(255,255,255,.16)!important;border:1px solid rgba(255,255,255,.3)!important;color:#f2f6ff;backdrop-filter:blur(10px)!important;-webkit-backdrop-filter:blur(10px)!important;box-shadow:inset 1.5px 1.5px 1px rgba(255,255,255,.35),inset -1px -1px 1px rgba(255,255,255,.1)!important}
+html[data-skin=navy] :is(button,.chips button,.acts button,.rm button,.tabbar button,#rbar .ib,.mi i,.lgo,.lv,.g2,.svc .cap,.svf,#bnav .fab .disc){background:rgba(255,255,255,.12)!important;border:1px solid rgba(255,255,255,.3)!important;color:#f2f6ff;backdrop-filter:blur(10px)!important;-webkit-backdrop-filter:blur(10px)!important;box-shadow:inset 1.5px 1.5px 1px rgba(255,255,255,.35),inset -1px -1px 1px rgba(255,255,255,.1)!important}
 html[data-skin=navy] :is(input,select,textarea,#f input,.cmp input,.dsr input,.box input,.cmpx textarea){background:rgba(255,255,255,.12)!important;border:1px solid rgba(255,255,255,.3)!important;color:#f2f6ff!important;box-shadow:inset 0 2px 5px rgba(0,0,0,.25)!important}
 html[data-skin=navy] .b{background:rgba(255,255,255,.15)!important;border:1px solid rgba(255,255,255,.3)!important;color:#f2f6ff;box-shadow:inset 1.5px 1.5px 1px rgba(255,255,255,.35),inset -1px -1px 1px rgba(255,255,255,.1)!important;backdrop-filter:blur(14px)!important;-webkit-backdrop-filter:blur(14px)!important}
 html[data-skin=navy] .b.mine{background:rgba(80,190,120,.32)!important}
 html[data-skin=navy] :is(#top,#top *,#sub,#sub *,#view>h2,#view h2,#strip,#strip *,#bnav button,.box,.box *:not(button.o)){color:#f2f6ff!important;text-shadow:none!important}
 html[data-skin=navy] #top svg{stroke:#f2f6ff}
 html[data-skin=navy] #bnav button.on{color:#f7931e!important}
-html[data-skin=white]{--bg:#f4f1ea;--sf:#fbf9f4;--sf2:#eeeae0;--ln:#e3dfd2;--tx:#59606b;--mu:#8c919a;--gl:rgba(255,255,255,.55);--gl2:rgba(255,255,255,.75);--glb:rgba(255,255,255,.65);--gdk:rgba(255,255,255,.6);--lg:rgba(255,255,255,.55);--lg2:rgba(255,255,255,.75)}
-html[data-skin=white] body,html[data-skin=white] #auth{background:#f4f1ea!important;background-image:none!important;color:#59606b}
+html[data-skin=white]{--bg:#f4f1ea;--sf:#fbf9f4;--sf2:#eeeae0;--ln:#e3dfd2;--tx:#222833;--mu:#5d6572;--gl:rgba(255,255,255,.55);--gl2:rgba(255,255,255,.75);--glb:rgba(255,255,255,.65);--gdk:rgba(255,255,255,.6);--lg:rgba(255,255,255,.55);--lg2:rgba(255,255,255,.75)}
+html[data-skin=white] body,html[data-skin=white] #auth{background:#f4f1ea!important;background-image:none!important;color:#222833}
 html[data-skin=white] :is(#top,#sub,#strip,#bnav .bg,#bnav .fab .disc,.card,.fr,.cmp,.cmpx,.rm,#rbar,#tools,.ph,.dme,.tiles div,.box,#f,#recbar,#log,#rtabs,#dtg,.tabbar,.tagbar,.xpc,.mi i,.lgo,#sheet div,#drawer nav,.dh,.b,.b.mine,.b.game,.chips button,.tabbar button,.tabbar button.on,.acts button,.rm button,#rbar .ib,#rbar .on1,button,button.o,input,select,textarea,#sug,.rpk,.g2,.lv,.sc.mk .top,.svc .cap,.svf,.offline,.online,.away,.busy){background-image:none!important;text-shadow:none!important}
 html[data-skin=white] :is(.card,.fr,.cmp,.cmpx,.rm,#rbar,#tools,.ph,.dme,.tiles div,.box,.xpc,.tagbar,#sheet div,#drawer nav,#sug,.rpk,#top,#sub,#strip,#bnav .bg,#f,#recbar,#rtabs,#dtg,.tabbar,.dh){background:rgba(255,255,255,.6)!important;border:1px solid rgba(255,255,255,.95)!important;backdrop-filter:blur(22px) saturate(170%)!important;-webkit-backdrop-filter:blur(22px) saturate(170%)!important;box-shadow:inset 1.5px 1.5px 1px rgba(255,255,255,.95),inset -1px -1px 1px rgba(255,255,255,.5),0 8px 24px rgba(90,80,50,.14)!important}
 html[data-skin=white] #log{background:rgba(255,255,255,.25)!important}
-html[data-skin=white] :is(button,.chips button,.acts button,.rm button,.tabbar button,#rbar .ib,.mi i,.lgo,.lv,.g2,.svc .cap,.svf,#bnav .fab .disc){background:rgba(255,255,255,.7)!important;border:1px solid rgba(255,255,255,.95)!important;color:#59606b;backdrop-filter:blur(10px)!important;-webkit-backdrop-filter:blur(10px)!important;box-shadow:inset 1.5px 1.5px 1px rgba(255,255,255,.95),inset -1px -1px 1px rgba(255,255,255,.5)!important}
-html[data-skin=white] :is(input,select,textarea,#f input,.cmp input,.dsr input,.box input,.cmpx textarea){background:rgba(255,255,255,.8)!important;border:1px solid rgba(255,255,255,.95)!important;color:#59606b!important;box-shadow:inset 0 2px 5px rgba(90,80,50,.14)!important}
-html[data-skin=white] .b{background:rgba(255,255,255,.75)!important;border:1px solid rgba(255,255,255,.95)!important;color:#59606b;box-shadow:inset 1.5px 1.5px 1px rgba(255,255,255,.95),inset -1px -1px 1px rgba(255,255,255,.5)!important;backdrop-filter:blur(14px)!important;-webkit-backdrop-filter:blur(14px)!important}
+html[data-skin=white] :is(button,.chips button,.acts button,.rm button,.tabbar button,#rbar .ib,.mi i,.lgo,.lv,.g2,.svc .cap,.svf,#bnav .fab .disc){background:rgba(255,255,255,.7)!important;border:1px solid rgba(255,255,255,.95)!important;color:#222833;backdrop-filter:blur(10px)!important;-webkit-backdrop-filter:blur(10px)!important;box-shadow:inset 1.5px 1.5px 1px rgba(255,255,255,.95),inset -1px -1px 1px rgba(255,255,255,.5)!important}
+html[data-skin=white] :is(input,select,textarea,#f input,.cmp input,.dsr input,.box input,.cmpx textarea){background:rgba(255,255,255,.8)!important;border:1px solid rgba(255,255,255,.95)!important;color:#222833!important;box-shadow:inset 0 2px 5px rgba(90,80,50,.14)!important}
+html[data-skin=white] .b{background:rgba(255,255,255,.75)!important;border:1px solid rgba(255,255,255,.95)!important;color:#222833;box-shadow:inset 1.5px 1.5px 1px rgba(255,255,255,.95),inset -1px -1px 1px rgba(255,255,255,.5)!important;backdrop-filter:blur(14px)!important;-webkit-backdrop-filter:blur(14px)!important}
 html[data-skin=white] .b.mine{background:rgba(200,235,200,.7)!important}
-html[data-skin=white] :is(#top,#top *,#sub,#sub *,#view>h2,#view h2,#strip,#strip *,#bnav button,.box,.box *:not(button.o)){color:#59606b!important;text-shadow:none!important}
-html[data-skin=white] #top svg{stroke:#59606b}
+html[data-skin=white] :is(#top,#top *,#sub,#sub *,#view>h2,#view h2,#strip,#strip *,#bnav button,.box,.box *:not(button.o)){color:#222833!important;text-shadow:none!important}
+html[data-skin=white] #top svg{stroke:#222833}
 html[data-skin=white] #bnav button.on{color:#f7931e!important}
+html[data-boot] #auth{display:none!important}
 html[data-skin] #auth:before,html[data-skin] #auth:after{display:none!important}
 html[data-skin][data-theme] #app button.o,html[data-skin][data-theme] #auth .box button.o,html[data-skin][data-theme] #view .chips button.on,html[data-skin][data-theme] #rtabs .rt.on,html[data-skin][data-theme] .tabbar button.on,html[data-skin][data-theme] #top button.on{background:#f7931e!important;border-color:#f7931e!important;color:#fff!important}
 html[data-skin][data-theme] #bnav button:not(.fab){background:none!important;border:0!important;box-shadow:none!important;backdrop-filter:none!important;-webkit-backdrop-filter:none!important}
 </style>
-<script>try{var t=localStorage.theme||(matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light');var k=localStorage.skin;if(k==='navy'){t='dark'}else if(k==='white'){t='light'}if(k==='navy'||k==='white')document.documentElement.dataset.skin=k;document.documentElement.dataset.theme=t}catch(e){document.documentElement.dataset.theme='light'}</script>
+<script>try{var t=localStorage.theme||(matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light');if(localStorage.tk||sessionStorage.tk)document.documentElement.dataset.boot=1;var k=localStorage.skin;if(k==='navy'){t='dark'}else if(k==='white'){t='light'}if(k==='navy'||k==='white')document.documentElement.dataset.skin=k;document.documentElement.dataset.theme=t}catch(e){document.documentElement.dataset.theme='light'}</script>
 </head>
 <body>
 <div id="auth"><div class="box">
@@ -672,7 +676,7 @@ html[data-skin][data-theme] #bnav button:not(.fab){background:none!important;bor
 </div></div>
 
 <div id="app">
-  <div id="top">
+  <div id="hdr"><div id="top">
     <button id="mb" aria-label="Menu"><svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16"/></svg></button>
     <button id="th" aria-label="Home"><svg viewBox="0 0 24 24"><path d="M3 11l9-8 9 8M5 10v10h5v-6h4v6h5V10"/></svg></button>
     <div class="lg" role="img" aria-label="MigV33"></div>
@@ -681,7 +685,7 @@ html[data-skin][data-theme] #bnav button:not(.fab){background:none!important;bor
     <span id="coins"></span>
   </div>
   <div id="sub"><span id="stt">Home</span></div>
-  <div id="strip"></div>
+  <div id="strip"></div></div>
   <div id="view"></div>
 </div>
 <nav id="bnav" aria-label="Main"><div class="bg"></div><div class="ind" id="bind"><b></b></div>
@@ -731,17 +735,18 @@ $('s1').onsubmit=async e=>{e.preventDefault();if($('sp').value!==$('sp2').value)
   if(!r.ok)return $('err').textContent=d.error;if(d.token)return done(d);$('em').textContent=$('se').value.trim();show('s2');otpStart()};
 $('s2').onsubmit=async e=>{e.preventDefault();const[r,d]=await post('/api/signup/verify',{name:$('su').value.trim(),code:$('sc').value.trim()});if(!r.ok){$('err').textContent=d.error;const o=$('otp');o.classList.remove('bad');void o.offsetWidth;o.classList.add('bad');$('sc').value='';otpPaint();return}done(d)};
 /* ---------- socket ---------- */
+let tries=0;
 function connect(){
   ws=new WebSocket((location.protocol==='https:'?'wss':'ws')+'://'+location.host+'/ws');
   ws.onopen=()=>ws.send(JSON.stringify({t:'auth',token:tok(),offline:isOff()}));
   ws.onmessage=e=>on(JSON.parse(e.data));
-  ws.onclose=()=>{if(me)setTimeout(connect,2000)};
+  ws.onclose=()=>{if(me)setTimeout(connect,2000);else if(tok()){if(++tries<4)setTimeout(connect,1500);else{delete document.documentElement.dataset.boot}}};
 }
 const tx=o=>ws.readyState===1&&ws.send(JSON.stringify(o));
 async function on(m){
   if(m.t==='error'){if(m.error==='auth'||m.error==='banned'){if(m.error==='banned')alert('Your account has been banned.');logout()}else alert(m.error)}
   if(m.t==='ready'){const first=!me;me=m.user;G=m.gifts;$('auth').style.display='none';$('app').style.display='flex';document.body.classList.add('in');
-    ST=await api('GET','/me').catch(()=>({}));ROLES[me]=ST.role;await refreshVer();$('coins').textContent=cn(ST.coins);drawNav();if(first)go('home')}
+    ST=await api('GET','/me').catch(()=>({}));ROLES[me]=ST.role;await refreshVer();$('coins').textContent=cn(ST.coins);drawNav();document.documentElement.removeAttribute('data-boot');if(first){let r=null;try{r=JSON.parse(sessionStorage.lastv||'null')}catch{}if(r&&V[r[0]]&&r[0]!=='admin')go(r[0],r[1]===null?undefined:r[1]);else go('home')}}
   if(m.t==='levelup'){ST.xp=Math.max(ST.xp||0,CUM[m.level]);toast(`🎉 Level ${m.level}!${m.reward?` +${m.reward.toLocaleString()} coins`:''}`)}
   if(m.t==='gifts'){G=m.gifts;if($('gifts'))$('gifts').innerHTML=Object.entries(G).map(([k,g])=>`<button data-g="${k}" title="${esc(g.n)} (${k}) · ${g.c} coins">${g.img?`<img src="${esc(g.img)}" alt="" style="height:20px;width:20px;object-fit:contain;vertical-align:middle">`:g.e} ${g.c}</button>`).join(' ')}
   if(m.t==='xp'){ST.xp=m.xp;drawNav();if(cur==='profile')go('profile',me)}
@@ -763,7 +768,7 @@ const saveOpen=()=>{try{sessionStorage.open=JSON.stringify(OPEN)}catch{}};
 /* ---------- navigation ---------- */
 const cn=c=>ST.unlimited?'∞ coins':c+' coins';
 const V={};const TT={panel:'Panel',admin:'Admin Panel',home:'Home',rooms:'Chat Rooms',chat:'Chat',profile:'Profile',account:'My Account',friends:'Friends',explore:'Explore',spin:'Daily Spin',cmds:'Command List',settings:'Settings'};
-async function go(v,a){cur=v;$('drawer').classList.remove('open');bnSet(v,a);
+async function go(v,a){cur=v;try{if(v!=='chat')sessionStorage.lastv=JSON.stringify([v,a===undefined?null:a])}catch{}$('drawer').classList.remove('open');bnSet(v,a);
   $('th').classList.toggle('on',v==='home');$('tr').classList.toggle('on',v==='rooms'||v==='chat');
   if(innerWidth>=1000)drawNav();$('view').scrollTop=0;$('stt').textContent=TT[v]||'';$('strip').style.display='none';$('view').onclick=null;document.body.classList.remove('hb');try{await refreshVer();await V[v](a)}catch(e){fail(e)}}
 addEventListener('resize',()=>{if(me&&innerWidth>=1000)drawNav()});$('th').onclick=()=>go('home');$('tr').onclick=()=>go('rooms');$('mb').onclick=()=>{drawNav();$('drawer').classList.add('open');navAnim()};
@@ -1414,7 +1419,8 @@ if(tok())connect();
 
 /* auto-hide bars on scroll (phones/tablets): down = hide, up = show */
 (()=>{const v=$('view');let last=0,lock=0;
-  const set=on=>{if(document.body.classList.contains('hb')===on)return;document.body.classList.toggle('hb',on);lock=Date.now()+420;last=v.scrollTop};
+  const set=on=>{if(document.body.classList.contains('hb')===on)return;document.body.classList.toggle('hb',on);lock=Date.now()+250;last=v.scrollTop};
+  const hd=$('hdr'),hh=()=>document.getElementById('app').style.setProperty('--hh',hd.offsetHeight+'px');hh();try{new ResizeObserver(hh).observe(hd)}catch{addEventListener('resize',hh)}
   v.addEventListener('scroll',()=>{if(innerWidth>=1000){set(false);return}
     if(Date.now()<lock){last=v.scrollTop;return}
     const y=v.scrollTop,dy=y-last;
