@@ -23,6 +23,7 @@ create table if not exists msgs(id integer primary key, room text, user text, te
 const GIFTS = { rose: { n: 'Rose', c: 10, e: '🌹' }, heart: { n: 'Heart', c: 20, e: '💖' }, crown: { n: 'Crown', c: 100, e: '👑' } };
 
 const app = express();
+app.set('trust proxy', 1); // behind Caddy: use the real visitor IP for rate limits
 app.use(express.json());
 app.use(express.static('public'));
 fs.mkdirSync('uploads', { recursive: true });
@@ -41,10 +42,17 @@ async function sendCode(email, code) {
   await mailer.sendMail({ from: process.env.SMTP_FROM || process.env.SMTP_USER, to: email,
     subject: 'Your migv33 verification code', text: `Your verification code is ${code}. It expires in 10 minutes.` });
 }
+function createUser(name, p) {
+  const i = db.prepare('insert into users(name,pass,full_name,email,gender) values(?,?,?,?,?)').run(name, p.hash, p.fullName, p.email, p.gender);
+  pending.delete(name);
+  db.prepare('update users set coins=coins+500, spins=spins+1 where name=?').run(name); addTx(name, 'other', 'Level 1 reward', 500);
+  if (name.toLowerCase() === STAFF_USER) db.prepare("update users set role='staff', verified=1 where name=?").run(name);
+  return sign(i.lastInsertRowid, name);
+}
 app.post('/api/signup/start', async (q, r) => {
   const now = Date.now();
   const h = (hits.get(q.ip) || []).filter(t => now - t < 3600e3);
-  if (h.length >= 8) return bad(r, 'Too many attempts. Please try again later.', 429);
+  if (h.length >= 15) return bad(r, 'Too many attempts. Please try again later.', 429);
   hits.set(q.ip, [...h, now]);
   const { fullName = '', name = '', email = '', gender = '', pass = '' } = q.body || {};
   if (fullName.trim().length < 2 || fullName.length > 40) return bad(r, 'Enter your full name.');
@@ -56,6 +64,11 @@ app.post('/api/signup/start', async (q, r) => {
   const claim = ln === STAFF_USER && STAFF_EMAIL && em === STAFF_EMAIL;
   if (!claim && (ln.includes(STAFF_USER) || ['admin', 'staff', 'mentor', 'merchant', 'support'].includes(ln))) return bad(r, 'That username is reserved.');
   if (db.prepare('select 1 from users where lower(name)=? or email=?').get(ln, em)) return bad(r, 'That username or email is already registered.', 409);
+  if (!mailer) { // no SMTP configured: sign up directly (staff account still needs email verification)
+    if (claim) return bad(r, 'Email service is not set up yet, so the staff account cannot be created.', 503);
+    try { return r.json({ token: createUser(name, { email: em, fullName: fullName.trim(), gender, hash: bcrypt.hashSync(pass, 10) }) }); }
+    catch { return bad(r, 'That username or email is already registered.', 409); }
+  }
   const code = String(crypto.randomInt(100000, 1000000));
   pending.set(name, { email: em, code, exp: now + 600e3, tries: 0, fullName: fullName.trim(), gender, hash: bcrypt.hashSync(pass, 10) });
   try { await sendCode(em, code); } catch (e) { console.error(e); return bad(r, 'Could not send the verification email. Please try again.', 502); }
@@ -67,13 +80,7 @@ app.post('/api/signup/verify', (q, r) => {
   if (!p || Date.now() > p.exp) return bad(r, 'Code expired. Go back and press Next to get a new one.');
   if (++p.tries > 5) { pending.delete(name); return bad(r, 'Too many wrong codes. Please start again.', 429); }
   if (String(code).trim() !== p.code) return bad(r, 'Wrong verification code.');
-  try {
-    const i = db.prepare('insert into users(name,pass,full_name,email,gender) values(?,?,?,?,?)').run(name, p.hash, p.fullName, p.email, p.gender);
-    pending.delete(name);
-    db.prepare('update users set coins=coins+500, spins=spins+1 where name=?').run(name); addTx(name, 'other', 'Level 1 reward', 500);
-    if (name.toLowerCase() === STAFF_USER) db.prepare("update users set role='staff', verified=1 where name=?").run(name);
-    r.json({ token: sign(i.lastInsertRowid, name) });
-  } catch { bad(r, 'That username or email is already registered.', 409); }
+  try { r.json({ token: createUser(name, p) }); } catch { bad(r, 'That username or email is already registered.', 409); }
 });
 app.post('/api/login', (q, r) => {
   const { name, pass } = q.body || {};
