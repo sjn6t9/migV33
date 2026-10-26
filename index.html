@@ -81,7 +81,7 @@ select option{color:#000}
 .fr .tm{margin-left:auto;font-size:13px;color:#555;flex:none;padding-top:2px}
 .fr p{margin:3px 0 4px;white-space:pre-wrap;word-break:break-word;color:#333}
 .fr .st{text-align:right;color:var(--mu);font-size:12px}
-.acts{display:flex;border-top:1px solid #eee;margin-top:6px}.acts button{flex:1;border:0;background:none;border-radius:0;color:#666;box-shadow:none;font-size:14px}.acts button.on{color:var(--ac2)}
+.acts{display:flex;border-top:1px solid #eee;margin-top:6px}.acts button{white-space:nowrap;padding:8px 2px;flex:1;border:0;background:none;border-radius:0;color:#666;box-shadow:none;font-size:14px}.acts button.on{color:var(--ac2)}
 .cm{padding:4px 0 8px;display:grid;gap:4px}
 .cmp{display:flex;gap:10px;align-items:center;padding:10px 12px;background:#f3f6fa;border-bottom:1px solid #dcdcdc}
 .dk{background:linear-gradient(#4a4a4a,#252525);color:#fff;font-weight:800;padding:9px 12px;display:flex;justify-content:space-between;align-items:center;cursor:pointer;border-left:10px solid var(--c,#4aa8e8)}
@@ -132,6 +132,21 @@ h2{margin:6px 12px 10px;font-size:20px;color:#2a3340}
 .tiles b{display:block;font-size:21px;line-height:1.1}
 .pa{padding:0 12px 12px;display:flex;gap:6px;flex-wrap:wrap}
 .pa input{flex:1 1 100%}
+
+/* ---------- responsive: phone / tablet / desktop ---------- */
+@media (max-width:759px){#app{box-shadow:none;max-width:none}.card{margin-left:8px;margin-right:8px}}
+@media (max-width:400px){#top button{width:46px}#coins{padding:0 8px;font-size:13px}.ph .av{width:92px!important;height:92px!important;font-size:42px!important}.ph .nm{font-size:19px}.tiles{gap:6px;padding:6px 8px 10px}.tiles b{font-size:18px}.fr .nm{font-size:17px}.box .lg{width:200px;height:122px}}
+@media (min-width:760px) and (max-width:999px){#app{max-width:860px}#sheet div{max-width:860px}}
+@media (min-width:1000px){
+ body.in{display:grid;grid-template-columns:300px minmax(0,860px);grid-template-rows:100%;justify-content:center;gap:0;background:var(--bg)}
+ body.in #drawer{display:block;position:static;background:none;z-index:auto;grid-column:1;grid-row:1;min-height:0;border-right:1px solid var(--ln)}
+ body.in #drawer nav{width:100%;max-width:none;box-shadow:none;height:100%}
+ body.in #app{grid-column:2;grid-row:1;max-width:none;box-shadow:none}
+ #mb{display:none!important}
+ #sheet div{max-width:860px}
+ #auth{align-items:center}.box{max-width:440px}
+}
+@media (min-width:1500px){body.in{grid-template-columns:320px minmax(0,980px)}}
 </style>
 </head>
 <body>
@@ -221,8 +236,8 @@ function connect(){
 const tx=o=>ws.readyState===1&&ws.send(JSON.stringify(o));
 async function on(m){
   if(m.t==='error'){if(m.error==='auth')logout();else alert(m.error)}
-  if(m.t==='ready'){const first=!me;me=m.user;G=m.gifts;$('auth').style.display='none';$('app').style.display='flex';
-    ST=await api('GET','/me').catch(()=>({}));ROLES[me]=ST.role;await refreshVer();$('coins').textContent=ST.coins+' coins';if(first)go('home')}
+  if(m.t==='ready'){const first=!me;me=m.user;G=m.gifts;$('auth').style.display='none';$('app').style.display='flex';document.body.classList.add('in');
+    ST=await api('GET','/me').catch(()=>({}));ROLES[me]=ST.role;await refreshVer();$('coins').textContent=ST.coins+' coins';drawNav();if(first)go('home')}
   if(m.t==='levelup'){ST.xp=Math.max(ST.xp||0,CUM[m.level]);toast(`🎉 Level ${m.level}!${m.reward?` +${m.reward.toLocaleString()} coins`:''}`)}
   if(m.t==='coins'){ST.coins=m.coins;$('coins').textContent=m.coins+' coins';if(cur==='account')go('account')}
   if(m.t==='online'){ONL=m.list;m.list.forEach(u=>ROLES[u.name]=u.role);if($('ol'))drawOnline()}
@@ -237,8 +252,8 @@ let G={};
 const V={};const TT={home:'Home',rooms:'Chat Rooms',chat:'Chat',profile:'Profile',account:'My Account',friends:'Friends',explore:'Explore',spin:'Daily Spin',cmds:'Command List',settings:'Settings'};
 async function go(v,a){cur=v;$('drawer').classList.remove('open');
   $('th').classList.toggle('on',v==='home');$('tr').classList.toggle('on',v==='rooms'||v==='chat');
-  $('view').scrollTop=0;$('stt').textContent=TT[v]||'';$('strip').style.display='none';$('view').onclick=null;try{await refreshVer();await V[v](a)}catch(e){fail(e)}}
-$('th').onclick=()=>go('home');$('tr').onclick=()=>go('rooms');$('mb').onclick=()=>{drawNav();$('drawer').classList.add('open')};
+  if(innerWidth>=1000)drawNav();$('view').scrollTop=0;$('stt').textContent=TT[v]||'';$('strip').style.display='none';$('view').onclick=null;try{await refreshVer();await V[v](a)}catch(e){fail(e)}}
+addEventListener('resize',()=>{if(me&&innerWidth>=1000)drawNav()});$('th').onclick=()=>go('home');$('tr').onclick=()=>go('rooms');$('mb').onclick=()=>{drawNav();$('drawer').classList.add('open')};
 $('drawer').onclick=e=>{if(e.target.id==='drawer')$('drawer').classList.remove('open')};
 function drawNav(){const items=[['🪪','My Profile','profile'],['🏠','Home','home'],['💬','Chat Rooms','rooms'],['👥','Friends','friends'],['💰','My Account','account'],['🧭','Explore','explore'],['🎡','Daily Spin','spin'],['⌨️','Command List','cmds'],['⚙️','Settings','settings']];
   $('dn').innerHTML=`<form class="dsr" id="ds"><input id="dq" placeholder="Search for a user" maxlength="16" aria-label="Search for a user"><button class="o" aria-label="Search"><svg viewBox="0 0 24 24"><circle cx="10" cy="10" r="6"/><path d="M15 15l6 6"/></svg></button></form>
