@@ -6,6 +6,10 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import nodemailer from 'nodemailer';
 import crypto from 'crypto';
+import fs from 'fs';
+import { createRequire } from 'module';
+const require = createRequire(import.meta.url);
+const TP = require('./teen-patti.cjs');   // Teen Patti Gold engine (virtual coins, for fun only)
 
 const STAFF_USER = (process.env.STAFF_USER || 'migv33').toLowerCase();
 const STAFF_EMAIL = (process.env.STAFF_EMAIL || '').toLowerCase();
@@ -20,6 +24,8 @@ const GIFTS = { rose: { n: 'Rose', c: 10, e: '🌹' }, heart: { n: 'Heart', c: 2
 const app = express();
 app.use(express.json());
 app.use(express.static('public'));
+fs.mkdirSync('uploads', { recursive: true });
+app.use('/uploads', express.static('uploads', { maxAge: '7d', setHeaders: res => res.set('X-Content-Type-Options', 'nosniff') }));
 const sign = (id, name) => jwt.sign({ id, name }, SECRET, { expiresIn: '30d' });
 const bad = (r, m, s = 400) => r.status(s).json({ error: m });
 
@@ -41,14 +47,14 @@ app.post('/api/signup/start', async (q, r) => {
   hits.set(q.ip, [...h, now]);
   const { fullName = '', name = '', email = '', gender = '', pass = '' } = q.body || {};
   if (fullName.trim().length < 2 || fullName.length > 40) return bad(r, 'Enter your full name.');
-  if (!/^\w{3,16}$/.test(name)) return bad(r, 'Username must be 3–16 letters, numbers or underscores.');
+  if (!/^[A-Za-z0-9._-]{3,16}$/.test(name)) return bad(r, 'Username must be 3–16 characters: English letters, numbers, dot (.), dash (-) or underscore (_).');
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || email.length > 100) return bad(r, 'Enter a valid email address.');
   if (!['Male', 'Female', 'Other'].includes(gender)) return bad(r, 'Select your gender.');
   if (pass.length < 6) return bad(r, 'Password must be at least 6 characters.');
   const em = email.toLowerCase(), ln = name.toLowerCase();
   const claim = ln === STAFF_USER && STAFF_EMAIL && em === STAFF_EMAIL;
   if (!claim && (ln.includes(STAFF_USER) || ['admin', 'staff', 'mentor', 'merchant', 'support'].includes(ln))) return bad(r, 'That username is reserved.');
-  if (db.prepare('select 1 from users where name=? or email=?').get(name, em)) return bad(r, 'That username or email is already registered.', 409);
+  if (db.prepare('select 1 from users where lower(name)=? or email=?').get(ln, em)) return bad(r, 'That username or email is already registered.', 409);
   const code = String(crypto.randomInt(100000, 1000000));
   pending.set(name, { email: em, code, exp: now + 600e3, tries: 0, fullName: fullName.trim(), gender, hash: bcrypt.hashSync(pass, 10) });
   try { await sendCode(em, code); } catch (e) { console.error(e); return bad(r, 'Could not send the verification email. Please try again.', 502); }
@@ -70,7 +76,7 @@ app.post('/api/signup/verify', (q, r) => {
 });
 app.post('/api/login', (q, r) => {
   const { name, pass } = q.body || {};
-  const u = db.prepare('select * from users where name=?').get(name || '');
+  const u = db.prepare('select * from users where lower(name)=lower(?)').get(name || '');
   if (!u || !bcrypt.compareSync(pass || '', u.pass)) return bad(r, 'Wrong username or password', 401);
   r.json({ token: sign(u.id, u.name) });
 });
@@ -88,8 +94,10 @@ create table if not exists bans(room text, user text, by text, ts int, until int
 create table if not exists room_mods(room text, user text, primary key(room,user));
 create table if not exists room_cfg(room text primary key, locked int default 0, silence_until int default 0, announce text default '');
 create table if not exists blocks(a text, b text, primary key(a,b));
+create table if not exists tp_pending(room text, hand text, user text, amount int);
+create table if not exists tp_hands(id integer primary key, ts int, info text);
 create table if not exists mutes(room text, user text, until int, primary key(room,user))`);
-for (const [n, c] of [['lobby', 'official'], ['adda', 'official'], ['music', 'official'], ['games', 'game']])
+for (const [n, c] of [['lobby', 'official'], ['adda', 'official'], ['music', 'official'], ['games', 'game'], ['legendary', 'game']])
   db.prepare('insert or ignore into rooms values(?,?,?)').run(n, c, null);
 const roomOk = n => /^dm:/.test(n) || !!db.prepare('select 1 from rooms where name=?').get(n);
 const auth = (q, r, next) => { try { q.user = jwt.verify((q.headers.authorization || '').slice(7), SECRET).name; next(); } catch { bad(r, 'Please log in again', 401); } };
@@ -163,9 +171,9 @@ app.get('/api/rooms', auth, ok((q, r) => {
   r.json(db.prepare('select name,cat from rooms').all().map(x => ({ ...x, count: members.get(x.name)?.size || 0, fav: fav.has(x.name) })));
 }));
 app.post('/api/rooms', auth, ok((q, r) => {
-  const name = String(q.body?.name || '').trim();
-  if (!/^\w{3,24}$/.test(name)) return bad(r, 'Room name: 3–24 letters, numbers or underscores');
-  if (db.prepare('select 1 from rooms where name=?').get(name)) return bad(r, 'That room already exists', 409);
+  const name = String(q.body?.name || '').trim().replace(/\s+/g, ' ');
+  if (!/^[A-Za-z0-9 ]{5,20}$/.test(name)) return bad(r, 'Room name: 5–20 characters, English letters, numbers and spaces only');
+  if (db.prepare('select 1 from rooms where lower(name)=lower(?)').get(name)) return bad(r, 'That room already exists', 409);
   db.prepare('insert into rooms values(?,?,?)').run(name, 'user', q.user); r.json({ ok: true });
 }));
 app.post('/api/rooms/:n/fav', auth, ok((q, r) => {
@@ -244,6 +252,52 @@ app.post('/api/spin', auth, ok((q, r) => {
 }));
 app.get('/api/leaderboard', auth, ok((q, r) => r.json(db.prepare('select name,xp,coins,role from users order by xp desc limit 20').all().map(u => ({ ...u, level: level(u.xp) })))));
 
+// ---------- uploads: profile photos, chat images, voice notes ----------
+try { db.exec("alter table users add column avatar text default ''"); } catch {}
+const sniff = b => {
+  if (b.length < 12) return null;
+  if (b[0] === 0xFF && b[1] === 0xD8 && b[2] === 0xFF) return ['image', 'jpg'];
+  if (b.slice(0, 8).equals(Buffer.from([0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A]))) return ['image', 'png'];
+  if (b.slice(0, 3).toString() === 'GIF') return ['image', 'gif'];
+  if (b.slice(0, 4).toString() === 'RIFF' && b.slice(8, 12).toString() === 'WEBP') return ['image', 'webp'];
+  if (b.slice(0, 4).equals(Buffer.from([0x1A, 0x45, 0xDF, 0xA3]))) return ['voice', 'webm'];
+  if (b.slice(0, 4).toString() === 'OggS') return ['voice', 'ogg'];
+  if (b.slice(4, 8).toString() === 'ftyp') return ['voice', 'm4a'];
+  if (b.slice(0, 3).toString() === 'ID3' || (b[0] === 0xFF && (b[1] & 0xE0) === 0xE0)) return ['voice', 'mp3'];
+  if (b.slice(0, 4).toString() === 'RIFF' && b.slice(8, 12).toString() === 'WAVE') return ['voice', 'wav'];
+  return null;
+};
+const upHits = new Map();
+const MEDIA_URL = /^\/uploads\/[a-f0-9]{32}\.(jpg|png|gif|webp|webm|ogg|m4a|mp3|wav)$/;
+app.post('/api/upload', auth, express.raw({ type: () => true, limit: '6mb' }), (q, r) => {
+  const now = Date.now(), h = (upHits.get(q.user) || []).filter(t => now - t < 600e3);
+  if (h.length >= 40) return bad(r, 'Too many uploads. Please wait a few minutes.', 429);
+  upHits.set(q.user, [...h, now]);
+  const kind = String(q.query.kind || '');
+  const b = q.body;
+  if (!Buffer.isBuffer(b) || !b.length) return bad(r, 'No file received.');
+  const t = sniff(b);
+  if (!t) return bad(r, 'Unsupported file type.');
+  if (kind === 'voice' ? t[0] !== 'voice' : t[0] !== 'image') return bad(r, 'Wrong file type for this upload.');
+  if (b.length > (kind === 'voice' ? 3e6 : 5e6)) return bad(r, 'File is too large.', 413);
+  const name = crypto.randomBytes(16).toString('hex') + '.' + t[1];
+  fs.writeFileSync('uploads/' + name, b);
+  const url = '/uploads/' + name;
+  if (kind === 'avatar') {
+    const old = db.prepare('select avatar from users where name=?').get(q.user)?.avatar;
+    db.prepare('update users set avatar=? where name=?').run(url, q.user);
+    if (old && MEDIA_URL.test(old)) fs.unlink('.' + old, () => {});
+  }
+  r.json({ url });
+});
+app.delete('/api/me/avatar', auth, (q, r) => {
+  const old = db.prepare('select avatar from users where name=?').get(q.user)?.avatar;
+  db.prepare("update users set avatar='' where name=?").run(q.user);
+  if (old && MEDIA_URL.test(old)) fs.unlink('.' + old, () => {});
+  r.json({ ok: true });
+});
+app.get('/api/avatars', auth, (q, r) => r.json(Object.fromEntries(db.prepare("select name, avatar from users where avatar != ''").all().map(u => [u.name, u.avatar]))));
+
 const server = http.createServer(app);
 const wss = new WebSocketServer({ server, path: '/ws' });
 const members = new Map(); // room -> Set<ws>
@@ -258,6 +312,55 @@ const coins = n => db.prepare('select coins from users where name=?').get(n).coi
 const roster = room => [...new Set([...(members.get(room) || [])].map(w => w.user))].map(n => ({ name: n, ...db.prepare('select role,xp,presence from users where name=?').get(n) })).filter(u => u.presence !== 'offline');
 const castRoster = room => { if (room && !/^dm:/.test(room)) cast(room, { t: 'members', room, list: roster(room) }); };
 const leaveRoom = ws => { const r0 = ws.room; if (!r0) return; members.get(r0)?.delete(ws); ws.room = null; castRoster(r0); };
+// ---------- Teen Patti Gold (Legendary room) — virtual coins, fun only, no cash value ----------
+const TP_BOOT = Math.max(1, parseInt(process.env.TP_BOOT || '10', 10));
+const isTpRoom = n => String(n || '').toLowerCase() === 'legendary';
+const pushCoins = (...names) => wss.clients.forEach(w => names.includes(w.user) && send(w, { t: 'coins', coins: coins(w.user) }));
+const tpStore = {
+  async touch() {},
+  async getBalance(id) { return db.prepare('select coins from users where name=?').get(id)?.coins ?? 0; },
+  async top(n) { return db.prepare('select name, coins as balance from users order by coins desc limit ?').all(n); },
+  async tpDebit({ key, handId, userId, amount }) {
+    const run = db.transaction(() => {
+      const c = db.prepare('update users set coins=coins-? where name=? and coins>=?').run(amount, userId, amount);
+      if (!c.changes) return null;
+      db.prepare('insert into tp_pending values(?,?,?,?)').run(key, String(handId), userId, amount);
+      addTx(userId, 'game', 'Teen Patti Gold: bet', -amount);
+      return db.prepare('select coins from users where name=?').get(userId).coins;
+    });
+    const bal = run(); if (bal !== null) pushCoins(userId); return bal;
+  },
+  async tpSettle({ key, handId, payouts }) {
+    db.transaction(() => {
+      for (const p of payouts) { db.prepare('update users set coins=coins+? where name=?').run(p.amount, p.userId); if (p.amount > 0) addTx(p.userId, 'game', 'Teen Patti Gold: win', p.amount); }
+      db.prepare('delete from tp_pending where room=? and hand=?').run(key, String(handId));
+    })();
+    pushCoins(...payouts.map(p => p.userId));
+  },
+  async tpRefund(key) {
+    const rows = key === undefined ? db.prepare('select * from tp_pending').all() : db.prepare('select * from tp_pending where room=?').all(key);
+    db.transaction(() => {
+      for (const b of rows) { db.prepare('update users set coins=coins+? where name=?').run(b.amount, b.user); addTx(b.user, 'game', 'Teen Patti Gold: refund', b.amount); }
+      if (key === undefined) db.prepare('delete from tp_pending').run(); else db.prepare('delete from tp_pending where room=?').run(key);
+    })();
+    pushCoins(...new Set(rows.map(b => b.user)));
+    return rows.map(b => ({ key: b.room, handId: b.hand, userId: b.user, name: b.user, amount: b.amount }));
+  },
+};
+const tpPanels = room => members.get(room)?.forEach(w => send(w, { t: 'tp', room, view: tp.getView(room, w.user) }));
+const tp = new TP.TeenPattiManager({
+  store: tpStore,
+  config: { ...TP.CONFIG, DEFAULT_BOOT: TP_BOOT, RAKE_PERCENT: 0, TURN_SECONDS: 15 },
+  send: (room, text) => cast(room, { t: 'msg', room, user: 'Teen Patti Gold', text, kind: 'game', ts: Date.now(), role: '' }),
+  sendPrivate: (room, userId, text) => members.get(room)?.forEach(w => w.user === userId && send(w, { t: 'msg', room, user: 'Teen Patti Gold', text, kind: 'game', priv: true, ts: Date.now(), role: '' })),
+  isAdmin: async (u) => isSA(u.id),
+  onState: tpPanels,
+  onHand: info => { try { db.prepare('insert into tp_hands(ts,info) values(?,?)').run(Date.now(), JSON.stringify(info)); } catch {} },
+});
+tp.init().catch(e => console.error('[TeenPatti] init failed', e));
+const ensureTp = room => { if (isTpRoom(room) && !tp.rooms.has(room)) tp.handleMessage(room, { id: 'system', name: 'System', isAdmin: true }, '/bot teenpatti ' + TP_BOOT); };
+const shutdownTp = async () => { try { await tp.shutdown(); } catch {} process.exit(0); };
+process.on('SIGTERM', shutdownTp); process.on('SIGINT', shutdownTp);
 const xpOf = n => db.prepare('select xp from users where name=?').get(n)?.xp || 0;
 
 // ---------- UNO ----------
@@ -501,17 +604,29 @@ wss.on('connection', ws => {
       const hist = db.prepare('select user,text,kind,ts,(select role from users where name=msgs.user) role,(select xp from users where name=msgs.user) xp from msgs where room=? and not exists(select 1 from blocks where (a=? and b=msgs.user) or (b=? and a=msgs.user)) order by id desc limit 50').all(m.room, ws.user, ws.user).reverse();
       send(ws, { t: 'history', room: m.room, items: hist });
       if (!isDm) { cast(m.room, { t: 'enter', room: m.room, user: ws.user, role: roleOf(ws.user), xp: xpOf(ws.user), ts: Date.now() }); castRoster(m.room); }
+      if (isTpRoom(m.room)) { ensureTp(m.room); setTimeout(() => send(ws, { t: 'tp', room: m.room, view: tp.getView(m.room, ws.user) }), 50); }
       if (games.has(m.room)) send(ws, unoState(games.get(m.room), ws.user));
     } else if (!ws.room) return;
     else if (m.t === 'msg') {
       const text = String(m.text || '').trim().slice(0, 500);
       if (!text) return;
       if (text[0] === '/') return command(ws, text);
-      if (text[0] === '!') return reply(ws, 'Games with coin stakes are not available on Migv33.');
+      if (text[0] === '!') {
+        if (isTpRoom(ws.room)) { ensureTp(ws.room); return tp.handleMessage(ws.room, { id: ws.user, name: ws.user, isAdmin: isSA(ws.user) }, text).catch(e => console.error('[TeenPatti]', e)); }
+        return reply(ws, 'This game is only played in the Legendary room.');
+      }
       if (!speakOk(ws)) return;
       const o = { user: ws.user, text, kind: 'msg', ts: Date.now(), role: roleOf(ws.user), xp: xpOf(ws.user) };
       db.prepare('insert into msgs(room,user,text,kind,ts) values(?,?,?,?,?)').run(ws.room, o.user, o.text, o.kind, o.ts);
       addXp(ws.user, 1);
+      cast(ws.room, { t: 'msg', room: ws.room, ...o });
+    } else if (m.t === 'media') {
+      const url = String(m.url || ''), kind = m.kind === 'voice' ? 'voice' : 'image';
+      if (!MEDIA_URL.test(url) || !fs.existsSync('.' + url)) return;
+      if (!speakOk(ws)) return;
+      const dur = Math.max(0, Math.min(300, Math.round(+m.dur || 0)));
+      const o = { user: ws.user, text: kind === 'voice' ? url + '|' + dur : url, kind, ts: Date.now(), role: roleOf(ws.user), xp: xpOf(ws.user) };
+      db.prepare('insert into msgs(room,user,text,kind,ts) values(?,?,?,?,?)').run(ws.room, o.user, o.text, o.kind, o.ts);
       cast(ws.room, { t: 'msg', room: ws.room, ...o });
     } else if (m.t === 'gift') giftOne(ws, m.to, m.gift);
     else if (m.t === 'mod') moderate(ws, m.act, String(m.user || ''), (+m.minutes || 10) * 60);
