@@ -772,20 +772,45 @@ app.post('/api/admin/users/:n/edit', auth, ok((q, r) => {
   bad(r, 'Unknown action');
 }));
 
-const PRIZES = [{ l: '100 coins', c: 100 }, { l: '200 coins', c: 200 }, { l: '400 coins', c: 400 }, { l: '500 coins', c: 500 }, { l: '+100 XP', x: 100 }, { l: '+250 XP', x: 250 }, { l: 'Try again' }];
-const today = () => new Date().toISOString().slice(0, 10);
-app.get('/api/spin', auth, ok((q, r) => { const u = db.prepare('select spins,last_spin from users where name=?').get(q.user); r.json({ prizes: PRIZES.map(p => p.l), spins: u.spins, free: u.last_spin !== today() }); }));
+// ---------- Daily Lucky Draw: two draws a day (12:00 PM and 12:00 AM, Dhaka time) ----------
+const DRAW_TZ = 6 * 3600e3, HALF = 12 * 3600e3;               // Asia/Dhaka = UTC+6 (no daily-saving shift)
+// label, min, max, weight (weights favour the smaller slices so the economy is not flooded)
+const PRIZES = [['500–550', 500, 550, 30], ['750–825', 750, 825, 22], ['1k–1.1k', 1000, 1100, 16], ['1250–1375', 1250, 1375, 11], ['1.5k–1.65k', 1500, 1650, 8], ['2k–2.2k', 2000, 2200, 5], ['3k–3.3k', 3000, 3300, 4], ['5k–5.5k', 5000, 5500, 2.5], ['10k–11k', 10000, 11000, 1], ['20k–22k', 20000, 22000, 0.5]]
+  .map(([l, min, max, w]) => ({ l, min, max, w }));
+try { db.exec('alter table users add column last_slot int default -1'); } catch {}
+const drawSlot = (t = Date.now()) => Math.floor((t + DRAW_TZ) / HALF);          // id of the current 12-hour window
+const drawNext = (t = Date.now()) => (drawSlot(t) + 1) * HALF - DRAW_TZ;          // UTC ms when the next window opens
+const pickPrize = () => { const tot = PRIZES.reduce((a, p) => a + p.w, 0); let x = crypto.randomInt(0, 1e6) / 1e6 * tot; for (let i = 0; i < PRIZES.length; i++) { if (x < PRIZES[i].w) return i; x -= PRIZES[i].w; } return 0; };
+const spinInfo = name => { const u = db.prepare('select spins,last_slot from users where name=?').get(name); return { prizes: PRIZES.map(p => p.l), spins: u.spins, free: u.last_slot !== drawSlot(), next: drawNext() }; };
+app.get('/api/spin', auth, ok((q, r) => r.json(spinInfo(q.user))));
 app.post('/api/spin', auth, ok((q, r) => {
-  const u = db.prepare('select spins,last_spin from users where name=?').get(q.user);
-  if (u.last_spin !== today()) db.prepare('update users set last_spin=? where name=?').run(today(), q.user);
-  else if (u.spins > 0) db.prepare('update users set spins=spins-1 where name=?').run(q.user);
-  else return bad(r, 'No spins left. Come back tomorrow, or level up for more.');
-  const i = crypto.randomInt(PRIZES.length), p = PRIZES[i];
-  if (p.c) { db.prepare('update users set coins=coins+? where name=?').run(p.c, q.user); addTx(q.user, 'other', `Daily spin: ${p.l}`, p.c); }
-  if (p.x) addXp(q.user, p.x);
-  const left = db.prepare('select spins,last_spin from users where name=?').get(q.user);
-  r.json({ index: i, prize: p.l, coins: coins(q.user), spins: left.spins, free: left.last_spin !== today() });
+  const u = db.prepare('select spins,last_slot from users where name=?').get(q.user), slot = drawSlot();
+  if (u.last_slot !== slot) { if (!db.prepare('update users set last_slot=? where name=? and last_slot is not ?').run(slot, q.user, slot).changes) return bad(r, 'Already spun'); }
+  else if (u.spins > 0) { if (!db.prepare('update users set spins=spins-1 where name=? and spins>0').run(q.user).changes) return bad(r, 'No spins left'); }
+  else return bad(r, 'No draw available. The next draw opens at 12:00 ' + (new Date(drawNext() + DRAW_TZ).getUTCHours() === 0 ? 'AM' : 'PM') + ' (Dhaka time).');
+  const i = pickPrize(), p = PRIZES[i], amount = crypto.randomInt(p.min, p.max + 1);
+  db.prepare('update users set coins=coins+? where name=?').run(amount, q.user); addTx(q.user, 'other', `Daily Lucky Draw: ${p.l}`, amount);
+  wss.clients.forEach(w => w.user === q.user && send(w, { t: 'coins', coins: coins(q.user) }));
+  r.json({ index: i, prize: p.l, amount, coins: coins(q.user), ...spinInfo(q.user) });
 }));
+
+// ---------- Announcements (sent from the Admin Panel, shown to every user on app start) ----------
+db.exec('create table if not exists announcements(id integer primary key, title text, body text, link text, btn text, by text, ts int, active int default 1)');
+const annOut = a => a && { id: a.id, title: a.title, body: a.body, link: a.link || '', btn: a.btn || '', ts: a.ts };
+const staffChk = (q, r) => roleOf(q.user) === 'staff' || (bad(r, 'Only staff can send announcements', 403), false);
+app.get('/api/announcement', auth, ok((q, r) => r.json(annOut(db.prepare('select * from announcements where active=1 order by id desc limit 1').get()) || null)));
+app.get('/api/admin/announcements', auth, ok((q, r) => { if (!staffChk(q, r)) return; r.json(db.prepare('select id,title,body,link,btn,by,ts,active from announcements order by id desc limit 30').all()); }));
+app.post('/api/admin/announcements', auth, ok((q, r) => {
+  if (!staffChk(q, r)) return;
+  const title = String(q.body.title || '').trim().slice(0, 80), body = String(q.body.body || '').trim().slice(0, 1000), btn = String(q.body.btn || '').trim().slice(0, 20); let link = String(q.body.link || '').trim().slice(0, 300);
+  if (!title || !body) return bad(r, 'Title and message are required');
+  if (link && !/^(https?:\/\/|\/)/i.test(link)) return bad(r, 'Link must start with http:// or https://');
+  const id = db.prepare('insert into announcements(title,body,link,btn,by,ts) values(?,?,?,?,?,?)').run(title, body, link, btn, q.user, Date.now()).lastInsertRowid;
+  const a = annOut(db.prepare('select * from announcements where id=?').get(id));
+  wss.clients.forEach(w => w.user && send(w, { t: 'announce', a }));
+  r.json({ ok: true, id: Number(id) });
+}));
+app.delete('/api/admin/announcements/:id', auth, ok((q, r) => { if (!staffChk(q, r)) return; db.prepare('update announcements set active=0 where id=?').run(+q.params.id); r.json({ ok: true }); }));
 app.get('/api/leaderboard', auth, ok((q, r) => r.json(db.prepare('select name,xp,coins,role from users order by xp desc limit 20').all().map(u => ({ ...u, level: level(u.xp) })))));
 
 // ---------- uploads: profile photos, chat images, voice notes ----------

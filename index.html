@@ -672,6 +672,19 @@ html[data-skin][data-theme] #bnav button:not(.fab){background:none!important;bor
 :root[data-skin][data-theme] #view .tabbar button.on{background:#f7931e!important;color:#fff!important;border-bottom-color:transparent!important}
 :root[data-skin][data-theme] .mu,:root[data-skin][data-theme] p.mu{color:var(--mu)!important;text-shadow:none!important}
 :root[data-skin][data-theme] #view{color:var(--tx)}
+:root[data-skin=navy][data-theme] #top{background:rgba(12,29,68,.86)!important}
+:root[data-skin=white][data-theme] #top{background:rgba(255,253,248,.9)!important}
+#pop{position:fixed;inset:0;z-index:60;display:grid;place-items:center;padding:20px;background:rgba(5,10,25,.6);animation:popin .22s ease}
+@keyframes popin{from{opacity:0}to{opacity:1}}
+#pop .pc{width:min(420px,100%);max-height:86vh;overflow:auto;background:var(--sf);color:var(--tx);border:1px solid var(--ln);border-radius:28px;padding:22px 20px 18px;text-align:center;box-shadow:0 24px 60px rgba(0,0,0,.45);animation:popup .28s cubic-bezier(.3,1.4,.5,1)}
+@keyframes popup{from{transform:translateY(18px) scale(.95);opacity:0}to{transform:none;opacity:1}}
+#pop .pi{display:inline-grid;place-items:center;width:64px;height:64px;border-radius:20px;background:rgba(247,147,30,.16);color:#f7931e;font-size:32px;margin-bottom:8px}
+#pop h3{margin:6px 0 8px;font-size:21px;color:var(--tx)}
+#pop .pb{white-space:pre-wrap;line-height:1.5;font-size:16px;color:var(--tx);word-break:break-word}
+#pop .pw{margin:14px 0 4px;padding:16px 10px;border-radius:20px;background:rgba(247,147,30,.14)}#pop .pw b{display:block;font-size:44px;line-height:1.1;color:#f7931e}#pop .pw span{color:var(--mu)}
+#pop .pa{display:flex;gap:10px;margin-top:18px}#pop .pa button{flex:1;padding:13px 10px;font-size:16px;font-weight:800;border-radius:99px}
+:root[data-skin][data-theme] #pop button.o{background:#f7931e!important;border-color:#f7931e!important;color:#fff!important}
+:root[data-skin][data-theme] #pop .pc{backdrop-filter:blur(22px);-webkit-backdrop-filter:blur(22px)}
 #tp:empty{display:none}
 </style>
 <script>try{var t=localStorage.theme||(matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light');if(localStorage.tk||sessionStorage.tk)document.documentElement.dataset.boot=1;var k=localStorage.skin||'navy';if(k==='navy'){t='dark'}else if(k==='white'){t='light'}if(k==='navy'||k==='white')document.documentElement.dataset.skin=k;document.documentElement.dataset.theme=t}catch(e){document.documentElement.dataset.theme='light'}</script>
@@ -778,7 +791,8 @@ const tx=o=>ws.readyState===1&&ws.send(JSON.stringify(o));
 async function on(m){
   if(m.t==='error'){if(m.error==='auth'||m.error==='banned'){if(m.error==='banned')alert('Your account has been banned.');logout()}else alert(m.error)}
   if(m.t==='ready'){const first=!me;me=m.user;G=m.gifts;$('auth').style.display='none';$('app').style.display='flex';document.body.classList.add('in');
-    ST=await api('GET','/me').catch(()=>({}));ROLES[me]=ST.role;await refreshVer();$('coins').textContent=cn(ST.coins);drawNav();document.documentElement.removeAttribute('data-boot');if(first){let r=null;try{r=JSON.parse(sessionStorage.lastv||'null')}catch{}if(r&&V[r[0]]&&r[0]!=='admin')go(r[0],r[1]===null?undefined:r[1]);else go('home')}}
+    ST=await api('GET','/me').catch(()=>({}));ROLES[me]=ST.role;await refreshVer();$('coins').textContent=cn(ST.coins);drawNav();document.documentElement.removeAttribute('data-boot');if(first)api('GET','/announcement').then(showAnn).catch(()=>{});if(first){let r=null;try{r=JSON.parse(sessionStorage.lastv||'null')}catch{}if(r&&V[r[0]]&&r[0]!=='admin')go(r[0],r[1]===null?undefined:r[1]);else go('home')}}
+  if(m.t==='announce')showAnn(m.a);
   if(m.t==='levelup'){ST.xp=Math.max(ST.xp||0,CUM[m.level]);toast(`🎉 Level ${m.level}!${m.reward?` +${m.reward.toLocaleString()} coins`:''}`)}
   if(m.t==='gifts'){G=m.gifts;if($('gifts'))$('gifts').innerHTML=Object.entries(G).map(([k,g])=>`<button data-g="${k}" title="${esc(g.n)} (${k}) · ${g.c} coins">${g.img?`<img src="${esc(g.img)}" alt="" style="height:20px;width:20px;object-fit:contain;vertical-align:middle">`:g.e} ${g.c}</button>`).join(' ')}
   if(m.t==='xp'){ST.xp=m.xp;drawNav();if(cur==='profile')go('profile',me)}
@@ -1252,11 +1266,13 @@ V.account=async()=>{const a=await api('GET','/account');ST.coins=a.coins;$('coin
 V.admin=async(name)=>{
   if(ST.role!=='staff'){view('<div class="card mu">Staff only.</div>');return}
   if(name==='@gifts')return adminGifts();
+  if(name==='@announce')return adminAnnounce();
   if(name==='@rooms')return adminRooms();
   if(name)return adminUser(name);
   const q=window.AQ||'';const [us,lg,rq]=await Promise.all([api('GET','/admin/users?q='+encodeURIComponent(q)),api('GET','/admin/log'),api('GET','/admin/requests')]);
   view(`<div class="card"><b>🛡️ Admin Panel</b><div class="mu">Search a user, then open to edit everything about the account.</div></div>
   <div class="card row" data-u="@rooms" style="cursor:pointer"><div class="g"><b>🏠 Manage rooms</b><div class="mu">Rename rooms and set how many users fit</div></div><span class="mu">Open ›</span></div>
+  <div class="card row" data-u="@announce" style="cursor:pointer"><div class="g"><b>📢 Announcements</b><div class="mu">Send a pop-up message that every user sees when they open the app</div></div><span class="mu">Open ›</span></div>
   <div class="card row" data-u="@gifts" style="cursor:pointer"><div class="g"><b>🎁 Manage gifts</b><div class="mu">Upload gift icons, set price and what the receiver gets</div></div><span class="mu">Open ›</span></div>
   <form id="aq" class="card row"><input id="aqi" placeholder="Search by ID, name, email or mobile" maxlength="40" value="${esc(q)}"><button class="o">Search</button></form>
   ${rq.length?`<h2>Head Mentor requests <span class="lv">${rq.length}</span></h2>`+rq.map(x=>`<div class="card row"><div class="g"><b>${esc(x.from_user)}</b><div class="mu">Mentor · Level ${x.level} · ${new Date(x.ts).toLocaleDateString()}</div></div><button class="o" data-rq="${x.id}" data-ac="1">Accept</button><button data-rq="${x.id}" data-ac="0">Reject</button></div>`).join(''):''}
@@ -1410,7 +1426,7 @@ V.friends=async()=>{const d=await api('GET','/friends');['friends','requests','d
 V.explore=async()=>{const lb=await api('GET','/leaderboard');lb.forEach(u=>ROLES[u.name]=u.role);const mem=await api('GET','/members');mem.forEach(u=>ROLES[u.name]=u.role);
   view(`<h2 style="margin-top:12px">Explore</h2><div class="card"><b>🏆 Leader board</b><div class="mu">Top members by XP</div>${lb.map((u,i)=>`<div class="rm" data-u="${esc(u.name)}"><span>${i+1}. <b style="color:${nc(u.name)}">${esc(u.name)}</b>${rt(u.role,u.name)} <span class="lv">${lvi(u.level,16)}Lv ${u.level}</span></span><b>${u.xp} XP</b></div>`).join('')}</div>
   <div class="card"><b>👑 Members</b><div class="mu">Admin (orange) · Staff (green) · Mentor (red) · Merchant (purple)</div>${mem.map(u=>`<div class="rm" data-u="${esc(u.name)}"><b style="color:${nc(u.name)}">${esc(u.name)}</b>${rt(u.role,u.name)}</div>`).join('')||'<div class="mu">No members yet.</div>'}</div>
-  <div class="card row" data-go="spin" style="cursor:pointer"><div class="g"><b>🎡 Daily Spin</b><div class="mu">One free spin every day, plus level-up spins</div></div>›</div>
+  <div class="card row" data-go="spin" style="cursor:pointer"><div class="g"><b>🎡 Daily Spin</b><div class="mu">Two draws a day: 12 PM and 12 AM</div></div>›</div>
   <div class="card row" data-go="cmds" style="cursor:pointer"><div class="g"><b>⌨️ Command List</b><div class="mu">All chat commands and what they do</div></div>›</div>
   <div class="card"><b>Coming soon</b><div class="mu">Gift store · Color shop · Effect shop · Pets · Daily spin · Lucky draw · Contests</div></div>`);
   $('view').onclick=e=>{const g=e.target.closest('[data-go]');if(g)return go(g.dataset.go);const c=e.target.closest('[data-u]');if(c)go('profile',c.dataset.u)}};
@@ -1420,15 +1436,51 @@ V.cmds=async()=>{const d=await api('GET','/commands');const q=($('cq')?.value||'
   ${[['Action commands — username required',d.required,' username'],['Action commands — optional username',d.optional,' [username]'],['Action commands — solo',d.solo,'']].map(([t,l,x])=>`<div class="card"><b>${t}</b><div class="chips">${l.filter(a=>a.includes(q.replace('/',''))).map(a=>`<span class="lv" style="margin:0">/${a}${x}</span>`).join('')}</div></div>`).join('')}
   <div class="card mu">Coin-stake room games are not part of Migv33 — it is fun-only. UNO is in #games.</div>`);
   $('cb').onclick=()=>go('explore');$('cq').oninput=()=>{const p=$('cq').selectionStart;V.cmds().then(()=>{$('cq').focus();$('cq').setSelectionRange(p,p)})}};
-V.spin=async()=>{const d=await api('GET','/spin');const n=d.prizes.length,cols=['#2f3b8f','#4a56d6','#1b264f','#6c5ce7','#3b7bd6','#7a6bf0','#141b3a'];
-  view(`<div class="cmp"><button id="sb">←</button><b>Daily Spin</b></div><p class="mu" style="text-align:center">${d.free?'Your free spin for today is ready.':`Spins left: <b id="sl">${d.spins}</b>`}</p>
-  <div style="position:relative;width:280px;height:280px;margin:16px auto"><div style="position:absolute;left:50%;top:-10px;transform:translateX(-50%);font-size:26px;z-index:2">▼</div>
-  <div id="wh" style="width:280px;height:280px;border-radius:50%;border:8px solid var(--ac);position:relative;transition:transform 3.5s cubic-bezier(.17,.67,.2,1);background:conic-gradient(${cols.slice(0,n).map((c,i)=>`${c} ${i*360/n}deg ${(i+1)*360/n}deg`).join(',')})">
-  ${d.prizes.map((p,i)=>`<span style="position:absolute;left:50%;top:50%;width:90px;margin-left:-45px;text-align:center;font-size:12px;font-weight:800;transform:rotate(${(i+.5)*360/n}deg) translateY(-98px)">${p}</span>`).join('')}</div></div>
-  <div style="text-align:center"><button class="o" id="go" style="padding:12px 36px;font-size:18px">SPIN</button><div id="res" class="big" style="font-size:22px;margin-top:12px"></div></div>`);
-  $('sb').onclick=()=>go('explore');let rot=0;
-  $('go').onclick=async()=>{try{$('go').disabled=true;const r=await api('POST','/spin');rot+=360*5+(360-(r.index+.5)*360/n)-(rot%360);$('wh').style.transform=`rotate(${rot}deg)`;
-    setTimeout(()=>{$('res').textContent=r.prize==='Try again'?'Try again tomorrow!':'You won '+r.prize+'!';ST.coins=r.coins;$('coins').textContent=r.coins+' coins';$('go').disabled=false;if($('sl'))$('sl').textContent=r.spins},3600)}catch(e){fail(e);$('go').disabled=false}}};
+const popup=o=>new Promise(res=>{document.getElementById('pop')?.remove();const d=document.createElement('div');d.id='pop';
+  d.innerHTML=`<section class="pc"><div class="pi">${o.icon||'📢'}</div><h3>${esc(o.title||'')}</h3>${o.body?`<div class="pb">${esc(o.body)}</div>`:''}${o.html||''}<div class="pa">${(o.buttons||[['OK','o']]).map(([t,c],i)=>`<button class="${c||''}" data-i="${i}">${esc(t)}</button>`).join('')}</div></section>`;
+  const end=i=>{d.remove();res(i)};d.onclick=e=>{const b=e.target.closest('[data-i]');if(b)end(+b.dataset.i);else if(e.target===d&&!o.sticky)end(-1)};document.body.appendChild(d)});
+let annQ=null;
+const showAnn=async a=>{if(!a||!me)return;let seen=0;try{seen=+localStorage['ann_'+me]||0}catch{}if(a.id<=seen||annQ===a.id)return;annQ=a.id;
+  const link=a.link;const i=await popup({icon:'📢',title:a.title,body:a.body,buttons:link?[['Dismiss',''],[a.btn||'View','o']]:[['OK','o']]});
+  try{localStorage['ann_'+me]=a.id}catch{}if(link&&i===1)window.open(link,'_blank','noopener')};
+async function adminAnnounce(){
+  const L=await api('GET','/admin/announcements');
+  view(`<div class="card row"><button class="o" id="abk">‹ Back</button><div class="g"><b>📢 Announcements</b><div class="mu">The newest announcement pops up for every user the next time they open the app, and right now for anyone online.</div></div></div>
+  <form id="anf" class="card" style="display:grid;gap:8px"><b>New announcement</b><input id="at" placeholder="Title" maxlength="80"><textarea id="ab" rows="5" maxlength="1000" placeholder="Message"></textarea><div class="row"><input id="al" placeholder="Link (optional, https://…)" maxlength="300"><input id="abt" placeholder="Button text (View)" maxlength="20" style="max-width:130px"></div><button class="o">Send to everyone</button></form>
+  <h2>Sent <span class="lv">${L.length}</span></h2>
+  ${L.map(x=>`<div class="card"><div class="row"><b class="g">${esc(x.title)}</b>${x.active?`<button data-del="${x.id}">Remove</button>`:'<span class="mu">removed</span>'}</div><div class="mu" style="white-space:pre-wrap">${esc(x.body)}</div><div class="mu">${esc(x.by)} · ${new Date(x.ts).toLocaleString()}${x.link?' · '+esc(x.link):''}</div></div>`).join('')||'<div class="card mu">Nothing sent yet.</div>'}`);
+  $('abk').onclick=()=>go('admin');
+  $('anf').onsubmit=async e=>{e.preventDefault();try{await api('POST','/admin/announcements',{title:$('at').value,body:$('ab').value,link:$('al').value,btn:$('abt').value});toast('Announcement sent ✔');adminAnnounce()}catch(er){fail(er)}};
+  $('view').onclick=async e=>{const b=e.target.closest('[data-del]');if(b){try{await api('DELETE','/admin/announcements/'+b.dataset.del);adminAnnounce()}catch(er){fail(er)}}}}
+V.spin=async()=>{const d=await api('GET','/spin');const n=d.prizes.length;
+  const COL=['#f59e0b','#fb7185','#8b5cf6','#06b6d4','#22c55e'],R=150,C=160,pt=(a,r)=>{const t=a*Math.PI/180;return[(C+r*Math.sin(t)).toFixed(2),(C-r*Math.cos(t)).toFixed(2)]};
+  const slices=d.prizes.map((p,i)=>{const a0=i*360/n,a1=(i+1)*360/n,mid=(a0+a1)/2,[x0,y0]=pt(a0,R),[x1,y1]=pt(a1,R),col=COL[i%COL.length]===COL[(i+n-1)%COL.length]||(i===n-1&&i%COL.length===0)?COL[(i+2)%COL.length]:COL[i%COL.length];
+    const flip=mid>180,lab=flip?`rotate(${mid+90} ${C} ${C})`:`rotate(${mid-90} ${C} ${C})`;
+    return `<path d="M${C} ${C}L${x0} ${y0}A${R} ${R} 0 ${a1-a0>180?1:0} 1 ${x1} ${y1}Z" fill="${col}" stroke="rgba(255,255,255,.55)" stroke-width="1.5"/><text x="${flip?C-(R-18):C+(R-18)}" y="${C}" transform="${lab}" text-anchor="${flip?'start':'end'}" dominant-baseline="central" fill="#fff" font-size="${String(p).length>8?13:15}" font-weight="800" font-family="system-ui,sans-serif" style="paint-order:stroke;stroke:rgba(0,0,0,.28);stroke-width:2.5px">${esc(p)}</text>`}).join('');
+  view(`<div class="cmp"><button id="sb">←</button><b>Daily Spin</b></div>
+  <div class="card" style="text-align:center;padding:18px 14px">
+   <div style="display:inline-grid;place-items:center;width:44px;height:44px;border-radius:12px;background:#f59e0b;color:#fff;font-size:24px">🎲</div>
+   <h2 style="margin:10px 0 4px">Daily Lucky Draw</h2>
+   <p class="mu" id="sinfo" style="margin:0 0 6px"></p>
+   <div style="position:relative;width:min(290px,100%);aspect-ratio:1;margin:10px auto 6px">
+    <div id="wh" style="position:absolute;inset:0;transition:transform 4s cubic-bezier(.12,.7,.15,1)"><svg viewBox="0 0 320 320" width="100%" height="100%"><circle cx="${C}" cy="${C}" r="${R+8}" fill="#fde68a"/><circle cx="${C}" cy="${C}" r="${R+8}" fill="none" stroke="#f5c542" stroke-width="2"/>${slices}</svg></div>
+    <svg viewBox="0 0 320 320" width="100%" height="100%" style="position:absolute;inset:0;pointer-events:none"><path d="M148 6h24l-12 20z" fill="#3b2417" stroke="#fde68a" stroke-width="2" stroke-linejoin="round"/><circle cx="${C}" cy="${C}" r="25" fill="#3b2417" stroke="#e5e7eb" stroke-width="4"/><path d="M160 146l4 10 10 4-10 4-4 10-4-10-10-4 10-4z" fill="#fcd34d"/><path d="M173 148l1.6 3.8 3.8 1.6-3.8 1.6-1.6 3.8-1.6-3.8-3.8-1.6 3.8-1.6z" fill="#fff"/></svg>
+   </div>
+   <div id="res" class="big" style="font-size:22px;min-height:30px;margin:4px 0 8px"></div>
+   <button class="o" id="go" style="padding:12px 40px;font-size:18px">🎲 Spin wheel</button>
+   <p class="mu" style="margin:12px 0 0;font-size:12px">Two draws every day — at 12:00 PM and 12:00 AM. Each draw gives one spin and a missed draw cannot be reclaimed. Level-up spins can be used any time.</p>
+  </div>`);
+  $('sb').onclick=()=>go('explore');let rot=0,D=d;
+  const two=x=>String(x).padStart(2,'0');
+  const paint=()=>{if(!$('go'))return clearInterval(tm);const ms=D.next-Date.now();if(ms<=0&&!D.free){api('GET','/spin').then(x=>{D=x;paint()}).catch(()=>{});return}
+    const can=D.free||D.spins>0,t=Math.max(0,Math.floor(ms/1000)),cd=`${two(Math.floor(t/3600))}:${two(Math.floor(t%3600/60))}:${two(t%60)}`;
+    $('sinfo').innerHTML=D.free?`A draw is open now — your spin is ready.${D.spins?` <b>+${D.spins}</b> bonus spin${D.spins>1?'s':''}`:''}`:`Next draw in <b>${cd}</b>${D.spins?` · <b>${D.spins}</b> bonus spin${D.spins>1?'s':''} ready`:''}`;
+    if(!$('go').dataset.busy){$('go').disabled=!can;$('go').textContent=can?'🎲 Spin wheel':`🎲 Next draw in ${cd}`}};
+  const tm=setInterval(paint,1000);paint();
+  $('go').onclick=async()=>{try{$('go').disabled=true;$('go').dataset.busy=1;const r=await api('POST','/spin');rot+=360*5+(360-(r.index+.5)*360/n)-(rot%360);$('wh').style.transform=`rotate(${rot}deg)`;
+    setTimeout(async()=>{ST.coins=r.coins;$('coins').textContent=cn(r.coins);D={...D,free:r.free,spins:r.spins,next:r.next};delete $('go')?.dataset.busy;if($('go'))paint();
+      await popup({icon:'✨',title:'You won!',body:`You won ${r.amount.toLocaleString()} coins — added to your balance.`,html:`<div class="pw"><b>+${r.amount.toLocaleString()}</b><span>coins</span><div class="mu" style="margin-top:4px">Landed on ${esc(r.prize)}</div></div>`,buttons:[['✓ Continue','o']],sticky:1})},4100)}
+  catch(e){delete $('go').dataset.busy;fail(e);paint()}}};
 const setSkin=k=>{const r=document.documentElement;try{localStorage.skin=k||'classic'}catch{}
   if(k==='navy'||k==='white'){r.dataset.skin=k;r.dataset.theme=k==='navy'?'dark':'light'}else{delete r.dataset.skin;let t='light';try{t=localStorage.theme||(matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light')}catch{}r.dataset.theme=t}
   try{paintTn()}catch{}document.querySelector('meta[name=theme-color]')?.setAttribute('content',k==='navy'?'#0c1d44':k==='white'?'#f4f1ea':r.dataset.theme==='dark'?'#0d1430':'#222')};
