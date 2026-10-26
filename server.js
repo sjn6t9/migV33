@@ -155,16 +155,19 @@ for (const a of ["alter table posts add column image text default ''", 'alter ta
   'alter table posts add column edited int default 0', "alter table reacts add column kind text default 'like'"]) { try { db.exec(a); } catch {} }
 db.exec(`create table if not exists post_shares(post int, user text, ts int, primary key(post,user));
 create table if not exists post_hidden(user text, post int, primary key(user,post));`);
+db.exec(`create table if not exists stories(id integer primary key, user text, image text default '', text text default '', bg int default 0, ts int);
+create table if not exists story_views(story int, user text, ts int, primary key(story,user));`);
 const isMod = n => ['staff', 'admin'].includes(roleOf(n));
 const REACTS = ['like', 'love', 'haha', 'wow', 'sad', 'angry'];
 const getPost = id => db.prepare('select * from posts where id=?').get(id);
 const imgUrl = u => typeof u === 'string' && MEDIA_URL.test(u) && /\.(jpg|png|gif|webp)$/.test(u);
-function dropFile(u) { if (u && MEDIA_URL.test(u) && !db.prepare('select 1 from posts where image=?').get(u) && !db.prepare('select 1 from users where avatar=?').get(u)) fs.unlink('.' + u, () => {}); }
+function dropFile(u) { if (u && MEDIA_URL.test(u) && !db.prepare('select 1 from posts where image=?').get(u) && !db.prepare('select 1 from stories where image=?').get(u) && !db.prepare('select 1 from users where avatar=?').get(u)) fs.unlink('.' + u, () => {}); }
 app.get('/api/feed', auth, ok((q, r) => {
   const tag = String(q.query.tag || '').replace(/[^A-Za-z0-9_]/g, '').slice(0, 30);
   const rows = db.prepare(`select p.id,p.user,p.text,p.image,p.pinned,p.locked,p.edited,p.ts, p.shares + (select count(*) from post_shares where post=p.id) shares,
     (select xp from users where name=p.user) xp, (select role from users where name=p.user) role,
     (select count(*) from reacts where post=p.id) reacts, (select kind from reacts where post=p.id and user=@me) mine,
+    (select group_concat(kind) from (select kind from reacts where post=p.id group by kind order by count(*) desc limit 3)) rks,
     (select count(*) from comments where post=p.id) comments
     from posts p where p.id not in (select post from post_hidden where user=@me) ${tag ? "and (p.text like '%#'||@tag||'%')" : ''}
     order by p.pinned desc, p.id desc limit 40`).all(tag ? { me: q.user, tag } : { me: q.user });
@@ -236,6 +239,54 @@ app.post('/api/posts/:id/comments', auth, ok((q, r) => {
 app.post('/api/posts/:id/share', auth, ok((q, r) => {
   if (!getPost(q.params.id)) return bad(r, 'Post not found', 404);
   db.prepare('insert or ignore into post_shares values(?,?,?)').run(q.params.id, q.user, Date.now()); r.json({ ok: true });
+}));
+
+// ---------- Stories (disappear after 24 hours) ----------
+const STORY_MS = 24 * 3600e3;
+function purgeStories() {
+  const old = db.prepare('select id,image from stories where ts<?').all(Date.now() - STORY_MS);
+  for (const s of old) { db.prepare('delete from story_views where story=?').run(s.id); db.prepare('delete from stories where id=?').run(s.id); dropFile(s.image); }
+}
+app.get('/api/stories', auth, ok((q, r) => {
+  purgeStories();
+  const rows = db.prepare(`select s.id,s.user,s.image,s.text,s.bg,s.ts,
+    (select xp from users where name=s.user) xp, (select role from users where name=s.user) role,
+    (select count(*) from story_views where story=s.id and user=@me) seen,
+    (select count(*) from story_views where story=s.id) views
+    from stories s where s.user not in (select case when a=@me then b else a end from blocks where a=@me or b=@me) order by s.id`).all({ me: q.user });
+  const g = new Map();
+  for (const s of rows) {
+    if (!g.has(s.user)) g.set(s.user, { user: s.user, role: s.role, xp: s.xp, items: [] });
+    g.get(s.user).items.push({ id: s.id, image: s.image, text: s.text, bg: s.bg, ts: s.ts, seen: !!s.seen, views: s.user === q.user ? s.views : undefined });
+  }
+  const list = [...g.values()].map(x => ({ ...x, unseen: x.items.some(i => !i.seen), last: x.items[x.items.length - 1].ts }));
+  list.sort((a, b) => (a.user === q.user ? -1 : b.user === q.user ? 1 : (b.unseen - a.unseen) || (b.last - a.last)));
+  r.json(list);
+}));
+app.post('/api/stories', auth, ok((q, r) => {
+  const text = String(q.body?.text || '').trim().slice(0, 200), image = imgUrl(q.body?.image) ? q.body.image : '';
+  const bg = Math.max(0, Math.min(5, parseInt(q.body?.bg, 10) || 0));
+  if (!text && !image) return bad(r, 'Add a photo or some text first');
+  if (db.prepare('select count(*) c from stories where user=? and ts>?').get(q.user, Date.now() - STORY_MS).c >= 15) return bad(r, 'You can have up to 15 stories at a time.');
+  db.prepare('insert into stories(user,image,text,bg,ts) values(?,?,?,?,?)').run(q.user, image, text, bg, Date.now());
+  addXp(q.user, 2); r.json({ ok: true });
+}));
+app.post('/api/stories/:id/view', auth, ok((q, r) => {
+  const s = db.prepare('select user from stories where id=?').get(q.params.id);
+  if (s && s.user !== q.user) db.prepare('insert or ignore into story_views values(?,?,?)').run(q.params.id, q.user, Date.now());
+  r.json({ ok: true });
+}));
+app.get('/api/stories/:id/viewers', auth, ok((q, r) => {
+  const s = db.prepare('select user from stories where id=?').get(q.params.id);
+  if (!s) return bad(r, 'Story not found', 404);
+  if (s.user !== q.user && !isMod(q.user)) return bad(r, 'Only the author can see viewers', 403);
+  r.json(db.prepare('select user, ts, (select role from users where name=v.user) role from story_views v where story=? order by ts desc limit 200').all(q.params.id));
+}));
+app.delete('/api/stories/:id', auth, ok((q, r) => {
+  const s = db.prepare('select * from stories where id=?').get(q.params.id);
+  if (!s) return bad(r, 'Story not found', 404);
+  if (s.user !== q.user && !isMod(q.user)) return bad(r, 'You cannot delete this story', 403);
+  db.prepare('delete from story_views where story=?').run(s.id); db.prepare('delete from stories where id=?').run(s.id); dropFile(s.image); r.json({ ok: true });
 }));
 
 app.get('/api/rooms', auth, ok((q, r) => {

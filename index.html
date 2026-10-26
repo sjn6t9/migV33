@@ -510,7 +510,7 @@ html[data-theme=dark] .lgo{background:linear-gradient(135deg,#eef3ff,#cfdcff);co
 .tagbar{margin:10px;padding:8px 12px;border-radius:99px;background:var(--glb);display:flex;align-items:center;gap:8px;color:#2a3a55}.tagbar button{margin-left:auto;padding:4px 12px;border-radius:99px;font-size:13px}
 .snack{position:fixed;left:50%;bottom:96px;margin-left:-110px;z-index:30;display:flex;align-items:center;gap:14px;padding:10px 16px;border-radius:99px;background:#1c2748;color:#fff;box-shadow:0 10px 28px #0006;animation:pk .3s}.snack button{background:none;border:0;color:#ffb15c;font-weight:800;padding:0;box-shadow:none}
 .pmi{display:flex;align-items:center;gap:12px;width:100%;text-align:left;font-size:17px;font-weight:600;margin-top:6px}.pmi i{font-style:normal;font-size:22px;width:30px;text-align:center}.pmi.dng{color:#d93a3a}
-.whol{display:grid;gap:6px;max-height:55vh;overflow:auto}.wr{display:flex;align-items:center;gap:10px;text-align:left;width:100%}.wt{display:flex;flex-direction:column;min-width:0;flex:1}.wt small{color:#7a8696;white-space:normal;word-break:break-word}.wem{font-size:24px}
+.whol{display:grid;margin:0;gap:6px;max-height:55vh;overflow:auto}.wr{display:flex;align-items:center;gap:10px;text-align:left;width:100%}.wt{display:flex;flex-direction:column;min-width:0;flex:1}.wt small{color:#7a8696;white-space:normal;word-break:break-word}.wem{font-size:24px}
 .lk{padding:6px 0}
 .xpc{margin:8px 12px;padding:12px 14px;border-radius:20px;background:var(--glb);border:1px solid rgba(255,255,255,.75);box-shadow:var(--gsh)}
 .xpc .top{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;font-weight:700}.xpc .top span{color:#7a8696;font-weight:600;font-size:14px}
@@ -524,6 +524,67 @@ html[data-theme=dark] .acts button.cnt{background:rgba(120,180,255,.2);color:#9c
 html[data-theme=dark] .rpk{background:rgba(30,42,80,.97)}html[data-theme=dark] .rpk button.on{background:rgba(255,255,255,.18)}
 html[data-theme=dark] .mn{color:#7fb8ff}html[data-theme=dark] .wt small{color:#9db0d3}
 @media (max-width:999px){body.in #drawer nav{width:min(320px,86%);animation:dIn .45s var(--spring)}#dtg{left:calc(min(320px,86%) + 10px - 15px)}}
+
+/* ===== Facebook-style posts ===== */
+#feed{padding:0 0 12px}
+.fbp{margin:10px 8px;border-radius:16px;background:rgba(255,255,255,.95);border:1px solid rgba(255,255,255,.9);box-shadow:0 4px 16px rgba(10,40,110,.18);overflow:hidden;color:#1c2330}
+.fbp.pinned{box-shadow:0 0 0 2px rgba(247,147,30,.6),0 4px 16px rgba(10,40,110,.18)}
+.fbp .pin{padding:8px 14px 0;font-size:12px;font-weight:800;color:#e8731a}
+.fbp header{display:flex;align-items:center;gap:10px;padding:12px 12px 6px 14px}
+.fbp .who{flex:1;min-width:0}.fbp .nm{font-size:16px;font-weight:800;display:flex;align-items:center;flex-wrap:wrap;gap:2px}.fbp .nm>span[data-u]{cursor:pointer}
+.fbp .meta{font-size:12.5px;color:#65748b;margin-top:1px}
+.fbp .pm{width:36px;height:36px;padding:0;border-radius:50%;border:0;background:none;box-shadow:none;font-size:22px;line-height:1;color:#65748b;flex:none}.fbp .pm:hover{background:#eef2f8}
+.fbp .txt{padding:4px 16px 12px;font-size:16px;line-height:1.45;word-break:break-word;white-space:pre-wrap}.fbp .txt.xl{font-size:22px;line-height:1.3;padding-bottom:16px}
+.fbp .pimg{display:block;width:100%;max-height:520px;margin:0;border-radius:0;object-fit:cover;cursor:zoom-in;background:#e7edf5}
+.fbp .acts{display:flex;margin:0 10px;padding:4px 0;border-top:1px solid #e3e8f0}
+.fbp .pimg+.acts{margin-top:8px}
+.fbp .ac{flex:1;display:flex;align-items:center;justify-content:center;gap:0;position:relative;min-width:0;border-radius:10px}
+.fbp .ac>button:first-child{flex:0 1 auto;display:inline-flex;align-items:center;gap:5px;padding:9px 6px;border:0;background:none;box-shadow:none;color:#5b6b82;font-size:14.5px;font-weight:700;border-radius:10px;white-space:nowrap}
+.fbp .ac>button:first-child:hover{background:#eef2f8}.fbp .ac>button.on{color:#2f7fd8}
+.fbp .ac button.cnt{flex:none;min-width:24px;padding:2px 8px;margin-left:2px;border:0;border-radius:99px;background:#e8f1fc;color:#2a6fbd;font-weight:800;font-size:12.5px;box-shadow:none}.fbp .cnt .stk{font-style:normal;letter-spacing:-2px;margin-right:5px;font-size:13px}.fbp .ac button.cnt:hover{background:#d3e6fa}
+.fbp .cm{display:grid;gap:8px;padding:6px 12px 12px;background:#f5f8fc;border-top:1px solid #e3e8f0}
+.fbp .cmt{display:flex;gap:8px;align-items:flex-start}.fbp .bub{background:#e9eef6;border-radius:18px;padding:7px 12px;min-width:0;font-size:14.5px;word-break:break-word}.fbp .bub b{font-size:13.5px;cursor:pointer}.fbp .bub .ri{height:14px;width:14px}
+.fbp .cmt.wr{align-items:center}.fbp .cmt.wr input{flex:1;min-width:0;border-radius:99px;padding:9px 14px;border:1px solid #d6deea;background:#fff;font-size:14.5px}.fbp .cmt.wr button{padding:8px 14px;border-radius:99px}
+.fbp .rpk{bottom:calc(100% + 4px)}
+.cmpx{border-radius:16px;margin:10px 8px;background:rgba(255,255,255,.95);box-shadow:0 4px 16px rgba(10,40,110,.18)}
+.cmpx textarea{border-radius:20px;background:#eef2f8;border:0;color:#1c2330}
+.cmpx .cb{border-top:1px solid #e3e8f0;padding-top:8px}
+.cmpx .cb #pph{background:none;border:0;box-shadow:none;color:#3c8a4a;font-weight:700}.cmpx .cb #pph:hover{background:#eef2f8}
+html[data-theme=dark] .fbp,html[data-theme=dark] .cmpx{background:rgba(24,34,66,.92);border-color:rgba(255,255,255,.14);color:#eaf0ff}
+html[data-theme=dark] .fbp .meta,html[data-theme=dark] .fbp .pm{color:#9db0d3}html[data-theme=dark] .fbp .pm:hover{background:rgba(255,255,255,.1)}
+html[data-theme=dark] .fbp .acts,html[data-theme=dark] .cmpx .cb,html[data-theme=dark] .fbp .cm{border-color:rgba(255,255,255,.14)}
+html[data-theme=dark] .fbp .ac>button:first-child{color:#b6c4e2}html[data-theme=dark] .fbp .ac>button:first-child:hover{background:rgba(255,255,255,.1)}html[data-theme=dark] .fbp .ac>button.on{color:#7fb8ff}
+html[data-theme=dark] .fbp .ac button.cnt{background:rgba(120,180,255,.2);color:#9cc8ff}
+html[data-theme=dark] .fbp .cm{background:rgba(0,0,0,.2)}html[data-theme=dark] .fbp .bub{background:rgba(255,255,255,.12)}
+html[data-theme=dark] .fbp .cmt.wr input{background:rgba(255,255,255,.1);border-color:rgba(255,255,255,.2);color:#eaf0ff}
+html[data-theme=dark] .cmpx textarea{background:rgba(255,255,255,.1);color:#eaf0ff}html[data-theme=dark] .cmpx .cb #pph{color:#7fd48d}
+html[data-theme=dark] .fbp .pimg{background:#101830}
+@media (min-width:700px){.fbp,.cmpx{max-width:640px;margin-left:auto;margin-right:auto}}
+
+/* ===== Stories ===== */
+.stor{display:flex;gap:8px;overflow-x:auto;padding:10px 8px 0;scrollbar-width:none;-webkit-overflow-scrolling:touch}.stor::-webkit-scrollbar{display:none}
+.sc{flex:none;position:relative;width:104px;height:168px;border-radius:16px;border:0;padding:0;overflow:hidden;color:#fff;background-size:cover;background-position:center;box-shadow:0 4px 14px rgba(10,40,110,.3);text-align:left;cursor:pointer;transition:transform .25s cubic-bezier(.3,1.6,.5,1)}
+.sc:hover{transform:translateY(-3px)}.sc:active{transform:scale(.97)}
+.sc:after{content:"";position:absolute;inset:0;background:linear-gradient(transparent 55%,rgba(0,0,0,.65));pointer-events:none}
+.sc b{position:absolute;left:8px;right:8px;bottom:8px;z-index:1;font-size:13px;font-weight:800;text-shadow:0 1px 3px #0008;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sc .rg{position:absolute;left:8px;top:8px;z-index:1;border-radius:50%;padding:2px;background:linear-gradient(135deg,#ffb15c,#f7931e,#2f95e0);box-shadow:0 2px 6px #0005;display:block;line-height:0}.sc .rg .av{border:2px solid #fff;border-radius:50%}
+.sc.seen .rg{background:#9aa6b8}
+.sc.mk{background:#fff;color:#1c2330}.sc.mk:after{display:none}.sc.mk .top{height:118px;display:grid;place-items:center;background:linear-gradient(160deg,#cfe6ff,#ffe2c2)}
+.sc.mk b{color:#1c2330;text-shadow:none;text-align:center;left:4px;right:4px;bottom:10px}.sc.mk .pl{position:absolute;left:50%;top:104px;margin-left:-15px;width:30px;height:30px;border-radius:50%;background:linear-gradient(145deg,#ffb15c,#f7931e);color:#fff;font:800 22px/28px sans-serif;text-align:center;border:3px solid #fff;z-index:2}
+.spv{position:relative;min-height:220px;border-radius:18px;margin:8px 0;overflow:hidden;display:grid;place-items:center}.spv img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.spv textarea{position:relative;width:86%;min-height:90px;background:none!important;border:0!important;box-shadow:none!important;color:#fff;text-align:center;font:800 24px/1.3 Fredoka,"Open Sans",sans-serif;resize:none;text-shadow:0 2px 6px #0007}.spv textarea::placeholder{color:#ffffffbb}
+.sws{display:flex;gap:10px;justify-content:center}.sws button{width:34px;height:34px;border-radius:50%;padding:0;border:3px solid #fff;box-shadow:0 2px 6px #0004}.sws button.on{outline:3px solid #f7931e}
+#sv{position:fixed;inset:0;z-index:40;background:#000e;display:grid;place-items:center;animation:pk .25s}
+.svb{position:relative;width:min(440px,100%);height:100%;max-height:100dvh;background:#000;display:flex;flex-direction:column;color:#fff;overflow:hidden}
+.svp{position:absolute;top:8px;left:8px;right:8px;display:flex;gap:4px;z-index:5}.svp i{flex:1;height:3px;border-radius:3px;background:#ffffff55;overflow:hidden}.svp i.d b{display:block;width:100%;height:100%;background:#fff}.svp i.a b{display:block;height:100%;background:#fff;animation:svp 5s linear forwards}@keyframes svp{from{width:0}to{width:100%}}
+.svh{position:absolute;top:18px;left:10px;right:10px;z-index:5;display:flex;align-items:center;gap:8px;text-shadow:0 1px 4px #0008}.svh .g{flex:1;display:flex;align-items:center;gap:6px;min-width:0}.svh small{color:#ffffffcc;font-weight:600}.svh #svx{width:36px;height:36px;padding:0;border:0;background:#0006;color:#fff;border-radius:50%;box-shadow:none;font-size:18px}
+.svc{position:relative;flex:1;min-height:0;display:grid;place-items:center;background:#111}.svc>img{width:100%;height:100%;object-fit:contain}.svc .cap{position:absolute;left:0;right:0;bottom:70px;padding:12px 18px;text-align:center;font-size:18px;font-weight:700;background:linear-gradient(transparent,#000a);text-shadow:0 1px 4px #000}
+.svc .stb{position:absolute;inset:0;display:grid;place-items:center;padding:30px;text-align:center;font:800 30px/1.3 Fredoka,"Open Sans",sans-serif;word-break:break-word}.svc .stb span{text-shadow:0 2px 8px #0006}
+.svc .zl,.svc .zr{position:absolute;top:70px;bottom:70px;width:35%;z-index:3}.svc .zl{left:0}.svc .zr{right:0;width:65%}
+.svf{position:absolute;left:0;right:0;bottom:0;z-index:5;display:flex;gap:8px;justify-content:space-between;padding:14px;background:linear-gradient(transparent,#000b)}.svf button{border:0;background:#ffffff26;color:#fff;border-radius:99px;padding:9px 16px;font-weight:700;box-shadow:none}
+html[data-theme=dark] .sc.mk{background:#1e2a4a;color:#eaf0ff}html[data-theme=dark] .sc.mk b{color:#eaf0ff}html[data-theme=dark] .sc.mk .top{background:linear-gradient(160deg,#243a6b,#4a3a2e)}
+@media (min-width:700px){.stor{max-width:640px;margin:0 auto}}
+#sh div{margin:0;width:auto;max-width:none;border-radius:0;background:none;border:0;box-shadow:none;backdrop-filter:none;-webkit-backdrop-filter:none;animation:none;padding:0}#sh div:before{content:none;display:none}
 </style>
 <script>try{var t=localStorage.theme||(matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light');document.documentElement.dataset.theme=t}catch(e){document.documentElement.dataset.theme='light'}</script>
 </head>
@@ -686,7 +747,7 @@ const rich=t=>esc(t).replace(/(^|[\s(])@([A-Za-z0-9._-]{3,16})/g,'$1<a class="mn
 function snack(msg,label,fn){const d=document.createElement('div');d.className='snack';d.innerHTML=`<span>${esc(msg)}</span>${label?`<button>${esc(label)}</button>`:''}`;if(label)d.querySelector('button').onclick=()=>{d.remove();fn()};document.body.append(d);setTimeout(()=>d.remove(),6000)}
 let homeTag='',PS={},postImg=null;
 V.home=async(tag)=>{homeTag=typeof tag==='string'?tag:'';postImg=null;
-  view(`<div class="cmpx"><div class="cr">${av(me,44)}<textarea id="pt" rows="2" maxlength="500" placeholder="What's on your mind, ${esc(me)}? Use @name and #tag"></textarea></div><div id="pprev"></div><div id="sug" hidden></div>
+  view(`<div id="stories" class="stor"></div><div class="cmpx"><div class="cr">${av(me,44)}<textarea id="pt" rows="2" maxlength="500" placeholder="What's on your mind, ${esc(me)}? Use @name and #tag"></textarea></div><div id="pprev"></div><div id="sug" hidden></div>
   <div class="cb"><button id="pph" type="button">📷 Photo</button><input type="file" id="pfi" accept="image/*" hidden><span class="mu" id="pcnt">0/500</span><button class="o" id="pb">Post</button></div></div><div id="feed" class="mu pad">Loading…</div>`);
   const pt=$('pt');
   $('pph').onclick=()=>$('pfi').click();
@@ -698,21 +759,60 @@ V.home=async(tag)=>{homeTag=typeof tag==='string'?tag:'';postImg=null;
   $('pb').onclick=async()=>{const t=pt.value.trim();if(!t&&!postImg)return;$('pb').disabled=true;try{let image='';if(postImg)image=await upload('image',postImg);await api('POST','/posts',{text:t,image});ST.xp=(ST.xp||0)+5;pt.value='';postImg=null;$('pprev').innerHTML='';$('pcnt').textContent='0/500';await loadFeed()}catch(e){fail(e)}$('pb').disabled=false};
   api('GET','/rooms').then(rs=>{if(cur!=='home')return;$('strip').style.display='flex';$('strip').innerHTML=`📊 <span><b>${rs.length}</b> rooms · <b>${rs.reduce((s,x)=>s+x.count,0)}</b> chatting now</span>`}).catch(()=>{});
   $('feed').onclick=feedClick;
+  $('stories').onclick=e=>{const b=e.target.closest('[data-sc]');if(!b)return;b.dataset.sc==='new'?openCreateStory():openStory(+b.dataset.sc)};
+  loadStories();
   await loadFeed()};
 const BARS=['#f7c600','#f7852b','#4aa8e8'];
 function postHTML(p,i){const mod=['staff','admin'].includes(ST.role),own=p.user===me,canC=!p.locked||own||mod;
-  return `<article class="fr post${p.pinned?' pinned':''}" data-id="${p.id}"><div class="bar" style="background:${p.role&&p.role!=='user'?RC[p.role]:BARS[i%3===0?0:2]}"></div><div class="bd">${p.pinned?'<div class="pin">📌 Pinned post</div>':''}<div class="hd">${av(p.user,52)}<div class="g" style="min-width:0"><div class="nm" style="color:${nc(p.user)}"><span data-u="${esc(p.user)}" style="cursor:pointer">${esc(p.user)}</span>${rt(p.role,p.user)}<span class="lvp">${lvi(lv(p.xp),16)}Lv ${lv(p.xp)}</span></div>
-  ${p.text?`<p>${rich(p.text)}</p>`:''}</div><span class="tm">${ago(p.ts)}${p.edited?' · edited':''}</span><button class="pm" data-a="menu" aria-label="Post options">⋯</button></div>
+  const stack=(p.rks||'').split(',').filter(Boolean).map(k=>EM[k]).join('')||'👍';
+  return `<article class="fbp post${p.pinned?' pinned':''}" data-id="${p.id}">${p.pinned?'<div class="pin">📌 Pinned post</div>':''}
+  <header>${av(p.user,44)}<div class="who"><div class="nm" style="color:${nc(p.user)}"><span data-u="${esc(p.user)}">${esc(p.user)}</span>${rt(p.role,p.user)}<span class="lvp">${lvi(lv(p.xp),16)}Lv ${lv(p.xp)}</span></div><div class="meta">${ago(p.ts)}${p.edited?' · Edited':''} · 🌐</div></div><button class="pm" data-a="menu" aria-label="Post options">⋯</button></header>
+  ${p.text?`<div class="txt${!p.image&&p.text.length<70?' xl':''}">${rich(p.text)}</div>`:''}
   ${p.image?`<img class="pimg" src="${esc(p.image)}" loading="lazy" alt="Photo">`:''}
-  <div class="acts"><div class="ac"><button data-a="react" class="${p.mine?'on':''}">${EM[p.mine]||'👍'} React</button><button class="cnt" data-w="react">${p.reacts}</button><div class="rpk" hidden>${Object.entries(EM).map(([k,e])=>`<button data-k="${k}" class="${p.mine===k?'on':''}" title="${k}">${e}</button>`).join('')}</div></div>
-  <div class="ac"><button data-a="comment">${p.locked?'🔒':'💬'} Comment</button><button class="cnt" data-w="comment">${p.comments}</button></div>
-  <div class="ac"><button data-a="share">↗ Share</button><button class="cnt" data-w="share">${p.shares}</button></div></div><div class="cm" hidden data-canc="${canC?1:0}"></div></div></article>`}
+  <div class="acts"><div class="ac"><button data-a="react" class="${p.mine?'on':''}">${EM[p.mine]||'👍'} <span>${p.mine?p.mine[0].toUpperCase()+p.mine.slice(1):'React'}</span></button><button class="cnt" data-w="react" data-n="${p.reacts}" title="Who reacted">${p.reacts?`<i class="stk">${stack}</i>`:''}${p.reacts}</button><div class="rpk" hidden>${Object.entries(EM).map(([k,e])=>`<button data-k="${k}" class="${p.mine===k?'on':''}" title="${k}">${e}</button>`).join('')}</div></div>
+  <div class="ac"><button data-a="comment">${p.locked?'🔒':'💬'} <span>Comment</span></button><button class="cnt" data-w="comment" title="Who commented">${p.comments}</button></div>
+  <div class="ac"><button data-a="share">↗ <span>Share</span></button><button class="cnt" data-w="share" title="Who shared">${p.shares}</button></div></div><div class="cm" hidden data-canc="${canC?1:0}"></div></article>`}
+
+/* ---------- Stories ---------- */
+const SBG=['linear-gradient(135deg,#2f95e0,#1d56b8)','linear-gradient(135deg,#ffb15c,#e8431a)','linear-gradient(135deg,#a569d6,#5b2d91)','linear-gradient(135deg,#3fbf6a,#1b6b34)','linear-gradient(135deg,#f06aa8,#b01f6a)','linear-gradient(135deg,#27325a,#0b1230)'];
+let STG=[],SV=null,svT=0;
+async function loadStories(){let g;try{g=await api('GET','/stories')}catch{return}if(!Array.isArray(g))return;STG=g;g.forEach(x=>ROLES[x.user]=x.role);const el=$('stories');if(!el)return;
+  const mine=g.find(x=>x.user===me);
+  el.innerHTML=`<button class="sc mk" data-sc="new"><div class="top">${av(me,64)}</div><span class="pl">+</span><b>Create story</b></button>`+g.map((x,i)=>{const f=x.items[x.items.length-1];const bgs=f.image?`background-image:url('${esc(f.image)}')`:`background:${SBG[f.bg]||SBG[0]}`;
+    return `<button class="sc${x.unseen?'':' seen'}" data-sc="${i}" style="${bgs}"><span class="rg">${av(x.user,34)}</span><b>${x.user===me?'Your story':esc(x.user)}</b></button>`}).join('')}
+function openCreateStory(){let bg=0,img=null,mode='text';
+  const draw=()=>{$('sh').innerHTML=`<h2>Create story</h2><nav class="chips"><button data-md="text" class="${mode==='text'?'on':''}">Aa Text</button><button data-md="photo" class="${mode==='photo'?'on':''}">📷 Photo</button></nav>
+   <section class="spv" style="background:${img?'#000':SBG[bg]}">${img?`<img src="${img.url}" alt="">`:''}<textarea id="stx" maxlength="200" placeholder="${mode==='photo'?'Add a caption (optional)':'Start typing…'}">${esc($('stx')?.value||'')}</textarea></section>
+   ${mode==='text'?`<nav class="sws">${SBG.map((b,i)=>`<button data-bg="${i}" class="${i===bg?'on':''}" style="background:${b}" aria-label="Colour ${i+1}"></button>`).join('')}</nav>`:`<button id="spk" style="width:100%;margin-top:8px">${img?'Change photo':'Choose a photo'}</button><input type="file" id="sfi" accept="image/*" hidden>`}
+   <button class="o" id="ssh" style="width:100%;margin-top:10px">Share to story</button><small class="mu" style="display:block;text-align:center;margin-top:6px;font-size:12px">Stories disappear after 24 hours.</small>`};
+  sheetOpen('');draw();
+  $('sh').onclick=async e=>{const m=e.target.closest('[data-md]'),c=e.target.closest('[data-bg]');
+    if(m){const t=$('stx')?.value;mode=m.dataset.md;draw();$('stx').value=t||'';return}
+    if(c){const t=$('stx').value;bg=+c.dataset.bg;draw();$('stx').value=t;return}
+    if(e.target.id==='spk'){$('sfi').onchange=async ev=>{const f=ev.target.files[0];if(!f)return;try{const b=await imgToBlob(f,1080,false);const t=$('stx').value;img={blob:b,url:URL.createObjectURL(b)};draw();$('stx').value=t}catch(er){fail(er)}};$('sfi').click();return}
+    if(e.target.id==='ssh'){const text=$('stx').value.trim();if(mode==='photo'&&!img)return fail(new Error('Choose a photo first.'));if(mode==='text'&&!text)return fail(new Error('Type something first.'));
+      e.target.disabled=true;try{let image='';if(mode==='photo')image=await upload('image',img.blob);await api('POST','/stories',{text,image,bg:mode==='text'?bg:0});$('sheet').classList.remove('open');toast('Story shared');loadStories()}catch(er){fail(er);e.target.disabled=false}}}}
+function svClose(){clearTimeout(svT);const d=$('sv');if(d)d.remove();SV=null;document.removeEventListener('keydown',svKey);loadStories()}
+function svKey(e){if(e.key==='Escape')svClose();else if(e.key==='ArrowRight')svNext();else if(e.key==='ArrowLeft')svPrev()}
+function svNext(){if(!SV)return;const g=STG[SV.gi];if(SV.ii<g.items.length-1){SV.ii++;svShow()}else if(SV.gi<STG.length-1){SV.gi++;SV.ii=0;svShow()}else svClose()}
+function svPrev(){if(!SV)return;if(SV.ii>0){SV.ii--;svShow()}else if(SV.gi>0){SV.gi--;SV.ii=0;svShow()}else svShow()}
+function openStory(gi){SV={gi,ii:Math.max(0,STG[gi].items.findIndex(i=>!i.seen))};if(!$('sv')){const d=document.createElement('div');d.id='sv';document.body.append(d);document.addEventListener('keydown',svKey)}svShow()}
+function svShow(){clearTimeout(svT);const g=STG[SV.gi],it=g.items[SV.ii],own=g.user===me,d=$('sv');
+  if(!own&&!it.seen){it.seen=true;api('POST',`/stories/${it.id}/view`,{}).catch(()=>{})}
+  d.innerHTML=`<div class="svb"><div class="svp">${g.items.map((_,k)=>`<i class="${k<SV.ii?'d':k===SV.ii?'a':''}"><b></b></i>`).join('')}</div>
+   <div class="svh">${av(g.user,38)}<div class="g"><b>${esc(g.user)}</b>${rt(g.role,g.user)}<small>${ago(it.ts)}</small></div><button id="svx" aria-label="Close">✕</button></div>
+   <div class="svc">${it.image?`<img src="${esc(it.image)}" alt="">${it.text?`<div class="cap">${rich(it.text)}</div>`:''}`:`<div class="stb" style="background:${SBG[it.bg]||SBG[0]}"><span>${rich(it.text)}</span></div>`}<i class="zl" data-z="p"></i><i class="zr" data-z="n"></i></div>
+   ${own?`<div class="svf"><button id="svv">👁 ${it.views||0} ${it.views===1?'viewer':'viewers'}</button><button id="svd">🗑 Delete</button></div>`:''}</div>`;
+  svT=setTimeout(svNext,5000);
+  d.onclick=async e=>{const z=e.target.closest('[data-z]');if(e.target.closest('#svx'))return svClose();if(z)return z.dataset.z==='n'?svNext():svPrev();
+    if(e.target.closest('#svv')){clearTimeout(svT);try{const l=await api('GET',`/stories/${it.id}/viewers`);sheetOpen(`<h2>Viewers (${l.length})</h2><section class="whol">${l.map(x=>`<article class="wr">${av(x.user,38)}<span class="wt"><b style="color:${nc(x.user)}">${esc(x.user)}</b>${rt(x.role,x.user)}<small>${ago(x.ts)} ago</small></span></article>`).join('')||'<small class="mu">No views yet.</small>'}</section>`);$('sh').onclick=null}catch(er){fail(er)}return}
+    if(e.target.closest('#svd')){clearTimeout(svT);if(!confirm('Delete this story?')){svT=setTimeout(svNext,5000);return}try{await api('DELETE','/stories/'+it.id);g.items.splice(SV.ii,1);if(!g.items.length){STG.splice(SV.gi,1);if(!STG.length)return svClose();if(SV.gi>=STG.length)SV.gi=STG.length-1;SV.ii=0}else if(SV.ii>=g.items.length)SV.ii=g.items.length-1;svShow()}catch(er){fail(er)}}}}
 async function loadFeed(){const ps=await api('GET','/feed'+(homeTag?'?tag='+encodeURIComponent(homeTag):''));ps.forEach(p=>ROLES[p.user]=p.role);PS={};ps.forEach(p=>PS[p.id]=p);
   $('feed').className='';$('feed').innerHTML=(homeTag?`<div class="tagbar">Showing <b>#${esc(homeTag)}</b> <button data-a="cleartag">✕ Clear</button></div>`:'')+(ps.length?ps.map(postHTML).join(''):`<div class="card mu">${homeTag?'No posts with this tag yet.':'No posts yet. Be the first to post.'}</div>`)}
 function whoSheet(id,type){const T={react:'Reactions',comment:'Comments',share:'Shares'};
-  sheetOpen(`<h2>${T[type]}</h2><div class="whol mu">Loading…</div>`);
+  sheetOpen(`<h2>${T[type]}</h2><section class="whol mu">Loading…</section>`);
   api('GET',`/posts/${id}/who?type=${type}`).then(l=>{l.forEach(x=>ROLES[x.user]=x.role);const w=document.querySelector('#sh .whol');if(!w)return;w.className='whol';
-    w.innerHTML=l.map(x=>`<button class="wr" data-u="${esc(x.user)}">${av(x.user,38)}<span class="wt"><b style="color:${nc(x.user)}">${esc(x.user)}</b>${rt(x.role,x.user)}${type==='comment'?`<small>${esc(x.text)}</small>`:`<small>${ago(x.ts||Date.now())}${type==='share'?' ago':''}</small>`}</span>${type==='react'?`<span class="wem">${EM[x.kind]||'👍'}</span>`:''}</button>`).join('')||'<div class="mu">Nobody yet.</div>'}).catch(fail);
+    w.innerHTML=l.map(x=>`<button class="wr" data-u="${esc(x.user)}">${av(x.user,38)}<span class="wt"><b style="color:${nc(x.user)}">${esc(x.user)}</b>${rt(x.role,x.user)}${type==='comment'?`<small>${esc(x.text)}</small>`:(type==='react'?'':`<small>${ago(x.ts)}${type==='share'?' ago':''}</small>`)}</span>${type==='react'?`<span class="wem">${EM[x.kind]||'👍'}</span>`:''}</button>`).join('')||'<small class="mu">Nobody yet.</small>'}).catch(fail);
   $('sh').onclick=e=>{const b=e.target.closest('[data-u]');if(b){$('sheet').classList.remove('open');go('profile',b.dataset.u)}}}
 function menuSheet(p){const mod=['staff','admin'].includes(ST.role),own=p.user===me;
   const it=[];if(own)it.push(['edit','✏️','Edit post']);if(mod)it.push(['pin','📌',p.pinned?'Unpin post':'Pin post']);if(own||mod)it.push(['lock',p.locked?'🔓':'🔒',p.locked?'Unlock comments':'Lock comments']);it.push(['hide','🙈','Hide post']);if(own||mod)it.push(['del','🗑️','Delete post']);
@@ -729,7 +829,7 @@ async function feedClick(e){
   const tg=e.target.closest('[data-tag]');if(tg){go('home',tg.dataset.tag);return}
   if(e.target.classList.contains('pimg')){lightbox(e.target.src);return}
   const w=e.target.closest('[data-w]'),art=e.target.closest('.post'),id=art?.dataset.id;
-  if(w){if(+w.textContent>0)whoSheet(id,w.dataset.w);return}
+  if(w){if(+(w.dataset.n??w.textContent)>0)whoSheet(id,w.dataset.w);return}
   const k=e.target.closest('[data-k]');
   try{if(k){await api('POST',`/posts/${id}/react`,{kind:k.dataset.k});loadFeed();return}
     const b=e.target.closest('[data-a]');if(!b)return;const a=b.dataset.a,cm=art?.querySelector('.cm');
@@ -739,7 +839,7 @@ async function feedClick(e){
     else if(a==='share'){await api('POST',`/posts/${id}/share`);loadFeed()}
     else if(a==='comment'){if(!cm.hidden){cm.hidden=true;return}
       const loadC=async()=>{const cs=await api('GET',`/posts/${id}/comments`);cs.forEach(c=>ROLES[c.user]=c.role);const canC=cm.dataset.canc==='1';
-        cm.innerHTML=cs.map(c=>`<div class="mu"><b data-u="${esc(c.user)}" style="color:${nc(c.user)};cursor:pointer">${esc(c.user)}</b>${rt(c.role,c.user)} ${rich(c.text)}</div>`).join('')+(canC?'<div class="row" style="margin-top:8px"><input placeholder="Write a comment…" maxlength="300"><button class="o">Send</button></div>':'<div class="mu lk">🔒 Comments are locked on this post.</div>');
+        cm.innerHTML=cs.map(c=>`<div class="cmt">${av(c.user,32)}<div class="bub"><b data-u="${esc(c.user)}" style="color:${nc(c.user)}">${esc(c.user)}</b>${rt(c.role,c.user)}<div>${rich(c.text)}</div></div></div>`).join('')+(canC?`<div class="cmt wr">${av(me,32)}<input placeholder="Write a comment…" maxlength="300"><button class="o">Send</button></div>`:'<div class="mu lk">🔒 Comments are locked on this post.</div>');
         if(canC)cm.querySelector('button').onclick=async()=>{const t=cm.querySelector('input').value.trim();if(!t)return;try{await api('POST',`/posts/${id}/comments`,{text:t});const c=art.querySelector('[data-w=comment]');c.textContent=+c.textContent+1;loadC()}catch(er){fail(er)}}};
       cm.hidden=false;loadC()}}catch(er){fail(er)}}
 const Panel = (function () {
