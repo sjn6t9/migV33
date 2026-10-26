@@ -1,0 +1,307 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>migv33</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;700;800&display=swap">
+<style>
+:root{--bg:#1d0b17;--sf:#3a1228;--sf2:#4a1c35;--ln:#ffffff1c;--tx:#f6ecf1;--mu:#b99aab;--ac:#f2b134;--ok:#4fcf8a;--bad:#ff7a8a}
+*{box-sizing:border-box}html,body{height:100%;margin:0}
+body{background:linear-gradient(#2a0f1f,#0b0c1b);background-attachment:fixed;color:var(--tx);font:16px/1.45 Nunito,system-ui,sans-serif}
+button,input,select,textarea{font:inherit;color:inherit}
+button{border:1px solid var(--ln);border-radius:10px;padding:8px 14px;cursor:pointer;background:#ffffff14;font-weight:700}
+button:hover{background:#ffffff26}button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid var(--ac);outline-offset:2px}
+button.o{background:var(--ac);color:#2a1700;border-color:var(--ac)}
+input,select,textarea{width:100%;padding:11px 12px;border:1px solid var(--ln);border-radius:10px;background:#0b0c1b99}
+select option{color:#000}
+.logo{font-weight:800;font-size:28px;letter-spacing:-1px}.logo i{font-style:normal;color:var(--ac)}
+#auth{min-height:100%;display:grid;place-items:center;padding:20px}
+.box{width:100%;max-width:380px;background:var(--sf);border:1px solid var(--ln);border-radius:16px;overflow:hidden}
+.box h1{margin:0;padding:22px;text-align:center;font-size:34px}
+.tabs{display:flex}.tabs button{flex:1;border:0;border-radius:0;border-bottom:3px solid var(--ln);background:none;padding:12px;color:var(--mu)}
+.tabs button.on{border-color:var(--ac);color:var(--tx)}
+.box form{display:grid;gap:10px;padding:18px 22px 6px}.box small{color:var(--mu)}
+.ck{display:flex;gap:8px;align-items:center;font-weight:700}.ck input{width:auto}
+#err{color:var(--bad);min-height:22px;font-weight:700;padding:0 22px 16px}
+#app{display:none;height:100%;flex-direction:column;max-width:820px;margin:0 auto}
+#top{display:flex;align-items:center;gap:6px;padding:8px 12px;background:#0006;border-bottom:1px solid var(--ln)}
+#top button{padding:8px 11px;font-size:18px}#top button.on{background:var(--sf2);border-color:#ffffff55}
+#top .sp{flex:1}#coins{color:var(--ac);font-weight:800}
+#view{flex:1;overflow:auto;padding:12px 12px 30px;min-height:0}
+#drawer{position:fixed;inset:0;display:none;background:#000a;z-index:5}#drawer.open{display:block}
+#drawer nav{width:290px;max-width:85%;height:100%;background:linear-gradient(#3a1228,#12111f);padding:14px;overflow:auto}
+.card{background:var(--sf);border:1px solid var(--ln);border-radius:14px;padding:12px;margin-bottom:10px}
+.me{cursor:pointer}.me b{font-size:18px}
+.mi{display:block;width:100%;text-align:left;border:0;background:none;padding:13px 10px;font-size:16px;border-radius:10px}
+.mi.out{color:var(--bad)}
+.av{display:inline-grid;place-items:center;border-radius:50%;color:#fff;font-weight:800;flex:none}
+.lv{background:#f2b13433;color:var(--ac);border-radius:99px;padding:1px 9px;font-size:12px;font-weight:800;margin-left:6px}
+.row{display:flex;gap:10px;align-items:center}.row>.g{flex:1;min-width:0}
+.mu{color:var(--mu);font-size:13px}.pp{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+.post p{margin:10px 0;white-space:pre-wrap;word-break:break-word}
+.acts{display:flex;border-top:1px solid var(--ln);margin-top:8px}.acts button{flex:1;border:0;background:none;border-radius:0;color:var(--mu)}.acts button.on{color:var(--ac)}
+.sec{display:flex;justify-content:space-between;align-items:center;padding:14px;border-radius:12px;margin:8px 0;font-weight:800;cursor:pointer;background:var(--sf);border-left:5px solid var(--c)}
+.sec span.n{background:var(--c);color:#1d0b17;border-radius:99px;padding:0 9px;font-size:13px;margin-left:8px}
+.rm{display:flex;justify-content:space-between;align-items:center;padding:11px 14px;border-bottom:1px solid var(--ln)}
+.big{font-size:44px;font-weight:800}.pos{color:var(--ok)}.neg{color:var(--bad)}
+.chips{display:flex;gap:6px;flex-wrap:wrap;margin:8px 0}.chips button.on{background:var(--ac);color:#2a1700}
+#chatbox{display:flex;flex-direction:column;height:calc(100vh - 110px)}
+#log{flex:1;overflow:auto;padding:12px;border-radius:12px;display:flex;flex-direction:column;gap:5px;min-height:0}
+#log.light{background:#f5f7fb;color:#1b2a41}#log.navy{background:#0f1d4a}#log.dark{background:#0a0b10}
+#log .m b{cursor:pointer}#log .m small{opacity:.6;margin-left:6px}
+.g2{background:#f2b13426;border:1px solid #f2b13466;border-radius:8px;padding:6px 10px;color:var(--ac);font-weight:700}
+.ri{width:18px;height:18px;vertical-align:-3px;margin-left:5px}
+.dot{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:6px}
+.online{background:#4fcf8a}.away{background:#f2b134}.busy{background:#ff5d73}.offline{background:#8a8a96}
+.ucard{display:inline-grid;place-items:center;width:44px;height:64px;margin:3px;border-radius:8px;font-weight:800;color:#fff;border:3px solid #fff;cursor:pointer}
+.R{background:#e5484d}.Y{background:#e8b100;color:#222}.G{background:#2faa5f}.B{background:#2f78e8}.W{background:#222}
+#sheet{position:fixed;inset:0;display:none;align-items:flex-end;background:#000a;z-index:6}#sheet.open{display:flex}
+#sheet div{width:100%;max-width:820px;margin:0 auto;background:var(--sf2);border-radius:20px 20px 0 0;padding:18px;display:grid;gap:8px}
+h2{margin:6px 0 10px}
+#log .act{font-style:italic;color:#d98a00}
+.cmd{padding:8px 0;border-bottom:1px solid var(--ln)}.cmd code{color:var(--ac);font-weight:700}
+</style>
+</head>
+<body>
+<div id="auth"><div class="box">
+  <h1 class="logo">mig<i>v33</i></h1>
+  <div class="tabs"><button id="tl" class="on" type="button">Log in</button><button id="ts" type="button">Sign up</button></div>
+  <form id="lf">
+    <input id="lu" placeholder="Username" autocomplete="username" maxlength="16">
+    <input id="lp" type="password" placeholder="Password" autocomplete="current-password">
+    <button class="o">Log in</button>
+    <label class="ck"><input type="checkbox" id="auto"> Auto Login</label>
+    <label class="ck"><input type="checkbox" id="off"> Login as Offline</label>
+  </form>
+  <form id="s1" style="display:none">
+    <input id="sf" placeholder="Full Name" autocomplete="name" maxlength="40">
+    <input id="su" placeholder="User Name" autocomplete="username" maxlength="16">
+    <input id="se" type="email" placeholder="Email" autocomplete="email" maxlength="100">
+    <select id="sg"><option value="">Gender</option><option>Male</option><option>Female</option><option>Other</option></select>
+    <input id="sp" type="password" placeholder="Password" autocomplete="new-password">
+    <input id="sp2" type="password" placeholder="Confirm Password" autocomplete="new-password">
+    <button class="o">Next</button>
+  </form>
+  <form id="s2" style="display:none">
+    <small>We sent a 6-digit code to <b id="em"></b>.</small>
+    <input id="sc" placeholder="Enter Verification Code" inputmode="numeric" autocomplete="one-time-code" maxlength="6">
+    <button class="o">Create Account</button>
+    <button id="ce" type="button">Change Email</button>
+  </form>
+  <div id="err" role="alert"></div>
+</div></div>
+
+<div id="app">
+  <div id="top"><button id="mb" aria-label="Menu">☰</button><button id="th" aria-label="Home">🏠</button><button id="tr" aria-label="Chat rooms">💬</button><span class="sp"></span><span id="coins"></span></div>
+  <div id="view"></div>
+</div>
+<div id="drawer"><nav id="dn"></nav></div>
+<div id="sheet"><div id="sh"></div></div>
+
+<script>
+const $=id=>document.getElementById(id);let lastRoom='',ws,me,room,target='',pend=null,ST={},ONL=[],cur='home';
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const col=(n,l=38)=>{let h=0;for(const c of n)h=(h*31+c.charCodeAt(0))%360;return `hsl(${h} 55% ${l}%)`};
+const av=(n,s=40)=>`<span class="av" style="width:${s}px;height:${s}px;background:${col(n)};font-size:${s/2.2}px">${esc(n[0]||'?').toUpperCase()}</span>`;
+const ROLES={},RC={admin:'#ff8a00',staff:'#3fcf6a',mentor:'#ff4b4b',merchant:'#b46bff'},RL={admin:'#d85f00',staff:'#1d8f45',mentor:'#d02020',merchant:'#8a3fd1'};
+const nc=(n,l=72)=>(ROLES[n]&&(l<50?RL:RC)[ROLES[n]])||col(n,l);
+const VERS=new Set();const refreshVer=()=>api('GET','/verified').then(l=>{VERS.clear();l.forEach(n=>VERS.add(n))}).catch(()=>{});
+const rt=(r,n)=>(RC[r]?`<img class="ri" src="/badges/${r}.png" alt="${r}" title="${r}">`:'')+(VERS.has(n)?'<img class="ri" src="/badges/verified.png" alt="verified" title="Verified">':'');
+const LST=[20,98,176,253,331,409,487,564,640,641,760,878,996,1113,1231,1349,1467,1584,1702,1820,1938,2056,2172,2290,2291,2684,3076];
+const lvStep=L=>LST[L-1]??Math.round(3076+392.5*(L-27));const CUM=[0,0];for(let L=1;L<1000;L++)CUM[L+1]=CUM[L]+lvStep(L);
+const lv=xp=>{let lo=1,hi=1000;while(lo<hi){const m=(lo+hi+1)>>1;if(CUM[m]<=xp)lo=m;else hi=m-1}return lo};
+const toast=t=>{const d=document.createElement('div');d.textContent=t;d.style.cssText='position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:var(--ac);color:#2a1700;padding:10px 18px;border-radius:99px;font-weight:800;z-index:9';document.body.append(d);setTimeout(()=>d.remove(),4000)};
+const ago=t=>{const s=(Date.now()-t)/1e3;return s<60?'now':s<3600?Math.floor(s/60)+'m':s<86400?Math.floor(s/3600)+'h':Math.floor(s/86400)+'d'};
+const tok=()=>localStorage.tk||sessionStorage.tk;
+const isOff=()=>!!(localStorage.tk?localStorage.off:sessionStorage.off);
+const logout=()=>{localStorage.clear();sessionStorage.clear();location.reload()};
+const api=async(m,u,b)=>{const r=await fetch('/api'+u,{method:m,headers:{'Content-Type':'application/json',Authorization:'Bearer '+tok()},body:b?JSON.stringify(b):undefined});
+  const d=await r.json().catch(()=>({}));if(r.status===401)logout();if(!r.ok)throw new Error(d.error||'Something went wrong');return d};
+const fail=e=>alert(e.message);
+const view=h=>{$('view').innerHTML=h};
+/* ---------- auth ---------- */
+function show(w){['lf','s1','s2'].forEach(k=>$(k).style.display=k===w?'grid':'none');$('tl').classList.toggle('on',w==='lf');$('ts').classList.toggle('on',w!=='lf');$('err').textContent=''}
+$('tl').onclick=()=>show('lf');$('ts').onclick=()=>show('s1');$('ce').onclick=()=>show('s1');
+const post=async(u,b)=>{const r=await fetch(u,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(b)});return[r,await r.json()]};
+function done(d){const s=$('auto').checked?localStorage:sessionStorage;s.tk=d.token;s.off=$('off').checked?'1':'';connect()}
+$('lf').onsubmit=async e=>{e.preventDefault();const[r,d]=await post('/api/login',{name:$('lu').value.trim(),pass:$('lp').value});if(!r.ok)return $('err').textContent=d.error;done(d)};
+$('s1').onsubmit=async e=>{e.preventDefault();if($('sp').value!==$('sp2').value)return $('err').textContent='Passwords do not match.';
+  const[r,d]=await post('/api/signup/start',{fullName:$('sf').value,name:$('su').value.trim(),email:$('se').value.trim(),gender:$('sg').value,pass:$('sp').value});
+  if(!r.ok)return $('err').textContent=d.error;$('em').textContent=$('se').value.trim();show('s2')};
+$('s2').onsubmit=async e=>{e.preventDefault();const[r,d]=await post('/api/signup/verify',{name:$('su').value.trim(),code:$('sc').value.trim()});if(!r.ok)return $('err').textContent=d.error;done(d)};
+/* ---------- socket ---------- */
+function connect(){
+  ws=new WebSocket((location.protocol==='https:'?'wss':'ws')+'://'+location.host+'/ws');
+  ws.onopen=()=>ws.send(JSON.stringify({t:'auth',token:tok(),offline:isOff()}));
+  ws.onmessage=e=>on(JSON.parse(e.data));
+  ws.onclose=()=>{if(me)setTimeout(connect,2000)};
+}
+const tx=o=>ws.readyState===1&&ws.send(JSON.stringify(o));
+async function on(m){
+  if(m.t==='error'){if(m.error==='auth')logout();else alert(m.error)}
+  if(m.t==='ready'){const first=!me;me=m.user;G=m.gifts;$('auth').style.display='none';$('app').style.display='flex';
+    ST=await api('GET','/me').catch(()=>({}));ROLES[me]=ST.role;await refreshVer();$('coins').textContent=ST.coins+' coins';if(first)go('home')}
+  if(m.t==='levelup'){ST.xp=Math.max(ST.xp||0,CUM[m.level]);toast(`🎉 Level ${m.level}!${m.reward?` +${m.reward.toLocaleString()} coins`:''}`)}
+  if(m.t==='coins'){ST.coins=m.coins;$('coins').textContent=m.coins+' coins';if(cur==='account')go('account')}
+  if(m.t==='online'){ONL=m.list;m.list.forEach(u=>ROLES[u.name]=u.role);if($('ol'))drawOnline()}
+  if(m.t==='history'&&$('log')){$('log').innerHTML='';m.items.forEach(add)}
+  if(m.t==='msg'&&m.room===room&&$('log'))add(m);
+  if(m.t==='uno')renderUno(m);
+  if(m.t==='kicked'){alert(`You were removed from #${m.room} by ${m.by}.`);go('rooms')}
+  if(m.t==='denied'){alert(m.error);go('rooms')}
+}
+let G={};
+/* ---------- navigation ---------- */
+const V={};
+async function go(v,a){cur=v;$('drawer').classList.remove('open');
+  $('th').classList.toggle('on',v==='home');$('tr').classList.toggle('on',v==='rooms'||v==='chat');
+  $('view').scrollTop=0;$('view').onclick=null;try{await refreshVer();await V[v](a)}catch(e){fail(e)}}
+$('th').onclick=()=>go('home');$('tr').onclick=()=>go('rooms');$('mb').onclick=()=>{drawNav();$('drawer').classList.add('open')};
+$('drawer').onclick=e=>{if(e.target.id==='drawer')$('drawer').classList.remove('open')};
+function drawNav(){const items=[['🏠','Home','home'],['👤','My Profile','profile'],['💰','My Account','account'],['👥','Friends','friends'],['🧭','Explore','explore'],['⚙️','Settings','settings']];
+  $('dn').innerHTML=`<div class="card me" id="mc"><div class="row">${av(me,52)}<div class="g"><b style="color:${nc(me)}">${esc(me)}</b>${rt(ST.role,me)}<div class="mu"><span class="dot ${ST.presence||'online'}"></span>Level ${lv(ST.xp||0)} · ${ST.presence||'online'}</div></div></div>
+  <div class="pp"><span class="card" style="margin:0;flex:1;text-align:center"><b>${ST.xp||0}</b><div class="mu">XP</div></span><span class="card" style="margin:0;flex:1;text-align:center"><b>${ST.coins||0}</b><div class="mu">Coins</div></span></div></div>`+
+  items.map(([i,t,v])=>`<button class="mi" data-v="${v}">${i}&nbsp; ${t}</button>`).join('')+`<button class="mi out" data-v="out">⎋&nbsp; Logout</button>`;
+  $('dn').onclick=e=>{const b=e.target.closest('[data-v]');if(b){b.dataset.v==='out'?logout():go(b.dataset.v==='profile'?'profile':b.dataset.v,b.dataset.v==='profile'?me:undefined);return}
+    if(e.target.closest('#mc'))statusSheet()}}
+function statusSheet(){const o=[['online','Online','Available and active'],['away','Away','Be right back'],['busy','Busy','Do not disturb'],['offline','Offline','Appear offline to others']];
+  $('sh').innerHTML='<h2>Set your status</h2>'+o.map(([k,t,d])=>`<button data-p="${k}" style="text-align:left"><span class="dot ${k}"></span><b>${t}</b> <span class="mu">${d}</span>${ST.presence===k?' ✓':''}</button>`).join('');
+  $('sheet').classList.add('open');
+  $('sh').onclick=async e=>{const p=e.target.closest('[data-p]')?.dataset.p;if(!p)return;ST=await api('PUT','/me',{presence:p}).then(x=>({...ST,...x}));$('sheet').classList.remove('open');drawNav()}}
+$('sheet').onclick=e=>{if(e.target.id==='sheet')$('sheet').classList.remove('open')};
+/* ---------- home feed ---------- */
+V.home=async()=>{
+  view(`<div class="card row">${av(me)}<input id="pt" placeholder="What's on your mind, ${esc(me)}?" maxlength="500"><button class="o" id="pb">Post</button></div><div id="feed" class="mu">Loading…</div>`);
+  $('pb').onclick=async()=>{const t=$('pt').value.trim();if(!t)return;try{await api('POST','/posts',{text:t});ST.xp=(ST.xp||0)+5;V.home()}catch(e){fail(e)}};
+  const ps=await api('GET','/feed');ps.forEach(p=>ROLES[p.user]=p.role);
+  $('feed').innerHTML=ps.length?ps.map(p=>`<article class="card post" data-id="${p.id}"><div class="row">${av(p.user)}<div class="g"><b style="color:${nc(p.user)}">${esc(p.user)}</b>${rt(p.role,p.user)}<span class="lv">Lv ${lv(p.xp)}</span><div class="mu">${ago(p.ts)}</div></div></div>
+  <p>${esc(p.text)}</p><div class="mu" style="text-align:right">${p.reacts} reactions · ${p.comments} comments · ${p.shares} shares</div>
+  <div class="acts"><button data-a="react" class="${p.mine?'on':''}">👍 React</button><button data-a="comment">💬 Comment</button><button data-a="share">↗ Share</button></div><div class="cm" hidden></div></article>`).join(''):'<div class="card mu">No posts yet. Be the first to post.</div>';
+  $('feed').onclick=async e=>{const b=e.target.closest('[data-a]');if(!b)return;const art=b.closest('.post'),id=art.dataset.id,cm=art.querySelector('.cm');
+    try{if(b.dataset.a==='react'){await api('POST',`/posts/${id}/react`);V.home()}
+    else if(b.dataset.a==='share'){await api('POST',`/posts/${id}/share`);V.home()}
+    else if(b.dataset.a==='comment'){if(!cm.hidden){cm.hidden=true;return}
+      const loadC=async()=>{const cs=await api('GET',`/posts/${id}/comments`);cs.forEach(c=>ROLES[c.user]=c.role);cm.innerHTML=cs.map(c=>`<div class="mu"><b style="color:${nc(c.user)}">${esc(c.user)}</b>${rt(c.role,c.user)} ${esc(c.text)}</div>`).join('')+'<div class="row" style="margin-top:8px"><input placeholder="Write a comment…" maxlength="300"><button class="o">Send</button></div>';
+        cm.querySelector('button').onclick=async()=>{const t=cm.querySelector('input').value.trim();if(!t)return;await api('POST',`/posts/${id}/comments`,{text:t});loadC()}};
+      cm.hidden=false;loadC()}}catch(er){fail(er)}}};
+/* ---------- rooms ---------- */
+V.rooms=async()=>{const rs=await api('GET','/rooms');
+  const q=($('rq')?.value||'').toLowerCase();
+  const S=[['Favorite rooms','#f2b134',rs.filter(x=>x.fav)],['Official rooms','#7c8cff',rs.filter(x=>x.cat==='official')],['Game rooms','#b57cff',rs.filter(x=>x.cat==='game')],['Your & community rooms','#4fcf8a',rs.filter(x=>x.cat==='user')],["What's hot",'#ff6fae',[...rs].filter(x=>x.count>0).sort((a,b)=>b.count-a.count).slice(0,5)]];
+  view(`<div class="row"><input id="rq" placeholder="Search room" value="${esc(q)}"><button id="rr">⟳</button><button id="rn" class="o">+</button></div>`+
+    S.map(([t,c,l],i)=>`<div class="sec" style="--c:${c}" data-s="${i}"><div>${t}<span class="n">${l.length}</span></div><span>▾</span></div><div id="s${i}" class="card" style="padding:0;${l.length?'':'display:none'}">${l.filter(x=>x.name.includes(q)).map(x=>`<div class="rm" data-r="${x.name}"><span>#${x.name} <span class="mu">· ${x.count} online</span></span><button data-f="${x.name}">${x.fav?'★':'☆'}</button></div>`).join('')}</div>`).join(''));
+  $('rq').oninput=()=>V.rooms();$('rr').onclick=()=>V.rooms();
+  $('rn').onclick=async()=>{const n=prompt('New room name (letters, numbers, underscore)');if(!n)return;try{await api('POST','/rooms',{name:n.trim()});V.rooms()}catch(e){fail(e)}};
+  $('view').onclick=async e=>{const f=e.target.closest('[data-f]');if(f){await api('POST',`/rooms/${f.dataset.f}/fav`);return V.rooms()}
+    const r=e.target.closest('[data-r]');if(r)return go('chat',r.dataset.r);const s=e.target.closest('[data-s]');if(s){const d=$('s'+s.dataset.s);d.style.display=d.style.display==='none'?'':'none'}}};
+/* ---------- chat ---------- */
+V.chat=async(r)=>{room=r;if(!r.startsWith('dm:'))lastRoom=r;target='';pend=null;const dm=r.startsWith('dm:');const title=dm?'Chat with '+r.slice(3).split(':').find(x=>x!==me):'#'+r;
+  view(`<div class="row" style="margin-bottom:8px"><button id="bk">←</button><b class="g">${esc(title)}</b></div><div id="chatbox"><div id="ol" class="chips"></div>
+   <div id="log" class="${localStorage.cbg||'dark'}"></div><div id="uno" class="card" style="display:none"></div>
+   <div class="row mu" id="tools" style="flex-wrap:wrap;margin:8px 0"><span>Gift:</span><span id="gifts"></span><span id="to"></span></div>
+   <form id="f" class="row"><input id="t" placeholder="Type a message…" autocomplete="off" maxlength="500"><button class="o">Send</button></form></div>`);
+  $('bk').onclick=()=>go('rooms');
+  $('gifts').innerHTML=Object.entries(G).map(([k,g])=>`<button data-g="${k}" title="${g.n}">${g.e} ${g.c}</button>`).join(' ');
+  $('gifts').onclick=e=>{const k=e.target.closest('button')?.dataset.g;if(!k)return;if(!target)return alert('Tap a username in the chat first, then pick a gift.');tx({t:'gift',gift:k,to:target})};
+  $('f').onsubmit=e=>{e.preventDefault();const t=$('t').value.trim();if(t)tx({t:'msg',text:t});$('t').value=''};
+  $('log').onclick=e=>{const u=e.target.dataset.u;if(u&&u!==me)setTarget(u)};
+  drawOnline();tx({t:'join',room:r});
+  if(r==='games'){$('uno').style.display='block';$('uno').innerHTML='<button class="o" id="jn">Join UNO</button>';$('jn').onclick=()=>uno({a:'join'})}};
+function drawOnline(){$('ol').innerHTML='<span class="mu">Online:</span>'+(ONL.map(u=>`<button data-n="${esc(u.name)}"><span class="dot ${u.presence}"></span><span style="color:${nc(u.name)}">${esc(u.name)}</span>${rt(u.role,u.name)}</button>`).join('')||'<span class="mu">nobody</span>');
+  $('ol').onclick=e=>{const n=e.target.closest('[data-n]')?.dataset.n;if(n&&n!==me)setTarget(n)}}
+function setTarget(u){target=u;$('to').innerHTML=`→ <b>${esc(u)}</b> <button id="dm">Private chat</button> <button id="pf">Profile</button>${['staff','admin'].includes(ST.role)&&ROLES[u]!=='staff'&&!room.startsWith('dm:')?' <button id="md">Moderate</button>':''}`;
+  $('dm').onclick=()=>go('chat','dm:'+[me,target].sort().join(':'));$('pf').onclick=()=>go('profile',target);if($('md'))$('md').onclick=()=>modSheet(u)}
+function modSheet(n){const A=[['kick','Kick from room'],['ban','Ban from room'],['unban','Unban'],['silence','Silence 10 min',10],['silence','Silence 1 hour',60],['unsilence','Unsilence']];
+  $('sh').innerHTML=`<h2>Moderate ${esc(n)}</h2><div class="mu">Room: #${esc(lastRoom)}</div>`+A.map(([a,t,m])=>`<button data-a="${a}" data-m="${m||''}" style="text-align:left">${t}</button>`).join('');
+  $('sheet').classList.add('open');
+  $('sh').onclick=e=>{const b=e.target.closest('[data-a]');if(!b)return;const a=b.dataset.a;if((a==='kick'||a==='ban')&&!confirm(`${a==='ban'?'Ban':'Kick'} ${n} from #${lastRoom}?`))return;
+    tx({t:'join',room:lastRoom});tx({t:'mod',act:a,user:n,minutes:+b.dataset.m||10});$('sheet').classList.remove('open')}}
+function add(m){ROLES[m.user]=m.role;const d=document.createElement('div');if(m.kind==='sys'||m.kind==='action'){d.className=m.kind==='sys'?'g2':'act';d.textContent=m.text;$('log').append(d);$('log').scrollTop=1e9;return}const t=new Date(m.ts).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
+  if(m.kind==='gift'){d.className='g2';d.textContent=m.user+': '+m.text}
+  else{d.className='m';const light=$('log').classList.contains('light');d.innerHTML=`<b data-u="${esc(m.user)}" style="color:${nc(m.user,light?32:72)}">${esc(m.user)}</b>${rt(m.role,m.user)}: ${esc(m.text)}<small>${t}</small>`}
+  $('log').append(d);$('log').scrollTop=1e9}
+const uno=o=>tx({t:'uno',...o});
+const lbl=c=>c==='W'?'Wild':c==='F'?'+4':({S:'Skip',V:'Rev',D:'+2'}[c[1]]||c[1]);
+function renderUno(s){
+  if(room!=='games'||!$('uno'))return;
+  const mine=s.turn===me&&s.started&&!s.winner;
+  let h=`<div><b>Players:</b> ${s.players.map(p=>`${esc(p)} (${s.counts[p]})${p===s.turn&&s.started?' ◀':''}`).join(', ')||'none yet'}</div>`;
+  if(!s.started)h+=`<div class="pp"><button id="jn">Join</button><button class="o" id="st">Start game (2–4 players)</button></div>`;
+  else{h+=`<div>Table: <span class="ucard ${s.color}" style="cursor:default">${lbl(s.top)}</span> ${s.winner?`🏆 ${esc(s.winner)} wins!`:mine?'<b>Your turn</b>':''}</div>`;
+    h+=s.hand.map((c,i)=>`<span class="ucard ${c[0]==='F'?'W':c[0]}" role="button" tabindex="0" data-i="${i}" data-c="${c}">${lbl(c)}</span>`).join('');
+    if(pend!==null)h+=`<div class="pp">Pick a colour: ${[['R','Red'],['Y','Yellow'],['G','Green'],['B','Blue']].map(([k,n])=>`<button data-col="${k}">${n}</button>`).join('')}</div>`;
+    if(mine)h+=`<div class="pp"><button id="dr">Draw a card</button></div>`;
+    if(s.winner)h+=`<div class="pp"><button class="o" id="jn">New game</button></div>`}
+  $('uno').innerHTML=h;
+  [['jn',{a:'join'}],['st',{a:'start'}],['dr',{a:'draw'}]].forEach(([id,o])=>$(id)&&($(id).onclick=()=>uno(o)));
+  $('uno').onclick=e=>{const c=e.target.dataset.col;if(c){uno({a:'play',i:pend,color:c});pend=null;return}
+    const k=e.target.dataset.c;if(!k)return;const i=+e.target.dataset.i;if(k==='W'||k==='F'){pend=i;uno({a:'noop'});return}uno({a:'play',i})};
+}
+/* ---------- profile ---------- */
+V.profile=async(n)=>{n=n||me;const u=await api('GET','/users/'+n);ROLES[u.name]=u.role;const mine=u.state==='me';
+  view(`<div class="card" style="padding:0;overflow:hidden"><div style="height:110px;background:linear-gradient(90deg,#24406e,#f2b134)"></div><div style="padding:0 16px 16px;margin-top:-36px">
+   ${av(u.name,72)}<h2 style="margin:8px 0 0;color:${nc(u.name)}">${esc(u.full_name||u.name)}${rt(u.role,u.name)}<span class="lv">Lv ${u.level}</span></h2>
+   <div class="mu">@${esc(u.name)} · ${esc(u.gender||'')} · <span class="dot ${u.presence}"></span>${u.presence}</div>
+   <p style="color:#6fd3ff;font-style:italic;margin:10px 0 4px">${esc(u.status_text||'')}</p><p style="margin:0">${esc(u.bio||'')}</p>
+   ${mine&&ST.email?`<p class="mu">✉ ${esc(ST.email)} · only you</p>`:''}
+   <div class="pp" style="justify-content:space-around;margin:14px 0"><div style="text-align:center"><b>${u.friends}</b><div class="mu">FRIENDS</div></div><div style="text-align:center"><b>${u.xp}</b><div class="mu">XP${mine&&lv(u.xp)<1000?` · ${CUM[lv(u.xp)+1]-u.xp} to Lv ${lv(u.xp)+1}`:''}</div></div><div style="text-align:center"><b>${u.coins}</b><div class="mu">COINS</div></div></div>
+   <div id="pa" class="pp"></div></div></div>`);
+  const pa=$('pa');
+  if(mine){pa.innerHTML='<button class="o" id="ed" style="flex:1">Edit Profile</button>';$('ed').onclick=()=>{pa.innerHTML=`<input id="es" placeholder="Status" maxlength="60" value="${esc(u.status_text||'')}"><input id="eb" placeholder="About you" maxlength="200" value="${esc(u.bio||'')}"><button class="o" id="sv">Save</button>`;
+    $('sv').onclick=async()=>{try{await api('PUT','/me',{status_text:$('es').value,bio:$('eb').value});V.profile(me)}catch(e){fail(e)}}}}
+  else{const st=u.state;pa.innerHTML=(st==='none'?'<button class="o" data-x="request">Add friend</button>':st==='sent'?'<button disabled>Request sent</button>':st==='incoming'?'<button class="o" data-x="accept">Accept request</button>':'<button data-x="remove">Unfriend</button>')+(ST.role==='staff'?`<select id="rs" style="width:auto">${[['user','Regular user'],['merchant','Merchant'],['mentor','Mentor'],['admin','Admin'],['staff','Staff']].map(([k,t])=>`<option value="${k}" ${u.role===k?'selected':''}>${t}</option>`).join('')}</select><button data-x="role">Set role</button><button data-x="verify">${VERS.has(u.name)?'Remove verified':'Verify'}</button>`:'')+(['staff','admin'].includes(ST.role)&&u.role!=='staff'&&lastRoom?'<button id="mdb">Moderate</button>':'')+'<button id="pm">Private chat</button>';
+    $('pm').onclick=()=>go('chat','dm:'+[me,u.name].sort().join(':'));if($('mdb'))$('mdb').onclick=()=>modSheet(u.name);
+    pa.onclick=async e=>{const x=e.target.dataset.x;if(!x)return;try{if(x==='role')await api('POST','/admin/role',{name:u.name,role:$('rs').value});else if(x==='verify')await api('POST','/admin/verify',{name:u.name,on:!VERS.has(u.name)});else await api('POST','/friends/'+x,{name:u.name});V.profile(u.name)}catch(er){fail(er)}}}};
+/* ---------- account ---------- */
+V.account=async()=>{const a=await api('GET','/account');ST.coins=a.coins;$('coins').textContent=a.coins+' coins';const f=window.AF||'all';
+  const ok=x=>f==='all'||(f==='gifts'&&x.kind==='gift')||(f==='transfers'&&x.kind==='transfer')||(f==='games'&&x.kind==='game')||(f==='other'&&x.kind==='other');
+  view(`<div class="card"><div class="mu">MY BALANCE</div><div class="big">¢ ${a.coins}</div><div class="row"><span class="pos">▲ +${a.earned} earned today</span><span class="neg">▼ −${a.spent} spent today</span></div></div>
+  <form id="tf" class="card row"><input id="tt" placeholder="Send to username" maxlength="16"><input id="ta" type="number" min="1" placeholder="Amount" style="max-width:110px"><button class="o">Transfer</button></form>
+  <h2>Activity <span class="lv">${a.activity.length}</span></h2><div class="chips">${['all','games','gifts','transfers','other'].map(k=>`<button data-k="${k}" class="${f===k?'on':''}">${k[0].toUpperCase()+k.slice(1)}</button>`).join('')}</div>
+  ${a.activity.filter(ok).map(x=>`<div class="card row"><div class="g"><b>${esc(x.title)}</b><div class="mu">${new Date(x.ts).toLocaleString()}</div></div><b class="${x.amount>0?'pos':'neg'}">${x.amount>0?'+':'−'}${Math.abs(x.amount)}</b></div>`).join('')||'<div class="card mu">No activity yet.</div>'}`);
+  $('tf').onsubmit=async e=>{e.preventDefault();try{await api('POST','/transfer',{to:$('tt').value.trim(),amount:$('ta').value});V.account()}catch(er){fail(er)}};
+  $('view').onclick=e=>{const k=e.target.dataset.k;if(k){window.AF=k;V.account()}}};
+/* ---------- friends ---------- */
+V.friends=async()=>{const d=await api('GET','/friends');['friends','requests','discover'].forEach(k=>d[k].forEach(u=>ROLES[u.name]=u.role));const t=window.FT||'friends';
+  const list=d[t].map(u=>`<div class="card row" data-u="${esc(u.name)}">${av(u.name)}<div class="g"><b style="color:${nc(u.name)}">${esc(u.name)}</b>${rt(u.role,u.name)} <span class="lv">Lv ${lv(u.xp)}</span><div class="mu"><span class="dot ${u.presence}"></span>${esc(u.status_text||u.presence)}</div></div>${t==='requests'?`<button class="o" data-x="accept" data-n="${esc(u.name)}">Accept</button>`:t==='discover'?`<button data-x="request" data-n="${esc(u.name)}">Add</button>`:''}</div>`).join('');
+  view(`<div class="row">${['friends','requests','discover'].map(k=>`<button class="g ${t===k?'o':''}" data-t="${k}">${k[0].toUpperCase()+k.slice(1)} (${d[k].length})</button>`).join('')}</div><div style="margin-top:10px">${list||`<div class="card mu" style="text-align:center">Nothing here yet.</div>`}</div>`);
+  $('view').onclick=async e=>{const tb=e.target.closest('[data-t]');if(tb){window.FT=tb.dataset.t;return V.friends()}
+    const x=e.target.closest('[data-x]');if(x){try{await api('POST','/friends/'+x.dataset.x,{name:x.dataset.n});V.friends()}catch(er){fail(er)}return}
+    const c=e.target.closest('[data-u]');if(c)go('profile',c.dataset.u)}};
+/* ---------- explore & settings ---------- */
+V.explore=async()=>{const lb=await api('GET','/leaderboard');lb.forEach(u=>ROLES[u.name]=u.role);const mem=await api('GET','/members');mem.forEach(u=>ROLES[u.name]=u.role);
+  view(`<h2>Explore</h2><div class="card"><b>🏆 Leader board</b><div class="mu">Top members by XP</div>${lb.map((u,i)=>`<div class="rm" data-u="${esc(u.name)}"><span>${i+1}. <b style="color:${nc(u.name)}">${esc(u.name)}</b>${rt(u.role,u.name)} <span class="lv">Lv ${u.level}</span></span><b>${u.xp} XP</b></div>`).join('')}</div>
+  <div class="card"><b>👑 Members</b><div class="mu">Admin (orange) · Staff (green) · Mentor (red) · Merchant (purple)</div>${mem.map(u=>`<div class="rm" data-u="${esc(u.name)}"><b style="color:${nc(u.name)}">${esc(u.name)}</b>${rt(u.role,u.name)}</div>`).join('')||'<div class="mu">No members yet.</div>'}</div>
+  <div class="card row" data-go="spin" style="cursor:pointer"><div class="g"><b>🎡 Daily Spin</b><div class="mu">One free spin every day, plus level-up spins</div></div>›</div>
+  <div class="card row" data-go="cmds" style="cursor:pointer"><div class="g"><b>⌨️ Command List</b><div class="mu">All chat commands and what they do</div></div>›</div>
+  <div class="card"><b>Coming soon</b><div class="mu">Gift store · Color shop · Effect shop · Pets · Daily spin · Lucky draw · Contests</div></div>`);
+  $('view').onclick=e=>{const g=e.target.closest('[data-go]');if(g)return go(g.dataset.go);const c=e.target.closest('[data-u]');if(c)go('profile',c.dataset.u)}};
+const CMDS=[['/balance','Show your coin balance (private)','Everyone'],['/gift username gift [-m message]','Send a gift (rose, heart, crown) with an optional private note','Everyone'],['/g all gift','Gift shower to everyone in the room','Everyone'],['/f username','Follow a user; mutual follows become friends','Everyone'],['/block username · /unblock username','Block or unblock: neither side sees the other in rooms','Everyone'],['/tag username','Check a merchant tag','Everyone'],['/whois username','Role, level and gender of a user (private)','Everyone'],['/me','Broadcast your username as a styled action','Everyone'],['/roll','Roll a number from 1 to 100','Everyone'],['/sing','Sing a random fun line','Everyone'],['/flames [username]','Random FLAMES relationship','Everyone'],['/findmymatch','Match with a random member','Everyone'],['/getmyluck','Daily love, money, health and success luck','Everyone'],['/kick','Football kick emote (with a username it is moderation)','Everyone'],['/ban username · /unban username','Ban or unban a user in the room','Room owner/mod, staff, admin'],['/kick username','Remove and suspend for 1 hour','Room owner/mod, staff, admin'],['/bump username','Remove and suspend for 5 minutes','Room owner/mod, staff, admin'],['/unkick username','Remove a suspension','Staff, admin'],['/mod username · /dmod username','Add or remove a room moderator','Room owner'],['/silence [seconds]','Silence ordinary chat for the whole room','Room owner/mod, staff, admin'],['/silence username [seconds]','Silence one user','Room owner/mod, staff, admin'],['/unsilence [username]','Unsilence the room or a user','Room owner/mod, staff, admin'],['/lock · /unlock','Lock or unlock ordinary messages','Room owner/mod, staff, admin'],['/broadcast message','One-time highlighted message','Room owner/mod, staff, admin'],['/announcement message|off','Set or remove the room announcement','Room owner/mod, staff, admin']];
+V.cmds=async()=>{const d=await api('GET','/commands');const q=($('cq')?.value||'').toLowerCase();
+  view(`<div class="row"><button id="cb">←</button><h2 class="g" style="margin:0">Command List</h2></div><input id="cq" placeholder="Search commands" value="${esc(q)}" style="margin:10px 0"><div class="card">${CMDS.filter(c=>(c[0]+c[1]).toLowerCase().includes(q)).map(c=>`<div class="cmd"><code>${esc(c[0])}</code><div>${esc(c[1])}</div><div class="mu">${esc(c[2])}</div></div>`).join('')||'<div class="mu">No match</div>'}</div>
+  ${[['Action commands — username required',d.required,' username'],['Action commands — optional username',d.optional,' [username]'],['Action commands — solo',d.solo,'']].map(([t,l,x])=>`<div class="card"><b>${t}</b><div class="chips">${l.filter(a=>a.includes(q.replace('/',''))).map(a=>`<span class="lv" style="margin:0">/${a}${x}</span>`).join('')}</div></div>`).join('')}
+  <div class="card mu">Coin-stake room games are not part of Migv33 — it is fun-only. UNO is in #games.</div>`);
+  $('cb').onclick=()=>go('explore');$('cq').oninput=()=>{const p=$('cq').selectionStart;V.cmds().then(()=>{$('cq').focus();$('cq').setSelectionRange(p,p)})}};
+V.spin=async()=>{const d=await api('GET','/spin');const n=d.prizes.length,cols=['#2f3b8f','#4a56d6','#1b264f','#6c5ce7','#3b7bd6','#7a6bf0','#141b3a'];
+  view(`<div class="row"><button id="sb">←</button><h2 class="g" style="margin:0">Daily Spin</h2></div><p class="mu" style="text-align:center">${d.free?'Your free spin for today is ready.':`Spins left: <b id="sl">${d.spins}</b>`}</p>
+  <div style="position:relative;width:280px;height:280px;margin:16px auto"><div style="position:absolute;left:50%;top:-10px;transform:translateX(-50%);font-size:26px;z-index:2">▼</div>
+  <div id="wh" style="width:280px;height:280px;border-radius:50%;border:8px solid var(--ac);position:relative;transition:transform 3.5s cubic-bezier(.17,.67,.2,1);background:conic-gradient(${cols.slice(0,n).map((c,i)=>`${c} ${i*360/n}deg ${(i+1)*360/n}deg`).join(',')})">
+  ${d.prizes.map((p,i)=>`<span style="position:absolute;left:50%;top:50%;width:90px;margin-left:-45px;text-align:center;font-size:12px;font-weight:800;transform:rotate(${(i+.5)*360/n}deg) translateY(-98px)">${p}</span>`).join('')}</div></div>
+  <div style="text-align:center"><button class="o" id="go" style="padding:12px 36px;font-size:18px">SPIN</button><div id="res" class="big" style="font-size:22px;margin-top:12px"></div></div>`);
+  $('sb').onclick=()=>go('explore');let rot=0;
+  $('go').onclick=async()=>{try{$('go').disabled=true;const r=await api('POST','/spin');rot+=360*5+(360-(r.index+.5)*360/n)-(rot%360);$('wh').style.transform=`rotate(${rot}deg)`;
+    setTimeout(()=>{$('res').textContent=r.prize==='Try again'?'Try again tomorrow!':'You won '+r.prize+'!';ST.coins=r.coins;$('coins').textContent=r.coins+' coins';$('go').disabled=false;if($('sl'))$('sl').textContent=r.spins},3600)}catch(e){fail(e);$('go').disabled=false}}};
+V.settings=async()=>{const bg=localStorage.cbg||'dark';
+  view(`<h2>Settings</h2><div class="card row" id="sp" style="cursor:pointer">${av(me)}<div class="g"><b>${esc(me)}</b><span class="lv">Lv ${lv(ST.xp||0)}</span><div class="mu">Edit profile, status, avatar</div></div>›</div>
+  <div class="card"><b>Chat background</b><div class="chips">${['light','navy','dark'].map(k=>`<button data-bg="${k}" class="${bg===k?'on':''}">${k[0].toUpperCase()+k.slice(1)}</button>`).join('')}</div></div>
+  <div class="card"><b>Status</b><div class="chips"><button id="ss">${ST.presence||'online'} — change</button></div></div>
+  <form id="pw" class="card" style="display:grid;gap:8px"><b>Change password</b><input id="po" type="password" placeholder="Current password" autocomplete="current-password"><input id="pn" type="password" placeholder="New password (6+ characters)" autocomplete="new-password"><button class="o">Update password</button></form>
+  <button class="mi out card" id="lo">⎋ Log out</button>`);
+  $('sp').onclick=()=>go('profile',me);$('ss').onclick=statusSheet;$('lo').onclick=logout;
+  $('pw').onsubmit=async e=>{e.preventDefault();try{await api('POST','/password',{old:$('po').value,pass:$('pn').value});alert('Password updated.');V.settings()}catch(er){fail(er)}};
+  $('view').onclick=e=>{const b=e.target.dataset.bg;if(b){localStorage.cbg=b;V.settings()}}};
+if(tok())connect();
+</script>
+</body>
+</html>
