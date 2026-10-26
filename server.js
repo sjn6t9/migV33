@@ -9,7 +9,8 @@ import crypto from 'crypto';
 import fs from 'fs';
 import { createRequire } from 'module';
 const require = createRequire(import.meta.url);
-const TP = require('./teen-patti.cjs');   // Teen Patti Gold engine (virtual coins, for fun only)
+let TP = null;   // Teen Patti Gold engine (virtual coins, for fun only); the site still runs if the file is missing
+try { TP = require('./teen-patti.cjs'); } catch (e) { console.error('[TeenPatti] engine not loaded:', e.message); }
 
 const STAFF_USER = (process.env.STAFF_USER || 'migv33').toLowerCase();
 const STAFF_EMAIL = (process.env.STAFF_EMAIL || '').toLowerCase();
@@ -271,7 +272,7 @@ const upHits = new Map();
 const MEDIA_URL = /^\/uploads\/[a-f0-9]{32}\.(jpg|png|gif|webp|webm|ogg|m4a|mp3|wav)$/;
 app.post('/api/upload', auth, express.raw({ type: () => true, limit: '6mb' }), (q, r) => {
   const now = Date.now(), h = (upHits.get(q.user) || []).filter(t => now - t < 600e3);
-  if (h.length >= 40) return bad(r, 'Too many uploads. Please wait a few minutes.', 429);
+  if (h.length >= 4) return bad(r, 'Upload limit reached: 4 uploads per 10 minutes. Please wait a little.', 429);
   upHits.set(q.user, [...h, now]);
   const kind = String(q.query.kind || '');
   const b = q.body;
@@ -348,7 +349,7 @@ const tpStore = {
   },
 };
 const tpPanels = room => members.get(room)?.forEach(w => send(w, { t: 'tp', room, view: tp.getView(room, w.user) }));
-const tp = new TP.TeenPattiManager({
+const tp = !TP ? null : new TP.TeenPattiManager({
   store: tpStore,
   config: { ...TP.CONFIG, DEFAULT_BOOT: TP_BOOT, RAKE_PERCENT: 0, TURN_SECONDS: 15 },
   send: (room, text) => cast(room, { t: 'msg', room, user: 'Teen Patti Gold', text, kind: 'game', ts: Date.now(), role: '' }),
@@ -357,9 +358,9 @@ const tp = new TP.TeenPattiManager({
   onState: tpPanels,
   onHand: info => { try { db.prepare('insert into tp_hands(ts,info) values(?,?)').run(Date.now(), JSON.stringify(info)); } catch {} },
 });
-tp.init().catch(e => console.error('[TeenPatti] init failed', e));
-const ensureTp = room => { if (isTpRoom(room) && !tp.rooms.has(room)) tp.handleMessage(room, { id: 'system', name: 'System', isAdmin: true }, '/bot teenpatti ' + TP_BOOT); };
-const shutdownTp = async () => { try { await tp.shutdown(); } catch {} process.exit(0); };
+tp?.init().catch(e => console.error('[TeenPatti] init failed', e));
+const ensureTp = room => { if (tp && isTpRoom(room) && !tp.rooms.has(room)) tp.handleMessage(room, { id: 'system', name: 'System', isAdmin: true }, '/bot teenpatti ' + TP_BOOT); };
+const shutdownTp = async () => { try { await tp?.shutdown(); } catch {} process.exit(0); };
 process.on('SIGTERM', shutdownTp); process.on('SIGINT', shutdownTp);
 const xpOf = n => db.prepare('select xp from users where name=?').get(n)?.xp || 0;
 
@@ -604,7 +605,7 @@ wss.on('connection', ws => {
       const hist = db.prepare('select user,text,kind,ts,(select role from users where name=msgs.user) role,(select xp from users where name=msgs.user) xp from msgs where room=? and not exists(select 1 from blocks where (a=? and b=msgs.user) or (b=? and a=msgs.user)) order by id desc limit 50').all(m.room, ws.user, ws.user).reverse();
       send(ws, { t: 'history', room: m.room, items: hist });
       if (!isDm) { cast(m.room, { t: 'enter', room: m.room, user: ws.user, role: roleOf(ws.user), xp: xpOf(ws.user), ts: Date.now() }); castRoster(m.room); }
-      if (isTpRoom(m.room)) { ensureTp(m.room); setTimeout(() => send(ws, { t: 'tp', room: m.room, view: tp.getView(m.room, ws.user) }), 50); }
+      if (tp && isTpRoom(m.room)) { ensureTp(m.room); setTimeout(() => send(ws, { t: 'tp', room: m.room, view: tp.getView(m.room, ws.user) }), 50); }
       if (games.has(m.room)) send(ws, unoState(games.get(m.room), ws.user));
     } else if (!ws.room) return;
     else if (m.t === 'msg') {
@@ -612,7 +613,7 @@ wss.on('connection', ws => {
       if (!text) return;
       if (text[0] === '/') return command(ws, text);
       if (text[0] === '!') {
-        if (isTpRoom(ws.room)) { ensureTp(ws.room); return tp.handleMessage(ws.room, { id: ws.user, name: ws.user, isAdmin: isSA(ws.user) }, text).catch(e => console.error('[TeenPatti]', e)); }
+        if (tp && isTpRoom(ws.room)) { ensureTp(ws.room); return tp.handleMessage(ws.room, { id: ws.user, name: ws.user, isAdmin: isSA(ws.user) }, text).catch(e => console.error('[TeenPatti]', e)); }
         return reply(ws, 'This game is only played in the Legendary room.');
       }
       if (!speakOk(ws)) return;
