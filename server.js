@@ -64,11 +64,7 @@ app.post('/api/signup/start', async (q, r) => {
   const claim = ln === STAFF_USER && STAFF_EMAIL && em === STAFF_EMAIL;
   if (!claim && (ln.includes(STAFF_USER) || ['admin', 'staff', 'mentor', 'merchant', 'support'].includes(ln))) return bad(r, 'That username is reserved.');
   if (db.prepare('select 1 from users where lower(name)=? or email=?').get(ln, em)) return bad(r, 'That username or email is already registered.', 409);
-  if (!mailer) { // no SMTP configured: sign up directly (staff account still needs email verification)
-    if (claim) return bad(r, 'Email service is not set up yet, so the staff account cannot be created.', 503);
-    try { return r.json({ token: createUser(name, { email: em, fullName: fullName.trim(), gender, hash: bcrypt.hashSync(pass, 10) }) }); }
-    catch { return bad(r, 'That username or email is already registered.', 409); }
-  }
+  if (!mailer) return bad(r, 'Email verification is not set up yet. Please try again later.', 503); // never create an account without the email code
   const code = String(crypto.randomInt(100000, 1000000));
   pending.set(name, { email: em, code, exp: now + 600e3, tries: 0, fullName: fullName.trim(), gender, hash: bcrypt.hashSync(pass, 10) });
   try { await sendCode(em, code); } catch (e) { console.error(e); return bad(r, 'Could not send the verification email. Please try again.', 502); }
