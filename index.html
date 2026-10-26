@@ -489,6 +489,41 @@ html[data-theme=dark] #bnav button{color:#aebfe3}html[data-theme=dark] #bnav but
 .lgo.go .dp{transition-delay:.3s;transform:none}
 html[data-theme=dark] .lgo{background:linear-gradient(135deg,#eef3ff,#cfdcff);color:#1d2750}
 @media (prefers-reduced-motion:reduce){.box .otp .od.act::before,.box .otp .od.act::after{animation:none}}
+
+/* ===== Home feed v2 ===== */
+.cmpx{margin:10px;padding:10px 12px;border-radius:22px;background:var(--glb);border:1px solid rgba(255,255,255,.75);box-shadow:var(--gsh);position:relative}
+.cmpx .cr{display:flex;gap:10px;align-items:flex-start}.cmpx textarea{flex:1;min-width:0;resize:none;border-radius:16px;padding:10px 12px;font:inherit;font-size:16px;border:1px solid rgba(255,255,255,.8);background:rgba(255,255,255,.7);color:#223}
+.cmpx .cb{display:flex;align-items:center;gap:8px;margin-top:8px}.cmpx .cb .mu{margin-left:auto;font-size:12px}.cmpx .cb button{padding:8px 14px;border-radius:99px}
+#pprev .pv{position:relative;margin-top:8px;display:inline-block}#pprev img{max-width:100%;max-height:200px;border-radius:14px;display:block}#pprev button{position:absolute;top:6px;right:6px;width:28px;height:28px;padding:0;border-radius:50%;background:#000a;color:#fff;border:0}
+#sug{position:absolute;left:12px;right:12px;top:70px;z-index:6;border-radius:16px;background:rgba(255,255,255,.96);box-shadow:0 12px 30px rgba(10,40,100,.35);overflow:hidden}
+#sug button{display:flex;align-items:center;gap:8px;width:100%;border:0;border-radius:0;background:none;box-shadow:none;padding:8px 12px;text-align:left;color:#223}#sug button:hover{background:#eef4ff}
+.mn,.ht{font-weight:700;cursor:pointer;text-decoration:none}.mn{color:#2f7fd8}.ht{color:#e8731a}
+.post .pin{font-size:12px;font-weight:700;color:#e8731a;margin:0 0 4px}.post.pinned{box-shadow:0 0 0 2px rgba(247,147,30,.55),var(--gsh)}
+.lvp{display:inline-flex;align-items:center;gap:2px;margin-left:6px;font-size:12px;font-weight:700;color:#6b7a90;white-space:nowrap}.lvp .lvi{margin:0}
+.post .pm{flex:none;border:0;background:none;box-shadow:none;padding:0 6px;font-size:22px;line-height:1;color:#6b7a90;border-radius:10px;margin-left:2px}
+.pimg{display:block;max-width:100%;max-height:420px;border-radius:16px;margin:8px 0 2px;cursor:zoom-in;object-fit:cover}
+.acts{align-items:stretch}.acts .ac{flex:1;display:flex;align-items:center;justify-content:center;position:relative;min-width:0}.acts .ac>button:first-child{flex:0 1 auto;padding:8px 4px}
+.acts button.cnt{flex:none;min-width:26px;padding:3px 9px;margin-left:2px;border-radius:99px;background:rgba(47,149,224,.14);color:#2a6fbd;font-weight:800;font-size:13px}.acts button.cnt:hover{background:rgba(47,149,224,.28)}
+.rpk{position:absolute;bottom:calc(100% + 6px);left:0;display:flex;gap:2px;padding:6px 8px;border-radius:99px;background:rgba(255,255,255,.97);box-shadow:0 10px 28px rgba(10,40,100,.4);z-index:5;animation:pk .25s cubic-bezier(.3,1.6,.5,1)}
+.rpk[hidden]{display:none}.rpk button{flex:none!important;width:38px;height:38px;padding:0!important;font-size:24px;border-radius:50%;transition:transform .2s}.rpk button:hover{transform:scale(1.35) translateY(-4px)}.rpk button.on{background:#e1efff}
+@keyframes pk{from{opacity:0;transform:translateY(10px) scale(.8)}}
+.tagbar{margin:10px;padding:8px 12px;border-radius:99px;background:var(--glb);display:flex;align-items:center;gap:8px;color:#2a3a55}.tagbar button{margin-left:auto;padding:4px 12px;border-radius:99px;font-size:13px}
+.snack{position:fixed;left:50%;bottom:96px;margin-left:-110px;z-index:30;display:flex;align-items:center;gap:14px;padding:10px 16px;border-radius:99px;background:#1c2748;color:#fff;box-shadow:0 10px 28px #0006;animation:pk .3s}.snack button{background:none;border:0;color:#ffb15c;font-weight:800;padding:0;box-shadow:none}
+.pmi{display:flex;align-items:center;gap:12px;width:100%;text-align:left;font-size:17px;font-weight:600;margin-top:6px}.pmi i{font-style:normal;font-size:22px;width:30px;text-align:center}.pmi.dng{color:#d93a3a}
+.whol{display:grid;gap:6px;max-height:55vh;overflow:auto}.wr{display:flex;align-items:center;gap:10px;text-align:left;width:100%}.wt{display:flex;flex-direction:column;min-width:0;flex:1}.wt small{color:#7a8696;white-space:normal;word-break:break-word}.wem{font-size:24px}
+.lk{padding:6px 0}
+.xpc{margin:8px 12px;padding:12px 14px;border-radius:20px;background:var(--glb);border:1px solid rgba(255,255,255,.75);box-shadow:var(--gsh)}
+.xpc .top{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;font-weight:700}.xpc .top span{color:#7a8696;font-weight:600;font-size:14px}
+.xpc .bar2{height:12px;border-radius:99px;background:rgba(40,80,140,.18);margin:10px 0 6px;overflow:hidden;box-shadow:inset 0 1px 3px rgba(0,0,0,.2)}.xpc .bar2 i{display:block;height:100%;border-radius:99px;background:linear-gradient(90deg,#ffb15c,#f7931e,#e8431a);transition:width .8s cubic-bezier(.3,1,.5,1)}
+.xpc .lvs{display:flex;justify-content:space-between;align-items:center;font-size:13px;color:#4a5b78;font-weight:700}.xpc .lvs span{display:flex;align-items:center;gap:4px}
+html[data-theme=dark] .cmpx textarea{background:rgba(255,255,255,.1);color:#eaf0ff;border-color:rgba(255,255,255,.2)}
+html[data-theme=dark] .cmpx,html[data-theme=dark] .xpc,html[data-theme=dark] .tagbar{background:rgba(255,255,255,.1);border-color:rgba(255,255,255,.2);color:#eaf0ff}
+html[data-theme=dark] #sug{background:rgba(24,34,66,.97)}html[data-theme=dark] #sug button{color:#eaf0ff}html[data-theme=dark] #sug button:hover{background:rgba(255,255,255,.1)}
+html[data-theme=dark] .lvp,html[data-theme=dark] .post .pm,html[data-theme=dark] .xpc .top span,html[data-theme=dark] .xpc .lvs{color:#aebfe3}
+html[data-theme=dark] .acts button.cnt{background:rgba(120,180,255,.2);color:#9cc8ff}
+html[data-theme=dark] .rpk{background:rgba(30,42,80,.97)}html[data-theme=dark] .rpk button.on{background:rgba(255,255,255,.18)}
+html[data-theme=dark] .mn{color:#7fb8ff}html[data-theme=dark] .wt small{color:#9db0d3}
+@media (max-width:999px){body.in #drawer nav{width:min(320px,86%);animation:dIn .45s var(--spring)}#dtg{left:calc(min(320px,86%) + 10px - 15px)}}
 </style>
 <script>try{var t=localStorage.theme||(matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light');document.documentElement.dataset.theme=t}catch(e){document.documentElement.dataset.theme='light'}</script>
 </head>
@@ -646,22 +681,67 @@ function statusSheet(){const o=[['online','Online','Available and active'],['awa
   $('sh').onclick=async e=>{const p=e.target.closest('[data-p]')?.dataset.p;if(!p)return;ST=await api('PUT','/me',{presence:p}).then(x=>({...ST,...x}));$('sheet').classList.remove('open');drawNav()}}
 $('sheet').onclick=e=>{if(e.target.id==='sheet')$('sheet').classList.remove('open')};
 /* ---------- home feed ---------- */
-V.home=async()=>{
-  view(`<div class="cmp">${av(me,44)}<input id="pt" placeholder="What's on your mind, ${esc(me)}?" maxlength="500"><button class="o" id="pb">Post</button></div><div id="feed" class="mu pad">Loading…</div>`);
-  $('pb').onclick=async()=>{const t=$('pt').value.trim();if(!t)return;try{await api('POST','/posts',{text:t});ST.xp=(ST.xp||0)+5;V.home()}catch(e){fail(e)}};
+const EM={like:'👍',love:'❤️',haha:'😂',wow:'😮',sad:'😢',angry:'😡'};
+const rich=t=>esc(t).replace(/(^|[\s(])@([A-Za-z0-9._-]{3,16})/g,'$1<a class="mn" data-u="$2">@$2</a>').replace(/(^|[\s(])#([A-Za-z0-9_]{2,30})/g,'$1<a class="ht" data-tag="$2">#$2</a>');
+function snack(msg,label,fn){const d=document.createElement('div');d.className='snack';d.innerHTML=`<span>${esc(msg)}</span>${label?`<button>${esc(label)}</button>`:''}`;if(label)d.querySelector('button').onclick=()=>{d.remove();fn()};document.body.append(d);setTimeout(()=>d.remove(),6000)}
+let homeTag='',PS={},postImg=null;
+V.home=async(tag)=>{homeTag=typeof tag==='string'?tag:'';postImg=null;
+  view(`<div class="cmpx"><div class="cr">${av(me,44)}<textarea id="pt" rows="2" maxlength="500" placeholder="What's on your mind, ${esc(me)}? Use @name and #tag"></textarea></div><div id="pprev"></div><div id="sug" hidden></div>
+  <div class="cb"><button id="pph" type="button">📷 Photo</button><input type="file" id="pfi" accept="image/*" hidden><span class="mu" id="pcnt">0/500</span><button class="o" id="pb">Post</button></div></div><div id="feed" class="mu pad">Loading…</div>`);
+  const pt=$('pt');
+  $('pph').onclick=()=>$('pfi').click();
+  $('pfi').onchange=async e=>{const f=e.target.files[0];e.target.value='';if(!f)return;try{const b=await imgToBlob(f,1280,false);postImg=b;$('pprev').innerHTML=`<div class="pv"><img src="${URL.createObjectURL(b)}" alt=""><button type="button" id="prm" aria-label="Remove photo">✕</button></div>`;$('prm').onclick=()=>{postImg=null;$('pprev').innerHTML=''}}catch(er){fail(er)}};
+  let sugT=0;
+  pt.oninput=()=>{$('pcnt').textContent=pt.value.length+'/500';clearTimeout(sugT);const m=pt.value.slice(0,pt.selectionStart).match(/(?:^|\s)@([A-Za-z0-9._-]{0,16})$/);if(!m){$('sug').hidden=true;return}
+    sugT=setTimeout(async()=>{try{const l=await api('GET','/users-suggest?q='+encodeURIComponent(m[1]));$('sug').innerHTML=l.map(u=>`<button type="button" data-s="${esc(u.name)}">${av(u.name,26)}<b style="color:${nc(u.name)}">${esc(u.name)}</b>${rt(u.role,u.name)}</button>`).join('');$('sug').hidden=!l.length}catch{}},180)};
+  $('sug').onclick=e=>{const b=e.target.closest('[data-s]');if(!b)return;const pos=pt.selectionStart,before=pt.value.slice(0,pos).replace(/@[A-Za-z0-9._-]*$/,'@'+b.dataset.s+' ');pt.value=before+pt.value.slice(pos);pt.focus();pt.selectionStart=pt.selectionEnd=before.length;$('sug').hidden=true;pt.oninput()};
+  $('pb').onclick=async()=>{const t=pt.value.trim();if(!t&&!postImg)return;$('pb').disabled=true;try{let image='';if(postImg)image=await upload('image',postImg);await api('POST','/posts',{text:t,image});ST.xp=(ST.xp||0)+5;pt.value='';postImg=null;$('pprev').innerHTML='';$('pcnt').textContent='0/500';await loadFeed()}catch(e){fail(e)}$('pb').disabled=false};
   api('GET','/rooms').then(rs=>{if(cur!=='home')return;$('strip').style.display='flex';$('strip').innerHTML=`📊 <span><b>${rs.length}</b> rooms · <b>${rs.reduce((s,x)=>s+x.count,0)}</b> chatting now</span>`}).catch(()=>{});
-  const ps=await api('GET','/feed');ps.forEach(p=>ROLES[p.user]=p.role);
-  const BARS=['#f7c600','#f7852b','#4aa8e8'];
-  $('feed').className='';$('feed').innerHTML=ps.length?ps.map((p,i)=>`<article class="fr post" data-id="${p.id}"><div class="bar" style="background:${p.role&&p.role!=='user'?RC[p.role]:BARS[i%3===0?0:i%3===1?2:2]}"></div><div class="bd"><div class="hd">${av(p.user,52)}<div class="g" style="min-width:0"><div class="nm" style="color:${nc(p.user)}">${esc(p.user)}${rt(p.role,p.user)}<span class="lv">${lvi(lv(p.xp),16)}Lv ${lv(p.xp)}</span></div><p>${esc(p.text)}</p></div><span class="tm">${ago(p.ts)}</span></div>
-  <div class="st">${p.reacts} reactions · ${p.comments} comments · ${p.shares} shares</div>
-  <div class="acts"><button data-a="react" class="${p.mine?'on':''}">👍 React</button><button data-a="comment">💬 Comment</button><button data-a="share">↗ Share</button></div><div class="cm" hidden></div></div></article>`).join(''):'<div class="card mu">No posts yet. Be the first to post.</div>';
-  $('feed').onclick=async e=>{const b=e.target.closest('[data-a]');if(!b)return;const art=b.closest('.post'),id=art.dataset.id,cm=art.querySelector('.cm');
-    try{if(b.dataset.a==='react'){await api('POST',`/posts/${id}/react`);V.home()}
-    else if(b.dataset.a==='share'){await api('POST',`/posts/${id}/share`);V.home()}
-    else if(b.dataset.a==='comment'){if(!cm.hidden){cm.hidden=true;return}
-      const loadC=async()=>{const cs=await api('GET',`/posts/${id}/comments`);cs.forEach(c=>ROLES[c.user]=c.role);cm.innerHTML=cs.map(c=>`<div class="mu"><b style="color:${nc(c.user)}">${esc(c.user)}</b>${rt(c.role,c.user)} ${esc(c.text)}</div>`).join('')+'<div class="row" style="margin-top:8px"><input placeholder="Write a comment…" maxlength="300"><button class="o">Send</button></div>';
-        cm.querySelector('button').onclick=async()=>{const t=cm.querySelector('input').value.trim();if(!t)return;await api('POST',`/posts/${id}/comments`,{text:t});loadC()}};
-      cm.hidden=false;loadC()}}catch(er){fail(er)}}};
+  $('feed').onclick=feedClick;
+  await loadFeed()};
+const BARS=['#f7c600','#f7852b','#4aa8e8'];
+function postHTML(p,i){const mod=['staff','admin'].includes(ST.role),own=p.user===me,canC=!p.locked||own||mod;
+  return `<article class="fr post${p.pinned?' pinned':''}" data-id="${p.id}"><div class="bar" style="background:${p.role&&p.role!=='user'?RC[p.role]:BARS[i%3===0?0:2]}"></div><div class="bd">${p.pinned?'<div class="pin">📌 Pinned post</div>':''}<div class="hd">${av(p.user,52)}<div class="g" style="min-width:0"><div class="nm" style="color:${nc(p.user)}"><span data-u="${esc(p.user)}" style="cursor:pointer">${esc(p.user)}</span>${rt(p.role,p.user)}<span class="lvp">${lvi(lv(p.xp),16)}Lv ${lv(p.xp)}</span></div>
+  ${p.text?`<p>${rich(p.text)}</p>`:''}</div><span class="tm">${ago(p.ts)}${p.edited?' · edited':''}</span><button class="pm" data-a="menu" aria-label="Post options">⋯</button></div>
+  ${p.image?`<img class="pimg" src="${esc(p.image)}" loading="lazy" alt="Photo">`:''}
+  <div class="acts"><div class="ac"><button data-a="react" class="${p.mine?'on':''}">${EM[p.mine]||'👍'} React</button><button class="cnt" data-w="react">${p.reacts}</button><div class="rpk" hidden>${Object.entries(EM).map(([k,e])=>`<button data-k="${k}" class="${p.mine===k?'on':''}" title="${k}">${e}</button>`).join('')}</div></div>
+  <div class="ac"><button data-a="comment">${p.locked?'🔒':'💬'} Comment</button><button class="cnt" data-w="comment">${p.comments}</button></div>
+  <div class="ac"><button data-a="share">↗ Share</button><button class="cnt" data-w="share">${p.shares}</button></div></div><div class="cm" hidden data-canc="${canC?1:0}"></div></div></article>`}
+async function loadFeed(){const ps=await api('GET','/feed'+(homeTag?'?tag='+encodeURIComponent(homeTag):''));ps.forEach(p=>ROLES[p.user]=p.role);PS={};ps.forEach(p=>PS[p.id]=p);
+  $('feed').className='';$('feed').innerHTML=(homeTag?`<div class="tagbar">Showing <b>#${esc(homeTag)}</b> <button data-a="cleartag">✕ Clear</button></div>`:'')+(ps.length?ps.map(postHTML).join(''):`<div class="card mu">${homeTag?'No posts with this tag yet.':'No posts yet. Be the first to post.'}</div>`)}
+function whoSheet(id,type){const T={react:'Reactions',comment:'Comments',share:'Shares'};
+  sheetOpen(`<h2>${T[type]}</h2><div class="whol mu">Loading…</div>`);
+  api('GET',`/posts/${id}/who?type=${type}`).then(l=>{l.forEach(x=>ROLES[x.user]=x.role);const w=document.querySelector('#sh .whol');if(!w)return;w.className='whol';
+    w.innerHTML=l.map(x=>`<button class="wr" data-u="${esc(x.user)}">${av(x.user,38)}<span class="wt"><b style="color:${nc(x.user)}">${esc(x.user)}</b>${rt(x.role,x.user)}${type==='comment'?`<small>${esc(x.text)}</small>`:`<small>${ago(x.ts||Date.now())}${type==='share'?' ago':''}</small>`}</span>${type==='react'?`<span class="wem">${EM[x.kind]||'👍'}</span>`:''}</button>`).join('')||'<div class="mu">Nobody yet.</div>'}).catch(fail);
+  $('sh').onclick=e=>{const b=e.target.closest('[data-u]');if(b){$('sheet').classList.remove('open');go('profile',b.dataset.u)}}}
+function menuSheet(p){const mod=['staff','admin'].includes(ST.role),own=p.user===me;
+  const it=[];if(own)it.push(['edit','✏️','Edit post']);if(mod)it.push(['pin','📌',p.pinned?'Unpin post':'Pin post']);if(own||mod)it.push(['lock',p.locked?'🔓':'🔒',p.locked?'Unlock comments':'Lock comments']);it.push(['hide','🙈','Hide post']);if(own||mod)it.push(['del','🗑️','Delete post']);
+  sheetOpen(`<h2>Post options</h2>`+it.map(([k,i,t])=>`<button class="pmi${k==='del'?' dng':''}" data-m="${k}"><i>${i}</i>${t}</button>`).join(''));
+  $('sh').onclick=async e=>{const b=e.target.closest('[data-m]');if(!b)return;const k=b.dataset.m,close=()=>$('sheet').classList.remove('open');
+    try{if(k==='edit'){$('sh').innerHTML=`<h2>Edit post</h2><textarea id="ept" rows="5" maxlength="500" style="width:100%">${esc(p.text)}</textarea><button class="o" id="esv" style="margin-top:8px;width:100%">Save</button>`;$('esv').onclick=async()=>{try{await api('PUT','/posts/'+p.id,{text:$('ept').value});close();loadFeed()}catch(er){fail(er)}};return}
+      if(k==='pin'){const r=await api('POST',`/posts/${p.id}/pin`);close();toast(r.pinned?'Post pinned':'Post unpinned');loadFeed()}
+      else if(k==='lock'){const r=await api('POST',`/posts/${p.id}/lock`);close();toast(r.locked?'Comments locked':'Comments unlocked');loadFeed()}
+      else if(k==='hide'){await api('POST',`/posts/${p.id}/hide`,{});close();loadFeed();snack('Post hidden from your feed','Undo',async()=>{try{await api('POST',`/posts/${p.id}/hide`,{undo:1});loadFeed()}catch(er){fail(er)}})}
+      else if(k==='del'){if(!confirm('Delete this post permanently?'))return;await api('DELETE','/posts/'+p.id);close();toast('Post deleted');loadFeed()}}catch(er){fail(er)}}}
+async function feedClick(e){
+  if(!e.target.closest('.ac'))document.querySelectorAll('.rpk').forEach(x=>x.hidden=true);
+  const u=e.target.closest('[data-u]');if(u&&!e.target.closest('#sh')){go('profile',u.dataset.u);return}
+  const tg=e.target.closest('[data-tag]');if(tg){go('home',tg.dataset.tag);return}
+  if(e.target.classList.contains('pimg')){lightbox(e.target.src);return}
+  const w=e.target.closest('[data-w]'),art=e.target.closest('.post'),id=art?.dataset.id;
+  if(w){if(+w.textContent>0)whoSheet(id,w.dataset.w);return}
+  const k=e.target.closest('[data-k]');
+  try{if(k){await api('POST',`/posts/${id}/react`,{kind:k.dataset.k});loadFeed();return}
+    const b=e.target.closest('[data-a]');if(!b)return;const a=b.dataset.a,cm=art?.querySelector('.cm');
+    if(a==='cleartag')go('home');
+    else if(a==='react'){const pk=art.querySelector('.rpk');const was=pk.hidden;document.querySelectorAll('.rpk').forEach(x=>x.hidden=true);pk.hidden=!was}
+    else if(a==='menu')menuSheet(PS[id]);
+    else if(a==='share'){await api('POST',`/posts/${id}/share`);loadFeed()}
+    else if(a==='comment'){if(!cm.hidden){cm.hidden=true;return}
+      const loadC=async()=>{const cs=await api('GET',`/posts/${id}/comments`);cs.forEach(c=>ROLES[c.user]=c.role);const canC=cm.dataset.canc==='1';
+        cm.innerHTML=cs.map(c=>`<div class="mu"><b data-u="${esc(c.user)}" style="color:${nc(c.user)};cursor:pointer">${esc(c.user)}</b>${rt(c.role,c.user)} ${rich(c.text)}</div>`).join('')+(canC?'<div class="row" style="margin-top:8px"><input placeholder="Write a comment…" maxlength="300"><button class="o">Send</button></div>':'<div class="mu lk">🔒 Comments are locked on this post.</div>');
+        if(canC)cm.querySelector('button').onclick=async()=>{const t=cm.querySelector('input').value.trim();if(!t)return;try{await api('POST',`/posts/${id}/comments`,{text:t});const c=art.querySelector('[data-w=comment]');c.textContent=+c.textContent+1;loadC()}catch(er){fail(er)}}};
+      cm.hidden=false;loadC()}}catch(er){fail(er)}}
 const Panel = (function () {
   let el = null;
   let view = null, skew = 0, tick = null;
@@ -915,7 +995,8 @@ V.profile=async(n)=>{n=n||me;const u=await api('GET','/users/'+n);ROLES[u.name]=
    ${u.status_text?`<div class="say">${esc(u.status_text)}</div>`:''}</div></div>
    ${u.bio?`<p style="margin:0;padding:0 12px 10px">${esc(u.bio)}</p>`:''}${mine&&ST.email?`<p class="mu" style="padding:0 12px">✉ ${esc(ST.email)} · only you</p>`:''}
    <div id="pa" class="pa"></div>
-   <div class="tiles"><div><b>${u.friends}</b>Friends</div><div><b>${lvi(u.level,22)} ${u.level}</b>Level</div><div><b>${u.xp}</b>XP${mine&&lv(u.xp)<1000?`<br><span style="font-weight:400;font-size:11px">${CUM[lv(u.xp)+1]-u.xp} to Lv ${lv(u.xp)+1}</span>`:''}</div><div><b>${u.coins}</b>Coins</div></div>`);
+   <div class="tiles"><div><b>${u.friends}</b>Friends</div><div><b>${lvi(u.level,22)} ${u.level}</b>Level</div><div><b>${u.xp}</b>XP</div><div><b>${u.coins}</b>Coins</div></div>
+   ${(()=>{const L=lv(u.xp);if(L>=1000)return`<div class="xpc"><div class="top">${lvi(L,24)} Max level reached <span>${u.xp.toLocaleString()} XP</span></div></div>`;const lo=CUM[L],hi=CUM[L+1],need=hi-u.xp,pc=Math.max(2,Math.min(100,Math.round((u.xp-lo)/(hi-lo)*100)));return`<div class="xpc"><div class="top"><b>${u.xp.toLocaleString()} XP</b><span>${need.toLocaleString()} XP more to reach Level ${L+1}</span></div><div class="bar2"><i style="width:${pc}%"></i></div><div class="lvs"><span>${lvi(L,20)} Lv ${L}</span><span>${u.xp.toLocaleString()} / ${hi.toLocaleString()} XP</span><span>Lv ${L+1} ${lvi(L+1,20)}</span></div></div>`})()}`);
   if(mine){$('cp').onclick=()=>$('pfl').click();
     $('pfl').onchange=async e=>{const f=e.target.files[0];e.target.value='';if(!f)return;try{const b=await imgToBlob(f,320,true);AV[me]=await upload('avatar',b);V.profile(me)}catch(er){fail(er)}};
     if($('cr'))$('cr').onclick=async()=>{try{await api('DELETE','/me/avatar');delete AV[me];V.profile(me)}catch(er){fail(er)}}}

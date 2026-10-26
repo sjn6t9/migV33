@@ -155,24 +155,92 @@ app.post('/api/password', auth, ok((q, r) => {
   db.prepare('update users set pass=? where name=?').run(bcrypt.hashSync(pass, 10), q.user); r.json({ ok: true });
 }));
 
-app.get('/api/feed', auth, ok((q, r) => r.json(db.prepare(`select p.*, (select xp from users where name=p.user) xp, (select role from users where name=p.user) role,
-  (select count(*) from reacts where post=p.id) reacts, (select count(*) from reacts where post=p.id and user=?) mine,
-  (select count(*) from comments where post=p.id) comments from posts p order by p.id desc limit 30`).all(q.user))));
+for (const a of ["alter table posts add column image text default ''", 'alter table posts add column pinned int default 0', 'alter table posts add column locked int default 0',
+  'alter table posts add column edited int default 0', "alter table reacts add column kind text default 'like'"]) { try { db.exec(a); } catch {} }
+db.exec(`create table if not exists post_shares(post int, user text, ts int, primary key(post,user));
+create table if not exists post_hidden(user text, post int, primary key(user,post));`);
+const isMod = n => ['staff', 'admin'].includes(roleOf(n));
+const REACTS = ['like', 'love', 'haha', 'wow', 'sad', 'angry'];
+const getPost = id => db.prepare('select * from posts where id=?').get(id);
+const imgUrl = u => typeof u === 'string' && MEDIA_URL.test(u) && /\.(jpg|png|gif|webp)$/.test(u);
+function dropFile(u) { if (u && MEDIA_URL.test(u) && !db.prepare('select 1 from posts where image=?').get(u) && !db.prepare('select 1 from users where avatar=?').get(u)) fs.unlink('.' + u, () => {}); }
+app.get('/api/feed', auth, ok((q, r) => {
+  const tag = String(q.query.tag || '').replace(/[^A-Za-z0-9_]/g, '').slice(0, 30);
+  const rows = db.prepare(`select p.id,p.user,p.text,p.image,p.pinned,p.locked,p.edited,p.ts, p.shares + (select count(*) from post_shares where post=p.id) shares,
+    (select xp from users where name=p.user) xp, (select role from users where name=p.user) role,
+    (select count(*) from reacts where post=p.id) reacts, (select kind from reacts where post=p.id and user=@me) mine,
+    (select count(*) from comments where post=p.id) comments
+    from posts p where p.id not in (select post from post_hidden where user=@me) ${tag ? "and (p.text like '%#'||@tag||'%')" : ''}
+    order by p.pinned desc, p.id desc limit 40`).all(tag ? { me: q.user, tag } : { me: q.user });
+  r.json(rows);
+}));
+app.get('/api/users-suggest', auth, ok((q, r) => {
+  const s = String(q.query.q || '').replace(/[^A-Za-z0-9._-]/g, '').slice(0, 16);
+  r.json(db.prepare("select name, role from users where name like ? || '%' order by length(name) limit 6").all(s));
+}));
 app.post('/api/posts', auth, ok((q, r) => {
-  const text = String(q.body?.text || '').trim().slice(0, 500); if (!text) return bad(r, 'Write something first');
-  db.prepare('insert into posts(user,text,ts) values(?,?,?)').run(q.user, text, Date.now());
+  const text = String(q.body?.text || '').trim().slice(0, 500), image = imgUrl(q.body?.image) ? q.body.image : '';
+  if (!text && !image) return bad(r, 'Write something or add a photo first');
+  db.prepare('insert into posts(user,text,image,ts) values(?,?,?,?)').run(q.user, text, image, Date.now());
   addXp(q.user, 5); r.json({ ok: true });
 }));
+app.put('/api/posts/:id', auth, ok((q, r) => {
+  const p = getPost(q.params.id); if (!p) return bad(r, 'Post not found', 404);
+  if (p.user !== q.user) return bad(r, 'You can only edit your own posts', 403);
+  const text = String(q.body?.text || '').trim().slice(0, 500);
+  if (!text && !p.image) return bad(r, 'A post cannot be empty');
+  db.prepare('update posts set text=?, edited=1 where id=?').run(text, p.id); r.json({ ok: true });
+}));
+app.delete('/api/posts/:id', auth, ok((q, r) => {
+  const p = getPost(q.params.id); if (!p) return bad(r, 'Post not found', 404);
+  if (p.user !== q.user && !isMod(q.user)) return bad(r, 'You cannot delete this post', 403);
+  for (const t of ['reacts', 'comments', 'post_shares', 'post_hidden']) db.prepare(`delete from ${t} where post=?`).run(p.id);
+  db.prepare('delete from posts where id=?').run(p.id); dropFile(p.image); r.json({ ok: true });
+}));
+app.post('/api/posts/:id/pin', auth, ok((q, r) => {
+  if (!isMod(q.user)) return bad(r, 'Only staff and admins can pin posts', 403);
+  const p = getPost(q.params.id); if (!p) return bad(r, 'Post not found', 404);
+  if (!p.pinned && db.prepare('select count(*) c from posts where pinned=1').get().c >= 3) return bad(r, 'Up to 3 posts can be pinned. Unpin one first.');
+  db.prepare('update posts set pinned=? where id=?').run(p.pinned ? 0 : 1, p.id); r.json({ pinned: !p.pinned });
+}));
+app.post('/api/posts/:id/lock', auth, ok((q, r) => {
+  const p = getPost(q.params.id); if (!p) return bad(r, 'Post not found', 404);
+  if (p.user !== q.user && !isMod(q.user)) return bad(r, 'Only the author or staff can lock comments', 403);
+  db.prepare('update posts set locked=? where id=?').run(p.locked ? 0 : 1, p.id); r.json({ locked: !p.locked });
+}));
+app.post('/api/posts/:id/hide', auth, ok((q, r) => {
+  if (!getPost(q.params.id)) return bad(r, 'Post not found', 404);
+  if (q.body?.undo) db.prepare('delete from post_hidden where user=? and post=?').run(q.user, q.params.id);
+  else db.prepare('insert or ignore into post_hidden values(?,?)').run(q.user, q.params.id);
+  r.json({ ok: true });
+}));
 app.post('/api/posts/:id/react', auth, ok((q, r) => {
-  const d = db.prepare('delete from reacts where post=? and user=?').run(q.params.id, q.user);
-  if (!d.changes) db.prepare('insert or ignore into reacts values(?,?)').run(q.params.id, q.user); r.json({ ok: true });
+  if (!getPost(q.params.id)) return bad(r, 'Post not found', 404);
+  const kind = REACTS.includes(q.body?.kind) ? q.body.kind : 'like';
+  const cur = db.prepare('select kind from reacts where post=? and user=?').get(q.params.id, q.user);
+  if (cur && cur.kind === kind) db.prepare('delete from reacts where post=? and user=?').run(q.params.id, q.user);
+  else db.prepare('insert or replace into reacts(post,user,kind) values(?,?,?)').run(q.params.id, q.user, kind);
+  r.json({ ok: true });
+}));
+app.get('/api/posts/:id/who', auth, ok((q, r) => {
+  const id = q.params.id, t = q.query.type;
+  const role = 'select role from users where name=x.user';
+  if (t === 'react') return r.json(db.prepare(`select user, kind, (${role}) role from reacts x where post=? order by rowid desc limit 200`).all(id));
+  if (t === 'comment') return r.json(db.prepare(`select user, text, ts, (${role}) role from comments x where post=? order by id desc limit 200`).all(id));
+  if (t === 'share') return r.json(db.prepare(`select user, ts, (${role}) role from post_shares x where post=? order by ts desc limit 200`).all(id));
+  bad(r, 'Unknown list');
 }));
 app.get('/api/posts/:id/comments', auth, ok((q, r) => r.json(db.prepare('select user,text,ts,(select role from users where name=comments.user) role from comments where post=? order by id limit 100').all(q.params.id))));
 app.post('/api/posts/:id/comments', auth, ok((q, r) => {
+  const p = getPost(q.params.id); if (!p) return bad(r, 'Post not found', 404);
+  if (p.locked && p.user !== q.user && !isMod(q.user)) return bad(r, 'Comments are locked on this post.', 403);
   const text = String(q.body?.text || '').trim().slice(0, 300); if (!text) return bad(r, 'Write a comment first');
   db.prepare('insert into comments(post,user,text,ts) values(?,?,?,?)').run(q.params.id, q.user, text, Date.now()); r.json({ ok: true });
 }));
-app.post('/api/posts/:id/share', auth, ok((q, r) => { db.prepare('update posts set shares=shares+1 where id=?').run(q.params.id); r.json({ ok: true }); }));
+app.post('/api/posts/:id/share', auth, ok((q, r) => {
+  if (!getPost(q.params.id)) return bad(r, 'Post not found', 404);
+  db.prepare('insert or ignore into post_shares values(?,?,?)').run(q.params.id, q.user, Date.now()); r.json({ ok: true });
+}));
 
 app.get('/api/rooms', auth, ok((q, r) => {
   const fav = new Set(db.prepare('select room from favs where user=?').all(q.user).map(x => x.room));
