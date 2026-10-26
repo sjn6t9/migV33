@@ -685,6 +685,12 @@ html[data-skin][data-theme] #bnav button:not(.fab){background:none!important;bor
 #pop .pa{display:flex;gap:10px;margin-top:18px}#pop .pa button{flex:1;padding:13px 10px;font-size:16px;font-weight:800;border-radius:99px}
 :root[data-skin][data-theme] #pop button.o{background:#f7931e!important;border-color:#f7931e!important;color:#fff!important}
 :root[data-skin][data-theme] #pop .pc{backdrop-filter:blur(22px);-webkit-backdrop-filter:blur(22px)}
+#f #phb,#f #mic,#f #rmn{width:32px!important;height:32px!important;min-width:0!important;padding:0!important;font-size:15px!important;line-height:1;border-radius:50%!important;flex:none}
+#f{gap:6px!important;padding:6px 8px!important}
+#rpop{position:fixed;z-index:30;display:flex;flex-direction:column;gap:2px;min-width:178px;max-width:230px;padding:6px;border-radius:18px;background:var(--sf);border:1px solid var(--ln);box-shadow:0 14px 34px rgba(0,0,0,.35);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);animation:popup .18s ease}
+#rpop button,:root[data-skin][data-theme] #rpop button{background:none!important;border:0!important;box-shadow:none!important;backdrop-filter:none!important;-webkit-backdrop-filter:none!important;text-align:left;justify-content:flex-start;width:100%;padding:9px 12px;font-size:15px;font-weight:700;border-radius:12px!important;color:var(--tx)!important;display:block}
+#rpop button:active{background:rgba(247,147,30,.2)!important}#rpop button.dg{color:#e5533d!important}
+:root[data-skin][data-theme] #sheet button.o{background:#f7931e!important;border-color:#f7931e!important;color:#fff!important}
 #tp:empty{display:none}
 </style>
 <script>try{var t=localStorage.theme||(matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light');if(localStorage.tk||sessionStorage.tk)document.documentElement.dataset.boot=1;var k=localStorage.skin||'navy';if(k==='navy'){t='dark'}else if(k==='white'){t='light'}if(k==='navy'||k==='white')document.documentElement.dataset.skin=k;document.documentElement.dataset.theme=t}catch(e){document.documentElement.dataset.theme='light'}</script>
@@ -793,6 +799,7 @@ async function on(m){
   if(m.t==='ready'){const first=!me;me=m.user;G=m.gifts;$('auth').style.display='none';$('app').style.display='flex';document.body.classList.add('in');
     ST=await api('GET','/me').catch(()=>({}));ROLES[me]=ST.role;await refreshVer();$('coins').textContent=cn(ST.coins);drawNav();document.documentElement.removeAttribute('data-boot');if(first)api('GET','/announcement').then(showAnn).catch(()=>{});if(first){let r=null;try{r=JSON.parse(sessionStorage.lastv||'null')}catch{}if(r&&V[r[0]]&&r[0]!=='admin')go(r[0],r[1]===null?undefined:r[1]);else go('home')}}
   if(m.t==='announce')showAnn(m.a);
+  if(m.t==='roomcfg'&&m.room===room&&RI){const ch=(RI.descr||'')!==m.descr;Object.assign(RI,{descr:m.descr,minlv:m.minlv,mods:m.mods,supers:m.supers});if(ch&&m.descr&&$('log'))L(m.room[0].toUpperCase()+m.room.slice(1),`📝 ${esc(m.descr)}`)}
   if(m.t==='levelup'){ST.xp=Math.max(ST.xp||0,CUM[m.level]);toast(`🎉 Level ${m.level}!${m.reward?` +${m.reward.toLocaleString()} coins`:''}`)}
   if(m.t==='gifts'){G=m.gifts;if($('gifts'))$('gifts').innerHTML=Object.entries(G).map(([k,g])=>`<button data-g="${k}" title="${esc(g.n)} (${k}) · ${g.c} coins">${g.img?`<img src="${esc(g.img)}" alt="" style="height:20px;width:20px;object-fit:contain;vertical-align:middle">`:g.e} ${g.c}</button>`).join(' ')}
   if(m.t==='xp'){ST.xp=m.xp;drawNav();if(cur==='profile')go('profile',me)}
@@ -1156,22 +1163,37 @@ function memSheet(){sheetOpen(`<h2>${esc(lastRoom)} · ${RM.length} online</h2><
   $('sh').onclick=e=>{const n=e.target.closest('[data-n]')?.dataset.n;if(!n)return;$('sheet').classList.remove('open');if(n!==me)setTarget(n)}}
 function modInfo(){const o=RI?.owner||'—';sheetOpen(`<h2>Room staff</h2><div>Managed by: <b style="color:${nc(o)}">${esc(o)}</b></div><div class="mu">Moderators: ${(RI?.mods||[]).map(esc).join(', ')||'none'}</div><div class="mu">Staff and admins can kick, ban and silence in public rooms.</div>`)}
 
+const canEditRoom=()=>!room.startsWith('dm:')&&(['staff','admin'].includes(ST.role)||(RI&&(RI.owner===me||(RI.supers||[]).includes(me))));
 function chatMenu(){
+  if($('rpop'))return $('rpop').remove();
   const dm=room.startsWith('dm:');
-  sheetOpen(`<h2>${esc(rtitle(room))}</h2>
-  ${dm?'':'<button data-c="ppl"><b style="font-size:20px">👥</b> Participants</button>'}
-  <button data-c="bal" style="color:#f0a63a"><b style="font-size:20px">🪙</b> Check Balance</button>
-  <button data-c="gift" style="color:#f0a63a"><b style="font-size:20px">🎁</b> Send Gift</button>
-  ${dm?'':'<button data-c="pkt" style="color:#e0475b"><b style="font-size:20px">🧧</b> Lucky Packet</button>'}
-  <button data-c="clr" style="opacity:.75"><b style="font-size:20px">🧹</b> Clear Chat</button>
-  ${dm?'':'<button data-c="leave" style="color:#e5533d"><b style="font-size:20px">🚪</b> Leave Room</button>'}`);
-  $('sh').onclick=e=>{const k=e.target.closest('[data-c]')?.dataset.c;if(!k)return;$('sheet').classList.remove('open');
+  const p=document.createElement('nav');p.id='rpop';
+  p.innerHTML=`${dm?'':'<button data-c="ppl">👥 Participants</button>'}<button data-c="bal">🪙 Check Balance</button><button data-c="gift">🎁 Send Gift</button>${dm?'':'<button data-c="pkt">🧧 Lucky Packet</button>'}${canEditRoom()?'<button data-c="edit">✏️ Room Edit</button>':''}<button data-c="clr">🧹 Clear Chat</button>${dm?'':'<button data-c="leave" class="dg">🚪 Leave Room</button>'}`;
+  const f=$('f').getBoundingClientRect();p.style.left=Math.max(8,f.left+8)+'px';p.style.bottom=(innerHeight-f.top+6)+'px';
+  document.body.appendChild(p);
+  const off=e=>{if(!p.contains(e.target)||e.target===p){p.remove();document.removeEventListener('pointerdown',off,true)}};
+  setTimeout(()=>document.addEventListener('pointerdown',off,true),0);
+  p.onclick=e=>{const k=e.target.closest('[data-c]')?.dataset.c;if(!k)return;p.remove();document.removeEventListener('pointerdown',off,true);
     if(k==='ppl')return memSheet();
     if(k==='bal')return tx({t:'msg',text:'/balance'});
     if(k==='clr'){$('log').innerHTML='';return toast('Chat cleared on this device')}
     if(k==='leave')return closeTab(room);
     if(k==='gift')return giftSheet();
-    if(k==='pkt')return packetSheet()}}
+    if(k==='pkt')return packetSheet();
+    if(k==='edit')return roomEdit()}}
+async function roomEdit(){
+  let e;try{e=await api('GET','/rooms/'+encodeURIComponent(room)+'/edit')}catch(er){return fail(er)}
+  sheetOpen(`<h2>✏️ Room Edit</h2><small class="mu">${esc(rtitle(room))} · admin ${esc(e.owner)}</small>
+  <section style="display:grid;gap:6px;margin:10px 0"><b>Description</b><textarea id="red" rows="3" maxlength="200" placeholder="What is this room about?">${esc(e.descr)}</textarea>
+  <b>Minimum level to enter</b><input id="rel" type="number" min="0" max="1000" value="${e.minlv}" placeholder="0 = everyone"><small class="mu">Users below this level cannot join. Room staff are always allowed in. 0 means no limit.</small>
+  <button class="o" id="res">Save</button></section>
+  <section style="display:grid;gap:6px;margin:10px 0"><b>Moderators (${e.mods.length})</b>
+  ${e.mods.map(m=>`<article class="row" style="gap:8px"><span class="g"><b style="color:${nc(m.user)}">${esc(m.user)}</b>${m.super?' <small class="mu">super mod</small>':''}</span><button data-rm="${esc(m.user)}">Remove</button></article>`).join('')||'<small class="mu">No moderators yet.</small>'}
+  <article class="row" style="gap:8px"><input id="rea" placeholder="Username to add" maxlength="16"><button class="o" id="reb">Add</button></article></section>`);
+  const save=async body=>{try{const x=await api('POST','/rooms/'+encodeURIComponent(room)+'/edit',body);return x}catch(er){fail(er)}};
+  $('res').onclick=async()=>{const x=await save({descr:$('red').value,minlv:$('rel').value});if(x){toast('Room updated ✔');$('sheet').classList.remove('open')}};
+  $('reb').onclick=async()=>{const n=$('rea').value.trim();if(!n)return;if(await save({addMod:n}))roomEdit()};
+  $('sh').onclick=async ev=>{const b=ev.target.closest('[data-rm]');if(b&&await save({removeMod:b.dataset.rm}))roomEdit()}}
 function giftSheet(){
   const dm=room.startsWith('dm:'),to=dm?room.slice(3).split(':').find(x=>x!==me):target;
   sheetOpen(`<h2>Send Gift</h2>${dm?`<small>To: <b>${esc(to)}</b></small>`:`<small>To (username):</small><input id="gto" value="${esc(to||'')}" maxlength="16" placeholder="Username (or tap a name in the chat first)">`}
@@ -1192,6 +1214,8 @@ function roomIntro(m){RI=m;const nm=m.room[0].toUpperCase()+m.room.slice(1);
   L(nm,`Welcome to ${esc(nm)}`);
   L(nm,`This chatroom is managed by <b style="color:${nc(m.owner)}">${esc(m.owner)}</b>`);
   L(nm,`Currently in the room: ${m.users.map(u=>esc(u.name)).join(', ')||'nobody yet'}`);
+  if(m.descr)L(nm,`📝 ${esc(m.descr)}`);
+  if(m.minlv)L(nm,`🔒 Level ${m.minlv}+ room`);
   if(m.announce)L(nm,`📢 <b>(Announcement): ${esc(m.announce)}</b>`,'ann');
   drawOnline()}
 function enterLine(m){ROLES[m.user]=m.role;const light=$('log').classList.contains('light');const nm=m.room[0].toUpperCase()+m.room.slice(1);
@@ -1205,14 +1229,14 @@ function modSheet(n){const A=[['kick','Kick from room'],['ban','Ban from room'],
   $('sheet').classList.add('open');
   $('sh').onclick=e=>{const b=e.target.closest('[data-a]');if(!b)return;const a=b.dataset.a;if((a==='kick'||a==='ban')&&!confirm(`${a==='ban'?'Ban':'Kick'} ${n} from ${lastRoom}?`))return;
     tx({t:'join',room:lastRoom});tx({t:'mod',act:a,user:n,minutes:+b.dataset.m||10});$('sheet').classList.remove('open')}}
-function add(m){ROLES[m.user]=m.role;const d=document.createElement('div');if(m.kind==='sys'||m.kind==='action'){d.className=m.kind==='sys'?'g2':'act';d.textContent=m.text;$('log').append(d);$('log').scrollTop=1e9;return}const t=new Date(m.ts).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})+' · '+new Date(m.ts).toLocaleDateString([],{day:'numeric',month:'short'}),stamp=()=>{const s=document.createElement('div');s.className='bts'+(m.user===me?' mine':'');s.textContent=t;return s};
+function add(m){ROLES[m.user]=m.role;const d=document.createElement('div');if(m.kind==='sys'||m.kind==='action'){d.className=m.kind==='sys'?'g2':'act';d.textContent=m.text;$('log').append(d);$('log').scrollTop=1e9;return}const t=new Date(m.ts).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})+' · '+new Date(m.ts).toLocaleDateString([],{day:'numeric',month:'short'}),stamp=()=>{const s=document.createElement('div');s.className='bts';s.textContent=t;return s};
   if(m.kind==='gift'){d.className='g2';const gm=/^\[g:(\/uploads\/[a-f0-9]{32}\.\w+)\] ?(.*)$/.exec(m.text);if(gm){d.innerHTML=`<b>${esc(m.user)}</b>${lvtag(m.user,m.xp)}: `;const im=document.createElement('img');im.src=gm[1];im.alt='';im.style.cssText='height:26px;width:26px;object-fit:contain;vertical-align:middle;margin:0 4px';d.append(im,gm[2])}else{d.innerHTML=`<b>${esc(m.user)}</b>${lvtag(m.user,m.xp)}: ${esc(m.text)}`;if(/Type \/grab/.test(m.text)){const gb=document.createElement('button');gb.className='o';gb.textContent='🧧 Grab';gb.style.cssText='margin-left:8px;padding:2px 12px';gb.onclick=()=>tx({t:'msg',text:'/grab'});d.append(gb)}}}
-  else if(m.kind==='image'||m.kind==='voice'){const light=$('log').classList.contains('light');d.className='b'+(m.user===me?' mine':'');
+  else if(m.kind==='image'||m.kind==='voice'){const light=$('log').classList.contains('light');d.className='b';
     const [u,dur]=String(m.text).split('|');const safe=/^\/uploads\/[a-f0-9]{32}\.\w+$/.test(u)?u:'';
     const body=m.kind==='image'?`<img class="chimg" src="${esc(safe)}" alt="Photo" loading="lazy" data-big="${esc(safe)}">`:`<audio controls preload="none" src="${esc(safe)}"></audio>${dur?` <small>${fmtDur(+dur)}</small>`:''}`;
-    d.innerHTML=`<b data-u="${esc(m.user)}" style="color:${nc(m.user,light?40:72)}">${esc(m.user)}</b>${rt(m.role,m.user)}<div class="mdia">${m.kind==='image'?'📷 ':'🎤 '}</div><div>${body}</div>`;d.querySelector('.mdia').remove()}
+    d.innerHTML=`<b data-u="${esc(m.user)}" style="color:${nc(m.user,light?40:72)}">${esc(m.user)}</b><div class="mdia">${m.kind==='image'?'📷 ':'🎤 '}</div><div>${body}</div>`;d.querySelector('.mdia').remove()}
   else if(m.kind==='game'){d.className='b game';d.style.whiteSpace='pre-wrap';d.innerHTML=`<span class="gn">${m.priv?'🔒 ':''}${esc(m.user||'Teen Patti Gold')}:</span> ${esc(m.text)}`}
-  else{const light=$('log').classList.contains('light');d.className='b'+(m.user===me?' mine':'');d.innerHTML=`<b data-u="${esc(m.user)}" style="color:${nc(m.user,light?40:72)}">${esc(m.user)}</b>${rt(m.role,m.user)}: ${esc(m.text)}`}
+  else{const light=$('log').classList.contains('light');d.className='b';d.innerHTML=`<b data-u="${esc(m.user)}" style="color:${nc(m.user,light?40:72)}">${esc(m.user)}</b>: ${esc(m.text)}`}
   $('log').append(d);if(m.kind==='msg'||m.kind==='image'||m.kind==='voice')$('log').append(stamp());$('log').scrollTop=1e9}
 const uno=o=>tx({t:'uno',...o});
 const lbl=c=>c==='W'?'Wild':c==='F'?'+4':({S:'Skip',V:'Rev',D:'+2'}[c[1]]||c[1]);
@@ -1440,7 +1464,7 @@ const popup=o=>new Promise(res=>{document.getElementById('pop')?.remove();const 
   d.innerHTML=`<section class="pc"><div class="pi">${o.icon||'📢'}</div><h3>${esc(o.title||'')}</h3>${o.body?`<div class="pb">${esc(o.body)}</div>`:''}${o.html||''}<div class="pa">${(o.buttons||[['OK','o']]).map(([t,c],i)=>`<button class="${c||''}" data-i="${i}">${esc(t)}</button>`).join('')}</div></section>`;
   const end=i=>{d.remove();res(i)};d.onclick=e=>{const b=e.target.closest('[data-i]');if(b)end(+b.dataset.i);else if(e.target===d&&!o.sticky)end(-1)};document.body.appendChild(d)});
 let annQ=null;
-const showAnn=async a=>{if(!a||!me)return;let seen=0;try{seen=+localStorage['ann_'+me]||0}catch{}if(a.id<=seen||annQ===a.id)return;annQ=a.id;
+const showAnn=async a=>{if(!a||!a.id||!a.title||!me)return;let seen=0;try{seen=+localStorage['ann_'+me]||0}catch{}if(a.id<=seen||annQ===a.id)return;annQ=a.id;
   const link=a.link;const i=await popup({icon:'📢',title:a.title,body:a.body,buttons:link?[['Dismiss',''],[a.btn||'View','o']]:[['OK','o']]});
   try{localStorage['ann_'+me]=a.id}catch{}if(link&&i===1)window.open(link,'_blank','noopener')};
 async function adminAnnounce(){

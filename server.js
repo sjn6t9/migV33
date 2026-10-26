@@ -124,7 +124,7 @@ create table if not exists tp_hands(id integer primary key, ts int, info text);
 create table if not exists rb_pending(room text, round int, user text, option text, amount int);
 create table if not exists lc_pending(room text, user text, amount int);
 create table if not exists mutes(room text, user text, until int, primary key(room,user))`);
-for (const a of ['alter table room_mods add column super int default 0', 'alter table rooms add column cap int default 0']) { try { db.exec(a); } catch {} }
+for (const a of ['alter table room_mods add column super int default 0', 'alter table rooms add column cap int default 0', "alter table rooms add column descr text default ''", 'alter table rooms add column minlv int default 0']) { try { db.exec(a); } catch {} }
 db.exec(`create table if not exists room_game(room text primary key, game text);
 create table if not exists kv(k text primary key, v text)`);
 const gameOf = room => db.prepare('select game from room_game where room=?').get(room)?.game || '';
@@ -811,6 +811,26 @@ app.post('/api/admin/announcements', auth, ok((q, r) => {
   r.json({ ok: true, id: Number(id) });
 }));
 app.delete('/api/admin/announcements/:id', auth, ok((q, r) => { if (!staffChk(q, r)) return; db.prepare('update announcements set active=0 where id=?').run(+q.params.id); r.json({ ok: true }); }));
+// ---------- Room Edit (room admin / super moderator / staff): description, moderators, minimum level ----------
+const canEditRoom = (room, u) => isSA(u) || ownerOf(room) === u || isSuper(room, u);
+const roomEditState = room => { const r = db.prepare('select owner,descr,minlv from rooms where name=?').get(room) || {}; return { room, owner: r.owner || STAFF_USER, descr: r.descr || '', minlv: r.minlv || 0, mods: db.prepare('select user,super from room_mods where room=? order by user').all(room).map(x => ({ user: x.user, super: !!x.super })) }; };
+const castRoomCfg = room => { const e = roomEditState(room); cast(room, { t: 'roomcfg', room, descr: e.descr, minlv: e.minlv, mods: e.mods.map(x => x.user), supers: e.mods.filter(x => x.super).map(x => x.user) }); castRoster(room); };
+app.get('/api/rooms/:name/edit', auth, ok((q, r) => { const room = q.params.name; if (!roomOk(room) || /^dm:/.test(room)) return bad(r, 'No such room', 404); if (!canEditRoom(room, q.user)) return bad(r, 'Only the room admin can edit this room', 403); r.json(roomEditState(room)); }));
+app.post('/api/rooms/:name/edit', auth, ok((q, r) => {
+  const room = q.params.name; if (!roomOk(room) || /^dm:/.test(room)) return bad(r, 'No such room', 404);
+  if (!canEditRoom(room, q.user)) return bad(r, 'Only the room admin can edit this room', 403);
+  const b = q.body || {};
+  if (b.descr !== undefined) db.prepare('update rooms set descr=? where name=?').run(String(b.descr).trim().slice(0, 200), room);
+  if (b.minlv !== undefined) { const n = Math.max(0, Math.min(MAXLV, parseInt(b.minlv, 10) || 0)); db.prepare('update rooms set minlv=? where name=?').run(n, room); }
+  if (b.addMod) {
+    const u = db.prepare('select name from users where lower(name)=lower(?)').get(String(b.addMod).trim());
+    if (!u) return bad(r, 'No user with that name');
+    if (u.name === ownerOf(room) || u.name.toLowerCase() === STAFF_USER) return bad(r, 'That user already manages this room');
+    db.prepare('insert or ignore into room_mods(room,user) values(?,?)').run(room, u.name);
+  }
+  if (b.removeMod) { const u = String(b.removeMod); if (!isSA(q.user) && ownerOf(room) !== q.user && isSuper(room, u)) return bad(r, 'Only the room admin can remove a super moderator'); db.prepare('delete from room_mods where room=? and user=?').run(room, u); }
+  castRoomCfg(room); r.json(roomEditState(room));
+}));
 app.get('/api/leaderboard', auth, ok((q, r) => r.json(db.prepare('select name,xp,coins,role from users order by xp desc limit 20').all().map(u => ({ ...u, level: level(u.xp) })))));
 
 // ---------- uploads: profile photos, chat images, voice notes ----------
@@ -1377,12 +1397,16 @@ wss.on('connection', ws => {
         const cap = db.prepare('select cap from rooms where name=?').get(m.room)?.cap || 0;
         if (cap) { const here = new Set([...(members.get(m.room) || [])].filter(w => w !== ws).map(w => w.user)); if (!here.has(ws.user) && here.size >= cap) return send(ws, { t: 'denied', room: m.room, error: `This room is full (${cap} users).` }); }
       }
+      if (!/^dm:/.test(m.room) && !canMod(m.room, ws.user)) {
+        const need = db.prepare('select minlv from rooms where name=?').get(m.room)?.minlv || 0;
+        if (need && level(xpOf(ws.user)) < need) return send(ws, { t: 'denied', room: m.room, error: `This room needs level ${need} or higher to enter.` });
+      }
       leaveRoom(ws, ws.room === m.room);
       ws.room = m.room; ws.roomAt = Date.now();
       if (!members.has(m.room)) members.set(m.room, new Set());
       members.get(m.room).add(ws);
       const isDm = /^dm:/.test(m.room);
-      if (!isDm) send(ws, { t: 'roominfo', room: m.room, owner: ownerOf(m.room) || STAFF_USER, mods: db.prepare('select user from room_mods where room=?').all(m.room).map(x => x.user), supers: db.prepare('select user from room_mods where room=? and super=1').all(m.room).map(x => x.user), cap: db.prepare('select cap from rooms where name=?').get(m.room)?.cap || 0, announce: cfg(m.room).announce || '', users: roster(m.room), fav: !!db.prepare('select 1 from favs where user=? and room=?').get(ws.user, m.room) });
+      if (!isDm) send(ws, { t: 'roominfo', room: m.room, owner: ownerOf(m.room) || STAFF_USER, mods: db.prepare('select user from room_mods where room=?').all(m.room).map(x => x.user), supers: db.prepare('select user from room_mods where room=? and super=1').all(m.room).map(x => x.user), cap: db.prepare('select cap from rooms where name=?').get(m.room)?.cap || 0, descr: db.prepare('select descr from rooms where name=?').get(m.room)?.descr || '', minlv: db.prepare('select minlv from rooms where name=?').get(m.room)?.minlv || 0, announce: cfg(m.room).announce || '', users: roster(m.room), fav: !!db.prepare('select 1 from favs where user=? and room=?').get(ws.user, m.room) });
       const hist = db.prepare('select user,text,kind,ts,(select role from users where name=msgs.user) role,(select xp from users where name=msgs.user) xp from msgs where room=? and not exists(select 1 from blocks where (a=? and b=msgs.user) or (b=? and a=msgs.user)) order by id desc limit 50').all(m.room, ws.user, ws.user).reverse();
       send(ws, { t: 'history', room: m.room, items: hist });
       if (!isDm) { cast(m.room, { t: 'enter', room: m.room, user: ws.user, role: roleOf(ws.user), xp: xpOf(ws.user), ts: Date.now() }); castRoster(m.room); }
