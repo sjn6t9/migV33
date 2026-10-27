@@ -367,7 +367,11 @@ app.delete('/api/stories/:id', auth, ok((q, r) => {
 
 app.get('/api/rooms', auth, ok((q, r) => {
   const fav = new Set(db.prepare('select room from favs where user=?').all(q.user).map(x => x.room));
-  r.json(db.prepare('select name,cat,cap from rooms').all().map(x => ({ ...x, count: members.get(x.name)?.size || 0, fav: fav.has(x.name) })));
+  const own = new Map(), isStaffOwner = o => { if (!o) return false; if (!own.has(o)) own.set(o, ['staff', 'admin'].includes(roleOf(o))); return own.get(o); };
+  r.json(db.prepare('select name,cat,cap,owner from rooms').all().map(x => {
+    const cat = (gameOf(x.name) || x.cat === 'game') ? 'game' : (x.cat === 'official' || isStaffOwner(x.owner)) ? 'official' : 'user';
+    return { name: x.name, cat, cap: x.cap, count: new Set([...(members.get(x.name) || [])].map(w => w.user)).size, fav: fav.has(x.name) };
+  }).sort((a, b) => b.count - a.count || a.name.localeCompare(b.name)));
 }));
 app.post('/api/rooms', auth, ok((q, r) => {
   if (lvGate(q.user)) return bad(r, `Creating a room unlocks at Level ${MIN_LV_XFER}.`, 403);
