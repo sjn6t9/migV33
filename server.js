@@ -1122,7 +1122,25 @@ app.delete('/api/admin/support/:id', auth, ok((q, r) => {
 }));
 // ---- custom emoticons (Admin Panel -> Manage emoticons) ----
 db.exec('create table if not exists custom_emo(name text primary key, code text, icon text, active int default 1, ts int)');
-const EMO_BUILTIN = ['smile', 'grin', 'haha', 'wink', 'tongue', 'cool', 'love', 'kiss', 'sad', 'cry', 'angry', 'wow', 'shy', 'sleepy', 'worried', 'think', 'devil', 'heart', 'like'];
+const EMO_BUILTIN = ['like'];
+// first start: load the emoticon pictures that came with the project (emoticons.json) into the manager, once
+db.exec('create table if not exists emo_seeded(k text primary key)');
+try {
+  if (fs.existsSync('emoticons.json')) {
+    const all = JSON.parse(fs.readFileSync('emoticons.json', 'utf8'));
+    for (const batch of [...new Set(all.map(e => e.batch || 1))].sort()) {
+      const key = 'v' + batch;
+      if (db.prepare('select 1 from emo_seeded where k=?').get(key)) continue;
+      for (const e of all.filter(x => (x.batch || 1) === batch)) {
+        if (db.prepare('select 1 from custom_emo where name=?').get(e.name)) continue;
+        const buf = Buffer.from(e.gif, 'base64'), nm = crypto.randomBytes(16).toString('hex') + '.gif';
+        fs.mkdirSync('uploads', { recursive: true }); fs.writeFileSync('uploads/' + nm, buf);
+        db.prepare('insert into custom_emo(name,code,icon,active,ts) values(?,?,?,1,?)').run(e.name, e.code || null, '/uploads/' + nm, Date.now());
+      }
+      db.prepare('insert into emo_seeded(k) values(?)').run(key);
+    }
+  }
+} catch (e) { console.log('[emoticons seed]', e.message); }
 const emoList = () => db.prepare('select name,code,icon from custom_emo where active=1 order by ts').all();
 const bcastEmo = () => wss.clients.forEach(w => w.user && send(w, { t: 'emos', list: emoList() }));
 app.get('/api/emoticons', auth, ok((q, r) => r.json(emoList())));

@@ -203,7 +203,7 @@ input,select,textarea{background:rgba(255,255,255,.72);border:1px solid rgba(255
 #f,#recbar{background:var(--glb);border:1px solid rgba(255,255,255,.85);border-radius:24px;padding:6px;box-shadow:var(--gsh);backdrop-filter:var(--gbl);-webkit-backdrop-filter:var(--gbl)}
 #recbar{padding:8px 10px}#recbar[hidden],#f[hidden]{display:none}
 #f input{background:rgba(255,255,255,.8)}
-#f #phb,#f #mic{width:40px;height:40px;padding:0;border-radius:50%;flex:none;font-size:18px}
+#f #phb,#f #emb,#f #mic{width:40px;height:40px;padding:0;border-radius:50%;flex:none;font-size:18px}
 .rdot{width:12px;height:12px;border-radius:50%;background:#e8302a;box-shadow:0 0 0 4px rgba(232,48,42,.25);animation:rp 1s infinite}
 @keyframes rp{50%{opacity:.35}}@media (prefers-reduced-motion:reduce){.rdot{animation:none}}
 .chimg{display:block;max-width:min(260px,100%);max-height:300px;border-radius:12px;cursor:zoom-in;margin-top:4px}
@@ -685,7 +685,7 @@ html[data-skin][data-theme] #bnav button:not(.fab){background:none!important;bor
 #pop .pa{display:flex;gap:10px;margin-top:18px}#pop .pa button{flex:1;padding:13px 10px;font-size:16px;font-weight:800;border-radius:99px}
 :root[data-skin][data-theme] #pop button.o{background:#f7931e!important;border-color:#f7931e!important;color:#fff!important}
 :root[data-skin][data-theme] #pop .pc{backdrop-filter:blur(22px);-webkit-backdrop-filter:blur(22px)}
-#f #phb,#f #mic,#f #rmn{width:32px!important;height:32px!important;min-width:0!important;padding:0!important;font-size:15px!important;line-height:1;border-radius:50%!important;flex:none}
+#f #phb,#f #emb,#f #mic,#f #rmn{width:32px!important;height:32px!important;min-width:0!important;padding:0!important;font-size:15px!important;line-height:1;border-radius:50%!important;flex:none}
 #f{gap:6px!important;padding:6px 8px!important}
 #rpop{position:fixed;z-index:30;display:flex;flex-direction:column;gap:2px;min-width:178px;max-width:230px;padding:6px;border-radius:18px;background:var(--sf);border:1px solid var(--ln);box-shadow:0 14px 34px rgba(0,0,0,.35);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);animation:popup .18s ease}
 #rpop button,:root[data-skin][data-theme] #rpop button{background:none!important;border:0!important;box-shadow:none!important;backdrop-filter:none!important;-webkit-backdrop-filter:none!important;text-align:left;justify-content:flex-start;width:100%;padding:9px 12px;font-size:15px;font-weight:700;border-radius:12px!important;color:var(--tx)!important;display:block}
@@ -804,7 +804,7 @@ html #gp .gb,html #gp .cp,html #gp .side{font-family:inherit}
 #log .inf,#log .emo,#log .gf,#log .errb,#log .nt{align-self:flex-start;max-width:94%;white-space:pre-wrap;word-break:break-word;font-size:15px;line-height:1.35}
 #log .inf{color:#2a3f6b;font-weight:600}#log.navy .inf,#log.dark .inf,html[data-theme=dark] #log .inf{color:#dbe6ff}
 #log .inf.ok{color:#2a6a50}#log.navy .inf.ok,#log.dark .inf.ok,html[data-theme=dark] #log .inf.ok{color:#7fe0b0}
-img.emt{width:1.35em;height:1.35em;vertical-align:-.3em;margin:0 1px;display:inline-block}.rpk img.emt{width:30px;height:30px;vertical-align:middle;margin:0}#emp img.emt{width:26px;height:26px}.acts img.emt{width:1.3em;height:1.3em}
+img.emt{width:1.35em;height:1.35em;vertical-align:-.3em;margin:0 1px;display:inline-block;image-rendering:pixelated}.rpk img.emt{width:30px;height:30px;vertical-align:middle;margin:0}#emp img.emt{width:26px;height:26px}.acts img.emt{width:1.3em;height:1.3em}
 #log .emo{color:#8b4a2b;font-weight:600}#log.navy .emo,#log.dark .emo,html[data-theme=dark] #log .emo{color:#f0b184}
 #log .emo.p{color:#e8337a}#log.navy .emo.p,#log.dark .emo.p,html[data-theme=dark] #log .emo.p{color:#ff7ab0}
 #log .nt{color:#6b7480;font-weight:600}#log .nt span{color:#f7931e}
@@ -820,6 +820,8 @@ img.emt{width:1.35em;height:1.35em;vertical-align:-.3em;margin:0 1px;display:inl
 #rbt svg{width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:2.6;stroke-linecap:round;stroke-linejoin:round;transition:transform .3s}#rbw.hid+#rbt svg{transform:rotate(180deg)}
 #rbw:not(.hid)+#rbt svg{transform:rotate(180deg)}#rbw.hid+#rbt svg{transform:none}
 #rbar .on1{overflow:hidden}.o1t{display:flex;align-items:baseline;gap:8px;min-width:0;flex:1}.o1t b{white-space:nowrap;font-size:15px}.o1n{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:13px;font-weight:600;opacity:.95}
+#empc{position:fixed;z-index:200;max-width:min(94vw,420px);max-height:44vh;overflow:auto;display:flex;flex-wrap:wrap;gap:4px;padding:8px;border-radius:18px;background:rgba(14,30,72,.94);border:1px solid rgba(255,255,255,.3);box-shadow:0 14px 34px rgba(0,0,0,.4);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px)}
+#empc button{background:none!important;border:0!important;box-shadow:none!important;backdrop-filter:none!important;padding:4px!important;border-radius:10px!important;min-width:0}#empc button:active{background:rgba(255,255,255,.2)!important}#empc img.emt{width:32px;height:32px;margin:0;vertical-align:middle}
 #rpop.sm{min-width:150px;max-width:210px;z-index:200}#rpop.sm button{font-size:14px;padding:7px 12px;display:flex;align-items:center;gap:8px}
 #rpop.wide{min-width:230px;max-width:320px;max-height:62vh;overflow:auto}#rpop .ph2{padding:6px 12px 8px;font-weight:800;font-size:14px;opacity:.85;border-bottom:1px solid rgba(255,255,255,.18);margin-bottom:4px}#rpop .ri{padding:5px 12px;font-size:13.5px}#rpop.wide button{display:flex;align-items:center;gap:8px}
 html .lgo,html[data-skin] .lgo{color:#ff4d4d!important}
@@ -1008,7 +1010,7 @@ async function on(m){
 let G={},RM=[],RI=null,OPEN=[];try{OPEN=JSON.parse(sessionStorage.open||'[]')}catch{}
 const AL=new Set();   // rooms the server removed me from after 30 minutes
 function showAL(r){const lg=$('log');if(!lg)return;lg.innerHTML=`<div class="alnote"><div>⏱ You left <b>${esc(r)}</b> automatically after 30 minutes without chatting.</div><div class="mu">Earlier chat is not shown after you come back.</div><button class="o" id="alj">Rejoin</button></div>`;
-  ['t','phb','mic'].forEach(i=>{const e=$(i);if(e)e.disabled=true});const t=$('t');if(t)t.placeholder='You left this room';
+  ['t','phb','emb','mic'].forEach(i=>{const e=$(i);if(e)e.disabled=true});const t=$('t');if(t)t.placeholder='You left this room';
   $('alj').onclick=()=>{AL.delete(r);dropRoom(r);V.chat(r)};drawTabs()}
 const UNR={},LOGC={},BUF={};let skipIntro=false;const dropRoom=x=>{delete LOGC[x];delete BUF[x];delete UNR[x]};
 const saveOpen=()=>{try{sessionStorage.open=JSON.stringify(OPEN)}catch{}try{if(ws&&ws.readyState===1)ws.send(JSON.stringify({t:'tabs',rooms:OPEN}))}catch{}};
@@ -1053,66 +1055,27 @@ function statusSheet(anchor){const o=[['online','Online'],['away','Away'],['busy
   const rp=$('rpop');if(rp)rp.classList.add('sm')}
 $('sheet').onclick=e=>{if(e.target.id==='sheet')$('sheet').classList.remove('open')};
 /* ---------- home feed ---------- */
-/* Migv33 emoticons: original round faces drawn as SVG. Shortcodes like :) :D ;) or :name: turn into pictures. */
-const EMOD=(()=>{
-  const K='#3b2a10',eye=(x,y,r=3.6)=>`<circle cx="${x}" cy="${y}" r="${r}" fill="${K}"/><circle cx="${x+1.2}" cy="${y-1.3}" r="${r*.32}" fill="#fff"/>`;
-  const arc=(x,y)=>`<path d="M${x-6} ${y+2}Q${x} ${y-7} ${x+6} ${y+2}" fill="none" stroke="${K}" stroke-width="3.2" stroke-linecap="round"/>`;
-  const line=(x,y)=>`<path d="M${x-6} ${y}H${x+6}" stroke="${K}" stroke-width="3.2" stroke-linecap="round"/>`;
-  const heart=(x,y,s=1)=>`<path transform="translate(${x} ${y}) scale(${s})" d="M0 5C-9 -2 -5 -9 0 -4C5 -9 9 -2 0 5Z" fill="#e63950"/>`;
-  const smile=`<path d="M19 40Q32 53 45 40" fill="none" stroke="${K}" stroke-width="3.4" stroke-linecap="round"/>`;
-  const grin=`<path d="M17 38Q32 60 47 38Z" fill="#7a2210"/><path d="M20 39.5Q32 44 44 39.5Q32 47 20 39.5Z" fill="#fff"/>`;
-  const sadm=`<path d="M22 49Q32 39 42 49" fill="none" stroke="${K}" stroke-width="3.4" stroke-linecap="round"/>`;
-  const tear=(x,y)=>`<path d="M${x} ${y}Q${x-4} ${y+7} ${x} ${y+9}Q${x+4} ${y+7} ${x} ${y}Z" fill="#5fb7ff"/>`;
-  const blush=`<ellipse cx="14" cy="40" rx="5" ry="3" fill="#ff7a8a" opacity=".6"/><ellipse cx="50" cy="40" rx="5" ry="3" fill="#ff7a8a" opacity=".6"/>`;
-  const E={
-    smile:[eye(22,27)+eye(42,27),smile],
-    grin:[eye(22,27)+eye(42,27),grin],
-    haha:[arc(22,27)+arc(42,27)+tear(12,34)+tear(52,34),grin],
-    wink:[eye(22,27)+arc(42,28),smile],
-    tongue:[eye(22,27)+arc(42,28),smile+`<path d="M27 44H39V49Q33 56 27 49Z" fill="#ff6f8d"/>`],
-    cool:[`<path d="M10 24H54" stroke="${K}" stroke-width="3"/><rect x="12" y="22" width="18" height="12" rx="5" fill="${K}"/><rect x="34" y="22" width="18" height="12" rx="5" fill="${K}"/><path d="M15 25L20 25" stroke="#fff" stroke-width="2" opacity=".7"/>`,`<path d="M20 42Q32 52 44 42" fill="none" stroke="${K}" stroke-width="3.4" stroke-linecap="round"/>`],
-    love:[heart(22,27,1.15)+heart(42,27,1.15),grin],
-    kiss:[eye(22,27)+arc(42,28),`<path d="M32 38c4-5 9 0 0 7c-9-7-4-12 0-7Z" fill="#ff5d7a"/>`],
-    sad:[eye(22,28)+eye(42,28)+`<path d="M15 22L28 19M49 22L36 19" stroke="${K}" stroke-width="2.6" stroke-linecap="round"/>`,sadm],
-    cry:[eye(22,27)+eye(42,27)+tear(20,33)+tear(44,33),`<path d="M21 50Q32 40 43 50" fill="none" stroke="${K}" stroke-width="3.4" stroke-linecap="round"/>`],
-    angry:[`<path d="M13 19L29 26M51 19L35 26" stroke="${K}" stroke-width="3.6" stroke-linecap="round"/>`+eye(22,30,3.2)+eye(42,30,3.2),`<path d="M22 49Q32 41 42 49" fill="none" stroke="${K}" stroke-width="3.4" stroke-linecap="round"/>`],
-    wow:[`<ellipse cx="22" cy="26" rx="4.4" ry="5.6" fill="${K}"/><ellipse cx="42" cy="26" rx="4.4" ry="5.6" fill="${K}"/>`,`<ellipse cx="32" cy="46" rx="6" ry="8" fill="#7a2210"/>`],
-    shy:[eye(22,27)+eye(42,27)+blush,`<path d="M24 42Q32 48 40 42" fill="none" stroke="${K}" stroke-width="3.2" stroke-linecap="round"/>`],
-    sleepy:[line(22,28)+line(42,28),`<ellipse cx="32" cy="46" rx="4.5" ry="3.5" fill="#7a2210"/><text x="46" y="16" font-size="12" font-weight="700" fill="#5a79d8" font-family="Arial">z</text>`],
-    worried:[eye(22,28)+eye(42,28),`<path d="M23 47Q28 43 32 47Q36 51 41 47" fill="none" stroke="${K}" stroke-width="3.2" stroke-linecap="round"/>`],
-    think:[eye(22,28)+eye(42,28)+`<path d="M36 20L50 18" stroke="${K}" stroke-width="2.8" stroke-linecap="round"/>`,`<path d="M24 46H38" stroke="${K}" stroke-width="3.2" stroke-linecap="round"/>`],
-    devil:[eye(22,28)+eye(42,28)+`<path d="M14 18L27 24M50 18L37 24" stroke="${K}" stroke-width="3.2" stroke-linecap="round"/>`,smile+`<path d="M12 8L16 18L22 12ZM52 8L48 18L42 12Z" fill="#c4261a"/>`],
-    heart:null,
-  };
-  const out={};
-  for(const [n,v] of Object.entries(E)){
-    if(!v)continue;
-    const tint=n==='angry'?['#ff9a7a','#e0452b']:n==='devil'?['#ff8f7a','#d0361f']:['#ffe98a','#ffb21c'];
-    out[n]=`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><defs><radialGradient id="g" cx="38%" cy="30%" r="75%"><stop offset="0" stop-color="${tint[0]}"/><stop offset="1" stop-color="${tint[1]}"/></radialGradient></defs><circle cx="32" cy="32" r="30" fill="url(#g)" stroke="#cf8a00" stroke-width="2"/><ellipse cx="24" cy="12" rx="11" ry="5" fill="#fff" opacity=".35"/>${v[0]}${v[1]}</svg>`;
-  }
-  out.heart=`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><defs><radialGradient id="g" cx="35%" cy="30%" r="80%"><stop offset="0" stop-color="#ff8a9a"/><stop offset="1" stop-color="#d6203a"/></radialGradient></defs><path d="M32 56C6 36 8 10 22 10C28 10 31 14 32 18C33 14 36 10 42 10C56 10 58 36 32 56Z" fill="url(#g)" stroke="#a8142b" stroke-width="2"/><ellipse cx="22" cy="19" rx="6" ry="3.5" fill="#fff" opacity=".45"/></svg>`;
-  return out})();
-const EMC={':)':'smile',':-)':'smile',':D':'grin',':-D':'grin','xD':'haha','XD':'haha',';)':'wink',';-)':'wink',':P':'tongue',':p':'tongue',':-P':'tongue','8)':'cool','B)':'cool','<3':'heart',':*':'kiss',':(':'sad',':-(':'sad',":'(":'cry',':@':'angry','>:(':'angry',':O':'wow',':o':'wow',':-O':'wow',':$':'shy','-_-':'sleepy',':/':'worried',':-/':'worried',':?':'think','>:)':'devil'};
-const emi=(n,s)=>EMOD[n]?`<img class="emt" alt=":${n}:" draggable="false" ${s?`style="width:${s}px;height:${s}px" `:''}src="data:image/svg+xml;utf8,${encodeURIComponent(EMOD[n])}">`:'';
-let CE=[];   // custom emoticons added by staff: {name,code,icon}
-const ceImg=c=>`<img class="emt" alt=":${c.name}:" draggable="false" src="${esc(c.icon)}">`;
+/* Emoticons: only the pictures uploaded in Admin Panel -> Manage emoticons. Shortcodes or :name: turn into pictures. */
+let CE=[];
+const EML={like:'👍',love:'❤️',haha:'😂',wow:'😮',sad:'😢',angry:'😡'};   // old reactions already saved on posts
+const ceImg=(c,sz)=>`<img class="emt" alt=":${esc(c.name)}:" draggable="false"${sz?` style="width:${sz}px;height:${sz}px"`:''} src="${esc(c.icon)}">`;
 let EMX=null,EMAP={};
 const emoBuild=()=>{EMAP={};const keys=[];
-  for(const [c,n] of Object.entries(EMC)){const k=esc(c);EMAP[k]=()=>emi(n);keys.push(k)}
-  for(const c of CE)if(c.code){const k=esc(c.code);EMAP[k]=()=>ceImg(c);keys.push(k)}
-  keys.sort((x,y)=>y.length-x.length);
-  EMX=new RegExp('(^|[\\s(])('+keys.map(k=>k.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')).join('|')+')(?=$|[\\s.,!?)])|:([a-z0-9]{2,12}):','g')};
-const emoT=t=>{if(!EMX)emoBuild();return t.replace(EMX,(m,a,c,n)=>{if(c)return a+EMAP[c]();const cu=CE.find(x=>x.name===n);return cu?ceImg(cu):EMOD[n]?emi(n):m})};
+  for(const c of CE)if(c.code){const k=esc(c.code);EMAP[k]=c;keys.push(k)}
+  const nm='|:([a-z0-9]{2,12}):';
+  EMX=new RegExp((keys.length?'(^|[\\s(])('+keys.sort((x,y)=>y.length-x.length).map(k=>k.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')).join('|')+')(?=$|[\\s.,!?)])':'(^)()(?!)')+nm,'g')};
+const emoT=t=>{if(!EMX)emoBuild();return t.replace(EMX,(m,a,c,n)=>{if(c)return a+ceImg(EMAP[c]);const cu=n&&CE.find(x=>x.name===n);return cu?ceImg(cu):m})};
 const emo=h=>h.split(/(<[^>]*>)/).map((x,i)=>i%2?x:emoT(x)).join('');
-const EM=Object.fromEntries(['like:smile','love:love','haha:haha','wow:wow','sad:sad','angry:angry','wink:wink','cool:cool','kiss:kiss','cry:cry','shy:shy','sleepy:sleepy'].map(x=>x.split(':')).map(([k,n])=>[k,emi(n)]));
+const EM={...EML};
 const setCE=l=>{CE=Array.isArray(l)?l:[];EMX=null;for(const k of Object.keys(EM))if(k.startsWith('e:'))delete EM[k];CE.forEach(c=>{EM['e:'+c.name]=ceImg(c)})};
+const reactList=()=>CE.length?CE.map(c=>['e:'+c.name,ceImg(c)]):Object.entries(EML);
 const rich0=t=>esc(t).replace(/(^|[\s(])@([A-Za-z0-9._-]{3,16})/g,'$1<a class="mn" data-u="$2">@$2</a>').replace(/(^|[\s(])#([A-Za-z0-9_]{2,30})/g,'$1<a class="ht" data-tag="$2">#$2</a>');
 const rich=t=>emo(rich0(t));
 function snack(msg,label,fn){const d=document.createElement('div');d.className='snack';d.innerHTML=`<span>${esc(msg)}</span>${label?`<button>${esc(label)}</button>`:''}`;if(label)d.querySelector('button').onclick=()=>{d.remove();fn()};document.body.append(d);setTimeout(()=>d.remove(),6000)}
 let homeTag='',PS={},postImg=null;
 V.home=async(tag)=>{homeTag=typeof tag==='string'?tag:'';postImg=null;
   view(`<div id="stories" class="stor"></div><div class="cmpx"><div class="cr">${av(me,44)}<textarea id="pt" rows="2" maxlength="500" placeholder="What's on your mind, ${esc(me)}? Use @name and #tag"></textarea></div><div id="pprev"></div><div id="sug" hidden></div>
-  <div class="cb"><button id="pph" type="button" title="Add a photo">📷<span> Photo</span></button><button id="pmn" type="button" title="Mention someone">@<span> Mention</span></button><button id="pht" type="button" title="Add a hashtag">#<span> Tag</span></button><button id="pem" type="button" title="Add an emoji">😊</button><input type="file" id="pfi" accept="image/*" hidden><span class="mu" id="pcnt">0/500</span><button class="o" id="pb">Post</button></div><div id="emp" hidden>${Object.keys(EMOD).map(n=>`<button type="button" data-e=":${n}:" title=":${n}:">${emi(n,26)}</button>`).join("")}${CE.map(c=>`<button type="button" data-e=":${c.name}:" title=":${c.name}:">${ceImg(c).replace('class="emt"','class="emt" style="width:26px;height:26px"')}</button>`).join("")}</div></div><div id="feed" class="mu pad">Loading…</div>`);
+  <div class="cb"><button id="pph" type="button" title="Add a photo">📷<span> Photo</span></button><button id="pmn" type="button" title="Mention someone">@<span> Mention</span></button><button id="pht" type="button" title="Add a hashtag">#<span> Tag</span></button><button id="pem" type="button" title="Add an emoji">😊</button><input type="file" id="pfi" accept="image/*" hidden><span class="mu" id="pcnt">0/500</span><button class="o" id="pb">Post</button></div><div id="emp" hidden>${CE.map(c=>`<button type="button" data-e="${esc(c.code||":"+c.name+":")}" title="${esc(c.name)}">${ceImg(c,26)}</button>`).join("")||'<span class="mu" style="padding:6px">No emoticons yet. Staff can add them in Admin Panel.</span>'}</div></div><div id="feed" class="mu pad">Loading…</div>`);
   const pt=$('pt');
   const ins=t=>{const a=pt.selectionStart??pt.value.length,b=pt.selectionEnd??a;if(pt.value.length-(b-a)+t.length>500)return;pt.value=pt.value.slice(0,a)+t+pt.value.slice(b);pt.focus();pt.selectionStart=pt.selectionEnd=a+t.length;pt.oninput()};
   $('pph').onclick=()=>$('pfi').click();
@@ -1139,7 +1102,7 @@ function postHTML(p,i){const mod=['staff','admin'].includes(ST.role),own=p.user=
   <header>${av(p.user,44)}<div class="who"><div class="nm" style="color:${nc(p.user)}"><span data-u="${esc(p.user)}">${esc(p.user)}</span>${rt(p.role,p.user)}<span class="lvp">${lvi(lv(p.xp),16)}Lv ${lv(p.xp)}</span></div><div class="meta">${ago(p.ts)}${p.edited?' · Edited':''} · 🌐</div></div><button class="pm" data-a="menu" aria-label="Post options">⋯</button></header>
   ${p.text?`<div class="txt${!p.image&&p.text.length<70?' xl':''}">${rich(p.text)}</div>`:''}
   ${p.image?`<img class="pimg" src="${esc(p.image)}" loading="lazy" alt="Photo">`:''}
-  <div class="acts"><div class="ac"><button data-a="react" class="${p.mine?'on':''}">${EM[p.mine]||'👍'} <span>${p.mine?(p.mine.startsWith('e:')?p.mine.slice(2):p.mine)[0].toUpperCase()+(p.mine.startsWith('e:')?p.mine.slice(2):p.mine).slice(1):'React'}</span></button><button class="cnt" data-w="react" data-n="${p.reacts}" title="Who reacted">${p.reacts}</button><div class="rpk" hidden>${Object.entries(EM).map(([k,e])=>`<button data-k="${k}" class="${p.mine===k?'on':''}" title="${k}">${e}</button>`).join('')}</div></div>
+  <div class="acts"><div class="ac"><button data-a="react" class="${p.mine?'on':''}">${EM[p.mine]||'👍'} <span>${p.mine?(p.mine.startsWith('e:')?p.mine.slice(2):p.mine)[0].toUpperCase()+(p.mine.startsWith('e:')?p.mine.slice(2):p.mine).slice(1):'React'}</span></button><button class="cnt" data-w="react" data-n="${p.reacts}" title="Who reacted">${p.reacts}</button><div class="rpk" hidden>${reactList().map(([k,e])=>`<button data-k="${k}" class="${p.mine===k?'on':''}" title="${k}">${e}</button>`).join('')}</div></div>
   <div class="ac"><button data-a="comment">${p.locked?'🔒':'💬'} <span>Comment</span></button><button class="cnt" data-w="comment" title="Who commented">${p.comments}</button></div>
   <div class="ac"><button data-a="share">↗ <span>Share</span></button><button class="cnt" data-w="share" title="Who shared">${p.shares}</button></div></div><div class="cm" hidden data-canc="${canC?1:0}"></div></article>`}
 
@@ -1503,19 +1466,28 @@ V.rooms=async()=>{const rs=await api('GET','/rooms');
 /* ---------- chat ---------- */
 const rtitle=r=>r.startsWith('dm:')?r.slice(3).split(':').find(x=>x!==me)||'DM':r;
 const lvtag=(n,xp)=>` <span class="lvt">[${lv(xp||0)}]</span>`;
+function emChat(anchor){const old=$('empc');if(old){old.remove();return}
+  const p=document.createElement('div');p.id='empc';
+  p.innerHTML=CE.length?CE.map(c=>`<button type="button" data-e="${esc(c.code||':'+c.name+':')}" title="${esc(c.name)}${c.code?'  '+esc(c.code):''}">${ceImg(c,32)}</button>`).join(''):'<div class="mu" style="padding:10px">No emoticons yet. Staff can add them in Admin Panel → Manage emoticons.</div>';
+  document.body.appendChild(p);
+  const a=$('f').getBoundingClientRect(),w=p.offsetWidth;p.style.bottom=(innerHeight-a.top+8)+'px';p.style.left=Math.max(8,Math.min(innerWidth-w-8,anchor.getBoundingClientRect().left))+'px';
+  const off=e=>{if(!p.contains(e.target)&&!anchor.contains(e.target)){p.remove();document.removeEventListener('pointerdown',off,true)}};
+  setTimeout(()=>document.addEventListener('pointerdown',off,true),0);
+  p.onclick=e=>{const b=e.target.closest('[data-e]');if(!b)return;const t=$('t'),v=b.dataset.e,i=t.selectionStart??t.value.length,j=t.selectionEnd??i;
+    const pre=t.value.slice(0,i),sp=pre&&!/\s$/.test(pre)?' ':'';t.value=(pre+sp+v+' '+t.value.slice(j)).slice(0,500);const c=(pre+sp+v+' ').length;t.focus();try{t.setSelectionRange(c,c)}catch{}}}
 V.chat=async(r)=>{room=r;if(!r.startsWith('dm:'))lastRoom=r;target='';pend=null;RM=[];RI=null;const dm=r.startsWith('dm:');const title=rtitle(r);
   if(!OPEN.includes(r)){OPEN.push(r);saveOpen()}
   $('stt').textContent=title;
   view(`<div id="chatbox"><div id="rtabs"></div>${dm?'':'<div id="rbw" class="'+(localStorage.rbarHide==='1'?'hid':'')+'"><div class="rbi"><div id="rbar"></div></div></div><button type="button" id="rbt" aria-label="Hide or show the room bar"><svg viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg></button>'}
    <div id="log" class="${localStorage.cbg||'light'}"></div>${dm?'':'<div id="tp" aria-label="Teen Patti Gold table"></div><div id="gp" aria-label="Game table"></div>'}<div id="uno" class="card" style="display:none"></div>
    <div class="row mu" id="tools" style="flex-wrap:wrap"><span id="to"></span></div>
-   <form id="f" class="row"><button type="button" id="phb" aria-label="Send a photo">📷</button><input id="t" placeholder="Type a message…" autocomplete="off" maxlength="500"><button type="button" id="mic" aria-label="Record a voice note">🎤</button><button class="o">Send</button></form>
+   <form id="f" class="row"><button type="button" id="phb" aria-label="Send a photo">📷</button><button type="button" id="emb" aria-label="Emoticons">🙂</button><input id="t" placeholder="Type a message…" autocomplete="off" maxlength="500"><button type="button" id="mic" aria-label="Record a voice note">🎤</button><button class="o">Send</button></form>
    <div id="recbar" class="row" hidden><button type="button" id="rcx" aria-label="Cancel recording">✕</button><span class="rdot"></span><b id="rect">0:00</b><span class="mu g">Recording…</span><button type="button" class="o" id="rcs">Send ➤</button></div><input type="file" id="pfile" accept="image/*" hidden></div>`);
   drawTabs();
   $('f').onsubmit=e=>{e.preventDefault();const t=$('t').value.trim();if(t){if(t[0]==='/'&&!/^\/bot(\s|$)/i.test(t))add({user:me,text:t,kind:'msg',ts:Date.now(),role:ROLES[me]||ST.role||'user',xp:ST.xp});tx({t:'msg',text:t})}$('t').value=''};
   $('log').onclick=e=>{if(e.target.dataset.big)return lightbox(e.target.dataset.big);const u=e.target.dataset.u;if(u&&u!==me)setTarget(u)};
   swipe($('chatbox'));TPV=null;GP.reset();
-  $('phb').onclick=()=>$('pfile').click();$('pfile').onchange=e=>{const f=e.target.files[0];e.target.value='';sendPhoto(f)};
+  $('phb').onclick=()=>$('pfile').click();$('emb').onclick=()=>emChat($('emb'));$('pfile').onchange=e=>{const f=e.target.files[0];e.target.value='';sendPhoto(f)};
   $('mic').onclick=micStart;$('rcx').onclick=()=>micStop(false);$('rcs').onclick=()=>micStop(true);
   if(!dm&&LOGC[r]){$('log').innerHTML=LOGC[r];skipIntro=true}
   if(BUF[r]){const q=BUF[r];delete BUF[r];q.forEach(add)}
