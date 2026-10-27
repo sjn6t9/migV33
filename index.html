@@ -795,6 +795,12 @@ html #gp .gb,html #gp .cp,html #gp .side{font-family:inherit}
 :root[data-skin][data-theme] #gp .cp{background:rgba(255,255,255,.1)!important;color:#fff!important;border:1.5px dashed rgba(255,255,255,.55)!important}:root[data-skin][data-theme] #gp .cp.on{background:#f7931e!important;color:#1b1206!important;border:2px solid #fff!important}
 :root[data-skin][data-theme] #gp .spc button.has{background:rgba(247,147,30,.25)!important;border-color:#f7931e!important}
 :root[data-skin][data-theme] #gp .side.red{background:linear-gradient(180deg,rgba(224,72,62,.4),rgba(224,72,62,.14))!important;border:1.5px solid #ff8a80!important;color:#fff!important}:root[data-skin][data-theme] #gp .side.blue{background:linear-gradient(180deg,rgba(60,130,255,.42),rgba(60,130,255,.14))!important;border:1.5px solid #82b1ff!important;color:#fff!important}
+#gp .gh>span:first-child{font-size:13px!important;width:24px;height:24px;display:inline-flex;align-items:center;justify-content:center;border-radius:50%;background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.3)}
+#gp .gb{font-size:12.5px;padding:8px 10px}
+#gp .bi{width:22px;height:22px;display:block;filter:drop-shadow(0 2px 3px rgba(0,0,0,.4))}
+#gp .ball{display:inline-flex;align-items:center;gap:5px;padding:2px 9px 2px 3px}#gp .ball em{font-style:normal;font-size:10.5px;font-weight:700}
+#gp .ball.w{padding:2px 9px}
+#gp .pc{width:36px;height:50px;font-size:16px}#gp .die{width:30px;height:30px;line-height:30px;font-size:26px}
 </style>
 <script>try{var t=localStorage.theme||(matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light');if(localStorage.tk||sessionStorage.tk)document.documentElement.dataset.boot=1;var k=localStorage.skin||'navy';if(k==='navy'){t='dark'}else if(k==='white'){t='light'}if(k==='navy'||k==='white')document.documentElement.dataset.skin=k;document.documentElement.dataset.theme=t}catch(e){document.documentElement.dataset.theme='light'}</script>
 </head>
@@ -1201,13 +1207,33 @@ const Panel = (function () {
 })();
 
 const GP=(function(){
-  let v=null,skew=0,tick=null,chip=+(localStorage.gpchip||500),min=false,total=0;
+  let v=null,x5={},skew=0,tick=null,chip=+(localStorage.gpchip||500),min=false,total=0;
   const E=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
   const K=n=>Number(n||0).toLocaleString('en-US');
   const sec=d=>d?Math.max(0,Math.ceil((d-(Date.now()+skew))/1000)):0;
   const TITLE={lowcard:['🃏','LowCard'],dice:['🎲','Dice'],cricket:['🏏','Cricket'],royale:['⚔️','Royale Battle']};
   const DIE=['','⚀','⚁','⚂','⚃','⚄','⚅'];
   const OPT=[['jutt','Jutt'],['color','Color'],['run','Run'],['doublerun','Double Run'],['tirel','Tirel']];
+  const AC=()=>{try{return GP._ac||(GP._ac=new (window.AudioContext||window.webkitAudioContext)())}catch{return null}};
+  document.addEventListener('pointerdown',()=>{const a=AC();if(a&&a.state==='suspended')a.resume()},{passive:true});
+  function glassWarn(){const a=AC();if(!a)return;try{if(a.state==='suspended')a.resume();const t=a.currentTime;
+    const ping=(f,at,d,g)=>{const o=a.createOscillator(),e=a.createGain();o.type='sine';o.frequency.value=f;e.gain.setValueAtTime(0,t+at);e.gain.linearRampToValueAtTime(g,t+at+.004);e.gain.exponentialRampToValueAtTime(.0001,t+at+d);o.connect(e).connect(a.destination);o.start(t+at);o.stop(t+at+d+.05)};
+    ping(2637,0,.5,.18);ping(3136,.18,.45,.16);ping(3951,.36,.4,.14);
+    const n=a.createBuffer(1,a.sampleRate*.5,a.sampleRate),d=n.getChannelData(0);for(let i=0;i<d.length;i++)d[i]=(Math.random()*2-1)*Math.pow(1-i/d.length,3);
+    const src=a.createBufferSource();src.buffer=n;const hp=a.createBiquadFilter();hp.type='highpass';hp.frequency.value=3500;const g=a.createGain();g.gain.value=.5;src.connect(hp).connect(g).connect(a.destination);src.start(t+.6);
+    ping(1900,.6,.6,.12);ping(4400,.62,.35,.1)}catch{}}
+  const BI=(l,r,o)=>{const t=String(l||'').toLowerCase();let bg,fg='#fff',tx,sub='';
+    const svg=(b,x,extra='')=>`<svg class="bi" viewBox="0 0 24 24" aria-hidden="true"><defs><radialGradient id="g${b[0]}" cx=".35" cy=".3" r=".9"><stop offset="0" stop-color="${b[1]}"/><stop offset="1" stop-color="${b[2]}"/></radialGradient></defs><circle cx="12" cy="12" r="11" fill="url(#g${b[0]})" stroke="rgba(255,255,255,.7)" stroke-width="1"/>${extra}${x}</svg>`;
+    const T=(c,sz=13)=>`<text x="12" y="${sz>10?16.5:15}" text-anchor="middle" font-size="${sz}" font-weight="800" fill="#fff" font-family="system-ui,sans-serif">${c}</text>`;
+    if(o){const stump='<path d="M8 6v12M12 6v12M16 6v12M7 6h10" stroke="#fff" stroke-width="1.6" stroke-linecap="round" fill="none"/>';
+      if(t.includes('lbw'))return svg(['o','#ff8a7a','#c2271c'],T('LBW',7.5));
+      if(t.includes('caught'))return svg(['c','#ff8a7a','#c2271c'],'<circle cx="12" cy="9" r="3.4" fill="#fff"/><path d="M5 15q7 7 14 0" stroke="#fff" stroke-width="2" fill="none" stroke-linecap="round"/>');
+      if(t.includes('run out'))return svg(['r','#ff8a7a','#c2271c'],stump+'<path d="M3 20l5-3" stroke="#ffd58a" stroke-width="1.6"/>');
+      return svg(['s','#ff8a7a','#c2271c'],stump)}
+    if(r===6)return svg(['6','#ffe08a','#e08a00'],T('6',14),'<circle cx="12" cy="12" r="11" fill="none" stroke="#fff3c4" stroke-width="2" stroke-dasharray="2 2.6"/>');
+    if(r===4)return svg(['4','#7be39a','#1f9d4d'],T('4',14),'<path d="M3 17a10 10 0 0 0 18 0" stroke="#d6ffe2" stroke-width="1.6" fill="none"/>');
+    if(r===0)return svg(['0','#9fb0d6','#56668f'],'<circle cx="12" cy="12" r="2.4" fill="#fff"/>');
+    return svg(['n'+r,'#8cc4ff','#2f6fd6'],T(r,13))};
   const card=(t,cls='')=>{const r=/[♥♦]/.test(t)?'r':'';return `<div class="pc ${r} ${cls}">${E(t)}</div>`};
   const btn=(c,t,p,dis)=>`<button class="gb ${p?'pri':''}" data-c="${E(c)}" ${dis?'disabled':''}>${t}</button>`;
   function head(extra=''){const t=TITLE[v.g];return `<div class="gh"><span style="font-size:18px">${t[0]}</span><b>${t[1]}</b>${extra}<button class="gmin" data-min="1" aria-label="Minimise">${min?'▸':'▾'}</button></div>`}
@@ -1238,7 +1264,7 @@ const GP=(function(){
     if(st==='joining')h+=bar(30)+`<div class="gnote warn">Joining open · cost ${K(v.cost)} coins · ${v.players.length} joined</div>`;
     if(st==='playing'||st==='ended'){let o='';for(let i=1;i<=v.max;i++)o+=`<i class="${i<v.round?'on':i===v.round?'cur':''}"></i>`;h+=`<div class="ovs">${o}</div><div class="sub" style="font-size:10.5px;margin-top:3px;color:#cfdcff">Round ${v.round||0} of ${v.max}</div>`;if(st==='playing')h+=bar(30)}
     const list=[...v.players].sort((a,b)=>(a.out-b.out)||b.runs-a.runs);
-    h+=`<div class="gsc">`+list.map((p,i)=>{const l=p.last;const bl=l?`<span class="ball ${l.o?'o':l.r>=4?'f':''}">${E(l.l)}</span>`:p.wait?'<span class="ball w">batting…</span>':'';
+    h+=`<div class="gsc">`+list.map((p,i)=>{const l=p.last;const bl=l?`<span class="ball ${l.o?'o':l.r>=4?'f':''}" title="${E(l.l)}">${BI(l.l,l.r,l.o)}<em>${l.o?(/lbw/i.test(l.l)?'LBW':/caught/i.test(l.l)?'Caught':/run out/i.test(l.l)?'Run out':'OUT'):l.r===0?'Dot':E(l.l.replace(/!/g,''))}</em></span>`:p.wait?'<span class="ball w">batting…</span>':'';
       return `<div class="sr ${p.me?'me':''} ${p.out?'out':''} ${v.winner===p.n?'win':''}"><span class="rk">${v.winner===p.n?'🏆':i+1}</span><span class="nm">${E(p.n)}${p.out?' · OUT':''}</span>${bl}<span class="rn">${p.runs}</span></div>`}).join('')+`</div>`;
     if(st==='ended'&&v.winner)h+=`<div class="gnote win">🏆 ${E(v.winner)} won ${K(v.prize)} coins</div>`;
     const acts=[];
@@ -1274,6 +1300,7 @@ const GP=(function(){
   }
   function loop(){clearInterval(tick);tick=setInterval(()=>{const el=document.getElementById('gp');if(!el||!v)return;
     el.querySelectorAll('[data-dl]').forEach(x=>{x.textContent=sec(+x.dataset.dl)+'s'});
+    if(v.deadline&&(v.state==='joining'||v.state==='starting')&&v.g!=='royale'){const l=sec(v.deadline);x5.k!==v.deadline&&l<=5&&l>=1&&(x5.k=v.deadline,glassWarn())}
     el.querySelectorAll('[data-bar]').forEach(x=>{x.style.width=Math.min(100,sec(+x.dataset.bar)/+x.dataset.span*100)+'%'})},500)}
   function bind(){const el=document.getElementById('gp');if(!el||el._b)return;el._b=1;
     el.addEventListener('click',e=>{
