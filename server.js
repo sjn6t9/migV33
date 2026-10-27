@@ -48,7 +48,7 @@ app.use(express.json());
 app.use(express.static('public'));
 fs.mkdirSync('uploads', { recursive: true });
 app.use('/uploads', express.static('uploads', { maxAge: '7d', setHeaders: res => res.set('X-Content-Type-Options', 'nosniff') }));
-const sign = (id, name) => jwt.sign({ id, name }, SECRET, { expiresIn: '30d' });
+const sign = (id, name) => jwt.sign({ id, name }, SECRET, { expiresIn: '365d' });
 const bad = (r, m, s = 400) => r.status(s).json({ error: m });
 
 const pending = new Map(); // username -> signup waiting for its email code
@@ -167,7 +167,7 @@ const fstate = (a, b) => {
   return !x ? 'none' : x.status === 'accepted' ? 'friends' : x.a === a ? 'sent' : 'incoming';
 };
 
-app.get('/api/me', auth, ok((q, r) => { const x = db.prepare('select email,mobile,mpin from users where name=?').get(q.user); r.json({ ...profile(q.user), email: x.email, mobile: x.mobile, hasPin: !!x.mpin, unlimited: isMain(q.user) }); }));
+app.get('/api/me', auth, ok((q, r) => { const x = db.prepare('select email,mobile,mpin,sec_q from users where name=?').get(q.user); r.json({ ...profile(q.user), email: x.email, mobile: x.mobile, hasPin: !!x.mpin, secQ: x.sec_q || '', secQs: SEC_QS, unlimited: isMain(q.user) }); }));
 app.put('/api/me', auth, ok((q, r) => {
   const { bio, status_text, presence } = q.body || {};
   if (typeof bio === 'string') db.prepare('update users set bio=? where name=?').run(bio.slice(0, 200), q.user);
@@ -217,8 +217,8 @@ app.get('/api/users-suggest', auth, ok((q, r) => {
 app.post('/api/posts', auth, ok((q, r) => {
   const text = String(q.body?.text || '').trim().slice(0, 500), image = imgUrl(q.body?.image) ? q.body.image : '';
   if (!text && !image) return bad(r, 'Write something or add a photo first');
-  db.prepare('insert into posts(user,text,image,ts) values(?,?,?,?)').run(q.user, text, image, Date.now());
-  addXp(q.user, 5); r.json({ ok: true });
+  const pid = db.prepare('insert into posts(user,text,image,ts) values(?,?,?,?)').run(q.user, text, image, Date.now()).lastInsertRowid;
+  grantAct(q.user, 'post', pid); r.json({ ok: true });
 }));
 app.put('/api/posts/:id', auth, ok((q, r) => {
   const p = getPost(q.params.id); if (!p) return bad(r, 'Post not found', 404);
@@ -251,11 +251,11 @@ app.post('/api/posts/:id/hide', auth, ok((q, r) => {
   r.json({ ok: true });
 }));
 app.post('/api/posts/:id/react', auth, ok((q, r) => {
-  if (!getPost(q.params.id)) return bad(r, 'Post not found', 404);
+  const gp = getPost(q.params.id); if (!gp) return bad(r, 'Post not found', 404);
   const kind = REACTS.includes(q.body?.kind) ? q.body.kind : 'like';
   const cur = db.prepare('select kind from reacts where post=? and user=?').get(q.params.id, q.user);
   if (cur && cur.kind === kind) db.prepare('delete from reacts where post=? and user=?').run(q.params.id, q.user);
-  else db.prepare('insert or replace into reacts(post,user,kind) values(?,?,?)').run(q.params.id, q.user, kind);
+  else { db.prepare('insert or replace into reacts(post,user,kind) values(?,?,?)').run(q.params.id, q.user, kind); if (gp.user !== q.user) grantAct(q.user, 'react', gp.id); }
   r.json({ ok: true });
 }));
 app.get('/api/posts/:id/who', auth, ok((q, r) => {
@@ -271,11 +271,11 @@ app.post('/api/posts/:id/comments', auth, ok((q, r) => {
   const p = getPost(q.params.id); if (!p) return bad(r, 'Post not found', 404);
   if (p.locked && p.user !== q.user && !isMod(q.user)) return bad(r, 'Comments are locked on this post.', 403);
   const text = String(q.body?.text || '').trim().slice(0, 300); if (!text) return bad(r, 'Write a comment first');
-  db.prepare('insert into comments(post,user,text,ts) values(?,?,?,?)').run(q.params.id, q.user, text, Date.now()); r.json({ ok: true });
+  db.prepare('insert into comments(post,user,text,ts) values(?,?,?,?)').run(q.params.id, q.user, text, Date.now()); if (p.user !== q.user) grantAct(q.user, 'comment', p.id); r.json({ ok: true });
 }));
 app.post('/api/posts/:id/share', auth, ok((q, r) => {
-  if (!getPost(q.params.id)) return bad(r, 'Post not found', 404);
-  db.prepare('insert or ignore into post_shares values(?,?,?)').run(q.params.id, q.user, Date.now()); r.json({ ok: true });
+  const gp = getPost(q.params.id); if (!gp) return bad(r, 'Post not found', 404);
+  const ch = db.prepare('insert or ignore into post_shares values(?,?,?)').run(q.params.id, q.user, Date.now()).changes; if (ch && gp.user !== q.user) grantAct(q.user, 'share', gp.id); r.json({ ok: true });
 }));
 
 // ---------- Stories (disappear after 24 hours) ----------
@@ -356,7 +356,7 @@ app.post('/api/friends/:act', auth, ok((q, r) => {
   const n = String(q.body?.name || ''), act = q.params.act;
   if (!n || n === q.user || !profile(n)) return bad(r, 'User not found', 404);
   const st = fstate(q.user, n);
-  if (act === 'request' && st === 'none') db.prepare("insert into friends values(?,?,'pending')").run(q.user, n);
+  if (act === 'request' && st === 'none') { db.prepare("insert into friends values(?,?,'pending')").run(q.user, n); if (db.prepare('select verified from users where name=?').get(n)?.verified) grantAct(q.user, 'follow', n); }
   else if (act === 'accept' && st === 'incoming') db.prepare("update friends set status='accepted' where a=? and b=?").run(n, q.user);
   else if (act === 'remove') db.prepare('delete from friends where (a=? and b=?) or (a=? and b=?)').run(q.user, n, n, q.user);
   r.json({ ok: true });
@@ -430,7 +430,7 @@ const TASKS = [
   { k: 'gift_recv', t: 'Receive gifts in chatrooms', target: 50000, pts: 100, unit: 'gifts' },
   { k: 'game', t: 'Play games in chatrooms', target: 1000, pts: 100, unit: 'games' },
   { k: 'dm_gift', t: 'Send migmeet gifts', target: 20, pts: 200, unit: 'gifts' }];
-const mev = (user, k, n = 1) => db.prepare('insert into mevents(user,k,n,ts) values(?,?,?,?)').run(user, k, n, Date.now());
+const mev = (user, k, n = 1) => { const x = db.prepare('insert into mevents(user,k,n,ts) values(?,?,?,?)').run(user, k, n, Date.now()); if (k === 'game') { try { grantAct(user, 'game', Date.now() + '.' + Math.random()); } catch {} } return x; };
 function setRole(name, role, by, reason) {
   const u = db.prepare('select role from users where name=?').get(name); if (!u || u.role === role) return;
   const now = Date.now();
@@ -830,6 +830,47 @@ app.post('/api/rooms/:name/edit', auth, ok((q, r) => {
   }
   if (b.removeMod) { const u = String(b.removeMod); if (!isSA(q.user) && ownerOf(room) !== q.user && isSuper(room, u)) return bad(r, 'Only the room admin can remove a super moderator'); db.prepare('delete from room_mods where room=? and user=?').run(room, u); }
   castRoomCfg(room); r.json(roomEditState(room));
+}));
+// ---------- Daily activity XP (rolling 24 hours) ----------
+db.exec('create table if not exists xp_log(user text, kind text, ref text, xp int, ts int); create index if not exists xp_log_u on xp_log(user,kind,ts)');
+const ACT = { post: { xp: 100, max: 5 }, follow: { xp: 100, max: 5 }, comment: { xp: 50, max: 5 }, share: { xp: 50, max: 5 }, react: { xp: 50, max: 5 }, game: { xp: 5, max: 100 }, online: { xp: 5, max: 24 } };
+function grantAct(user, kind, ref = '') {
+  const c = ACT[kind]; if (!c || !user || user.endsWith(' Bot')) return 0;
+  const since = Date.now() - 24 * 3600e3, ref0 = String(ref);
+  if (db.prepare('select count(*) n from xp_log where user=? and kind=? and ts>?').get(user, kind, since).n >= c.max) return 0;
+  if (ref0 && kind !== 'game' && kind !== 'online' && db.prepare('select 1 from xp_log where user=? and kind=? and ref=? and ts>?').get(user, kind, ref0, since)) return 0;   // each post / person counts once per day
+  db.prepare('insert into xp_log values(?,?,?,?,?)').run(user, kind, ref0, c.xp, Date.now());
+  addXp(user, c.xp);
+  wss.clients.forEach(w => { if (w.user === user) { send(w, { t: 'xp', xp: xpOf(user) }); send(w, { t: 'actxp', kind, xp: c.xp }); } });
+  return c.xp;
+}
+const onlineAcc = new Map();      // 5 XP for every full hour spent online (up to 24 per day)
+setInterval(() => {
+  try {
+    const seen = new Set(); wss.clients.forEach(w => { if (w.user && w.readyState === 1) seen.add(w.user); });
+    for (const u of seen) {
+      if (db.prepare('select presence from users where name=?').get(u)?.presence === 'offline') continue;
+      const a = (onlineAcc.get(u) || 0) + 60e3;
+      if (a >= 3600e3) { onlineAcc.set(u, a - 3600e3); grantAct(u, 'online', String(Date.now())); } else onlineAcc.set(u, a);
+    }
+  } catch (e) { console.error(e); }
+}, 60e3).unref();
+
+// ---------- Security: MPIN and security question (set from Settings) ----------
+const SEC_QS = ["What was the name of your first pet?", "In which city or village were you born?", "What was the name of your first school?", "What is your mother's first name?", "What is your favourite food?", "What was your childhood nickname?", "Who was your favourite teacher?", "What is the name of your best childhood friend?"];
+app.post('/api/security/pin', auth, ok((q, r) => {
+  const pin = String(q.body?.pin || ''), old = String(q.body?.old || '');
+  if (!/^[0-9]{4,6}$/.test(pin)) return bad(r, 'MPIN must be 4 to 6 digits.');
+  if (db.prepare('select mpin from users where name=?').get(q.user)?.mpin) { const pc = checkPin(q.user, old); if (pc === 'locked') return bad(r, 'Too many wrong MPIN attempts. Try again in 10 minutes.', 429); if (!pc) return bad(r, 'Your current MPIN is wrong.', 403); }
+  db.prepare('update users set mpin=? where name=?').run(bcrypt.hashSync(pin, 10), q.user); pinFails.delete(q.user); r.json({ ok: true });
+}));
+app.post('/api/security/question', auth, ok((q, r) => {
+  const question = String(q.body?.question || ''), an = String(q.body?.answer || '').trim().toLowerCase().slice(0, 60);
+  if (!SEC_QS.includes(question)) return bad(r, 'Pick one of the questions.');
+  if (an.length < 2) return bad(r, 'Write your answer (at least 2 characters).');
+  const row = db.prepare('select sec_q,pass from users where name=?').get(q.user);
+  if (row.sec_q && !bcrypt.compareSync(String(q.body?.pass || ''), row.pass)) return bad(r, 'Enter your password to change the security question.', 403);
+  db.prepare('update users set sec_q=?, sec_a=? where name=?').run(question, bcrypt.hashSync(an, 10), q.user); r.json({ ok: true });
 }));
 app.get('/api/leaderboard', auth, ok((q, r) => r.json(db.prepare('select name,xp,coins,role from users order by xp desc limit 20').all().map(u => ({ ...u, level: level(u.xp) })))));
 
@@ -1290,7 +1331,7 @@ function friendAct(ws, n) {
   const u = ws.user;
   if (!n || n === u || !profile(n)) return reply(ws, 'Usage: /f username');
   const st = fstate(u, n);
-  if (st === 'none') { db.prepare("insert into friends values(?,?,'pending')").run(u, n); return reply(ws, `You follow ${n} now. If they follow you back, you become friends.`); }
+  if (st === 'none') { db.prepare("insert into friends values(?,?,'pending')").run(u, n); if (db.prepare('select verified from users where name=?').get(n)?.verified) grantAct(u, 'follow', n); return reply(ws, `You follow ${n} now. If they follow you back, you become friends.`); }
   if (st === 'incoming') { db.prepare("update friends set status='accepted' where a=? and b=?").run(n, u); return reply(ws, `You and ${n} are now friends!`); }
   reply(ws, st === 'friends' ? `You and ${n} are already friends.` : `You already follow ${n}.`);
 }
@@ -1419,12 +1460,13 @@ wss.on('connection', ws => {
       leaveRoom(ws, ws.room === m.room);
       ws.room = m.room; ws.roomAt = Date.now();
       if (!members.has(m.room)) members.set(m.room, new Set());
+      const wasHere = [...members.get(m.room)].some(w => w.user === ws.user && w !== ws);
       members.get(m.room).add(ws);
       const isDm = /^dm:/.test(m.room);
       if (!isDm) send(ws, { t: 'roominfo', room: m.room, owner: ownerOf(m.room) || STAFF_USER, mods: db.prepare('select user from room_mods where room=?').all(m.room).map(x => x.user), supers: db.prepare('select user from room_mods where room=? and super=1').all(m.room).map(x => x.user), cap: db.prepare('select cap from rooms where name=?').get(m.room)?.cap || 0, descr: db.prepare('select descr from rooms where name=?').get(m.room)?.descr || '', minlv: db.prepare('select minlv from rooms where name=?').get(m.room)?.minlv || 0, announce: cfg(m.room).announce || '', users: roster(m.room), fav: !!db.prepare('select 1 from favs where user=? and room=?').get(ws.user, m.room) });
       const hist = db.prepare('select user,text,kind,ts,(select role from users where name=msgs.user) role,(select xp from users where name=msgs.user) xp from msgs where room=? and not exists(select 1 from blocks where (a=? and b=msgs.user) or (b=? and a=msgs.user)) order by id desc limit 50').all(m.room, ws.user, ws.user).reverse();
       send(ws, { t: 'history', room: m.room, items: isDm ? hist : [] });   // rooms: you only see what is said while you are inside
-      if (!isDm) { cast(m.room, { t: 'enter', room: m.room, user: ws.user, role: roleOf(ws.user), xp: xpOf(ws.user), ts: Date.now() }); castRoster(m.room); }
+      if (!isDm) { if (!wasHere) cast(m.room, { t: 'enter', room: m.room, user: ws.user, role: roleOf(ws.user), xp: xpOf(ws.user), ts: Date.now() }); castRoster(m.room); }
       if (tp && isTpRoom(m.room)) { ensureTp(m.room); setTimeout(() => send(ws, { t: 'tp', room: m.room, view: tp.getView(m.room, ws.user) }), 50); }
       if (games.has(m.room)) send(ws, unoState(games.get(m.room), ws.user));
     } else if (!ws.room) return;
@@ -1451,7 +1493,12 @@ wss.on('connection', ws => {
     else if (m.t === 'mod') moderate(ws, m.act, String(m.user || ''), (+m.minutes || 10) * 60);
     else if (m.t === 'uno') unoAct(ws.room, ws.user, m);
   });
-  ws.on('close', () => { leaveRoom(ws); online(); });
+  ws.on('close', () => {   // keep a person in their room for a short while so a quick app switch / reconnect does not kick them out
+    const r0 = ws.room;
+    if (r0 && ws.user && !r0.startsWith('dm:')) setTimeout(() => { if (ws.room === r0) leaveRoom(ws); online(); }, 25e3);
+    else leaveRoom(ws);
+    online();
+  });
 });
 
 server.listen(PORT, () => console.log('Migv33 running on :' + PORT));
