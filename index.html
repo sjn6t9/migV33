@@ -804,7 +804,8 @@ html #gp .gb,html #gp .cp,html #gp .side{font-family:inherit}
 #log .inf,#log .emo,#log .gf,#log .errb,#log .nt{align-self:flex-start;max-width:94%;white-space:pre-wrap;word-break:break-word;font-size:15px;line-height:1.35}
 #log .inf{color:#2a3f6b;font-weight:600}#log.navy .inf,#log.dark .inf,html[data-theme=dark] #log .inf{color:#dbe6ff}
 #log .inf.ok{color:#2a6a50}#log.navy .inf.ok,#log.dark .inf.ok,html[data-theme=dark] #log .inf.ok{color:#7fe0b0}
-img.emt{width:1.35em;height:1.35em;vertical-align:-.3em;margin:0 1px;display:inline-block;image-rendering:pixelated}.rpk img.emt{width:30px;height:30px;vertical-align:middle;margin:0}#emp img.emt{width:26px;height:26px}.acts img.emt{width:1.3em;height:1.3em}
+img.emt{width:32px;height:32px;vertical-align:middle;margin:0 1px;display:inline-block;image-rendering:pixelated;image-rendering:crisp-edges;image-rendering:-webkit-optimize-contrast;image-rendering:pixelated}.rpk img.emt{width:32px;height:32px;margin:0}
+.rpk{flex-wrap:wrap!important;width:max-content;max-width:min(92vw,372px);max-height:46vh;overflow-y:auto;border-radius:20px!important}.rpk button{padding:2px!important}#emp img.emt{width:32px;height:32px}.acts img.emt{width:32px;height:32px}
 #log .emo{color:#8b4a2b;font-weight:600}#log.navy .emo,#log.dark .emo,html[data-theme=dark] #log .emo{color:#f0b184}
 #log .emo.p{color:#e8337a}#log.navy .emo.p,#log.dark .emo.p,html[data-theme=dark] #log .emo.p{color:#ff7ab0}
 #log .nt{color:#6b7480;font-weight:600}#log .nt span{color:#f7931e}
@@ -820,6 +821,8 @@ img.emt{width:1.35em;height:1.35em;vertical-align:-.3em;margin:0 1px;display:inl
 #rbt svg{width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:2.6;stroke-linecap:round;stroke-linejoin:round;transition:transform .3s}#rbw.hid+#rbt svg{transform:rotate(180deg)}
 #rbw:not(.hid)+#rbt svg{transform:rotate(180deg)}#rbw.hid+#rbt svg{transform:none}
 #rbar .on1{overflow:hidden}.o1t{display:flex;align-items:baseline;gap:8px;min-width:0;flex:1}.o1t b{white-space:nowrap;font-size:15px}.o1n{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:13px;font-weight:600;opacity:.95}
+#rpick{position:fixed;z-index:200;display:flex;flex-wrap:wrap;gap:2px;width:max-content;max-width:min(94vw,376px);max-height:50vh;overflow:auto;padding:8px;border-radius:20px;background:rgba(14,30,72,.95);border:1px solid rgba(255,255,255,.3);box-shadow:0 14px 34px rgba(0,0,0,.4);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px)}
+#rpick button{background:none!important;border:0!important;box-shadow:none!important;backdrop-filter:none!important;padding:3px!important;border-radius:10px!important;min-width:0;font-size:26px}#rpick button.on{background:rgba(255,255,255,.22)!important}#rpick button:active{background:rgba(255,255,255,.3)!important}#rpick img.emt{width:32px;height:32px;margin:0;vertical-align:middle}
 #empc{position:fixed;z-index:200;max-width:min(94vw,420px);max-height:44vh;overflow:auto;display:flex;flex-wrap:wrap;gap:4px;padding:8px;border-radius:18px;background:rgba(14,30,72,.94);border:1px solid rgba(255,255,255,.3);box-shadow:0 14px 34px rgba(0,0,0,.4);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px)}
 #empc button{background:none!important;border:0!important;box-shadow:none!important;backdrop-filter:none!important;padding:4px!important;border-radius:10px!important;min-width:0}#empc button:active{background:rgba(255,255,255,.2)!important}#empc img.emt{width:32px;height:32px;margin:0;vertical-align:middle}
 #rpop.sm{min-width:150px;max-width:210px;z-index:200}#rpop.sm button{font-size:14px;padding:7px 12px;display:flex;align-items:center;gap:8px}
@@ -1075,7 +1078,7 @@ function snack(msg,label,fn){const d=document.createElement('div');d.className='
 let homeTag='',PS={},postImg=null;
 V.home=async(tag)=>{homeTag=typeof tag==='string'?tag:'';postImg=null;
   view(`<div id="stories" class="stor"></div><div class="cmpx"><div class="cr">${av(me,44)}<textarea id="pt" rows="2" maxlength="500" placeholder="What's on your mind, ${esc(me)}? Use @name and #tag"></textarea></div><div id="pprev"></div><div id="sug" hidden></div>
-  <div class="cb"><button id="pph" type="button" title="Add a photo">📷<span> Photo</span></button><button id="pmn" type="button" title="Mention someone">@<span> Mention</span></button><button id="pht" type="button" title="Add a hashtag">#<span> Tag</span></button><button id="pem" type="button" title="Add an emoji">😊</button><input type="file" id="pfi" accept="image/*" hidden><span class="mu" id="pcnt">0/500</span><button class="o" id="pb">Post</button></div><div id="emp" hidden>${CE.map(c=>`<button type="button" data-e="${esc(c.code||":"+c.name+":")}" title="${esc(c.name)}">${ceImg(c,26)}</button>`).join("")||'<span class="mu" style="padding:6px">No emoticons yet. Staff can add them in Admin Panel.</span>'}</div></div><div id="feed" class="mu pad">Loading…</div>`);
+  <div class="cb"><button id="pph" type="button" title="Add a photo">📷<span> Photo</span></button><button id="pmn" type="button" title="Mention someone">@<span> Mention</span></button><button id="pht" type="button" title="Add a hashtag">#<span> Tag</span></button><button id="pem" type="button" title="Add an emoji">😊</button><input type="file" id="pfi" accept="image/*" hidden><span class="mu" id="pcnt">0/500</span><button class="o" id="pb">Post</button></div><div id="emp" hidden>${CE.map(c=>`<button type="button" data-e="${esc(c.code||":"+c.name+":")}" title="${esc(c.name)}">${ceImg(c,32)}</button>`).join("")||'<span class="mu" style="padding:6px">No emoticons yet. Staff can add them in Admin Panel.</span>'}</div></div><div id="feed" class="mu pad">Loading…</div>`);
   const pt=$('pt');
   const ins=t=>{const a=pt.selectionStart??pt.value.length,b=pt.selectionEnd??a;if(pt.value.length-(b-a)+t.length>500)return;pt.value=pt.value.slice(0,a)+t+pt.value.slice(b);pt.focus();pt.selectionStart=pt.selectionEnd=a+t.length;pt.oninput()};
   $('pph').onclick=()=>$('pfi').click();
@@ -1160,6 +1163,17 @@ function menuSheet(p,anchor){const mod=['staff','admin'].includes(ST.role),own=p
       else if(k==='hide'){await api('POST',`/posts/${p.id}/hide`,{});loadFeed();snack('Post hidden from your feed','Undo',async()=>{try{await api('POST',`/posts/${p.id}/hide`,{undo:1});loadFeed()}catch(er){fail(er)}})}
       else if(k==='del'){await api('DELETE','/posts/'+p.id);toast('Post deleted');loadFeed()}}catch(er){fail(er)}})()});
   const rp=$('rpop');if(rp)rp.classList.add('sm')}
+function reactPop(anchor,id,mine){const old=$('rpick');if(old){const same=old._a===anchor;old.remove();if(same)return}
+  const p=document.createElement('div');p.id='rpick';p._a=anchor;
+  p.innerHTML=reactList().map(([k,e])=>`<button type="button" data-k="${esc(k)}" title="${esc(k.replace(/^e:/,''))}" class="${mine===k?'on':''}">${e}</button>`).join('');
+  document.body.appendChild(p);
+  const a=anchor.getBoundingClientRect(),w=p.offsetWidth,h=p.offsetHeight;
+  p.style.left=Math.max(8,Math.min(innerWidth-w-8,a.left))+'px';
+  p.style.top=(a.top-h-8>8?a.top-h-8:Math.min(innerHeight-h-8,a.bottom+8))+'px';
+  const off=e=>{if(!p.contains(e.target)&&!anchor.contains(e.target)){p.remove();document.removeEventListener('pointerdown',off,true)}};
+  setTimeout(()=>document.addEventListener('pointerdown',off,true),0);
+  p.onclick=async e=>{const b=e.target.closest('[data-k]');if(!b)return;p.remove();document.removeEventListener('pointerdown',off,true);
+    try{await api('POST',`/posts/${id}/react`,{kind:b.dataset.k});loadFeed()}catch(er){fail(er)}}}
 async function feedClick(e){
   if(!e.target.closest('.ac'))document.querySelectorAll('.rpk').forEach(x=>x.hidden=true);
   const u=e.target.closest('[data-u]');if(u&&!e.target.closest('#sh')){go('profile',u.dataset.u);return}
@@ -1171,7 +1185,7 @@ async function feedClick(e){
   try{if(k){await api('POST',`/posts/${id}/react`,{kind:k.dataset.k});loadFeed();return}
     const b=e.target.closest('[data-a]');if(!b)return;const a=b.dataset.a,cm=art?.querySelector('.cm');
     if(a==='cleartag')go('home');
-    else if(a==='react'){const pk=art.querySelector('.rpk');const was=pk.hidden;document.querySelectorAll('.rpk').forEach(x=>x.hidden=true);pk.hidden=!was}
+    else if(a==='react')reactPop(b,id,PS[id]?.mine)
     else if(a==='menu')menuSheet(PS[id],b);
     else if(a==='share'){await api('POST',`/posts/${id}/share`);loadFeed()}
     else if(a==='comment'){if(!cm.hidden){cm.hidden=true;return}
