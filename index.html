@@ -126,7 +126,7 @@ h2{margin:6px 12px 10px;font-size:20px;color:#2a3340}
 #log.navy .rl,#log.dark .rl{color:#e8eefc}
 .lvt{color:#7a8696;font-weight:600;font-size:.9em}
 #log.navy .lvt,#log.dark .lvt{color:#aab}
-.ri{width:1.15em;height:1.15em;vertical-align:-.22em;margin-left:.25em}
+.ri{width:1em;height:1em;vertical-align:-.15em;margin-left:.25em}
 .dot{display:inline-block;width:12px;height:12px;border-radius:50%;margin-right:6px;box-shadow:0 0 0 1px #0003,inset 0 -2px 3px #0003}
 .online{background:radial-gradient(circle at 35% 30%,#d7ff8a,#58b523)}.away{background:radial-gradient(circle at 35% 30%,#ffe59a,#f2a900)}.busy{background:radial-gradient(circle at 35% 30%,#ffb3b3,#d62d2d)}.offline{background:radial-gradient(circle at 35% 30%,#e5e5e5,#888)}
 .ucard{display:inline-grid;place-items:center;width:44px;height:64px;margin:3px;border-radius:8px;font-weight:800;color:#fff;border:3px solid #fff;box-shadow:0 1px 4px #0005;cursor:pointer}
@@ -372,8 +372,8 @@ body.in #drawer nav{margin:10px 0 10px 10px;max-width:none;width:calc(100% - 10p
 #chatbox #log{min-height:70px}
 #tp .felt{min-height:110px;padding:6px}#tp .hand{margin:4px 0 0}#tp .hand .tpc,#tp .hand .tpb{width:50px;height:70px;font-size:22px}#tp .turnbar{margin:6px 0 2px;padding:6px}#tp .note{display:none}#tp{padding:6px 6px 8px;margin:4px 6px}
 /* ================= Night mode ================= */
-:root{--nm-admin:#e8591f;--nm-staff:#2f9a3d;--nm-mentor:#d4182a;--nm-headmentor:#b3122b;--nm-merchant:#6a4aa6;--nm-user:#2a7bd8}
-html[data-theme=dark],#log.navy,#log.dark{--nm-admin:#ff7a33;--nm-staff:#4cc24f;--nm-mentor:#f2394a;--nm-headmentor:#ff5a68;--nm-merchant:#a284e0;--nm-user:#6db3ff}
+:root{--nm-admin:#e8591f;--nm-staff:#2f9a3d;--nm-mentor:#b01020;--nm-headmentor:#8a6a14;--nm-merchant:#50408a;--nm-vip:#00706f;--nm-user:#2a7bd8}
+html[data-theme=dark],#log.navy,#log.dark{--nm-admin:#ff7a33;--nm-staff:#4cc24f;--nm-mentor:#f2394a;--nm-headmentor:#e8c23c;--nm-merchant:#a284e0;--nm-vip:#2ec4bf;--nm-user:#6db3ff}
 #tn svg{width:24px;height:24px;stroke:#fff;fill:none;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
 html[data-theme=dark]{--lg:linear-gradient(135deg,rgba(62,78,122,.6),rgba(26,34,66,.5));--lg2:linear-gradient(135deg,rgba(34,46,88,.97),rgba(18,26,56,.97));--rim:inset 1.5px 1.5px 1px rgba(255,255,255,.3),inset -1px -1px 1px rgba(255,255,255,.08),inset 0 0 22px rgba(255,255,255,.05);--drop:0 14px 34px rgba(0,0,0,.45),0 2px 6px rgba(0,0,0,.3);--tx:#eaf0ff;--mu:#9db0d3;--ln:#ffffff26}
 html[data-theme=dark] body{color:#eaf0ff;background-color:#0d1430;background-image:radial-gradient(70vmax 70vmax at 6% 4%,#33489f 0,#33489f00 60%),radial-gradient(60vmax 60vmax at 98% 14%,#a2501f88 0,#a2501f00 58%),radial-gradient(75vmax 75vmax at 14% 108%,#1a2a78 0,#1a2a7800 62%),radial-gradient(50vmax 50vmax at 92% 98%,#c9601f55 0,#c9601f00 60%),linear-gradient(165deg,#0c1229,#121a3c 58%,#171d48)}
@@ -715,6 +715,33 @@ body.inchat #sub{display:none!important}
 
 .tiles.t3{grid-template-columns:repeat(3,1fr)}
 .tiles.sg{grid-template-columns:repeat(3,1fr)}
+
+.swb{margin-left:auto;position:relative;width:46px;height:26px;min-width:0!important;padding:0!important;border-radius:99px!important;background:rgba(128,128,128,.45)!important;border:0!important;flex:none}.swb i{position:absolute;top:3px;left:3px;width:20px;height:20px;border-radius:50%;background:#fff;box-shadow:0 1px 4px #0006;transition:.2s}.swb.on{background:#f7931e!important}.swb.on i{left:23px}
+.mi{font-size:15px!important;padding:9px 12px!important;gap:10px!important}.mi i{width:30px!important;height:30px!important;font-size:16px!important;border-radius:10px!important}.dh{font-size:11.5px!important;padding:5px 12px!important}
+
+/* game panel: navy liquid glass */
+:root[data-skin][data-theme] #tp,#tp{--panel:transparent;--panelline:rgba(255,255,255,.3);--ink:#f2f6ff;--call:#f7931e;--see:#e8a13a;--fold:#e0483e}
+:root[data-skin][data-theme] #tp,html #tp{background:linear-gradient(160deg,rgba(255,255,255,.2),rgba(255,255,255,.05) 55%),rgba(18,38,96,.88)!important;border:1px solid rgba(255,255,255,.34)!important;border-radius:26px!important;color:#f2f6ff!important;backdrop-filter:blur(24px) saturate(185%);-webkit-backdrop-filter:blur(24px) saturate(185%);box-shadow:inset 0 1px 0 rgba(255,255,255,.45),inset 0 -1px 0 rgba(255,255,255,.08),0 12px 32px rgba(0,0,0,.4)!important}
+:root[data-skin][data-theme] #tp,#tp *{text-shadow:none}
+:root[data-skin][data-theme] #tp .tph b,:root[data-skin][data-theme] #tp .you,:root[data-skin][data-theme] #tp .tph{color:#f2f6ff!important}
+:root[data-skin][data-theme] #tp .ib,:root[data-skin][data-theme] #tp .tpmin{background:rgba(255,255,255,.16)!important;color:#fff!important;border:1px solid rgba(255,255,255,.38)!important;box-shadow:inset 0 1px 0 rgba(255,255,255,.4)!important}
+:root[data-skin][data-theme] #tp .banner{background:rgba(247,147,30,.2)!important;border:1px solid rgba(247,170,70,.55)!important;color:#ffdcae!important;border-radius:14px}
+:root[data-skin][data-theme] #tp .turnbar{background:rgba(76,194,79,.2)!important;border:1px solid rgba(130,225,130,.5)!important;color:#c6f3c6!important;border-radius:14px}
+:root[data-skin][data-theme] #tp .turnbar.wait{background:rgba(255,255,255,.1)!important;border-color:rgba(255,255,255,.28)!important;color:#dbe6ff!important}
+:root[data-skin][data-theme] #tp .hint,:root[data-skin][data-theme] #tp .note,:root[data-skin][data-theme] #tp .autos,:root[data-skin][data-theme] #tp .status{color:#c3d1f2!important}
+:root[data-skin][data-theme] #tp .chip{background:rgba(255,255,255,.13)!important;color:#f2f6ff!important;border:1px solid rgba(255,255,255,.32)!important}
+:root[data-skin][data-theme] #tp .chip .tpdot{border-color:#f2f6ff!important}:root[data-skin][data-theme] #tp .chip.on .tpdot{background:#f7931e!important;border-color:#f7931e!important}
+:root[data-skin][data-theme] #tp .btn{color:#fff!important;border:1px solid rgba(255,255,255,.35)!important;box-shadow:inset 0 1px 0 rgba(255,255,255,.45),0 4px 12px rgba(0,0,0,.25)!important;border-radius:99px!important;text-shadow:0 1px 2px rgba(0,0,0,.3)!important}
+:root[data-skin][data-theme] #tp .btn.call,:root[data-skin][data-theme] #tp .btn.raise,:root[data-skin][data-theme] #tp .btn.show,:root[data-skin][data-theme] #tp .btn.go{background:linear-gradient(#ffad45,#f7931e)!important}
+:root[data-skin][data-theme] #tp .btn.see{background:linear-gradient(#f0b85a,#d9902c)!important}
+:root[data-skin][data-theme] #tp .btn.fold{background:linear-gradient(#f0675c,#d63a30)!important}
+:root[data-skin][data-theme] #tp .btn:disabled{opacity:.5}
+#tp .felt{border:1px solid rgba(255,255,255,.3)!important;box-shadow:inset 0 2px 10px rgba(0,0,0,.35)}
+#tp:empty{display:none!important}
+.cdl{position:fixed;transform:translateX(-50%);z-index:99998;pointer-events:none;font-weight:900;font-size:18px;padding:3px 12px;border-radius:99px;color:#fff;box-shadow:0 6px 18px rgba(0,0,0,.35);animation:cdl 2.1s ease-out forwards}
+.cdl.up{background:linear-gradient(#35d07f,#1e9e5a)}.cdl.dn{background:linear-gradient(#ff6a5c,#d63a30)}
+@keyframes cdl{0%{opacity:0;margin-top:-8px}12%{opacity:1;margin-top:0}75%{opacity:1}100%{opacity:0;margin-top:30px}}
+#coins.cpop{animation:cpop .5s ease}@keyframes cpop{40%{transform:scale(1.18)}}
 </style>
 <script>try{var t=localStorage.theme||(matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light');if(localStorage.tk||sessionStorage.tk)document.documentElement.dataset.boot=1;var k=localStorage.skin||'navy';if(k==='navy'){t='dark'}else if(k==='white'){t='light'}if(k==='navy'||k==='white')document.documentElement.dataset.skin=k;document.documentElement.dataset.theme=t}catch(e){document.documentElement.dataset.theme='light'}</script>
 </head>
@@ -779,10 +806,10 @@ const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',
 const col=(n,l=38)=>{let h=0;for(const c of n)h=(h*31+c.charCodeAt(0))%360;return `hsl(${h} 55% ${l}%)`};
 let AV={};
 const av=(n,s=40)=>AV[n]?`<span class="av" style="width:${s}px;height:${s}px;background:#cfd8e6 url(${esc(AV[n])}) center/cover" role="img" aria-label="${esc(n)}"></span>`:`<span class="av" style="width:${s}px;height:${s}px;background:${col(n)};font-size:${s/2.2}px">${esc(n[0]||'?').toUpperCase()}</span>`;
-const ROLES={},RC={admin:'#ff7a33',staff:'#4cc24f',mentor:'#f2394a',headmentor:'#ff5a68',merchant:'#a284e0'},RL={admin:'#e8591f',staff:'#2f9a3d',mentor:'#d4182a',headmentor:'#b3122b',merchant:'#6a4aa6'};
+const ROLES={},RC={admin:'#ff7a33',staff:'#4cc24f',mentor:'#f2394a',headmentor:'#e8c23c',merchant:'#a284e0',vip:'#2ec4bf'},RL={admin:'#e8591f',staff:'#2f9a3d',mentor:'#b01020',headmentor:'#8a6a14',merchant:'#50408a',vip:'#00706f'};
 const nc=n=>`var(--nm-${RC[ROLES[n]]?ROLES[n]:'user'})`;
 const VERS=new Set();const refreshVer=()=>Promise.all([api('GET','/verified').then(l=>{VERS.clear();l.forEach(n=>VERS.add(n))}).catch(()=>{}),api('GET','/avatars').then(o=>{AV=o||{}}).catch(()=>{})]);
-const rt=(r,n)=>(RC[r]?`<img class="ri" src="/badges/${r==='headmentor'?'mentor':r}.png" alt="${r}" title="${r==='headmentor'?'head mentor':r}">`:'')+(VERS.has(n)?'<img class="ri" src="/badges/verified.png" alt="verified" title="Verified">':'');
+const rt=(r,n)=>(RC[r]?`<img class="ri" src="/badges/${r==='headmentor'?'hmt':r}.png" alt="${r}" title="${r==='headmentor'?'head mentor':r==='vip'?'VIP user':r}">`:'')+(VERS.has(n)?'<img class="ri" src="/badges/verified.png" alt="verified" title="Verified">':'');
 const LST=[20,98,176,253,331,409,487,564,640,641,760,878,996,1113,1231,1349,1467,1584,1702,1820,1938,2056,2172,2290,2291,2684,3076];
 const lvStep=L=>LST[L-1]??Math.round(3076+392.5*(L-27));const CUM=[0,0];for(let L=1;L<1000;L++)CUM[L+1]=CUM[L]+lvStep(L);
 /* Level icons: [first level, icon]. Edit the numbers to change when an icon appears. */
@@ -826,6 +853,9 @@ function connect(){
 const tx=o=>ws.readyState===1&&ws.send(JSON.stringify(o));
 const resume=()=>{if(!tok()||document.hidden)return;if(!ws||ws.readyState>1){tries=0;connect()}};
 document.addEventListener('visibilitychange',resume);addEventListener('online',resume);addEventListener('pageshow',resume);
+function coinDelta(d){const c=$('coins');if(!c||!d)return;const r=c.getBoundingClientRect(),e=document.createElement('span');
+  e.className='cdl '+(d>0?'up':'dn');e.textContent=(d>0?'+':'−')+Math.abs(d).toLocaleString();e.style.left=(r.left+r.width/2)+'px';e.style.top=(r.bottom+2)+'px';
+  document.body.append(e);setTimeout(()=>e.remove(),2200);c.classList.remove('cpop');void c.offsetWidth;c.classList.add('cpop')}
 async function on(m){
   if(m.t==='error'){if(m.error==='auth'||m.error==='banned'){if(m.error==='banned')alert('Your account has been banned.');logout()}else alert(m.error)}
   if(m.t==='ready'){const first=!me;me=m.user;G=m.gifts;$('auth').style.display='none';$('app').style.display='flex';document.body.classList.add('in');
@@ -836,7 +866,9 @@ async function on(m){
   if(m.t==='gifts'){G=m.gifts;if($('gifts'))$('gifts').innerHTML=Object.entries(G).map(([k,g])=>`<button data-g="${k}" title="${esc(g.n)} (${k}) · ${g.c} coins">${g.img?`<img src="${esc(g.img)}" alt="" style="height:20px;width:20px;object-fit:contain;vertical-align:middle">`:g.e} ${g.c}</button>`).join(' ')}
   if(m.t==='actxp'){toast(`+${m.xp} XP`)}
   if(m.t==='xp'){ST.xp=m.xp;drawNav();if(cur==='profile')go('profile',me)}
-  if(m.t==='coins'){ST.coins=m.coins;$('coins').textContent=cn(m.coins);if(cur==='account')go('account')}
+  if(m.t==='coins'){const old=ST.coins;ST.coins=m.coins;$('coins').textContent=cn(m.coins);
+    if(typeof old==='number'&&m.coins!==old)coinDelta(m.coins-old);
+    const bg=cur==='account'&&document.querySelector('#view .big');if(bg&&!ST.unlimited)bg.textContent='¢ '+m.coins}
   if(m.t==='online'){ONL=m.list;m.list.forEach(u=>ROLES[u.name]=u.role)}
   if(m.t==='roominfo'&&m.room===room&&$('log'))roomIntro(m);
   if(m.t==='leave'&&m.room===room&&$('log'))leaveLine(m);
@@ -1123,7 +1155,7 @@ V.rooms=async()=>{const rs=await api('GET','/rooms');
   view(`<div class="cmp"><input id="rq" placeholder="Search room" value="${esc(q)}"><button id="rr">⟳</button><button id="rn" class="o">+</button></div>`+
     S.map(([t,c,l],i)=>`<div class="dk" style="--c:${c}" data-s="${i}"><div>${t}<span class="n">${l.length}</span></div><span>▾</span></div><div id="s${i}" style="${l.length?'':'display:none'}">${l.filter(x=>x.name.toLowerCase().includes(q)).map(x=>`<div class="rm" data-r="${x.name}"><span><span class="rn">${x.name}</span> <span class="mu">· ${x.count}${x.cap?'/'+x.cap:''} online</span></span><button data-f="${x.name}">${x.fav?'★':'☆'}</button></div>`).join('')}</div>`).join(''));
   $('rq').oninput=()=>V.rooms();$('rr').onclick=()=>V.rooms();
-  $('rn').onclick=async()=>{const n=prompt('New room name (5–20 characters: English letters, numbers, spaces)');if(!n)return;try{await api('POST','/rooms',{name:n.trim()});V.rooms()}catch(e){fail(e)}};
+  $('rn').onclick=async()=>{if(lv(ST.xp||0)<20&&!['staff','admin'].includes(ST.role))return toast('Creating a room unlocks at Level 20',1);const n=prompt('New room name (5–20 characters: English letters, numbers, spaces)');if(!n)return;try{await api('POST','/rooms',{name:n.trim()});V.rooms()}catch(e){fail(e)}};
   $('view').onclick=async e=>{const f=e.target.closest('[data-f]');if(f){await api('POST',`/rooms/${encodeURIComponent(f.dataset.f)}/fav`);return V.rooms()}
     const r=e.target.closest('[data-r]');if(r)return go('chat',r.dataset.r);const s=e.target.closest('[data-s]');if(s){const d=$('s'+s.dataset.s);d.style.display=d.style.display==='none'?'':'none'}}};
 /* ---------- chat ---------- */
@@ -1133,7 +1165,7 @@ V.chat=async(r)=>{room=r;if(!r.startsWith('dm:'))lastRoom=r;target='';pend=null;
   if(!OPEN.includes(r)){OPEN.push(r);saveOpen()}
   $('stt').textContent=title;
   view(`<div id="chatbox"><div id="rtabs"></div>${dm?'':'<div id="rbar"></div>'}
-   <div id="log" class="${localStorage.cbg||'light'}"></div>${isTp(r)?'<div id="tp" aria-label="Teen Patti Gold table"></div>':''}<div id="uno" class="card" style="display:none"></div>
+   <div id="log" class="${localStorage.cbg||'light'}"></div>${dm?'':'<div id="tp" aria-label="Teen Patti Gold table"></div>'}<div id="uno" class="card" style="display:none"></div>
    <div class="row mu" id="tools" style="flex-wrap:wrap"><span id="to"></span></div>
    <form id="f" class="row"><button type="button" id="phb" aria-label="Send a photo">📷</button><input id="t" placeholder="Type a message…" autocomplete="off" maxlength="500"><button type="button" id="mic" aria-label="Record a voice note">🎤</button><button class="o">Send</button></form>
    <div id="recbar" class="row" hidden><button type="button" id="rcx" aria-label="Cancel recording">✕</button><span class="rdot"></span><b id="rect">0:00</b><span class="mu g">Recording…</span><button type="button" class="o" id="rcs">Send ➤</button></div><input type="file" id="pfile" accept="image/*" hidden></div>`);
@@ -1337,17 +1369,18 @@ V.profile=async(n)=>{n=n||me;const u=await api('GET','/users/'+n);ROLES[u.name]=
   const pa=$('pa');
   if(mine){pa.innerHTML='<button class="o" id="ed" style="flex:1">Edit Profile</button>';$('ed').onclick=()=>{pa.innerHTML=`<input id="es" placeholder="Status" maxlength="60" value="${esc(u.status_text||'')}"><input id="eb" placeholder="About you" maxlength="200" value="${esc(u.bio||'')}"><button class="o" id="sv">Save</button>`;
     $('sv').onclick=async()=>{try{await api('PUT','/me',{status_text:$('es').value,bio:$('eb').value});V.profile(me)}catch(e){fail(e)}}}}
-  else{const st=u.state;pa.innerHTML=(st==='none'?'<button class="o" data-x="request">Add friend</button>':st==='sent'?'<button disabled>Request sent</button>':st==='incoming'?'<button class="o" data-x="accept">Accept request</button>':'<button data-x="remove">Unfriend</button>')+(ST.role==='staff'?`<select id="rs" style="width:auto">${[['user','Regular user'],['merchant','Merchant'],['mentor','Mentor'],['admin','Admin'],['staff','Staff']].map(([k,t])=>`<option value="${k}" ${u.role===k?'selected':''}>${t}</option>`).join('')}</select><button data-x="role">Set role</button><button data-x="verify">${VERS.has(u.name)?'Remove verified':'Verify'}</button>`:'')+(['staff','admin'].includes(ST.role)&&u.role!=='staff'&&lastRoom?'<button id="mdb">Moderate</button>':'')+'<button id="pm">Private chat</button>';
+  else{const st=u.state;pa.innerHTML=(st==='none'?'<button class="o" data-x="request">Add friend</button>':st==='sent'?'<button disabled>Request sent</button>':st==='incoming'?'<button class="o" data-x="accept">Accept request</button>':'<button data-x="remove">Unfriend</button>')+(ST.role==='staff'?`<select id="rs" style="width:auto">${[['user','Regular user'],['vip','VIP User'],['merchant','Merchant'],['mentor','Mentor'],['admin','Admin'],['staff','Staff']].map(([k,t])=>`<option value="${k}" ${u.role===k?'selected':''}>${t}</option>`).join('')}</select><button data-x="role">Set role</button><button data-x="verify">${VERS.has(u.name)?'Remove verified':'Verify'}</button>`:'')+(['staff','admin'].includes(ST.role)&&u.role!=='staff'&&lastRoom?'<button id="mdb">Moderate</button>':'')+'<button id="pm">Private chat</button>';
     $('pm').onclick=()=>go('chat','dm:'+[me,u.name].sort().join(':'));if($('mdb'))$('mdb').onclick=()=>modSheet(u.name);
     pa.onclick=async e=>{const x=e.target.dataset.x;if(!x)return;try{if(x==='role')await api('POST','/admin/role',{name:u.name,role:$('rs').value});else if(x==='verify')await api('POST','/admin/verify',{name:u.name,on:!VERS.has(u.name)});else await api('POST','/friends/'+x,{name:u.name});V.profile(u.name)}catch(er){fail(er)}}}};
 /* ---------- account ---------- */
 V.account=async()=>{const a=await api('GET','/account');ST.coins=a.coins;$('coins').textContent=cn(a.coins);const f=window.AF||'all';
   const ok=x=>f==='all'||(f==='gifts'&&x.kind==='gift')||(f==='transfers'&&x.kind==='transfer')||(f==='games'&&x.kind==='game')||(f==='other'&&x.kind==='other');
   view(`<div class="card"><div class="mu">MY BALANCE</div><div class="big">¢ ${ST.unlimited?'∞ Unlimited':a.coins}</div><div class="row"><span class="pos">▲ +${a.earned} earned today</span><span class="neg">▼ −${a.spent} spent today</span></div></div>
-  <form id="tf" class="card row"><input id="tt" placeholder="Send to username" maxlength="16"><input id="ta" type="number" min="1" placeholder="Amount" style="max-width:110px">${ST.hasPin?'<input id="tp" type="password" inputmode="numeric" maxlength="6" placeholder="MPIN" style="max-width:90px" autocomplete="off">':''}<button class="o">Transfer</button></form>
+  <form id="tf" class="card" style="display:grid;gap:8px"><b>🪙 Coin Transfer</b>${lv(ST.xp||0)<20&&!['staff','admin'].includes(ST.role)?'<div class="mu">🔒 Coin transfer unlocks at Level 20. You are Level '+lv(ST.xp||0)+'.</div>':''}
+    <input id="tt" placeholder="User name" maxlength="16" autocomplete="off"><input id="ta" type="number" min="1" inputmode="numeric" placeholder="Amount"><input id="tmp" type="password" inputmode="numeric" maxlength="6" placeholder="MPIN" autocomplete="off"><input id="trm" placeholder="Remarks (optional)" maxlength="60" autocomplete="off"><button class="o">Transfer</button></form>
   <h2>Activity <span class="lv">${a.activity.length}</span></h2><div class="chips">${['all','games','gifts','transfers','other'].map(k=>`<button data-k="${k}" class="${f===k?'on':''}">${k[0].toUpperCase()+k.slice(1)}</button>`).join('')}</div>
   ${a.activity.filter(ok).map(x=>`<div class="card row"><div class="g"><b>${esc(x.title)}</b><div class="mu">${new Date(x.ts).toLocaleString()}</div></div><b class="${x.amount>0?'pos':'neg'}">${x.amount>0?'+':'−'}${Math.abs(x.amount)}</b></div>`).join('')||'<div class="card mu">No activity yet.</div>'}`);
-  $('tf').onsubmit=async e=>{e.preventDefault();try{await api('POST','/transfer',{to:$('tt').value.trim(),amount:$('ta').value,mpin:$('tp')?.value});V.account()}catch(er){fail(er)}};
+  $('tf').onsubmit=async e=>{e.preventDefault();try{await api('POST','/transfer',{to:$('tt').value.trim(),amount:$('ta').value,mpin:$('tmp').value,remarks:$('trm').value});toast('Transfer sent ✔');V.account()}catch(er){fail(er)}};
   $('view').onclick=e=>{const k=e.target.dataset.k;if(k){window.AF=k;V.account()}}};
 
 /* ---------- staff admin panel ---------- */
@@ -1403,7 +1436,7 @@ async function adminUser(name){
     <div class="row"><input id="pa" placeholder="Parent (merchant/mentor ID, empty = none)" maxlength="16" value="${esc(u.parent)}"><button class="o" data-a="parent">Set parent</button></div>
     <div class="row"><input id="tb" placeholder="Tagged by (ID, empty = untag)" maxlength="16" value="${esc(u.taggedBy)}"><button class="o" data-a="tag">Set tag</button></div>
     ${u.history.length?'<div class="mu">Role history: '+u.history.map(x=>esc(x.from_role)+' → '+esc(x.to_role)+' ('+new Date(x.ts).toLocaleDateString()+(x.by?' by '+esc(x.by):'')+')').join(' · ')+'</div>':''}
-    <div class="row"><select id="ro">${['user','merchant','mentor','headmentor','admin'].concat(main?['staff']:[]).map(r=>`<option${r===u.role?' selected':''}>${r}</option>`).join('')}</select><button class="o" data-a="role">Apply role</button>${['mentor','headmentor','admin','merchant'].includes(u.role)?'<button class="o" data-a="role" data-r="user">De-moderate (→ user)</button>':''}</div></div>
+    <div class="row"><select id="ro">${['user','vip','merchant','mentor','headmentor','admin'].concat(main?['staff']:[]).map(r=>`<option${r===u.role?' selected':''}>${r}</option>`).join('')}</select><button class="o" data-a="role">Apply role</button>${['mentor','headmentor','admin','merchant'].includes(u.role)?'<button class="o" data-a="role" data-r="user">De-moderate (→ user)</button>':''}</div></div>
   <div class="card"><b>Ban</b><div class="mu">${u.banned?'Banned'+(u.ban_reason?' — '+esc(u.ban_reason):''):'Account is active'}</div>
     ${u.banned?'<button class="o" data-a="unban">Unban</button>':'<div class="row"><input id="br" placeholder="Reason (optional)" maxlength="100"><button class="o" data-a="ban">Ban</button></div>'}</div>`);
   const run=async(b)=>{const a=b.dataset.a,v=id=>$(id)?.value;const P={
@@ -1454,7 +1487,7 @@ async function adminGifts(){
       else if(confirm('Delete this gift?')){await api('DELETE','/admin/gifts/'+b.dataset.gd);adminGifts()}}catch(er){fail(er)}};
 }
 /* ---------- merchant / mentor panel ---------- */
-const TIERC={purple:'#8a4fd6',pink:'#ec5aa8',red:'#e0342b'},RN={user:'General User',merchant:'Merchant',mentor:'Mentor',headmentor:'Head Mentor'};
+const TIERC={purple:'#8a4fd6',pink:'#ec5aa8',red:'#e0342b'},RN={user:'General User',vip:'VIP User',merchant:'Merchant',mentor:'Mentor',headmentor:'Head Mentor'};
 const dur=ms=>{ms=Math.max(0,ms);const d=Math.floor(ms/864e5),h=Math.floor(ms%864e5/36e5),m=Math.floor(ms%36e5/6e4);return d?`${d}d ${h}h ${m}m`:`${h}h ${m}m`};
 const bar=(v,t,c='#e8591f')=>`<div style="height:9px;border-radius:99px;background:rgba(128,128,128,.25);overflow:hidden;margin:6px 0"><div style="height:100%;width:${Math.min(100,v/t*100)}%;background:${c};border-radius:99px"></div></div>`;
 const tierB=t=>t?`<span style="background:${TIERC[t]};color:#fff;padding:2px 10px;border-radius:99px;font-weight:800;font-size:12px;text-transform:uppercase">${t}</span>`:'<span class="mu">No tier yet</span>';
@@ -1504,16 +1537,17 @@ V.panel=async()=>{
 /* ---------- friends ---------- */
 V.friends=async()=>{const d=await api('GET','/friends');['friends','requests','discover'].forEach(k=>d[k].forEach(u=>ROLES[u.name]=u.role));const t=window.FT||'friends';
   const row=u=>`<div class="fr" data-u="${esc(u.name)}" style="cursor:pointer;padding:10px 12px;gap:10px;align-items:center;border-left:10px solid ${RC[u.role]||'#4aa8e8'}">${av(u.name,48)}<div class="g"><b style="color:${nc(u.name)}">${esc(u.name)}</b>${rt(u.role,u.name)} <span class="lv">${lvi(lv(u.xp),16)}Lv ${lv(u.xp)}</span><div class="mu"><span class="dot ${u.presence}"></span>${esc(u.status_text||u.presence)}</div></div>${t==='requests'?`<button class="o" data-x="accept" data-n="${esc(u.name)}">Accept</button>`:t==='discover'?`<button data-x="request" data-n="${esc(u.name)}">Add</button>`:''}</div>`;
-  const sec=(title,l,c)=>`<h2 style="margin:14px 12px 6px;display:flex;align-items:center;gap:8px"><span class="dot ${c}"></span>${title} <span class="lv">${l.length}</span></h2>`+(l.length?l.map(row).join(''):`<div class="card mu" style="text-align:center">No ${title.toLowerCase()}.</div>`);
-  const list=t==='friends'?(d.friends.length?sec('Online Friends',d.friends.filter(u=>u.presence!=='offline'),'online')+sec('Offline Friends',d.friends.filter(u=>u.presence==='offline'),'offline'):''):d[t].map(row).join('');
+  const shown=k=>{try{return localStorage['fsh_'+k]!=='0'}catch{return true}};
+  const sec=(title,l,c,k)=>`<h2 style="margin:14px 12px 6px;display:flex;align-items:center;gap:8px"><span class="dot ${c}"></span>${title} <span class="lv">${l.length}</span><button type="button" class="swb${shown(k)?' on':''}" data-sw="${k}" role="switch" aria-checked="${shown(k)}" aria-label="Show or hide ${title}"><i></i></button></h2>`+(!shown(k)?'':l.length?l.map(row).join(''):`<div class="card mu" style="text-align:center">No ${title.toLowerCase()}.</div>`);
+  const list=t==='friends'?(d.friends.length?sec('Online Friends',d.friends.filter(u=>u.presence!=='offline'),'online','on')+sec('Offline Friends',d.friends.filter(u=>u.presence==='offline'),'offline','off'):''):d[t].map(row).join('');
   view(`<div class="tabbar">${['friends','requests','discover'].map(k=>`<button class="${t===k?'on':''}" data-t="${k}">${k[0].toUpperCase()+k.slice(1)} (${d[k].length})</button>`).join('')}</div><div>${list||`<div class="card mu" style="text-align:center">Nothing here yet.</div>`}</div>`);
-  $('view').onclick=async e=>{const tb=e.target.closest('[data-t]');if(tb){window.FT=tb.dataset.t;return V.friends()}
+  $('view').onclick=async e=>{const sw=e.target.closest('[data-sw]');if(sw){try{localStorage['fsh_'+sw.dataset.sw]=sw.classList.contains('on')?'0':'1'}catch{}return V.friends()}const tb=e.target.closest('[data-t]');if(tb){window.FT=tb.dataset.t;return V.friends()}
     const x=e.target.closest('[data-x]');if(x){try{await api('POST','/friends/'+x.dataset.x,{name:x.dataset.n});V.friends()}catch(er){fail(er)}return}
     const c=e.target.closest('[data-u]');if(c)go('profile',c.dataset.u)}};
 /* ---------- explore & settings ---------- */
 V.explore=async()=>{const lb=await api('GET','/leaderboard');lb.forEach(u=>ROLES[u.name]=u.role);const mem=await api('GET','/members');mem.forEach(u=>ROLES[u.name]=u.role);
   view(`<h2 style="margin-top:12px">Explore</h2><div class="card"><b>🏆 Leader board</b><div class="mu">Top members by XP</div>${lb.map((u,i)=>`<div class="rm" data-u="${esc(u.name)}"><span>${i+1}. <b style="color:${nc(u.name)}">${esc(u.name)}</b>${rt(u.role,u.name)} <span class="lv">${lvi(u.level,16)}Lv ${u.level}</span></span><b>${u.xp} XP</b></div>`).join('')}</div>
-  <div class="card"><b>👑 Members</b><div class="mu">Admin (orange) · Staff (green) · Mentor (red) · Merchant (purple)</div>${mem.map(u=>`<div class="rm" data-u="${esc(u.name)}"><b style="color:${nc(u.name)}">${esc(u.name)}</b>${rt(u.role,u.name)}</div>`).join('')||'<div class="mu">No members yet.</div>'}</div>
+  <div class="card"><b>👑 Members</b><div class="mu">Admin (orange) · Staff (green) · Head Mentor (gold) · Mentor (red) · Merchant (purple) · VIP (teal)</div>${mem.map(u=>`<div class="rm" data-u="${esc(u.name)}"><b style="color:${nc(u.name)}">${esc(u.name)}</b>${rt(u.role,u.name)}</div>`).join('')||'<div class="mu">No members yet.</div>'}</div>
   <div class="card row" data-go="spin" style="cursor:pointer"><div class="g"><b>🎡 Daily Spin</b><div class="mu">Two draws a day: 12 PM and 12 AM</div></div>›</div>
   <div class="card row" data-go="cmds" style="cursor:pointer"><div class="g"><b>⌨️ Command List</b><div class="mu">All chat commands and what they do</div></div>›</div>
   <div class="card"><b>Coming soon</b><div class="mu">Gift store · Color shop · Effect shop · Pets · Daily spin · Lucky draw · Contests</div></div>`);

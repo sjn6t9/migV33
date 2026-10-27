@@ -9,16 +9,17 @@ import crypto from 'crypto';
 import fs from 'fs';
 import { createRequire } from 'module';
 const require = createRequire(import.meta.url);
+const ENGINE_ERR = {};
 let TP = null;   // Teen Patti Gold engine (virtual coins, for fun only); the site still runs if the file is missing
 let RB = null;   // Royale Battle engine (room "royale")
-try { RB = require('./royale-battle.cjs'); } catch (e) { console.error('[Royale] engine not loaded:', e.message); }
+try { RB = require('./royale-battle.cjs'); } catch (e) { ENGINE_ERR['royale-battle.cjs'] = e.code === 'MODULE_NOT_FOUND' ? 'file not found' : e.message; console.error('[Royale] engine not loaded:', e.message); }
 let DC = null;   // Dice Bot engine
-try { DC = require('./dice.cjs'); } catch (e) { console.error('[Dice] engine not loaded:', e.message); }
+try { DC = require('./dice.cjs'); } catch (e) { ENGINE_ERR['dice.cjs'] = e.code === 'MODULE_NOT_FOUND' ? 'file not found' : e.message; console.error('[Dice] engine not loaded:', e.message); }
 let LC = null;   // LowCard Bot engine (room "lowcard")
-try { LC = require('./lowcard.cjs'); } catch (e) { console.error('[LowCard] engine not loaded:', e.message); }
+try { LC = require('./lowcard.cjs'); } catch (e) { ENGINE_ERR['lowcard.cjs'] = e.code === 'MODULE_NOT_FOUND' ? 'file not found' : e.message; console.error('[LowCard] engine not loaded:', e.message); }
 let CB = null;   // Cricket Bot engine (room "cricket")
-try { CB = require('./cricket-bot.cjs'); } catch (e) { console.error('[Cricket] engine not loaded:', e.message); }
-try { TP = require('./teen-patti.cjs'); } catch (e) { console.error('[TeenPatti] engine not loaded:', e.message); }
+try { CB = require('./cricket-bot.cjs'); } catch (e) { ENGINE_ERR['cricket-bot.cjs'] = e.code === 'MODULE_NOT_FOUND' ? 'file not found' : e.message; console.error('[Cricket] engine not loaded:', e.message); }
+try { TP = require('./teen-patti.cjs'); } catch (e) { ENGINE_ERR['teen-patti.cjs'] = e.code === 'MODULE_NOT_FOUND' ? 'file not found' : e.message; console.error('[TeenPatti] engine not loaded:', e.message); }
 
 const STAFF_USER = (process.env.STAFF_USER || 'migv33').toLowerCase();
 const STAFF_EMAIL = (process.env.STAFF_EMAIL || '').toLowerCase();
@@ -83,7 +84,7 @@ app.post('/api/signup/start', async (q, r) => {
   if (pass.length < 6) return bad(r, 'Password must be at least 6 characters.');
   const em = email.toLowerCase(), ln = name.toLowerCase();
   const claim = ln === STAFF_USER && STAFF_EMAIL && em === STAFF_EMAIL;
-  if (!claim && (ln.includes(STAFF_USER) || ['admin', 'staff', 'mentor', 'headmentor', 'merchant', 'support'].includes(ln))) return bad(r, 'That username is reserved.');
+  if (!claim && (ln.includes(STAFF_USER) || ['admin', 'staff', 'mentor', 'headmentor', 'merchant', 'vip', 'support'].includes(ln))) return bad(r, 'That username is reserved.');
   if (db.prepare('select 1 from users where lower(name)=? or email=?').get(ln, em)) return bad(r, 'That username or email is already registered.', 409);
   if (!mailer) return bad(r, 'Email verification is not set up yet. Please try again later.', 503); // never create an account without the email code
   const code = String(crypto.randomInt(100000, 1000000));
@@ -340,6 +341,7 @@ app.get('/api/rooms', auth, ok((q, r) => {
   r.json(db.prepare('select name,cat,cap from rooms').all().map(x => ({ ...x, count: members.get(x.name)?.size || 0, fav: fav.has(x.name) })));
 }));
 app.post('/api/rooms', auth, ok((q, r) => {
+  if (lvGate(q.user)) return bad(r, `Creating a room unlocks at Level ${MIN_LV_XFER}.`, 403);
   const name = String(q.body?.name || '').trim().replace(/\s+/g, ' ');
   if (!/^[A-Za-z0-9 ]{5,20}$/.test(name)) return bad(r, 'Room name: 5–20 characters, English letters, numbers and spaces only');
   if (db.prepare('select 1 from rooms where lower(name)=lower(?)').get(name)) return bad(r, 'That room already exists', 409);
@@ -384,8 +386,11 @@ function checkPin(name, pin) { // true = ok (or no PIN set), false = wrong, 'loc
   if (bcrypt.compareSync(String(pin || ''), row.mpin)) { pinFails.delete(name); return true; }
   pinFails.set(name, { n: f.n + 1, t: now }); return false;
 }
+const MIN_LV_XFER = 20;
+const lvGate = u => !['staff', 'admin'].includes(roleOf(u)) && level(db.prepare('select xp from users where name=?').get(u)?.xp || 0) < MIN_LV_XFER;
 app.post('/api/transfer', auth, ok((q, r) => {
-  const to = String(q.body?.to || ''), amt = Math.floor(+q.body?.amount);
+  if (lvGate(q.user)) return bad(r, `Coin transfer unlocks at Level ${MIN_LV_XFER}.`, 403);
+  const to = String(q.body?.to || ''), amt = Math.floor(+q.body?.amount), note = String(q.body?.remarks || '').trim().replace(/\s+/g, ' ').slice(0, 60);
   if (!to || to === q.user || !profile(to)) return bad(r, 'Recipient not found');
   if (!(amt >= 1)) return bad(r, 'Enter an amount of at least 1');
   const pc = checkPin(q.user, q.body?.mpin);
@@ -394,13 +399,13 @@ app.post('/api/transfer', auth, ok((q, r) => {
   const go = db.transaction(() => {
     if (!db.prepare('update users set coins=coins-? where name=? and coins>=?').run(amt, q.user, amt).changes) throw new Error('funds');
     db.prepare('update users set coins=coins+? where name=?').run(amt, to);
-    addTx(q.user, 'transfer', `Sent to ${to}`, -amt); addTx(to, 'transfer', `Received from ${q.user}`, amt);
+    addTx(q.user, 'transfer', `Sent to ${to}${note ? ' — ' + note : ''}`, -amt); addTx(to, 'transfer', `Received from ${q.user}${note ? ' — ' + note : ''}`, amt);
   });
   try { go(); } catch { return bad(r, 'Not enough coins'); }
   wss.clients.forEach(w => (w.user === q.user || w.user === to) && send(w, { t: 'coins', coins: coins(w.user) }));
   r.json({ coins: coins(q.user) });
 }));
-app.get('/api/members', auth, ok((q, r) => r.json(db.prepare("select name,role,xp from users where role in ('admin','staff','headmentor','mentor','merchant') order by case role when 'admin' then 0 when 'staff' then 1 when 'headmentor' then 2 when 'mentor' then 3 else 4 end, name").all())));
+app.get('/api/members', auth, ok((q, r) => r.json(db.prepare("select name,role,xp from users where role in ('admin','staff','headmentor','mentor','merchant','vip') order by case role when 'admin' then 0 when 'staff' then 1 when 'headmentor' then 2 when 'mentor' then 3 else 4 end, name").all())));
 app.post('/api/admin/role', auth, ok((q, r) => {
   if (roleOf(q.user) !== 'staff') return bad(r, 'Only staff can change roles', 403);
   const { name = '', role = '' } = q.body || {};
@@ -429,7 +434,7 @@ create table if not exists mevents(id integer primary key, user text, k text, n 
 create index if not exists mev on mevents(user,k,ts);
 create table if not exists payouts(id integer primary key, user text, cycle_start int, cycle_end int, points int, tier text, eligible int, trail int, result text, ts int);
 create table if not exists role_history(id integer primary key, user text, from_role text, to_role text, reason text, by text, ts int)`);
-const ROLE_LIST = ['user', 'merchant', 'mentor', 'headmentor', 'admin', 'staff'];
+const ROLE_LIST = ['user', 'vip', 'merchant', 'mentor', 'headmentor', 'admin', 'staff'];
 const RANK = { user: 0, merchant: 1, mentor: 2, headmentor: 3 };
 const TAG_COST = 50000, COMM_PCT = 5, CYCLE_MS = 30 * 864e5, MIN_PTS = 300, TRAIL_STEP = 100000, TRAIL_PTS = 20;
 const TIERS = [['red', 1000], ['pink', 500], ['purple', 300]];
@@ -703,7 +708,7 @@ app.post('/api/admin/users/:n/edit', auth, ok((q, r) => {
     const nn = str(b.newName, 16);
     if (isMain(u.name)) return bad(r, 'The main staff ID cannot be renamed');
     if (!/^[A-Za-z0-9._-]{3,16}$/.test(nn)) return bad(r, 'ID must be 3–16 characters: English letters, numbers, dot, dash or underscore.');
-    if (isMain(nn) || ['admin', 'staff', 'mentor', 'headmentor', 'merchant', 'support'].includes(nn.toLowerCase())) return bad(r, 'That ID is reserved.');
+    if (isMain(nn) || ['admin', 'staff', 'mentor', 'headmentor', 'merchant', 'vip', 'support'].includes(nn.toLowerCase())) return bad(r, 'That ID is reserved.');
     if (db.prepare('select 1 from users where lower(name)=lower(?) and id!=?').get(nn, u.id)) return bad(r, 'That ID is already taken.', 409);
     const old = u.name;
     db.transaction(() => {
@@ -1151,7 +1156,7 @@ const gameBusy = room => {
 async function stopGame(room) {
   const cur = gameOf(room); if (!cur) return true;
   if (gameBusy(room)) return false;
-  if (cur === 'tp' && tp?.rooms.has(room)) { await tp.handleMessage(room, SYSADMIN, '/bot stop'); if (tp.rooms.has(room)) return false; }
+  if (cur === 'tp' && tp?.rooms.has(room)) { await tp.handleMessage(room, SYSADMIN, '/bot stop'); if (tp.rooms.has(room)) return false; tpPanels(room); }
   if (cur === 'royale' && royale?.rooms.has(room)) { await royale.handleMessage(room, SYSADMIN, '/bot stop'); if (royale.rooms.has(room)) return false; }
   db.prepare('delete from room_game where room=?').run(room); return true;
 }
@@ -1169,7 +1174,7 @@ async function botCommand(ws, text) {
   const g = GAME_NAMES[name];
   if (!g) return reply(ws, 'Usage: /bot cricket | lowcard | dice   (staff/admins also: teenpatti | royalebattle)   ·   /bot stop');
   if (!isSA(u) && !POT_GAMES.includes(g)) return reply(ws, 'Only staff or admins can start Teen Patti and Royale Battle.');
-  if (!{ tp, cricket, lowcard, dice, royale }[g]) return reply(ws, 'That game is not installed on the server.');
+  if (!{ tp, cricket, lowcard, dice, royale }[g]) { const f = { tp: 'teen-patti.cjs', cricket: 'cricket-bot.cjs', lowcard: 'lowcard.cjs', dice: 'dice.cjs', royale: 'royale-battle.cjs' }[g]; return reply(ws, `🔒 ${GAME_LABEL[g] || g} is not loaded on the server. Upload ${f} next to server.js and restart the service.${ENGINE_ERR[f] ? ' (' + ENGINE_ERR[f] + ')' : ''}`); }
   if (cur && cur !== g && !(await stopGame(room))) return reply(ws, `${GAME_LABEL[cur]} is running right now. Try again when it ends.`);
   db.prepare('insert or replace into room_game values(?,?)').run(room, g);
   if (g === 'tp') await tp.handleMessage(room, SYSADMIN, '/bot teenpatti ' + (/^\d+$/.test(arg) ? arg : TP_BOOT));
