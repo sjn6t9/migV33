@@ -705,6 +705,16 @@ html[data-skin][data-theme] #bnav button:not(.fab){background:none!important;bor
 #stor,.stor{overflow-y:hidden;touch-action:pan-x pan-y}
 body.inchat #sub{display:none!important}
 #hdr{background:var(--bg)!important}
+
+.sw{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:700;margin-top:4px;cursor:pointer}.sw input{display:none}.sw i{position:relative;width:46px;height:26px;border-radius:99px;background:rgba(128,128,128,.45);transition:.2s;flex:none}.sw i::after{content:'';position:absolute;top:3px;left:3px;width:20px;height:20px;border-radius:50%;background:#fff;box-shadow:0 1px 4px #0006;transition:.2s}.sw input:checked+i{background:#f7931e}.sw input:checked+i::after{left:23px}
+.tiles b{font-size:17px!important;white-space:nowrap}
+.upg{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}.upi{position:relative;width:calc(33.3% - 6px);aspect-ratio:1;border-radius:14px;overflow:hidden;display:block;outline:2px solid transparent}.upi.cur{outline-color:#f7931e}.upi img{width:100%;height:100%;object-fit:cover;display:block}
+.upi button{position:absolute;bottom:4px;font-size:11px!important;padding:3px 8px!important;min-width:0!important;border-radius:99px!important}.upi button[data-use]{left:4px}.upi button[data-del]{right:4px}
+.upa{width:calc(33.3% - 6px);aspect-ratio:1;border-radius:14px!important;display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:26px!important}.upa small{font-size:11px}
+.avg{display:flex;flex-wrap:wrap;gap:6px;justify-content:center}.avg button{font-size:24px;width:44px;height:44px;padding:0;border-radius:12px!important;min-width:0}.avg button.on{outline:3px solid #f7931e}
+
+.tiles.t3{grid-template-columns:repeat(3,1fr)}
+.tiles.sg{grid-template-columns:repeat(3,1fr)}
 </style>
 <script>try{var t=localStorage.theme||(matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light');if(localStorage.tk||sessionStorage.tk)document.documentElement.dataset.boot=1;var k=localStorage.skin||'navy';if(k==='navy'){t='dark'}else if(k==='white'){t='light'}if(k==='navy'||k==='white')document.documentElement.dataset.skin=k;document.documentElement.dataset.theme=t}catch(e){document.documentElement.dataset.theme='light'}</script>
 </head>
@@ -1284,20 +1294,46 @@ function renderUno(s){
     const k=e.target.dataset.c;if(!k)return;const i=+e.target.dataset.i;if(k==='W'||k==='F'){pend=i;uno({a:'noop'});return}uno({a:'play',i})};
 }
 /* ---------- profile ---------- */
+const kfmt=n=>{n=+n||0;const f=(v,x)=>(v>=100?Math.round(v):Math.round(v*10)/10)+x;return n>=1e9?f(n/1e9,'B'):n>=1e6?f(n/1e6,'M'):n>=1e4?f(n/1e3,'k'):String(n)};
+async function photoGallery(){const g=$('pg');if(!g)return;let d;try{d=await api('GET','/me/photos')}catch(er){g.innerHTML='<b>🖼️ My uploaded photos</b><div class="mu">Could not load photos.</div>';return}
+  const draw=()=>{g.innerHTML=`<b>🖼️ My uploaded photos</b><div class="upg">${d.photos.map(p=>`<span class="upi${p.url===d.current?' cur':''}"><img src="${esc(p.url)}" alt="" loading="lazy"><button data-use="${p.id}">${p.url===d.current&&d.mode==='photo'?'In use ✓':'Use'}</button><button data-del="${p.id}" aria-label="Delete photo">🗑</button></span>`).join('')}<button class="upa" id="upn">＋<small>Upload</small></button></div>${d.photos.length?'':'<div class="mu">No uploaded photos yet.</div>'}`};
+  draw();
+  g.onclick=async e=>{const b=e.target.closest('button');if(!b)return;
+    if(b.id==='upn')return $('pfl').click();
+    try{if(b.dataset.use){const r=await api('POST','/me/photos/'+b.dataset.use+'/use');AV[me]=r.shown;return V.profile(me)}
+      if(b.dataset.del){if(b.dataset.sure!=='1'){b.dataset.sure='1';b.textContent='Sure?';return setTimeout(()=>{if(b.isConnected){b.dataset.sure='';b.textContent='🗑'}},3000)}
+        const r=await api('DELETE','/me/photos/'+b.dataset.del);if(r.shown)AV[me]=r.shown;else delete AV[me];return V.profile(me)}}catch(er){fail(er)}}}
+const AVE=['🦁','🐯','🐻','🐼','🐨','🦊','🐺','🐸','🐵','🦄','🐲','🦅','🦉','🐧','🐬','🦈','🐙','🦋','🐱','🐶','🤖','👽','👻','🎃','😎','🤠','🥷','🧙','🧛','🧑‍🚀','👑','⚽'];
+const AVB=['#1e3a8a','#0f766e','#7c3aed','#be123c','#c2410c','#15803d','#0369a1','#475569','#a21caf','#ca8a04'];
+function avatarMaker(){let e=AVE[0],c=AVB[0];
+  sheetOpen(`<h2>🎨 Create Avatar</h2><section style="display:grid;gap:10px;justify-items:center"><canvas id="avc" width="320" height="320" style="width:140px;height:140px;border-radius:50%"></canvas>
+  <b>Character</b><span class="avg">${AVE.map((x,i)=>`<button type="button" data-e="${i}" class="${i?'':'on'}">${x}</button>`).join('')}</span>
+  <b>Background</b><span class="avg">${AVB.map((x,i)=>`<button type="button" data-c="${i}" class="${i?'':'on'}" style="background:${x}!important;width:34px;height:34px;min-width:0;padding:0"></button>`).join('')}</span>
+  <button class="o" id="avs2" style="width:100%">Save avatar</button></section>`);
+  const draw=()=>{const cv=$('avc'),x=cv.getContext('2d');const gr=x.createLinearGradient(0,0,320,320);gr.addColorStop(0,c);gr.addColorStop(1,'#000');x.fillStyle=gr;x.fillRect(0,0,320,320);x.globalAlpha=.55;x.fillStyle=c;x.fillRect(0,0,320,320);x.globalAlpha=1;x.font='190px "Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif';x.textAlign='center';x.textBaseline='middle';x.fillText(e,160,175)};draw();
+  $('sh').onclick=async ev=>{const b=ev.target.closest('button');if(!b)return;
+    if(b.dataset.e!==undefined){e=AVE[+b.dataset.e];b.parentNode.querySelectorAll('button').forEach(z=>z.classList.remove('on'));b.classList.add('on');draw()}
+    else if(b.dataset.c!==undefined){c=AVB[+b.dataset.c];b.parentNode.querySelectorAll('button').forEach(z=>z.classList.remove('on'));b.classList.add('on');draw()}
+    else if(b.id==='avs2'){try{const blob=await new Promise(r=>$('avc').toBlob(r,'image/png'));AV[me]=await upload('avatar_art',blob);$('sheet').classList.remove('open');toast('Avatar saved ✔');V.profile(me)}catch(er){fail(er)}}}}
 V.profile=async(n)=>{n=n||me;const u=await api('GET','/users/'+n);ROLES[u.name]=u.role;const mine=u.state==='me';$('stt').textContent=u.name;
-  view(`<div class="ph"><div style="display:grid;gap:6px;justify-items:center;align-content:start">${av(u.name,120)}${mine?`<button id="cp" class="o">📷 Set profile photo</button>${AV[me]?'<button id="cr">Remove</button>':''}<input type="file" id="pfl" accept="image/*" hidden>`:''}</div><div class="g" style="min-width:0"><div class="nm" style="color:${nc(u.name)}">${esc(u.name)}${rt(u.role,u.name)}</div>
+  view(`<div class="ph"><div style="display:grid;gap:6px;justify-items:center;align-content:start">${av(u.name,120)}${mine?`<button id="cp" class="o">📷 Set profile photo</button><button id="cav" class="o">🎨 Create Avatar</button><label class="sw" title="Left: avatar · Right: photo"><span>Avatar</span><input type="checkbox" id="avs" ${u.avatarMode==='photo'?'checked':''}><i></i><span>Photo</span></label><input type="file" id="pfl" accept="image/*" hidden>`:''}</div><div class="g" style="min-width:0"><div class="nm" style="color:${nc(u.name)}">${esc(u.name)}${rt(u.role,u.name)}</div>
    <div class="mu" style="font-size:17px;color:#777">${esc(u.full_name||'')}</div>
    <div style="font-size:17px;margin:4px 0"><span class="dot ${u.presence}"></span>${u.presence[0].toUpperCase()+u.presence.slice(1)}</div>
-   <div style="font-size:17px">${lvi(u.level,26)} Level ${u.level}</div><div class="mu" style="font-size:15px">${esc([u.gender,u.country].filter(Boolean).join(' · '))}</div>
+   <div style="font-size:17px">${lvi(u.level,26)} Level ${u.level}</div><div class="mu" style="font-size:15px">${esc([u.gender,u.country].filter(Boolean).join(' · '))}</div>${u.joined?`<div class="mu" style="font-size:14px;margin-top:2px">📅 Joined ${new Date(u.joined).toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'})}</div>`:''}
    ${u.status_text?`<div class="say">${esc(u.status_text)}</div>`:''}</div></div>
    ${u.bio?`<p style="margin:0;padding:0 12px 10px">${esc(u.bio)}</p>`:''}${mine&&ST.email?`<p class="mu" style="padding:0 12px">✉ ${esc(ST.email)} · only you</p>`:''}
    <div id="pa" class="pa"></div>
-   <div class="tiles"><div><b>${u.friends}</b>Friends</div><div><b>${lvi(u.level,22)} ${u.level}</b>Level</div><div><b>${u.xp}</b>XP</div><div><b>${u.coins}</b>Coins</div></div>
-   ${u.gifts&&u.gifts.length?`<div class="card"><b>🎁 Gifts received</b><div class="chips">${u.gifts.map(g=>`<span style="display:inline-flex;align-items:center;gap:5px;padding:4px 10px;border-radius:99px;background:rgba(128,128,128,.18)">${g.img?`<img src="${esc(g.img)}" alt="" style="height:22px;width:22px;object-fit:contain">`:g.e} ${esc(g.name)} ×${g.n}</span>`).join('')}</div></div>`:''}
-   ${(()=>{const L=lv(u.xp);if(L>=1000)return`<div class="xpc"><div class="top">${lvi(L,24)} Max level reached <span>${u.xp.toLocaleString()} XP</span></div></div>`;const lo=CUM[L],hi=CUM[L+1],need=hi-u.xp,pc=Math.max(2,Math.min(100,Math.round((u.xp-lo)/(hi-lo)*100)));return`<div class="xpc"><div class="top"><b>${u.xp.toLocaleString()} XP</b><span>${need.toLocaleString()} XP more to reach Level ${L+1}</span></div><div class="bar2"><i style="width:${pc}%"></i></div><div class="lvs"><span>${lvi(L,20)} Lv ${L}</span><span>${u.xp.toLocaleString()} / ${hi.toLocaleString()} XP</span><span>Lv ${L+1} ${lvi(L+1,20)}</span></div></div>`})()}`);
+   <div class="tiles t3"><div><b>${lvi(u.level,22)} ${u.level}</b>Level</div><div><b title="${u.xp.toLocaleString()}">${kfmt(u.xp)}</b>XP</div><div><b title="${u.coins.toLocaleString()}">${kfmt(u.coins)}</b>Coins</div></div>
+   ${(()=>{const t=u.stats||{};const c=[[t.followers,'Followers',1],[t.following,'Following',1],[u.friends,'Friends',1],[t.footprints,'Footprints',1],[t.badges,'Badges',1],[t.posts,'Posts',0],[t.giftsSent,'Gifts sent',1],[t.giftsRecv,'Received',1],[t.games,'Games',0]];return`<div class="tiles sg">${c.map(([v,l])=>`<div><b title="${(+v||0).toLocaleString()}">${kfmt(v)}</b>${l}</div>`).join('')}</div>`})()}${u.gifts&&u.gifts.length?`<div class="card"><b>🎁 Gifts received</b><div class="chips">${u.gifts.map(g=>`<span style="display:inline-flex;align-items:center;gap:5px;padding:4px 10px;border-radius:99px;background:rgba(128,128,128,.18)">${g.img?`<img src="${esc(g.img)}" alt="" style="height:22px;width:22px;object-fit:contain">`:g.e} ${esc(g.name)} ×${g.n}</span>`).join('')}</div></div>`:''}
+   ${(()=>{const L=lv(u.xp);if(L>=1000)return`<div class="xpc"><div class="top">${lvi(L,24)} Max level reached <span>${u.xp.toLocaleString()} XP</span></div></div>`;const lo=CUM[L],hi=CUM[L+1],need=hi-u.xp,pc=Math.max(2,Math.min(100,Math.round((u.xp-lo)/(hi-lo)*100)));return`<div class="xpc"><div class="top"><b>${u.xp.toLocaleString()} XP</b><span>${need.toLocaleString()} XP more to reach Level ${L+1}</span></div><div class="bar2"><i style="width:${pc}%"></i></div><div class="lvs"><span>${lvi(L,20)} Lv ${L}</span><span>${u.xp.toLocaleString()} / ${hi.toLocaleString()} XP</span><span>Lv ${L+1} ${lvi(L+1,20)}</span></div></div>`})()}${mine?'<div class="card" id="pg"><b>🖼️ My uploaded photos</b><div class="mu">Loading…</div></div>':''}`);
   if(mine){$('cp').onclick=()=>$('pfl').click();
     $('pfl').onchange=async e=>{const f=e.target.files[0];e.target.value='';if(!f)return;try{const b=await imgToBlob(f,320,true);AV[me]=await upload('avatar',b);V.profile(me)}catch(er){fail(er)}};
-    if($('cr'))$('cr').onclick=async()=>{try{await api('DELETE','/me/avatar');delete AV[me];V.profile(me)}catch(er){fail(er)}}}
+    $('cav').onclick=avatarMaker;
+    $('avs').onchange=async e=>{const photo=e.target.checked;
+      if(photo&&!u.hasPhoto){e.target.checked=false;toast('Upload a profile photo first');return $('pfl').click()}
+      if(!photo&&!u.hasArt){e.target.checked=true;toast('Create an avatar first');return avatarMaker()}
+      try{const d=await api('POST','/me/avatar-mode',{mode:photo?'photo':'avatar'});AV[me]=d.shown;V.profile(me)}catch(er){fail(er);V.profile(me)}};
+    photoGallery()}
   const pa=$('pa');
   if(mine){pa.innerHTML='<button class="o" id="ed" style="flex:1">Edit Profile</button>';$('ed').onclick=()=>{pa.innerHTML=`<input id="es" placeholder="Status" maxlength="60" value="${esc(u.status_text||'')}"><input id="eb" placeholder="About you" maxlength="200" value="${esc(u.bio||'')}"><button class="o" id="sv">Save</button>`;
     $('sv').onclick=async()=>{try{await api('PUT','/me',{status_text:$('es').value,bio:$('eb').value});V.profile(me)}catch(e){fail(e)}}}}

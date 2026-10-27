@@ -65,6 +65,7 @@ async function sendCode(email, code) {
 function createUser(name, p) {
   const i = db.prepare('insert into users(name,pass,full_name,email,gender) values(?,?,?,?,?)').run(name, p.hash, p.fullName, p.email, p.gender);
   pending.delete(name);
+  db.prepare('update users set joined=? where name=?').run(Date.now(), name);
   db.prepare('update users set coins=coins+500, spins=spins+1 where name=?').run(name); addTx(name, 'other', 'Level 1 reward', 500);
   if (name.toLowerCase() === STAFF_USER) db.prepare("update users set role='staff', verified=1 where name=?").run(name);
   return sign(i.lastInsertRowid, name);
@@ -160,7 +161,7 @@ function addXp(name, n) {
   for (let L = before + 1; L <= after; L++) { const rw = levelReward(L); if (rw) { total += rw; db.prepare('update users set coins=coins+? where name=?').run(rw, name); addTx(name, 'other', `Level ${L} reward`, rw); } }
   if (after > before) wss.clients.forEach(w => { if (w.user === name) { send(w, { t: 'levelup', level: after, reward: total }); send(w, { t: 'coins', coins: coins(name) }); } });
 }
-const profile = n => { const u = db.prepare('select name,full_name,gender,country,bio,status_text,presence,xp,coins,role from users where name=?').get(n); return u && { ...u, level: level(u.xp) }; };
+const profile = n => { const u = db.prepare('select name,full_name,gender,country,bio,status_text,presence,xp,coins,role,joined,avatar,avatar_art,avatar_mode from users where name=?').get(n); if (!u) return u; const { avatar, avatar_art, avatar_mode, ...rest } = u; return { ...rest, level: level(u.xp), hasPhoto: !!avatar, hasArt: !!avatar_art, avatarMode: avatar_mode === 'avatar' && avatar_art ? 'avatar' : 'photo' }; };
 const ok = fn => (q, r) => { const f = e => { console.error(e); if (!r.headersSent) bad(r, 'Server error', 500); }; try { const x = fn(q, r); if (x && x.catch) x.catch(f); } catch (e) { f(e); } };
 const fstate = (a, b) => {
   const x = db.prepare('select * from friends where (a=? and b=?) or (a=? and b=?)').get(a, b, b, a);
@@ -175,10 +176,18 @@ app.put('/api/me', auth, ok((q, r) => {
   if (['online', 'away', 'busy', 'offline'].includes(presence)) { db.prepare('update users set presence=? where name=?').run(presence, q.user); online(); }
   r.json(profile(q.user));
 }));
+db.exec('create table if not exists footprints(owner text, visitor text, ts int, primary key(owner,visitor))');
+function userStats(n, p) {
+  const c = (sql, ...a) => db.prepare(sql).get(...a).c || 0;
+  const badges = (db.prepare('select verified from users where name=?').get(n)?.verified ? 1 : 0) + (p.role && p.role !== 'user' ? 1 : 0) + [10, 25, 50, 100, 200, 300, 500, 1000].filter(x => p.level >= x).length + (c('select count(*) c from posts where user=?', n) >= 1 ? 1 : 0);
+  return { followers: c('select count(*) c from friends where b=?', n), following: c('select count(*) c from friends where a=?', n), footprints: c('select count(*) c from footprints where owner=?', n), badges,
+    posts: c('select count(*) c from posts where user=?', n), giftsSent: c("select coalesce(-sum(amount),0) c from txs where user=? and kind='gift' and amount<0", n), giftsRecv: c("select coalesce(sum(amount),0) c from txs where user=? and kind='gift' and amount>0", n), games: c("select count(*) c from mevents where user=? and k='game'", n) };
+}
 app.get('/api/users/:n', auth, ok((q, r) => {
   const p = profile(q.params.n); if (!p) return bad(r, 'User not found', 404);
+  if (p.name !== q.user) db.prepare('insert into footprints(owner,visitor,ts) values(?,?,?) on conflict(owner,visitor) do update set ts=excluded.ts').run(p.name, q.user, Date.now());
   const fc = db.prepare("select count(*) c from friends where status='accepted' and (a=? or b=?)").get(p.name, p.name).c;
-  r.json({ ...p, gifts: db.prepare('select gift,n from gift_inv where user=? order by n desc').all(p.name).map(x => { const g = allGiftsAny(x.gift); return g && { key: x.gift, n: x.n, name: g.n, e: g.e, img: g.img }; }).filter(Boolean), friends: fc, state: q.user === p.name ? 'me' : fstate(q.user, p.name) });
+  r.json({ ...p, gifts: db.prepare('select gift,n from gift_inv where user=? order by n desc').all(p.name).map(x => { const g = allGiftsAny(x.gift); return g && { key: x.gift, n: x.n, name: g.n, e: g.e, img: g.img }; }).filter(Boolean), friends: fc, stats: userStats(p.name, p), state: q.user === p.name ? 'me' : fstate(q.user, p.name) });
 }));
 app.post('/api/password', auth, ok((q, r) => {
   const { old = '', pass = '' } = q.body || {};
@@ -198,7 +207,7 @@ const isMod = n => ['staff', 'admin'].includes(roleOf(n));
 const REACTS = ['like', 'love', 'haha', 'wow', 'sad', 'angry'];
 const getPost = id => db.prepare('select * from posts where id=?').get(id);
 const imgUrl = u => typeof u === 'string' && MEDIA_URL.test(u) && /\.(jpg|png|gif|webp)$/.test(u);
-function dropFile(u) { if (u && MEDIA_URL.test(u) && !db.prepare('select 1 from posts where image=?').get(u) && !db.prepare('select 1 from stories where image=?').get(u) && !db.prepare('select 1 from users where avatar=?').get(u)) fs.unlink('.' + u, () => {}); }
+function dropFile(u) { if (u && MEDIA_URL.test(u) && !db.prepare('select 1 from posts where image=?').get(u) && !db.prepare('select 1 from stories where image=?').get(u) && !db.prepare('select 1 from users where avatar=? or avatar_art=?').get(u, u) && !db.prepare('select 1 from user_photos where url=?').get(u)) fs.unlink('.' + u, () => {}); }
 app.get('/api/feed', auth, ok((q, r) => {
   const tag = String(q.query.tag || '').replace(/[^A-Za-z0-9_]/g, '').slice(0, 30);
   const rows = db.prepare(`select p.id,p.user,p.text,p.image,p.pinned,p.locked,p.edited,p.ts, p.shares + (select count(*) from post_shares where post=p.id) shares,
@@ -767,7 +776,7 @@ app.post('/api/admin/users/:n/edit', auth, ok((q, r) => {
   if (a === 'verify') { db.prepare('update users set verified=? where id=?').run(b.on ? 1 : 0, u.id); return done(b.on ? 'on' : 'off'); }
   if (a === 'avatar_remove') {
     const old = u.avatar; db.prepare("update users set avatar='' where id=?").run(u.id);
-    if (old && MEDIA_URL.test(old)) fs.unlink('.' + old, () => {}); return done();
+    if (old) { db.prepare('delete from user_photos where user=? and url=?').run(u.name, old); dropFile(old); } return done();
   }
   bad(r, 'Unknown action');
 }));
@@ -878,6 +887,10 @@ app.get('/api/leaderboard', auth, ok((q, r) => r.json(db.prepare('select name,xp
 
 // ---------- uploads: profile photos, chat images, voice notes ----------
 try { db.exec("alter table users add column avatar text default ''"); } catch {}
+for (const a of ["alter table users add column joined int default 0", "alter table users add column avatar_art text default ''", "alter table users add column avatar_mode text default 'photo'"]) { try { db.exec(a); } catch {} }
+db.exec('create table if not exists user_photos(id integer primary key, user text, url text, ts int); create index if not exists up_user on user_photos(user)');
+try { db.exec("update users set joined = coalesce((select min(ts) from msgs where msgs.user=users.name), " + Date.now() + ") where joined = 0 or joined is null"); } catch {}
+for (const x of db.prepare("select name, avatar from users where avatar != ''").all()) { if (!db.prepare('select 1 from user_photos where user=? and url=?').get(x.name, x.avatar)) db.prepare('insert into user_photos(user,url,ts) values(?,?,?)').run(x.name, x.avatar, Date.now()); }
 const sniff = b => {
   if (b.length < 12) return null;
   if (b[0] === 0xFF && b[1] === 0xD8 && b[2] === 0xFF) return ['image', 'jpg'];
@@ -908,8 +921,13 @@ app.post('/api/upload', auth, express.raw({ type: () => true, limit: '6mb' }), (
   fs.writeFileSync('uploads/' + name, b);
   const url = '/uploads/' + name;
   if (kind === 'avatar') {
-    const old = db.prepare('select avatar from users where name=?').get(q.user)?.avatar;
-    db.prepare('update users set avatar=? where name=?').run(url, q.user);
+    db.prepare('insert into user_photos(user,url,ts) values(?,?,?)').run(q.user, url, now);
+    db.prepare("update users set avatar=?, avatar_mode='photo' where name=?").run(url, q.user);
+    const extra = db.prepare('select id,url from user_photos where user=? order by id desc limit -1 offset 12').all(q.user);
+    for (const x of extra) { db.prepare('delete from user_photos where id=?').run(x.id); dropFile(x.url); }
+  } else if (kind === 'avatar_art') {
+    const old = db.prepare('select avatar_art from users where name=?').get(q.user)?.avatar_art;
+    db.prepare("update users set avatar_art=?, avatar_mode='avatar' where name=?").run(url, q.user);
     if (old && MEDIA_URL.test(old)) fs.unlink('.' + old, () => {});
   }
   r.json({ url });
@@ -917,10 +935,35 @@ app.post('/api/upload', auth, express.raw({ type: () => true, limit: '6mb' }), (
 app.delete('/api/me/avatar', auth, (q, r) => {
   const old = db.prepare('select avatar from users where name=?').get(q.user)?.avatar;
   db.prepare("update users set avatar='' where name=?").run(q.user);
-  if (old && MEDIA_URL.test(old)) fs.unlink('.' + old, () => {});
   r.json({ ok: true });
 });
-app.get('/api/avatars', auth, (q, r) => r.json(Object.fromEntries(db.prepare("select name, avatar from users where avatar != ''").all().map(u => [u.name, u.avatar]))));
+app.get('/api/avatars', auth, (q, r) => r.json(Object.fromEntries(db.prepare("select name, avatar, avatar_art, avatar_mode from users where avatar != '' or avatar_art != ''").all().map(u => [u.name, u.avatar_mode === 'avatar' && u.avatar_art ? u.avatar_art : (u.avatar || u.avatar_art)]).filter(x => x[1]))));
+const myAv = n => { const u = db.prepare('select avatar,avatar_art,avatar_mode from users where name=?').get(n); return u.avatar_mode === 'avatar' && u.avatar_art ? u.avatar_art : (u.avatar || ''); };
+app.get('/api/me/photos', auth, ok((q, r) => {
+  const u = db.prepare('select avatar,avatar_art,avatar_mode from users where name=?').get(q.user);
+  r.json({ photos: db.prepare('select id,url,ts from user_photos where user=? order by id desc').all(q.user), current: u.avatar, art: u.avatar_art, mode: u.avatar_mode === 'avatar' && u.avatar_art ? 'avatar' : 'photo', shown: myAv(q.user) });
+}));
+app.post('/api/me/avatar-mode', auth, ok((q, r) => {
+  const m = q.body?.mode === 'avatar' ? 'avatar' : 'photo';
+  const u = db.prepare('select avatar,avatar_art from users where name=?').get(q.user);
+  if (m === 'avatar' && !u.avatar_art) return bad(r, 'Create an avatar first.');
+  if (m === 'photo' && !u.avatar) return bad(r, 'Upload a profile photo first.');
+  db.prepare('update users set avatar_mode=? where name=?').run(m, q.user); r.json({ ok: true, shown: myAv(q.user) });
+}));
+app.post('/api/me/photos/:id/use', auth, ok((q, r) => {
+  const p = db.prepare('select url from user_photos where id=? and user=?').get(q.params.id, q.user); if (!p) return bad(r, 'Photo not found', 404);
+  db.prepare("update users set avatar=?, avatar_mode='photo' where name=?").run(p.url, q.user); r.json({ ok: true, shown: p.url });
+}));
+app.delete('/api/me/photos/:id', auth, ok((q, r) => {
+  const p = db.prepare('select url from user_photos where id=? and user=?').get(q.params.id, q.user); if (!p) return bad(r, 'Photo not found', 404);
+  db.prepare('delete from user_photos where id=?').run(q.params.id);
+  const cur = db.prepare('select avatar from users where name=?').get(q.user).avatar;
+  if (cur === p.url) db.prepare("update users set avatar='', avatar_mode='avatar' where name=?").run(q.user);
+  if (!db.prepare('select 1 from users where avatar_art=? and name=?').get(p.url, q.user)) dropFile(p.url);
+  const u = db.prepare('select avatar_art,avatar_mode from users where name=?').get(q.user);
+  if (!u.avatar_art) db.prepare("update users set avatar_mode='photo' where name=?").run(q.user);
+  r.json({ ok: true, shown: myAv(q.user) });
+}));
 
 const server = http.createServer(app);
 const wss = new WebSocketServer({ server, path: '/ws' });
