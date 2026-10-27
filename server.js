@@ -1333,10 +1333,10 @@ const isRoomMod = (room, u) => !!db.prepare('select 1 from room_mods where room=
 const isSuper = (room, u) => !!db.prepare('select 1 from room_mods where room=? and user=? and super=1').get(room, u);
 const isSA = u => ['staff', 'admin'].includes(roleOf(u));
 const canMod = (room, u) => isSA(u) || ownerOf(room) === u || isRoomMod(room, u);
-const reply = (ws, text) => send(ws, { t: 'msg', room: ws.room, user: '', text: '🔒 ' + text, kind: 'sys', ts: Date.now() });
+const reply = (ws, text, kind) => send(ws, { t: 'msg', room: ws.room, user: '', text, kind: kind || (/^(Usage:|Unknown|User not found|Only |You need|Pick another|Not enough|Please wait|Nobody|You are silenced|This room)/.test(text) ? 'err' : 'info'), ts: Date.now() });
 const say = (room, user, text, kind = 'action') => {
   const o = { user, text, kind, ts: Date.now(), role: roleOf(user), xp: xpOf(user) };
-  if (kind !== 'sys') db.prepare('insert into msgs(room,user,text,kind,ts) values(?,?,?,?,?)').run(room, user, text, kind, o.ts);
+  if (kind !== 'sys' && kind !== 'note') db.prepare('insert into msgs(room,user,text,kind,ts) values(?,?,?,?,?)').run(room, user, text, kind, o.ts);
   cast(room, { t: 'msg', room, ...o });
 };
 const fmt = s => s < 60 ? s + ' sec' : s < 3600 ? Math.round(s / 60) + ' min' : (s / 3600).toFixed(1).replace('.0', '') + ' h';
@@ -1371,34 +1371,39 @@ function moderate(ws, act, t, secs, text) {
     if (t === u) return err("You can't do that to yourself.");
     if (['kick', 'bump', 'ban', 'silence'].includes(act) && !canTarget(room, u, t)) return err(`${t} is protected.`);
   }
-  const note = x => say(room, u, x, 'sys');
+  const note = (x, k = 'note') => say(room, u, x, k);
+  const dur = ms => { const t = Math.max(0, Math.round(ms / 1000)); return `${Math.floor(t / 86400)} days ${Math.floor(t % 86400 / 3600)} hours ${Math.floor(t % 3600 / 60)} minutes ${t % 60} seconds`; };
   const L = n => `${n} [${level(xpOf(n))}]`;
-  const evict = () => [...(members.get(room) || [])].filter(w => w.user === t).forEach(w => { members.get(room).delete(w); w.room = null; send(w, { t: 'kicked', room, by: u }); });
-  const suspend = ms => { db.prepare('insert or replace into bans values(?,?,?,?,?)').run(room, t, u, Date.now(), ms ? Date.now() + ms : 0); evict(); };
+  const evict = ms => [...(members.get(room) || [])].filter(w => w.user === t).forEach(w => { members.get(room).delete(w); w.room = null; send(w, { t: 'kicked', room, by: u, text: ms ? `You have been kicked by ${u}. You are suspended from this chatroom for ${dur(ms)}.` : `You have been banned from this chatroom by ${u}.` }); });
+  const suspend = ms => { db.prepare('insert or replace into bans values(?,?,?,?,?)').run(room, t, u, Date.now(), ms ? Date.now() + ms : 0); evict(ms); };
   const s = Math.min(86400, Math.max(1, Math.floor(secs) || 600));
   if (act === 'kick') { suspend(3600e3); note(`${L(t)} was kicked for 1 hour by ${L(u)}`); }
   else if (act === 'bump') { suspend(300e3); note(`${L(t)} was bumped for 5 minutes by ${L(u)}`); }
-  else if (act === 'ban') { suspend(0); note(`${L(t)} was banned by ${L(u)}`); }
-  else if (act === 'unban') { db.prepare('delete from bans where room=? and user=? and until=0').run(room, t); note(`${L(t)} was unbanned by ${L(u)}`); }
+  else if (act === 'ban') { suspend(0); note(`${L(t)} has been banned by ${L(u)}.`); }
+  else if (act === 'unban') { db.prepare('delete from bans where room=? and user=? and until=0').run(room, t); note(`${t} has been unbanned by ${u}.`); }
   else if (act === 'unkick') { db.prepare('delete from bans where room=? and user=? and until>0').run(room, t); note(`${L(t)}'s suspension was removed by ${L(u)}`); }
   else if (act === 'silence') { db.prepare('insert or replace into mutes values(?,?,?)').run(room, t, Date.now() + s * 1000); note(`${L(t)} was silenced for ${fmt(s)} by ${L(u)}`); }
   else if (act === 'unsilence') { db.prepare('delete from mutes where room=? and user=?').run(room, t); note(`${L(t)} can talk again (by ${L(u)})`); }
-  else if (act === 'silenceall') { setCfg(room, 'silence_until', Date.now() + s * 1000); note(`Room silenced for ${fmt(s)} by ${u}`); }
+  else if (act === 'silenceall') { setCfg(room, 'silence_until', Date.now() + s * 1000); note(`Chatroom has been silenced for ${s} seconds`); }
   else if (act === 'unsilenceall') { setCfg(room, 'silence_until', 0); note(`Room silence lifted by ${u}`); }
-  else if (act === 'lock') { setCfg(room, 'locked', 1); note(`Room locked by ${u}`); }
-  else if (act === 'unlock') { setCfg(room, 'locked', 0); note(`Room unlocked by ${u}`); }
-  else if (act === 'mod') { db.prepare('insert or ignore into room_mods values(?,?)').run(room, t); note(`${L(t)} is now a room moderator (by ${L(u)})`); }
+  else if (act === 'lock') { setCfg(room, 'locked', 1); note(`This chatroom has been locked by ${u}.`, 'notel'); }
+  else if (act === 'unlock') { setCfg(room, 'locked', 0); note(`This chatroom has been unlocked by ${u}.`, 'notel'); }
+  else if (act === 'mod') { db.prepare('insert or ignore into room_mods values(?,?)').run(room, t); note(`${t} is now moderator of this chatroom`); }
   else if (act === 'dmod') {
     if (isSuper(room, t) && !(ownerOf(room) === u || isSA(u))) return err('Only the room admin can remove a super moderator.');
-    db.prepare('delete from room_mods where room=? and user=?').run(room, t); note(`${t} is no longer a room moderator`);
+    db.prepare('delete from room_mods where room=? and user=?').run(room, t); note(`${t} is no longer moderator of this room`);
   }
   else if (act === 'smod') { if (t === ownerOf(room)) return err('That is the room admin.'); db.prepare('insert into room_mods(room,user,super) values(?,?,1) on conflict(room,user) do update set super=1').run(room, t); note(`${L(t)} is now a super moderator (by ${L(u)})`); }
   else if (act === 'dsmod') { db.prepare('update room_mods set super=0 where room=? and user=?').run(room, t); note(`${t} is no longer a super moderator (still a moderator)`); }
-  else if (act === 'broadcast') { if (!text) return err('Usage: /broadcast message'); note('📢 ' + text.slice(0, 300)); }
-  else if (act === 'announce') { setCfg(room, 'announce', text.slice(0, 300)); note(text ? `📌 Announcement set by ${u}` : `Announcement removed by ${u}`); }
+  else if (act === 'broadcast') { if (!text) return err('Usage: /broadcast message'); note(`${u} Broadcasted 📣 ${text.slice(0, 300)}`, 'notea'); }
+  else if (act === 'announce') { setCfg(room, 'announce', text.slice(0, 300)); if (text) note(`📣 (Announcement): ${text.slice(0, 300)}`, 'notea'); else reply(ws, 'Announcement removed.'); }
 }
 
-const giftDef = key => {
+const giftDef = key0 => {
+  const nk = String(key0 || '').toLowerCase().replace(/[\s_-]+/g, '');
+  return giftDef0(key0) || giftDef0(nk) || (() => { for (const [k, g] of Object.entries(allGifts())) if (k.replace(/[\s_-]/g, '') === nk || String(g.n).toLowerCase().replace(/[\s_-]/g, '') === nk) return giftDef0(k); return null; })();
+};
+const giftDef0 = key => {
   key = String(key || '').toLowerCase();
   if (GIFTS[key]) return { ...GIFTS[key], key, r: Math.floor(GIFTS[key].c / 2) };
   const g = db.prepare('select * from gifts where key=? and active=1').get(key);
@@ -1418,6 +1423,8 @@ const payGift = (from, to, gf, ctx = 'room') => db.transaction(() => {
   commissionOn(from, gf.c, 'gift', tx.lastInsertRowid);
   return true;
 })();
+const GCOL = ['#d9342b', '#3aa655', '#1c1c1e', '#e8337a', '#2f6fd6', '#d98a00'];
+const gcol = gf => GCOL[seed(String(gf.key || gf.n)) % GCOL.length];
 function giftOne(ws, to, key, note = '') {
   const gf = giftDef(key);
   if (!gf) return reply(ws, `Unknown gift. Try: ${Object.keys(allGifts()).join(', ')}`);
@@ -1425,8 +1432,8 @@ function giftOne(ws, to, key, note = '') {
   if (isBlocked(ws.user, to)) return reply(ws, "You can't gift this user.");
   if (!speakOk(ws)) return;
   if (!payGift(ws.user, to, gf, ws.room?.startsWith('dm:') ? 'dm' : 'room')) return reply(ws, 'Not enough coins.');
-  say(ws.room, ws.user, `${giftIcon(gf)}sent ${gf.n} to ${to} [${level(xpOf(to))}]`, 'gift');
-  if (note) wss.clients.forEach(w => w.user === to && w.room === ws.room && reply(w, `Private note from ${ws.user}: ${note}`));
+  say(ws.room, ws.user, `{c:${gcol(gf)}}<<${ws.user} [${level(xpOf(ws.user))}] gives a ${gf.n} ${giftIcon(gf).trim()} to ${to} [${level(xpOf(to))}]${note ? ' -- ' + note : ''}>>`, 'gift');
+  reply(ws, `Congratulations for sending gift! You have used ${gf.c} coins and your estimated remaining balance after gifting will be ${coins(ws.user)} coins.`, 'ok');
   refreshCoins(ws.user, to);
 }
 const showerAt = new Map();
@@ -1440,7 +1447,10 @@ function shower(ws, key) {
   if (coins(ws.user) < gf.c * to.length) return reply(ws, `You need ${gf.c * to.length} coins to send ${gf.n} to ${to.length} members.`);
   showerAt.set(ws.user, Date.now());
   to.forEach(n => payGift(ws.user, n, gf, 'room'));
-  say(ws.room, ws.user, `${giftIcon(gf)}sent a ${gf.n} to all ${to.length} members here`, 'gift'); refreshCoins(ws.user, ...to);
+  const shown = to.length > 8 ? to.slice(0, 8).join(', ') + ` and ${to.length - 8} others` : to.join(', ');
+  say(ws.room, ws.user, `{c:${gcol(gf)}}<< 🎆 *GIFT SHOWER* ${ws.user} [${level(xpOf(ws.user))}] gives a ${gf.n} ${giftIcon(gf).trim()} to ${shown}! Hurray! >>`, 'gift');
+  reply(ws, `Congratulations for sending gift! You have used ${gf.c * to.length} coins and your estimated remaining balance after gifting will be ${coins(ws.user)} coins.`, 'ok');
+  refreshCoins(ws.user, ...to);
 }
 function friendAct(ws, n) {
   const u = ws.user;
@@ -1453,7 +1463,7 @@ function friendAct(ws, n) {
 function flames(a, b) {
   const x = [...a.toLowerCase().replace(/[^a-z]/g, '')], y = [...b.toLowerCase().replace(/[^a-z]/g, '')];
   for (const ch of [...x]) { const i = y.indexOf(ch); if (i > -1) { y.splice(i, 1); x.splice(x.indexOf(ch), 1); } }
-  const n = x.length + y.length || 1, F = ['Friends', 'Lovers', 'Affection', 'Marriage', 'Enemies', 'Siblings']; let i = 0;
+  const n = x.length + y.length || 1, F = ['Friends', 'Lovers', 'Affection', 'Marriage', 'Enemies', 'Family']; let i = 0;
   while (F.length > 1) { i = (i + n - 1) % F.length; F.splice(i, 1); }
   return F[0];
 }
@@ -1462,7 +1472,54 @@ const ACT_REQ = set('slap boo cmon comfort congrat french glare hold pinch poke 
 const ACT_SOLO = set('sick caff doh drunk eek happy hiccup hmm honor howl hum joy lag mmm goal win go yawn champion winner offside gold frenzy record snore wohoo worthy shmoo kickgoal freekick ponder bounce cartwheel dab disco drumroll hop jump meditate moonwalk ninja pirate rage robot rock skip sparkle spin stomp stretch victory volcano waddle yoga zombie zoom');
 const ACT_OPT = set('shy wink sorry agree apologize argh bark bearhug beg beer blink blowk blush bored bow brb burp cheer chicken chuckle confuse cringe cry drool duck eh embrace faint fart firebreath flirt frown gasp gee giggle gn greet grin groan hfive hug kiss laugh listen loser love martian miss wave spit relax smile thank shiver challenge luck seduce stare salute worship welcome red yellow lose cheers shrug spock purr whop sigh squirt nod warn airkiss applaud boop celebrate clap crown cuddle dance facepalm flex highfive kneel magic motivate party peace pray roar salsa scream selfie shake singalong sneak superhero swoon think thumbsup toast trip whistle');
 const EMO = { kiss: '😘', hug: '🤗', bearhug: '🤗', wave: '👋', cry: '😢', laugh: '😂', giggle: '🤭', wink: '😉', shy: '😳', blush: '😊', smile: '😄', grin: '😁', love: '❤️', clap: '👏', applaud: '👏', cheer: '🎉', party: '🥳', dance: '💃', slap: '🖐️', punch: '👊', poke: '👉', highfive: '🙌', hfive: '🙌', fistbump: '🤜', handshake: '🤝', pray: '🙏', sorry: '🙏', thumbsup: '👍', yawn: '🥱', snore: '😴', sick: '🤒', drunk: '🥴', beer: '🍺', toast: '🥂', cheers: '🥂', salute: '🫡', crown: '👑', winner: '🏆', champion: '🏆', victory: '✌️', peace: '☮️', rage: '😡', scream: '😱', roar: '🦁', robot: '🤖', ninja: '🥷', zombie: '🧟', disco: '🪩', rock: '🤘', yoga: '🧘', meditate: '🧘', think: '🤔', hmm: '🤔', shrug: '🤷', facepalm: '🤦', flex: '💪', magic: '✨', sparkle: '✨', selfie: '🤳' };
-const SONGS = ['La la laa, the server is humming a tune!', 'Doo-be-doo, coins in my pocket and friends in the room!', 'Na na na, typing songs with both thumbs!', 'Hey ho, hey ho, a chat room we shall go!', 'Sha-la-la, nobody told the wifi to stop!'];
+const ACTV = {
+  wink: ['winks suggestively to {t}. Oooo', 'winks suggestively. Oooo'], sorry: ['apologizes to {t}', 'apologizes'], sick: [null, 'is not feeling well'],
+  slap: ['slap {t} across the face. Ouch!', 'slaps the air'], agree: ['agrees with {t}', 'agrees'], shy: ['shy away from {t}', 'is feeling shy'],
+  kiss: ['gives {t} a sweet kiss', 'blows a kiss'], hug: ['gives {t} a warm hug', 'needs a hug'], bearhug: ['gives {t} a big bear hug', 'wants a bear hug'],
+  wave: ['waves at {t}', 'waves hello'], cry: ['cries on {t}\'s shoulder', 'is crying'], laugh: ['laughs at {t}', 'laughs out loud'], giggle: ['giggles at {t}', 'giggles'],
+  blush: ['blushes at {t}', 'blushes'], smile: ['smiles at {t}', 'smiles'], grin: ['grins at {t}', 'grins'], love: ['loves {t}', 'is in love'],
+  poke: ['pokes {t}', 'pokes around'], punch: ['punches {t}. Ouch!', 'throws a punch'], pinch: ['pinches {t}', 'pinches'], tickle: ['tickles {t}', 'tickles'],
+  pat: ['pats {t} on the head', 'pats'], cheer: ['cheers for {t}', 'cheers'], thank: ['thanks {t}', 'says thank you'], bow: ['bows to {t}', 'bows'],
+  yawn: [null, 'yawns'], happy: [null, 'is feeling happy'], drunk: [null, 'is drunk'], brb: ['will be right back, {t}', 'will be right back'], gn: ['says good night to {t}', 'says good night'],
+  dance: ['dances with {t}', 'dances'], flirt: ['flirts with {t}', 'flirts'], stare: ['stares at {t}', 'stares'], salute: ['salutes {t}', 'salutes'],
+};
+Object.assign(ACTV, {
+  apologize: ['apologizes to {t}', 'apologizes'], argh: ['is frustrated with {t}. ARGHHH!', 'is frustrated. ARGHHH!'], bark: ['barks playfully at {t}', 'barks playfully'],
+  bearhug: ['gives {t} a great, big, bone-crushing bearhug!', 'wants a great, big bearhug!'], beg: ["begs at {t}'s feet", 'begs on their knees'],
+  beer: ['looks at {t}, pointing to the door, suggesting that it is pub time', 'suggests that it is pub time'], blink: ['blink at {t} in disbelief!', 'blinks in disbelief!'],
+  blowk: ['blows a kiss to {t}', 'blows a kiss'], blush: ['turns away from {t} and blushes', 'blushes'], boo: ["runs up behind {t} and screams 'BOOO!'", null],
+  cheers: ['raises a cheer for {t}. Go for gold!', 'raises a cheer. Go for gold!'], gold: [null, 'won a gold medal! Congratulations!'],
+  frenzy: [null, '=The crowd goes into a frenzy cheering for {u}'], record: [null, 'set a new world record!'], snore: [null, 'fell asleep and started snoring loudly. Bzzzz...'],
+  wohoo: [null, "lets out an energetic, 'WOO HOO!'"], worthy: [null, "bows to the ground screaming, 'I'M NOT WORTHY!'"], kickgoal: [null, 'kicks a goal for the team!'],
+  freekick: [null, 'is a free-kick specialist'], bounce: [null, 'bounces around the room with excitement'], cartwheel: [null, 'performs a spectacular cartwheel'],
+  clap: ['claps loudly for {t}', 'claps loudly'], happy: [null, "can't resist smiling happily"], hiccup: [null, 'hiccups'], hmm: [null, 'humms and umms in deep thoughts'],
+  hold: ['holds {t} lovingly', null], honor: [null, 'is extremely honored'], compliment: ['gives {t} a wonderful compliment', null], crown: ['crowns {t} ruler of the room', null],
+  cuddle: ['cuddles up with {t}', null], dab: [null, 'hits a perfect dab'], howl: [null, 'lets loose a blood curdling howl at the moon. Hoooowwwll!'],
+  hug: ['gives {t} a big hug', 'needs a hug'], kiss: ['kisses {t}', 'blows a kiss'], laugh: ['laughs at {t}', 'laughs out loud'], dance: ['invites {t} to dance', 'dances'],
+  disco: [null, 'lights up the room with disco moves'], drumroll: [null, 'starts a dramatic drum roll...'], handshake: ['shakes hands with {t}', null],
+  listen: ['looks at {t}, listening intently', 'listens intently'], loser: ["points at {t} and yells 'Loser!'", null], love: ['whispers to {t} sweet words of love', 'is in love'],
+  highfive: ['gives {t} a mighty high five', 'raises a hand for a high five'], hop: [null, 'hops around happily'], jump: [null, 'jumps for joy'],
+  magic: ['performs a magic trick for {t} ✨', null], miss: ['is very happy to see {t} again', 'misses everyone'], mmm: [null, 'drools. Mmmmm....'],
+  wave: ['is waving at {t}', 'is waving'], poke: ['pokes {t} in the ribs.', 'pokes around'], spit: ['spits on {t}!', 'spits'],
+  meditate: [null, 'closes their eyes and meditates peacefully'], motivate: ['motivates {t} to keep going!', null], pirate: [null, "shouts, 'Ahoy, MigMeet mateys!'"],
+  robot: [null, 'performs the robot dance'], goal: [null, 'scores GOALLLLLLLLLLLLL!'], relax: ['tells {t} to relax', 'relaxes'], smile: ['smiles happily at {t}', 'smiles happily'],
+  thank: ['thanks {t} wholeheartedly. Thank you!', 'says thank you'], win: [null, "screams, 'I won the battle!'"], selfie: ['takes a selfie with {t}', null],
+  skip: [null, 'skips happily around the room'], sparkle: [null, 'sparkles like a MigMeet star ✨'], spin: [null, 'spins around until everything is dizzy'],
+  go: [null, 'cheers for the MigMeet contest team. Go team, go!'], challenge: ['challenges {t} to a MigMeet contest battle', 'is ready for a challenge'],
+  luck: ['wishes {t} good luck in the MigMeet contest!', 'wishes everyone good luck in the MigMeet contest!'], salute: ['gives {t} a smart salute', 'salutes'],
+  surprise: ['jumps out and surprises {t}!', null], victory: [null, 'strikes a glorious victory pose!'], zoom: [null, 'zooms around the room at lightning speed!'],
+  whistle: ['whistles appreciatively at {t}', null], winner: [null, 'wonders who will win this MigMeet contest'], welcome: ['warmly welcomes {t} to the MigMeet world', 'welcomes everyone'],
+  offside: [null, "scores a goal, but after the referee's consideration, it's offside. Boo!"], lose: ['lost to {t} in the MigMeet battle. Better luck next time!', 'lost the battle. Better luck next time!'],
+});
+for (const k of 'crown cuddle magic motivate selfie whistle'.split(' ')) ACT_REQ.add(k);
+for (const k of Object.keys(ACTV)) if (!ACT_REQ.has(k) && !ACT_SOLO.has(k) && !ACT_OPT.has(k)) ACT_OPT.add(k);
+const SONGS = ["Under a lantern sky we walk, the river hums along, and every star leans in to hear our little midnight song",
+  "Oh the rain taps on my window like a drummer keeping time, and the whole wide world is dancing to a gentle rhyme",
+  "Come along, come along, to the place where the sunrise grows, we will chase the golden morning wherever the wind blows",
+  "Tea is warm and the night is long, so let us sing a silly tune, la la la under the paper-white moon",
+  "Hey hey, a new day is calling, shake the sleep from your shoes, we got laughter in our pockets and nothing left to lose",
+  "Mango sun and monsoon breeze, a rickshaw bell rings by, we sing it loud, we sing it proud, beneath the open sky",
+  "Little boat on a silver stream, carry my worries away, I will whistle you a melody to brighten up the day"];
 app.get('/api/commands', auth, (q, r) => r.json({ optional: [...ACT_OPT], required: [...ACT_REQ], solo: [...ACT_SOLO] }));
 
 
@@ -1508,30 +1565,39 @@ function command(ws, line) {
   if (c === 'grab') return grabPacket(ws);
   if (c === 'gift' || c === 'g') {
     const mi = a.indexOf('-m'), note = mi > -1 ? a.slice(mi + 1).join(' ').slice(0, 100) : '', p = mi > -1 ? a.slice(0, mi) : a;
-    if (p[0] === 'all') return dm ? reply(ws, 'Gift shower is unavailable in private chat.') : speak(() => shower(ws, p[1]));
-    return dm && p.length === 1 ? giftOne(ws, other, p[0], note) : giftOne(ws, p[0], p[1], note);
+    if (!p.length) return reply(ws, 'Usage: /gift username giftname   or   /gift all giftname');
+    if (p[0].toLowerCase() === 'all') return dm ? reply(ws, 'Gift shower is unavailable in private chat.') : p[1] ? speak(() => shower(ws, p.slice(1).join(' '))) : reply(ws, 'Usage: /gift all giftname');
+    if (dm && giftDef(p.join(' '))) return giftOne(ws, other, p.join(' '), note);
+    return p[1] ? giftOne(ws, p[0].replace(/^@/, ''), p.slice(1).join(' '), note) : reply(ws, 'Usage: /gift username giftname');
   }
   if (c === 'f' || c === 'follow') return friendAct(ws, tgt || other);
   if (c === 'block' || c === 'unblock') {
     if (!tgt || tgt === u || !profile(tgt)) return reply(ws, `Usage: /${c} username`);
-    if (c === 'block') { db.prepare('insert or ignore into blocks values(?,?)').run(u, tgt); return reply(ws, `${tgt} is blocked. Neither of you will see the other's room messages.`); }
-    db.prepare('delete from blocks where a=? and b=?').run(u, tgt); return reply(ws, `${tgt} is unblocked.`);
+    if (c === 'block') { db.prepare('insert or ignore into blocks values(?,?)').run(u, tgt); return reply(ws, `${tgt} blocked. Neither of you will see the other's chatroom messages.`); }
+    db.prepare('delete from blocks where a=? and b=?').run(u, tgt); return reply(ws, `${tgt} unblocked.`);
   }
-  if (c === 'tag') { const p = tgt && profile(tgt); const tb = p && db.prepare('select parent from tags where user=?').get(tgt)?.parent; return reply(ws, p ? (tb ? `${tgt} is tagged by ${tb}.` : `${tgt} is not tagged.`) : 'Usage: /tag username'); }
-  if (c === 'whois') { const p = tgt && profile(tgt); return reply(ws, p ? `${p.name}: role ${p.role}, level ${p.level}, gender ${p.gender || 'not set'}, country ${p.country || 'not set'}.` : 'Usage: /whois username'); }
-  if (c === 'me') return speak(() => say(room, u, `✨ ${u} ✨`));
-  if (c === 'roll') return speak(() => say(room, u, `🎲 ${u} rolled ${1 + Math.floor(Math.random() * 100)} (1–100)`));
-  if (c === 'sing') return speak(() => say(room, u, `🎤 ${u}: ${SONGS[Math.floor(Math.random() * SONGS.length)]}`));
-  if (c === 'getmyluck') { const L = k => seed(u + day() + k) % 101; return speak(() => say(room, u, `🍀 ${u}'s luck today: love ${L('l')}%, money ${L('m')}%, health ${L('h')}%, success ${L('s')}%`)); }
-  if (c === 'flames' || c === 'findmymatch') {
-    const who = c === 'flames' && tgt ? tgt : online()[Math.floor(Math.random() * online().length)];
-    if (!who || !profile(who)) return reply(ws, c === 'flames' ? 'Usage: /flames username' : 'Nobody else is here to match with.');
-    return speak(() => say(room, u, c === 'flames' ? `🔥 FLAMES: ${u} & ${who} = ${flames(u, who)}` : `💘 ${u} & ${who}: ${40 + seed([u, who].sort().join() + day()) % 61}% compatible`));
+  if (c === 'tag') { const p = tgt && profile(tgt); const tb = p && db.prepare('select parent from tags where user=?').get(tgt)?.parent; return reply(ws, p ? (tb ? `${tgt} is tagged by ${tb}.` : `${tgt} has no tag yet.`) : 'Usage: /tag username'); }
+  if (c === 'whois') { const p = tgt && profile(tgt); return reply(ws, p ? `username: **${p.name}** [${p.role}]\nlevel: ${p.level}${p.country ? '\ncountry: ' + p.country : ''}${p.gender ? '\ngender: ' + p.gender : ''}` : 'Usage: /whois username', p ? 'info' : 'err'); }
+  const act = (txt, kind = 'emote') => speak(() => say(room, u, `** ${txt} **`, kind));
+  const rnd = n => Math.floor(Math.random() * n);
+  if (c === 'me') return act((u + ' ' + a.join(' ')).trim().slice(0, 200));
+  if (c === 'roll') return act(`${u} rolls ${1 + rnd(100)}`);
+  if (c === 'sing') return act(`${u} sings ${SONGS[rnd(SONGS.length)]}`);
+  if (c === 'getmyluck') { const L = () => rnd(101); return act(`${u}'s luck for day : ❤️ love ${L()}%, 💰 money ${L()}%, 💪 health ${L()}%, 🏆 success ${L()}%`, 'emotep'); }
+  if (c === 'findmymatch') {
+    let pool = online(); if (!pool.length) pool = db.prepare("select name from users where lower(name)!=? and name!=? and banned=0 order by random() limit 1").all(STAFF_USER, u).map(x => x.name);
+    const who = pool[rnd(pool.length)]; if (!who) return reply(ws, 'Nobody else is here to match with.');
+    return act(`${u} has been matched with ${who}!\n💘 Compatibility: ${rnd(101)}%`, 'emotep');
+  }
+  if (c === 'flames') {
+    if (!tgt || !profile(tgt)) return reply(ws, 'Usage: /flames username');
+    return act(`🔥 FLAMES : ${u} vs ${tgt} = ${flames(u, tgt)}`, 'emotep');
   }
   // moderation
+  if (c === 'dmod' && !tgt) return;
   if (['ban', 'unban', 'unkick', 'bump', 'mod', 'dmod', 'smod', 'dsmod'].includes(c)) return moderate(ws, c, tgt);
   if (c === 'kick') return tgt ? moderate(ws, 'kick', tgt) : speak(() => say(room, u, '⚽ ' + u + ' kick'));
-  if (c === 'silence') return !a[0] ? moderate(ws, 'silenceall', null, 600) : /^\d+$/.test(a[0]) ? moderate(ws, 'silenceall', null, +a[0]) : moderate(ws, 'silence', tgt, +a[1] || 600);
+  if (c === 'silence') return !a[0] ? reply(ws, 'Usage: /silence <seconds> or /silence <username> <seconds>') : /^\d+$/.test(a[0]) ? moderate(ws, 'silenceall', null, +a[0]) : moderate(ws, 'silence', tgt, +a[1] || 600);
   if (c === 'unsilence') return tgt ? moderate(ws, 'unsilence', tgt) : moderate(ws, 'unsilenceall');
   if (c === 'lock' || c === 'unlock') return moderate(ws, c);
   if (c === 'broadcast') return moderate(ws, 'broadcast', null, 0, a.join(' '));
@@ -1541,7 +1607,8 @@ function command(ws, line) {
     if (ACT_REQ.has(c) && !tgt) return reply(ws, `Usage: /${c} username`);
     const t = !ACT_SOLO.has(c) && tgt ? tgt : null;
     if (t && !profile(t)) return reply(ws, 'User not found.');
-    return speak(() => say(room, u, `${EMO[c] || '✨'} ${u} ${c}${t ? ' → ' + t : ''}`));
+    const V = ACTV[c], verb = V ? (t ? V[0] : V[1]) : null;
+    return act(`${verb && verb[0] === '=' ? '' : u + ' '}${(verb && verb[0] === '=' ? verb.slice(1) : verb || (t ? `${c}${/s$/.test(c) ? '' : 's'} {t}` : `${c}${/s$/.test(c) ? '' : 's'}`)).replace(/\{t\}/g, t || '').replace(/\{u\}/g, u)}`.trim());
   }
   reply(ws, 'Unknown command. Open Explore → Command List.');
 }
@@ -1566,7 +1633,7 @@ wss.on('connection', ws => {
       const ok = roomOk(m.room) && (!/^dm:/.test(m.room) || m.room.slice(3).split(':').includes(ws.user));
       if (!ok) return;
       const bn = db.prepare('select until from bans where room=? and user=?').get(m.room, ws.user);
-      if (bn) { if (bn.until === 0 || bn.until > Date.now()) return send(ws, { t: 'denied', room: m.room, error: bn.until ? 'You are suspended from this room for a while.' : 'You are banned from this room.' }); db.prepare('delete from bans where room=? and user=?').run(m.room, ws.user); }
+      if (bn) { if (bn.until === 0 || bn.until > Date.now()) return send(ws, { t: 'denied', room: m.room, error: bn.until ? (() => { const t = Math.round((bn.until - Date.now()) / 1000); return `You are suspended from this chatroom for ${Math.floor(t / 86400)} days ${Math.floor(t % 86400 / 3600)} hours ${Math.floor(t % 3600 / 60)} minutes ${t % 60} seconds.`; })() : 'You are banned from this chatroom.' }); db.prepare('delete from bans where room=? and user=?').run(m.room, ws.user); }
       if (!/^dm:/.test(m.room) && !isSA(ws.user)) {
         const cap = db.prepare('select cap from rooms where name=?').get(m.room)?.cap || 0;
         if (cap) { const here = new Set([...(members.get(m.room) || [])].filter(w => w !== ws).map(w => w.user)); if (!here.has(ws.user) && here.size >= cap) return send(ws, { t: 'denied', room: m.room, error: `This room is full (${cap} users).` }); }
