@@ -791,7 +791,7 @@ const tok=()=>localStorage.tk||sessionStorage.tk;
 const isOff=()=>!!(localStorage.tk?localStorage.off:sessionStorage.off);
 const logout=()=>{const t=localStorage.theme,n=localStorage.navoff,s=localStorage.skin,fz=localStorage.fs;localStorage.clear();sessionStorage.clear();try{if(t)localStorage.theme=t;if(n)localStorage.navoff=n;if(s)localStorage.skin=s;if(fz)localStorage.fs=fz}catch(e){}location.reload()};
 const api=async(m,u,b)=>{const r=await fetch('/api'+u,{method:m,headers:{'Content-Type':'application/json',Authorization:'Bearer '+tok()},body:b?JSON.stringify(b):undefined});
-  const d=await r.json().catch(()=>({}));if(r.status===401)logout();if(!r.ok)throw new Error(d.error||'Something went wrong');return d};
+  const d=await r.json().catch(()=>({}));if(r.status===401)logout();if(!r.ok)throw new Error(d.error||(r.status===404?'Server is old: '+u+' not found. Upload the new server.js and restart the service.':'Server error '+r.status+' on '+u));return d};
 const fail=e=>toast('⚠ '+(e&&e.message||'Something went wrong'),1);
 const view=h=>{$('view').innerHTML=h};
 /* ---------- auth ---------- */
@@ -1545,7 +1545,8 @@ V.settings=async()=>{const bg=localStorage.cbg||'light';
   <form id="mpf" class="card" style="display:grid;gap:8px"><b>MPIN ${ST.hasPin?'(set)':'(not set)'}</b><small class="mu">4–6 digits. Needed for coin transfers.</small>${ST.hasPin?'<input id="mpo" type="password" inputmode="numeric" maxlength="6" placeholder="Current MPIN" autocomplete="off">':''}<input id="mpn" type="password" inputmode="numeric" maxlength="6" placeholder="New MPIN (4–6 digits)" autocomplete="off"><button class="o">${ST.hasPin?'Change MPIN':'Set MPIN'}</button></form>
   <form id="sqf" class="card" style="display:grid;gap:8px"><b>Security question ${ST.secQ?'(set)':'(not set)'}</b><small class="mu">${ST.secQ?esc(ST.secQ):'Pick a question and save your answer.'}</small><select id="sqq">${(ST.secQs||[]).map(q=>`<option ${q===ST.secQ?'selected':''}>${esc(q)}</option>`).join('')}</select><input id="sqa" placeholder="Your answer" maxlength="60" autocomplete="off">${ST.secQ?'<input id="sqp" type="password" placeholder="Account password (to change)" autocomplete="current-password">':''}<button class="o">Save security question</button></form>
   <form id="pw" class="card" style="display:grid;gap:8px"><b>Change password</b><input id="po" type="password" placeholder="Current password" autocomplete="current-password"><input id="pn" type="password" placeholder="New password (6+ characters)" autocomplete="new-password"><button class="o">Update password</button></form>
-  <button class="mi out card" id="lo">⎋ Log out</button>`);
+  <button class="mi out card" id="lo">⎋ Log out</button><div class="mu" id="ver" style="text-align:center;margin:8px">App b8 · server …</div>`);
+  fetch('/api/version').then(r=>r.json()).then(d=>{$('ver').textContent='App b8 · server '+(d.build||'?')}).catch(()=>{if($('ver'))$('ver').textContent='App b8 · server OLD (no version)'});
   $('sp').onclick=()=>go('profile',me);$('spp').onclick=()=>go('profile',me);$('ss').onclick=statusSheet;$('lo').onclick=logout;
   $('pw').onsubmit=async e=>{e.preventDefault();try{await api('POST','/password',{old:$('po').value,pass:$('pn').value});toast('Password updated ✔');V.settings()}catch(er){fail(er)}};
   $('mpf').onsubmit=async e=>{e.preventDefault();try{await api('POST','/security/pin',{pin:$('mpn').value,old:$('mpo')?.value||''});toast('MPIN saved');ST=await api('GET','/me');V.settings()}catch(er){fail(er)}};

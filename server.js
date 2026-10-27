@@ -872,6 +872,8 @@ app.post('/api/security/question', auth, ok((q, r) => {
   if (row.sec_q && !bcrypt.compareSync(String(q.body?.pass || ''), row.pass)) return bad(r, 'Enter your password to change the security question.', 403);
   db.prepare('update users set sec_q=?, sec_a=? where name=?').run(question, bcrypt.hashSync(an, 10), q.user); r.json({ ok: true });
 }));
+const BUILD = 'b8-security-xp';
+app.get('/api/version', (q, r) => r.json({ build: BUILD, security: true }));
 app.get('/api/leaderboard', auth, ok((q, r) => r.json(db.prepare('select name,xp,coins,role from users order by xp desc limit 20').all().map(u => ({ ...u, level: level(u.xp) })))));
 
 // ---------- uploads: profile photos, chat images, voice notes ----------
