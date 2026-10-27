@@ -1091,7 +1091,12 @@ async function supSync() {
     } finally { lock.release(); }
     await c.logout();
     supState.err = '';
-  } catch (e) { supState.err = e.message || 'IMAP error'; console.log('[support] sync failed:', supState.err); try { c.close(); } catch {} }
+  } catch (e) {
+    supState.err = e.authenticationFailed ? 'Mailbox login failed: SUPPORT_PASS in /opt/migv33/.env is wrong or outdated (use the mailbox\'s current password, then restart the service).'
+      : [e.responseText || e.message || 'IMAP error', e.code, e.serverResponseCode].filter(Boolean).join(' · ');
+    console.log('[support] sync failed:', supState.err, e.response || '');
+    try { c.close(); } catch {}
+  }
   supState.last = Date.now(); supState.busy = false;
 }
 setInterval(() => supSync().catch(() => {}), 120000);
