@@ -812,6 +812,16 @@ html #gp .gb,html #gp .cp,html #gp .side{font-family:inherit}
 #log .errb i{font-style:normal;font-size:20px;color:#d93a3a}#log .errb small{display:block;font-size:11px;font-weight:700;margin-top:3px;color:#b03030}
 #log.navy .errb,#log.dark .errb,html[data-theme=dark] #log .errb{background:rgba(224,72,62,.2);border-color:rgba(255,138,128,.6);color:#ffc9c3}#log.navy .errb small,#log.dark .errb small,html[data-theme=dark] #log .errb small{color:#ffb0a8}
 #log .nt.l{color:inherit;font-weight:500}#log .nt.a{color:#8b4a2b;font-weight:800}#log.navy .nt.a,#log.dark .nt.a,html[data-theme=dark] #log .nt.a{color:#f0b184}
+#rbw{display:grid;grid-template-rows:1fr;transition:grid-template-rows .32s ease;flex:none}#rbw.hid{grid-template-rows:0fr}
+#rbw .rbi{overflow:hidden;min-height:0}#rbw.hid #rbar{margin-top:0;opacity:0}#rbar{transition:opacity .2s}
+#rbt{display:block;margin:2px auto 0;width:46px;height:16px;padding:0;border:0;border-radius:0 0 12px 12px;background:rgba(255,255,255,.16);box-shadow:none;display:grid;place-items:center;flex:none}
+#rbt svg{width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:2.6;stroke-linecap:round;stroke-linejoin:round;transition:transform .3s}#rbw.hid+#rbt svg{transform:rotate(180deg)}
+#rbw:not(.hid)+#rbt svg{transform:rotate(180deg)}#rbw.hid+#rbt svg{transform:none}
+#rbar .on1{overflow:hidden}.o1t{display:flex;align-items:baseline;gap:8px;min-width:0;flex:1}.o1t b{white-space:nowrap;font-size:15px}.o1n{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:13px;font-weight:600;opacity:.95}
+#rpop.wide{min-width:230px;max-width:320px;max-height:62vh;overflow:auto}#rpop .ph2{padding:6px 12px 8px;font-weight:800;font-size:14px;opacity:.85;border-bottom:1px solid rgba(255,255,255,.18);margin-bottom:4px}#rpop .ri{padding:5px 12px;font-size:13.5px}#rpop.wide button{display:flex;align-items:center;gap:8px}
+html .lgo,html[data-skin] .lgo{color:#ff4d4d!important}
+@media (max-width:430px){#top .lg{display:none}#top #coins{margin-left:auto}}
+#rpop.wide>*{flex:none}#rpop .rinf{padding:5px 12px;font-size:13.5px;line-height:1.35}
 </style>
 <script>try{var t=localStorage.theme||(matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light');if(localStorage.tk||sessionStorage.tk)document.documentElement.dataset.boot=1;var k=localStorage.skin||'navy';if(k==='navy'){t='dark'}else if(k==='white'){t='light'}if(k==='navy'||k==='white')document.documentElement.dataset.skin=k;document.documentElement.dataset.theme=t}catch(e){document.documentElement.dataset.theme='light'}</script>
 </head>
@@ -850,8 +860,9 @@ html #gp .gb,html #gp .cp,html #gp .side{font-family:inherit}
   <div id="hdr"><div id="top">
     <button id="mb" aria-label="Menu"><svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16"/></svg></button>
     <button id="th" aria-label="Home"><svg viewBox="0 0 24 24"><path d="M3 11l9-8 9 8M5 10v10h5v-6h4v6h5V10"/></svg></button>
-    <div class="lg" role="img" aria-label="MigV33"></div>
+    <button id="tf" aria-label="Friends"><svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c0-3.6 2.9-6 6.5-6s6.5 2.4 6.5 6"/><path d="M16 5a3.3 3.3 0 0 1 0 6.3M18.5 14.4c1.7.8 3 2.7 3 5.6"/></svg></button>
     <button id="tr" aria-label="Chat rooms"><svg viewBox="0 0 24 24"><path d="M4 5h16v11H9l-5 4z"/></svg></button>
+    <div class="lg" role="img" aria-label="MigV33"></div>
     <button id="tn" aria-label="Switch day / night mode"></button>
     <span id="coins"></span>
   </div>
@@ -959,9 +970,9 @@ const saveOpen=()=>{try{sessionStorage.open=JSON.stringify(OPEN)}catch{}try{if(w
 const cn=c=>ST.unlimited?'∞ coins':c+' coins';
 const V={};const TT={panel:'Panel',admin:'Admin Panel',home:'Home',rooms:'Chat Rooms',chat:'Chat',profile:'Profile',account:'My Account',friends:'Friends',explore:'Explore',spin:'Daily Spin',cmds:'Command List',settings:'Settings'};
 async function go(v,a){document.body.classList.toggle('inchat',v==='chat');document.body.style.overflow='';document.documentElement.style.overflow='';$('view')&&($('view').style.overflowY='');if(cur==='chat'&&$('log')&&room&&OPEN.includes(room)&&!room.startsWith('dm:'))LOGC[room]=$('log').innerHTML;cur=v;try{if(v!=='chat')sessionStorage.lastv=JSON.stringify([v,a===undefined?null:a])}catch{}$('drawer').classList.remove('open');bnSet(v,a);
-  $('th').classList.toggle('on',v==='home');$('tr').classList.toggle('on',v==='rooms'||v==='chat');
+  $('th').classList.toggle('on',v==='home');$('tf').classList.toggle('on',v==='friends');$('tr').classList.toggle('on',v==='rooms'||v==='chat');
   if(innerWidth>=1000)drawNav();$('view').scrollTop=0;$('stt').textContent=TT[v]||'';$('strip').style.display='none';$('view').onclick=null;document.body.classList.remove('hb');try{await refreshVer();await V[v](a)}catch(e){fail(e)}}
-addEventListener('resize',()=>{if(me&&innerWidth>=1000)drawNav()});$('th').onclick=()=>go('home');$('tr').onclick=()=>go('rooms');$('mb').onclick=()=>{drawNav();$('drawer').classList.add('open');navAnim()};
+addEventListener('resize',()=>{if(me&&innerWidth>=1000)drawNav()});$('th').onclick=()=>go('home');$('tf').onclick=()=>go('friends');$('tr').onclick=()=>go('rooms');$('mb').onclick=()=>{drawNav();$('drawer').classList.add('open');navAnim()};
 $('drawer').onclick=e=>{if(e.target.id==='drawer')$('drawer').classList.remove('open')};
 function navAnim(){const d=$('dn');d.classList.remove('anim');void d.offsetWidth;d.classList.add('anim');setTimeout(()=>d.classList.remove('anim'),1200)}
 try{if(localStorage.navoff)document.body.classList.add('nav-off')}catch(e){}
@@ -1331,7 +1342,9 @@ V.rooms=async()=>{const rs=await api('GET','/rooms');
   view(`<div class="cmp"><input id="rq" placeholder="Search room" value="${esc(q)}"><button id="rr">⟳</button><button id="rn" class="o">+</button></div>`+
     S.map(([t,c,l],i)=>`<div class="dk" style="--c:${c}" data-s="${i}"><div>${t}<span class="n">${l.length}</span></div><span>▾</span></div><div id="s${i}" style="${l.length?'':'display:none'}">${l.filter(x=>x.name.toLowerCase().includes(q)).map(x=>`<div class="rm" data-r="${x.name}"><span><span class="rn">${x.name}</span> <span class="mu">· ${x.count}${x.cap?'/'+x.cap:''} online</span></span><button data-f="${x.name}">${x.fav?'★':'☆'}</button></div>`).join('')}</div>`).join(''));
   $('rq').oninput=()=>V.rooms();$('rr').onclick=()=>V.rooms();
-  $('rn').onclick=async()=>{if(lv(ST.xp||0)<20&&!['staff','admin'].includes(ST.role))return toast('Creating a room unlocks at Level 20',1);const n=prompt('New room name (5–20 characters: English letters, numbers, spaces)');if(!n)return;try{await api('POST','/rooms',{name:n.trim()});V.rooms()}catch(e){fail(e)}};
+  $('rn').onclick=()=>{if(lv(ST.xp||0)<20&&!['staff','admin'].includes(ST.role))return toast('Creating a room unlocks at Level 20',1);
+    sheetOpen(`<h2>Create a room</h2><section class="whol"><label class="mu">Room name</label><input id="crn" maxlength="20" placeholder="5–20 letters, numbers, spaces" autocomplete="off"><label class="mu">Description</label><input id="crd" maxlength="200" placeholder="Shown to everyone who enters" autocomplete="off"><label class="mu">Minimum level to enter</label><input id="crl" type="number" min="0" max="1000" inputmode="numeric" value="0"><button class="o" id="crg">Create room</button><p class="mu">This chatroom will be managed by <b>${esc(me)}</b>.</p></section>`);
+    $('crg').onclick=async()=>{try{await api('POST','/rooms',{name:$('crn').value.trim(),descr:$('crd').value.trim(),minlv:+$('crl').value||0});$('sheet').classList.remove('open');V.rooms()}catch(e){fail(e)}}};
   $('view').onclick=async e=>{const f=e.target.closest('[data-f]');if(f){await api('POST',`/rooms/${encodeURIComponent(f.dataset.f)}/fav`);return V.rooms()}
     const r=e.target.closest('[data-r]');if(r)return go('chat',r.dataset.r);const s=e.target.closest('[data-s]');if(s){const d=$('s'+s.dataset.s);d.style.display=d.style.display==='none'?'':'none'}}};
 /* ---------- chat ---------- */
@@ -1340,7 +1353,7 @@ const lvtag=(n,xp)=>` <span class="lvt">[${lv(xp||0)}]</span>`;
 V.chat=async(r)=>{room=r;if(!r.startsWith('dm:'))lastRoom=r;target='';pend=null;RM=[];RI=null;const dm=r.startsWith('dm:');const title=rtitle(r);
   if(!OPEN.includes(r)){OPEN.push(r);saveOpen()}
   $('stt').textContent=title;
-  view(`<div id="chatbox"><div id="rtabs"></div>${dm?'':'<div id="rbar"></div>'}
+  view(`<div id="chatbox"><div id="rtabs"></div>${dm?'':'<div id="rbw" class="'+(localStorage.rbarHide==='1'?'hid':'')+'"><div class="rbi"><div id="rbar"></div></div></div><button type="button" id="rbt" aria-label="Hide or show the room bar"><svg viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg></button>'}
    <div id="log" class="${localStorage.cbg||'light'}"></div>${dm?'':'<div id="tp" aria-label="Teen Patti Gold table"></div><div id="gp" aria-label="Game table"></div>'}<div id="uno" class="card" style="display:none"></div>
    <div class="row mu" id="tools" style="flex-wrap:wrap"><span id="to"></span></div>
    <form id="f" class="row"><button type="button" id="phb" aria-label="Send a photo">📷</button><input id="t" placeholder="Type a message…" autocomplete="off" maxlength="500"><button type="button" id="mic" aria-label="Record a voice note">🎤</button><button class="o">Send</button></form>
@@ -1359,7 +1372,7 @@ V.chat=async(r)=>{room=r;if(!r.startsWith('dm:'))lastRoom=r;target='';pend=null;
 /* room tabs: tap to switch, swipe left/right to move between open rooms */
 function drawTabs(){const t=$('rtabs');if(!t)return;
   UNR[room]=0;
-  t.innerHTML=OPEN.map(x=>x===room?`<button class="rt on" data-r="${esc(x)}">${esc(rtitle(x))}</button>`:`<button class="rt mini${UNR[x]?' has':''}" data-r="${esc(x)}" title="${esc(rtitle(x))}" aria-label="${esc(rtitle(x))}${UNR[x]?' — '+UNR[x]+' new':''}"><svg viewBox="0 0 24 24" width="18" height="18"><path d="M4 5h16v11H9l-5 4z" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"/></svg>${UNR[x]?`<b class="ub">${UNR[x]>9?'9+':UNR[x]}</b>`:''}</button>`).join('')+'<button class="rt" data-add="1">+ Rooms</button>';
+  t.innerHTML=OPEN.map(x=>x===room?`<button class="rt on" data-r="${esc(x)}">${esc(rtitle(x))}</button>`:`<button class="rt mini${UNR[x]?' has':''}" data-r="${esc(x)}" title="${esc(rtitle(x))}" aria-label="${esc(rtitle(x))}${UNR[x]?' — '+UNR[x]+' new':''}"><svg viewBox="0 0 24 24" width="18" height="18"><path d="M4 5h16v11H9l-5 4z" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"/></svg>${UNR[x]?`<b class="ub">${UNR[x]>9?'9+':UNR[x]}</b>`:''}</button>`).join('');
   t.onclick=e=>{const c=e.target.closest('[data-x]');if(c){e.stopPropagation();return closeTab(c.dataset.x)}
     if(e.target.closest('[data-add]'))return go('rooms');const b=e.target.closest('[data-r]');if(b&&b.dataset.r!==room)go('chat',b.dataset.r)};
   t.querySelector('.on')?.scrollIntoView({inline:'center',block:'nearest'})}
@@ -1371,13 +1384,24 @@ function swipe(el){let x0=0,y0=0,t0=0;
   el.addEventListener('touchend',e=>{if(!x0)return;const p=e.changedTouches[0],dx=p.clientX-x0,dy=p.clientY-y0;const ok=Math.abs(dx)>70&&Math.abs(dx)>Math.abs(dy)*2&&Date.now()-t0<700;x0=0;if(ok)stepRoom(dx<0?1:-1)},{passive:true})}
 const IC={ppl:'<svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c0-3.6 2.9-6 6.5-6s6.5 2.4 6.5 6"/><path d="M16 4.7a3.5 3.5 0 010 6.6M18 14.4c2 .8 3.5 2.6 3.5 5.6"/></svg>',star:'<svg viewBox="0 0 24 24"><path d="M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1L3.2 9.5l6.1-.9z"/></svg>',shield:'<svg viewBox="0 0 24 24"><path d="M12 3l8 3v6c0 4.5-3.3 7.6-8 9-4.7-1.4-8-4.5-8-9V6z"/><path d="M8.5 12l2.5 2.5 4.5-5"/></svg>',more:'<svg viewBox="0 0 24 24"><circle cx="5" cy="12" r="1.3"/><circle cx="12" cy="12" r="1.3"/><circle cx="19" cy="12" r="1.3"/></svg>'};
 function drawOnline(){const b=$('rbar');if(!b)return;
-  b.innerHTML=`<button class="on1" data-b="ppl"><span class="dot online" style="width:16px;height:16px"></span>${RM.length} online <span style="color:#888">›</span></button>
-   <button class="ib" data-b="ppl" aria-label="Members">${IC.ppl}</button><button class="ib star ${RI?.fav?'on':''}" data-b="fav" aria-label="Favorite">${IC.star}</button><button class="ib" data-b="mods" aria-label="Room staff">${IC.shield}</button><button class="ib" data-b="more" aria-label="More">${IC.more}</button>`;
-  b.onclick=async e=>{const k=e.target.closest('[data-b]')?.dataset.b;if(!k)return;
-    if(k==='ppl')return memSheet();
+  const nm=RM.map(u=>`<span style="color:${nc(u.name)}">${esc(u.name)}</span>`).join(', ');
+  b.innerHTML=`<button class="on1" data-b="ppl"><span class="dot online" style="width:14px;height:14px;flex:none"></span><span class="o1t"><b>${RM.length} online</b><span class="o1n">${nm}</span></span></button>
+   <button class="ib" data-b="ppl" aria-label="Members">${IC.ppl}</button><button class="ib star ${RI?.fav?'on':''}" data-b="fav" aria-label="Favorite">${IC.star}</button><button class="ib" data-b="mods" aria-label="Room info">${IC.shield}</button><button class="ib" data-b="more" aria-label="More">${IC.more}</button>`;
+  const bt=$('rbt');if(bt&&!bt._b){bt._b=1;bt.onclick=()=>{const w=$('rbw');w.classList.toggle('hid');try{localStorage.rbarHide=w.classList.contains('hid')?'1':'0'}catch{}}}
+  b.onclick=async e=>{const el=e.target.closest('[data-b]'),k=el?.dataset.b;if(!k)return;
+    if(k==='ppl')return memPop(el);
     if(k==='fav'){try{await api('POST',`/rooms/${encodeURIComponent(room)}/fav`);if(RI)RI.fav=!RI.fav;drawOnline()}catch(er){fail(er)}return}
-    if(k==='mods')return modInfo();
-    if(k==='more')return chatMenu(e.target.closest('[data-b]'))}}
+    if(k==='mods')return modPop(el);
+    if(k==='more')return chatMenu(el)}}
+function popOpen(anchor,html,onPick){const old=$('rpop'),same=old&&old._a===anchor;if(old)old.remove();if(same)return;
+  const p=document.createElement('nav');p.id='rpop';p.className='wide';p._a=anchor;p.innerHTML=html;document.body.appendChild(p);
+  const a=anchor.getBoundingClientRect(),w=p.offsetWidth;p.style.top=(a.bottom+6)+'px';p.style.left=Math.max(8,Math.min(innerWidth-w-8,a.right-w))+'px';p.style.right='auto';
+  const off=e=>{if(!p.contains(e.target)&&!anchor.contains(e.target)){p.remove();document.removeEventListener('pointerdown',off,true)}};
+  setTimeout(()=>document.addEventListener('pointerdown',off,true),0);
+  p.onclick=e=>{if(onPick&&onPick(e,p)!==false){p.remove();document.removeEventListener('pointerdown',off,true)}}}
+function memPop(anchor){popOpen(anchor,`<div class="ph2">${esc(lastRoom)} · ${RM.length} online</div>`+(RM.map(u=>`<button data-n="${esc(u.name)}">${av(u.name,28)}<b style="color:${nc(u.name)}">${esc(u.name)}</b>${lvtag(u.name,u.xp)}${rt(u.role,u.name)}</button>`).join('')||'<div class="mu" style="padding:8px 12px">Nobody here yet.</div>'),
+  (e)=>{const n=e.target.closest('[data-n]')?.dataset.n;if(!n)return false;if(n!==me)setTarget(n)})}
+function modPop(anchor){const o=RI?.owner||'—';popOpen(anchor,`<div class="ph2">Room info</div><div class="rinf">Managed by: <b style="color:${nc(o)}">${esc(o)}</b></div><div class="rinf mu">Moderators: ${(RI?.mods||[]).map(esc).join(', ')||'none'}</div>${RI?.descr?`<div class="rinf mu">${esc(RI.descr)}</div>`:''}${RI?.minlv?`<div class="rinf mu">Minimum level: ${RI.minlv}</div>`:''}<div class="rinf mu">Staff and admins can kick, ban and silence in public rooms.</div>`,()=>false)}
 
 /* ---------- photos & voice ---------- */
 const imgToBlob=(file,max,square)=>new Promise((res,rej)=>{const i=new Image();i.onload=()=>{let w=i.width,h=i.height,sx=0,sy=0,sw=w,sh=h;
@@ -1419,7 +1443,7 @@ function chatMenu(anchor){
   const off=e=>{if(!p.contains(e.target)||e.target===p){p.remove();document.removeEventListener('pointerdown',off,true)}};
   setTimeout(()=>document.addEventListener('pointerdown',off,true),0);
   p.onclick=e=>{const k=e.target.closest('[data-c]')?.dataset.c;if(!k)return;p.remove();document.removeEventListener('pointerdown',off,true);
-    if(k==='ppl')return memSheet();
+    if(k==='ppl')return memPop(anchor||$('rbar'));
     if(k==='bal')return tx({t:'msg',text:'/balance'});
     if(k==='clr'){$('log').innerHTML='';return toast('Chat cleared on this device')}
     if(k==='leave')return closeTab(room);
@@ -1457,10 +1481,9 @@ function moreSheet(){sheetOpen(`<h2>${esc(lastRoom)}</h2><button data-m="cmds">�
   $('sh').onclick=e=>{const k=e.target.closest('[data-m]')?.dataset.m;if(!k)return;$('sheet').classList.remove('open');if(k==='close')closeTab(room);else go(k)}}
 const L=(who,html,cls='')=>{const d=document.createElement('div');d.className='rl '+cls;d.innerHTML=`<span class="rn2">${esc(who)}:</span> ${html}`;$('log').append(d);$('log').scrollTop=1e9};
 function roomIntro(m){RI=m;if(skipIntro){skipIntro=false;return drawOnline()}const nm=m.room[0].toUpperCase()+m.room.slice(1);
-  L(nm,`Welcome to ${esc(nm)}`);
+  L(nm,m.descr?esc(m.descr):`Welcome to ${esc(nm)}`);
   L(nm,`This chatroom is managed by <b style="color:${nc(m.owner)}">${esc(m.owner)}</b>`);
   L(nm,`Currently in the room: ${m.users.map(u=>esc(u.name)).join(', ')||'nobody yet'}`);
-  if(m.descr)L(nm,`📝 ${esc(m.descr)}`);
   if(m.minlv)L(nm,`🔒 Level ${m.minlv}+ room`);
   if(m.announce)L(nm,`📢 <b>(Announcement): ${esc(m.announce)}</b>`,'ann');
   drawOnline()}
