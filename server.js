@@ -370,7 +370,7 @@ app.get('/api/rooms', auth, ok((q, r) => {
   const own = new Map(), isStaffOwner = o => { if (!o) return false; if (!own.has(o)) own.set(o, ['staff', 'admin'].includes(roleOf(o))); return own.get(o); };
   r.json(db.prepare('select name,cat,cap,owner from rooms').all().map(x => {
     const cat = (gameOf(x.name) || x.cat === 'game') ? 'game' : (x.cat === 'official' || isStaffOwner(x.owner)) ? 'official' : 'user';
-    return { name: x.name, cat, cap: x.cap, count: new Set([...(members.get(x.name) || [])].map(w => w.user)).size, fav: fav.has(x.name) };
+    return { name: x.name, cat, cap: x.cap, count: roomNames(x.name).size, fav: fav.has(x.name) };
   }).sort((a, b) => b.count - a.count || a.name.localeCompare(b.name)));
 }));
 app.post('/api/rooms', auth, ok((q, r) => {
@@ -627,7 +627,7 @@ app.post('/api/tag', auth, ok((q, r) => {
 const ROOM_TABLES = [['rooms', 'name'], ['favs', 'room'], ['bans', 'room'], ['room_mods', 'room'], ['room_cfg', 'room'], ['mutes', 'room'], ['msgs', 'room'], ['room_game', 'room'], ['tp_pending', 'room'], ['rb_pending', 'room'], ['lc_pending', 'room']];
 app.get('/api/admin/rooms', auth, ok((q, r) => {
   if (!staffOnly(q, r)) return;
-  r.json(db.prepare('select name,cat,owner,cap from rooms order by cat,name').all().map(x => ({ ...x, count: new Set([...(members.get(x.name) || [])].map(w => w.user)).size, game: gameOf(x.name) })));
+  r.json(db.prepare('select name,cat,owner,cap from rooms order by cat,name').all().map(x => ({ ...x, count: roomNames(x.name).size, game: gameOf(x.name) })));
 }));
 app.post('/api/admin/rooms/rename', auth, ok(async (q, r) => {
   if (!staffOnly(q, r)) return;
@@ -1237,7 +1237,9 @@ setInterval(() => {
     const r = w.room; leaveRoom(w); send(w, { t: 'kicked', room: r, by: 'system', auto: true });
   });
 }, 60e3).unref();
-const roster = room => [...new Set([...(members.get(room) || [])].map(w => w.user))].map(n => ({ name: n, ...db.prepare('select role,xp,presence from users where name=?').get(n) })).filter(u => u.presence !== 'offline');
+// Everyone who is in a room: joined right now OR has the room open as a tab (an open tab means they are still in that room)
+const roomNames = room => { const st = new Set([...(members.get(room) || [])].map(w => w.user)); for (const w of wss.clients) if (w.user && w.tabs && w.tabs.has(room)) st.add(w.user); return st; };
+const roster = room => [...roomNames(room)].map(n => ({ name: n, ...db.prepare('select role,xp,presence from users where name=?').get(n) })).filter(u => u.presence !== 'offline');
 const castRoster = room => { if (room && !/^dm:/.test(room)) cast(room, { t: 'members', room, list: roster(room) }); };
 const leaveRoom = (ws, quiet = false) => {
   const r0 = ws.room; if (!r0) return; members.get(r0)?.delete(ws); ws.room = null;
@@ -1865,7 +1867,12 @@ function onWsMessage(ws, raw) {
       return online();
     }
     if (!ws.user) return;
-    if (m.t === 'tabs') { ws.tabs = new Set((Array.isArray(m.rooms) ? m.rooms : []).slice(0, 30).map(x => String(x).slice(0, 60))); return; }
+    if (m.t === 'tabs') {
+      const old = ws.tabs || new Set();
+      ws.tabs = new Set((Array.isArray(m.rooms) ? m.rooms : []).slice(0, 30).map(x => String(x).slice(0, 60)));
+      for (const r1 of new Set([...old, ...ws.tabs])) if (old.has(r1) !== ws.tabs.has(r1) && r1 !== ws.room) castRoster(r1);
+      return;
+    }
     if (m.t === 'leave') {   // the user closed a room tab on purpose
       const r1 = String(m.room || '');
       if (r1 && ws.room === r1) leaveRoom(ws);
@@ -1928,6 +1935,7 @@ function onWsMessage(ws, raw) {
 }
 function closeWs(ws) {   // keep a person in their room for a short while so a quick app switch / reconnect does not kick them out
   const r0 = ws.room;
+  if (ws.tabs && ws.user) { const tr = [...ws.tabs].filter(x => x !== r0); setTimeout(() => tr.forEach(castRoster), 90e3); }
   if (r0 && ws.user && !r0.startsWith('dm:')) setTimeout(() => { if (ws.room === r0) leaveRoom(ws); online(); }, 90e3);
   else leaveRoom(ws);
   online();
