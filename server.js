@@ -7,19 +7,38 @@ import jwt from 'jsonwebtoken';
 import nodemailer from 'nodemailer';
 import crypto from 'crypto';
 import fs from 'fs';
-import { createRequire } from 'module';
+import path from 'path';
+import { fileURLToPath } from 'url';
+import Module, { createRequire } from 'module';
 const require = createRequire(import.meta.url);
+const ROOT = path.dirname(fileURLToPath(import.meta.url));
 const ENGINE_ERR = {};
+// Loads a game engine written as CommonJS. Accepts name.cjs or name.js (GitHub uploads often end up as .js).
+function loadEngine(base) {
+  const tried = [];
+  for (const ext of ['.cjs', '.js']) {
+    for (const dir of [ROOT, process.cwd()]) {
+      const f = path.join(dir, base + ext); tried.push(f);
+      if (!fs.existsSync(f)) continue;
+      try {
+        if (ext === '.cjs') return require(f);
+        const m = new Module(f); m.filename = f; m.paths = Module._nodeModulePaths(path.dirname(f)); m._compile(fs.readFileSync(f, 'utf8'), f); return m.exports;
+      } catch (e) { ENGINE_ERR[base + '.cjs'] = e.message; console.error('[engine] ' + base + ' failed to load:', e.message); return null; }
+    }
+  }
+  ENGINE_ERR[base + '.cjs'] = 'file not found'; console.error('[engine] ' + base + ' not found (looked for .cjs / .js next to server.js)');
+  return null;
+}
 let TP = null;   // Teen Patti Gold engine (virtual coins, for fun only); the site still runs if the file is missing
 let RB = null;   // Royale Battle engine (room "royale")
-try { RB = require('./royale-battle.cjs'); } catch (e) { ENGINE_ERR['royale-battle.cjs'] = e.code === 'MODULE_NOT_FOUND' ? 'file not found' : e.message; console.error('[Royale] engine not loaded:', e.message); }
+RB = loadEngine('royale-battle');
 let DC = null;   // Dice Bot engine
-try { DC = require('./dice.cjs'); } catch (e) { ENGINE_ERR['dice.cjs'] = e.code === 'MODULE_NOT_FOUND' ? 'file not found' : e.message; console.error('[Dice] engine not loaded:', e.message); }
+DC = loadEngine('dice');
 let LC = null;   // LowCard Bot engine (room "lowcard")
-try { LC = require('./lowcard.cjs'); } catch (e) { ENGINE_ERR['lowcard.cjs'] = e.code === 'MODULE_NOT_FOUND' ? 'file not found' : e.message; console.error('[LowCard] engine not loaded:', e.message); }
+LC = loadEngine('lowcard');
 let CB = null;   // Cricket Bot engine (room "cricket")
-try { CB = require('./cricket-bot.cjs'); } catch (e) { ENGINE_ERR['cricket-bot.cjs'] = e.code === 'MODULE_NOT_FOUND' ? 'file not found' : e.message; console.error('[Cricket] engine not loaded:', e.message); }
-try { TP = require('./teen-patti.cjs'); } catch (e) { ENGINE_ERR['teen-patti.cjs'] = e.code === 'MODULE_NOT_FOUND' ? 'file not found' : e.message; console.error('[TeenPatti] engine not loaded:', e.message); }
+CB = loadEngine('cricket-bot');
+TP = loadEngine('teen-patti');
 
 const STAFF_USER = (process.env.STAFF_USER || 'migv33').toLowerCase();
 const STAFF_EMAIL = (process.env.STAFF_EMAIL || '').toLowerCase();
@@ -46,6 +65,16 @@ const GIFTS = { rose: { n: 'Rose', c: 10, e: '🌹' }, heart: { n: 'Heart', c: 2
 const app = express();
 app.set('trust proxy', 1); // behind Caddy: use the real visitor IP for rate limits
 app.use(express.json());
+// The GitHub repo may hold everything in one flat folder: fall back to files next to server.js
+const newest = (...fs_) => fs_.filter(f => fs.existsSync(f)).sort((a, b) => fs.statSync(b).mtimeMs - fs.statSync(a).mtimeMs)[0];
+app.get(['/', '/index.html'], (q, r, next) => { const f = newest(path.join(ROOT, 'public/index.html'), path.join(ROOT, 'index.html')); f ? r.sendFile(f) : next(); });
+const BADGE_FILES = { hmt: ['hmt.png', 'Head-Mentor-HMT.png', 'head-mentor-hmt.png'], vip: ['vip.png', 'VIP.png'] };
+app.get('/badges/:f', (q, r, next) => {
+  const n = q.params.f.replace(/\.png$/i, '').toLowerCase();
+  if (!/^[a-z]+$/.test(n)) return next();
+  const f = newest(...(BADGE_FILES[n] || [n + '.png']).flatMap(x => [path.join(ROOT, 'public/badges', x), path.join(ROOT, x)]));
+  f ? r.sendFile(f) : next();
+});
 app.use(express.static('public'));
 fs.mkdirSync('uploads', { recursive: true });
 app.use('/uploads', express.static('uploads', { maxAge: '7d', setHeaders: res => res.set('X-Content-Type-Options', 'nosniff') }));
