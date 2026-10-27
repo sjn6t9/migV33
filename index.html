@@ -780,7 +780,13 @@ const lvi=(L,s=20)=>{let i=0;for(let k=0;k<LVI.length;k++)if(L>=LVI[k][0])i=k;re
 const lv=xp=>{let lo=1,hi=1000;while(lo<hi){const m=(lo+hi+1)>>1;if(CUM[m]<=xp)lo=m;else hi=m-1}return lo};
 const toast=t=>{const d=document.createElement('div');d.textContent=t;d.style.cssText='position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:linear-gradient(#f9a13a,#e8431a);color:#fff;padding:10px 18px;border-radius:99px;font-weight:800;z-index:9';document.body.append(d);setTimeout(()=>d.remove(),4000)};
 const ago=t=>{const s=(Date.now()-t)/1e3;return s<60?'now':s<3600?Math.floor(s/60)+'m':s<86400?Math.floor(s/3600)+'h':Math.floor(s/86400)+'d'};
-const setFs=k=>{try{localStorage.fs=k}catch(e){}document.documentElement.style.fontSize={s:'14px',m:'',l:'18px'}[k]||''};try{setFs(localStorage.fs||'m')}catch(e){}
+const FSO=new Map();
+const setFs=k=>{try{localStorage.fs=k}catch(e){}const f={s:.88,m:1,l:1.18}[k]||1;
+  const walk=rs=>{for(const r of rs){try{if(r.cssRules&&!r.style){walk(r.cssRules);continue}const st=r.style;if(!st)continue;
+    if(!FSO.has(r)){const v=st.getPropertyValue('font-size');FSO.set(r,v&&/px$/.test(v)?[parseFloat(v),st.getPropertyPriority('font-size')]:null)}
+    const o=FSO.get(r);if(o)st.setProperty('font-size',(o[0]*f).toFixed(2)+'px',o[1])}catch(e){}}};
+  for(const sh of document.styleSheets){try{walk(sh.cssRules)}catch(e){}}};
+try{setFs(localStorage.fs||'m')}catch(e){}
 const tok=()=>localStorage.tk||sessionStorage.tk;
 const isOff=()=>!!(localStorage.tk?localStorage.off:sessionStorage.off);
 const logout=()=>{const t=localStorage.theme,n=localStorage.navoff,s=localStorage.skin,fz=localStorage.fs;localStorage.clear();sessionStorage.clear();try{if(t)localStorage.theme=t;if(n)localStorage.navoff=n;if(s)localStorage.skin=s;if(fz)localStorage.fs=fz}catch(e){}location.reload()};
