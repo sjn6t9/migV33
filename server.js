@@ -1170,6 +1170,40 @@ const royale = !RB ? null : new RB.RoyaleBattleManager({
 royale?.init().catch(e => console.error('[Royale] init failed', e));
 setInterval(() => { try { royale?.savePlanners(); } catch {} }, 30e3).unref();
 
+
+// ---------- Game tables (LowCard / Cricket / Dice / Royale Battle): live view for the client panel ----------
+const gpView = (room, user) => {
+  const g = gameOf(room), now = Date.now();
+  if (g === 'lowcard' || g === 'dice') {
+    const bot = g === 'lowcard' ? lowcard : dice, x = bot?.games.get(room);
+    const base = { g, room, now, entry: bot?.entry instanceof Map ? (bot.entry.get(room) || 0) : 0 };
+    if (!x) return { ...base, state: 'idle' };
+    const alive = g === 'lowcard' ? x.alive : x.players, pend = x.pending || [];
+    const players = x.players.map(n => ({ n, alive: g === 'dice' || alive.includes(n), me: n === user, wait: pend.includes(n) && !(x.draws || x.rolls)?.has(n), card: g === 'lowcard' ? (x.shown.get(n)?.label || null) : null, dice: g === 'dice' ? (x.shown.get(n) ? [x.shown.get(n).a, x.shown.get(n).b] : null) : null, total: g === 'dice' ? (x.shown.get(n)?.total ?? null) : null }));
+    return { ...base, state: x.state, entry: x.entry, pot: x.pot || 0, round: x.round || 0, deadline: x.deadline, players, low: x.lowSet || [], outs: x.outs || [], winner: x.winner, prize: x.prize, joined: x.players.includes(user), pending: pend.includes(user) };
+  }
+  if (g === 'cricket') {
+    const x = cricket?.games.get(room), base = { g, room, now };
+    if (!x) return { ...base, state: 'idle' };
+    const pend = x.pendingPlayers || [];
+    const players = x.players.map(n => ({ n, me: n === user, out: x.out.has(n), runs: x.total[n] || 0, wait: pend.includes(n) && !x.draws?.has(n), last: x.shown.get(n) ? { l: x.shown.get(n).label, r: x.shown.get(n).runs || 0, o: !!x.shown.get(n).out } : null }));
+    return { ...base, state: x.state, cost: x.cost, pot: x.pot || 0, round: x.round || 0, max: 6, deadline: x.deadline, players, winner: x.winner, prize: x.prize, joined: x.players.includes(user), pending: pend.includes(user) && !x.draws?.has(user) };
+  }
+  if (g === 'royale') {
+    const x = royale?.rooms.get(room), base = { g, room, now };
+    if (!x) return { ...base, state: 'idle' };
+    const tot = {}, mine = {};
+    for (const [id, b] of x.bets) for (const [o, a] of Object.entries(b.opts)) { tot[o] = (tot[o] || 0) + a; if (id === String(user)) mine[o] = a; }
+    return { ...base, state: x.phase, round: x.roundId, deadline: x.deadline, pay: x.cfg.PAYOUTS, min: x.cfg.MIN_BET, tot, mine, bettors: x.bets.size, last: x.last ? { ...x.last, won: x.last.payouts.filter(p => p.userId === String(user)).reduce((a, p) => a + p.amount, 0) } : null };
+  }
+  return null;
+};
+const gpSend = (room, ws) => { const v = gpView(room, ws.user); if (!v) return; const j = JSON.stringify(v, (k, val) => k === 'now' ? undefined : val); if (ws._gp === j) return; ws._gp = j; send(ws, { t: 'gp', room, view: v }); };
+const gpPush = room => members.get(room)?.forEach(w => gpSend(room, w));
+setInterval(() => {
+  try { for (const { room, game } of db.prepare("select room,game from room_game where game!='tp'").all()) if (members.get(room)?.size) gpPush(room); } catch {}
+}, 1000).unref();
+
 const POT_GAMES = ['cricket', 'lowcard', 'dice'];   // room admins / moderators may run these in their own room
 const GAME_NAMES = { teenpatti: 'tp', tp: 'tp', cricket: 'cricket', lowcard: 'lowcard', dice: 'dice', royalebattle: 'royale', royale: 'royale' };
 const GAME_LABEL = { tp: 'Teen Patti Gold', cricket: 'Cricket Bot', lowcard: 'LowCard Bot', dice: 'Dice Bot', royale: 'Royale Battle' };
@@ -1187,7 +1221,9 @@ async function stopGame(room) {
   if (gameBusy(room)) return false;
   if (cur === 'tp' && tp?.rooms.has(room)) { await tp.handleMessage(room, SYSADMIN, '/bot stop'); if (tp.rooms.has(room)) return false; tpPanels(room); }
   if (cur === 'royale' && royale?.rooms.has(room)) { await royale.handleMessage(room, SYSADMIN, '/bot stop'); if (royale.rooms.has(room)) return false; }
-  db.prepare('delete from room_game where room=?').run(room); return true;
+  db.prepare('delete from room_game where room=?').run(room);
+  members.get(room)?.forEach(w => { w._gp = null; send(w, { t: 'gp', room, view: null }); });
+  return true;
 }
 async function botCommand(ws, text) {
   const room = ws.room, u = ws.user, [, name = '', arg = ''] = text.trim().toLowerCase().split(/\s+/);
@@ -1511,7 +1547,10 @@ function command(ws, line) {
 }
 
 // ---------- WebSocket ----------
+// Keepalive: phones drop sockets silently; ping often so dead sockets are noticed quickly and live ones are never mistaken for dead
+setInterval(() => { for (const w of wss.clients) { if (w._alive === false) { try { w.terminate(); } catch {} continue; } w._alive = false; try { w.ping(); } catch {} } }, 30e3).unref();
 wss.on('connection', ws => {
+  ws._alive = true; ws.on('pong', () => { ws._alive = true; }); ws.on('message', () => { ws._alive = true; });
   ws.on('message', raw => {
     let m; try { m = JSON.parse(raw); } catch { return; }
     if (m.t === 'auth') {
@@ -1536,10 +1575,11 @@ wss.on('connection', ws => {
         const need = db.prepare('select minlv from rooms where name=?').get(m.room)?.minlv || 0;
         if (need && level(xpOf(ws.user)) < need) return send(ws, { t: 'denied', room: m.room, error: `This room needs level ${need} or higher to enter.` });
       }
-      leaveRoom(ws, ws.room === m.room);
+      const sameRoom = ws.room === m.room;
+      leaveRoom(ws, sameRoom);
       ws.room = m.room; ws.roomAt = Date.now();
       if (!members.has(m.room)) members.set(m.room, new Set());
-      const wasHere = [...members.get(m.room)].some(w => w.user === ws.user && w !== ws);
+      const wasHere = sameRoom || [...members.get(m.room)].some(w => w.user === ws.user && w !== ws);
       members.get(m.room).add(ws);
       const isDm = /^dm:/.test(m.room);
       if (!isDm) send(ws, { t: 'roominfo', room: m.room, owner: ownerOf(m.room) || STAFF_USER, mods: db.prepare('select user from room_mods where room=?').all(m.room).map(x => x.user), supers: db.prepare('select user from room_mods where room=? and super=1').all(m.room).map(x => x.user), cap: db.prepare('select cap from rooms where name=?').get(m.room)?.cap || 0, descr: db.prepare('select descr from rooms where name=?').get(m.room)?.descr || '', minlv: db.prepare('select minlv from rooms where name=?').get(m.room)?.minlv || 0, announce: cfg(m.room).announce || '', users: roster(m.room), fav: !!db.prepare('select 1 from favs where user=? and room=?').get(ws.user, m.room) });
@@ -1547,6 +1587,7 @@ wss.on('connection', ws => {
       send(ws, { t: 'history', room: m.room, items: isDm ? hist : [] });   // rooms: you only see what is said while you are inside
       if (!isDm) { if (!wasHere) cast(m.room, { t: 'enter', room: m.room, user: ws.user, role: roleOf(ws.user), xp: xpOf(ws.user), ts: Date.now() }); castRoster(m.room); }
       if (tp && isTpRoom(m.room)) { ensureTp(m.room); setTimeout(() => send(ws, { t: 'tp', room: m.room, view: tp.getView(m.room, ws.user) }), 50); }
+      if (!isDm && gameOf(m.room) && gameOf(m.room) !== 'tp') { ws._gp = null; gpSend(m.room, ws); }
       if (games.has(m.room)) send(ws, unoState(games.get(m.room), ws.user));
     } else if (!ws.room) return;
     else if (m.t === 'msg') {
@@ -1574,7 +1615,7 @@ wss.on('connection', ws => {
   });
   ws.on('close', () => {   // keep a person in their room for a short while so a quick app switch / reconnect does not kick them out
     const r0 = ws.room;
-    if (r0 && ws.user && !r0.startsWith('dm:')) setTimeout(() => { if (ws.room === r0) leaveRoom(ws); online(); }, 25e3);
+    if (r0 && ws.user && !r0.startsWith('dm:')) setTimeout(() => { if (ws.room === r0) leaveRoom(ws); online(); }, 90e3);
     else leaveRoom(ws);
     online();
   });
