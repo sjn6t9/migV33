@@ -81,3 +81,6 @@ Inbox is checked every 2 minutes and with the Refresh button. Without the packag
 
 ## Gift XP
 Sending or receiving a gift gives XP by price tier (table GIFT_XP in server.js), kept as exact fractions per user (table gift_xp).
+
+## Emoticons
+Built-in original emoticon set (shortcodes like :) :D ;)). Staff can add more under Admin Panel -> Manage emoticons (picture + name + optional shortcode); they work in chat, posts, comments and as post reactions.

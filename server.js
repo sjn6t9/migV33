@@ -234,7 +234,7 @@ create table if not exists post_hidden(user text, post int, primary key(user,pos
 db.exec(`create table if not exists stories(id integer primary key, user text, image text default '', text text default '', bg int default 0, ts int);
 create table if not exists story_views(story int, user text, ts int, primary key(story,user));`);
 const isMod = n => ['staff', 'admin'].includes(roleOf(n));
-const REACTS = ['like', 'love', 'haha', 'wow', 'sad', 'angry'];
+const REACTS = ['like', 'love', 'haha', 'wow', 'sad', 'angry', 'wink', 'cool', 'kiss', 'cry', 'shy', 'sleepy'];
 const getPost = id => db.prepare('select * from posts where id=?').get(id);
 const imgUrl = u => typeof u === 'string' && MEDIA_URL.test(u) && /\.(jpg|png|gif|webp)$/.test(u);
 function dropFile(u) { if (u && MEDIA_URL.test(u) && !db.prepare('select 1 from posts where image=?').get(u) && !db.prepare('select 1 from stories where image=?').get(u) && !db.prepare('select 1 from users where avatar=? or avatar_art=?').get(u, u) && !db.prepare('select 1 from user_photos where url=?').get(u)) fs.unlink('.' + u, () => {}); }
@@ -291,7 +291,7 @@ app.post('/api/posts/:id/hide', auth, ok((q, r) => {
 }));
 app.post('/api/posts/:id/react', auth, ok((q, r) => {
   const gp = getPost(q.params.id); if (!gp) return bad(r, 'Post not found', 404);
-  const kind = REACTS.includes(q.body?.kind) ? q.body.kind : 'like';
+  const kind = reactKind(q.body?.kind);
   const cur = db.prepare('select kind from reacts where post=? and user=?').get(q.params.id, q.user);
   if (cur && cur.kind === kind) db.prepare('delete from reacts where post=? and user=?').run(q.params.id, q.user);
   else { db.prepare('insert or replace into reacts(post,user,kind) values(?,?,?)').run(q.params.id, q.user, kind); if (gp.user !== q.user) grantAct(q.user, 'react', gp.id); }
@@ -1120,6 +1120,34 @@ app.delete('/api/admin/support/:id', auth, ok((q, r) => {
   if (!staffChk(q, r)) return;
   db.prepare('delete from support_mail where id=?').run(+q.params.id); r.json({ ok: true });
 }));
+// ---- custom emoticons (Admin Panel -> Manage emoticons) ----
+db.exec('create table if not exists custom_emo(name text primary key, code text, icon text, active int default 1, ts int)');
+const EMO_BUILTIN = ['smile', 'grin', 'haha', 'wink', 'tongue', 'cool', 'love', 'kiss', 'sad', 'cry', 'angry', 'wow', 'shy', 'sleepy', 'worried', 'think', 'devil', 'heart', 'like'];
+const emoList = () => db.prepare('select name,code,icon from custom_emo where active=1 order by ts').all();
+const bcastEmo = () => wss.clients.forEach(w => w.user && send(w, { t: 'emos', list: emoList() }));
+app.get('/api/emoticons', auth, ok((q, r) => r.json(emoList())));
+app.get('/api/admin/emoticons', auth, ok((q, r) => { if (!staffOnly(q, r)) return; r.json(db.prepare('select name,code,icon,active from custom_emo order by ts').all()); }));
+app.post('/api/admin/emoticons', auth, ok((q, r) => {
+  if (!staffOnly(q, r)) return;
+  const b = q.body || {}, name = String(b.name || '').trim().toLowerCase(), code = String(b.code || '').trim();
+  if (!/^[a-z0-9]{2,12}$/.test(name)) return bad(r, 'Name: 2 to 12 English letters or numbers.');
+  if (EMO_BUILTIN.includes(name) || db.prepare('select 1 from custom_emo where name=?').get(name)) return bad(r, 'This emoticon name is already used.', 409);
+  if (code && !/^[^\s<>&"']{2,8}$/.test(code) && !/^:'\(|:'\)$/.test(code)) return bad(r, 'Shortcode: 2 to 8 characters, no spaces.');
+  if (code && db.prepare('select 1 from custom_emo where code=?').get(code)) return bad(r, 'This shortcode is already used.', 409);
+  if (!imgUrl(b.icon)) return bad(r, 'Upload the emoticon picture first.');
+  db.prepare('insert into custom_emo(name,code,icon,active,ts) values(?,?,?,1,?)').run(name, code || null, b.icon, Date.now());
+  alog(q.user, name, 'emo_create', code || ''); bcastEmo(); r.json({ ok: true });
+}));
+app.post('/api/admin/emoticons/:n', auth, ok((q, r) => {
+  if (!staffOnly(q, r)) return;
+  if (!db.prepare('select 1 from custom_emo where name=?').get(q.params.n)) return bad(r, 'Not found', 404);
+  db.prepare('update custom_emo set active=? where name=?').run(q.body?.active ? 1 : 0, q.params.n); bcastEmo(); r.json({ ok: true });
+}));
+app.delete('/api/admin/emoticons/:n', auth, ok((q, r) => {
+  if (!staffOnly(q, r)) return;
+  db.prepare('delete from custom_emo where name=?').run(q.params.n); alog(q.user, q.params.n, 'emo_delete', ''); bcastEmo(); r.json({ ok: true });
+}));
+const reactKind = k => REACTS.includes(k) ? k : (typeof k === 'string' && k.startsWith('e:') && db.prepare('select 1 from custom_emo where name=? and active=1').get(k.slice(2))) ? k : 'like';
 app.delete('/api/me/avatar', auth, (q, r) => {
   const old = db.prepare('select avatar from users where name=?').get(q.user)?.avatar;
   db.prepare("update users set avatar='' where name=?").run(q.user);

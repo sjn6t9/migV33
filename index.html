@@ -804,6 +804,7 @@ html #gp .gb,html #gp .cp,html #gp .side{font-family:inherit}
 #log .inf,#log .emo,#log .gf,#log .errb,#log .nt{align-self:flex-start;max-width:94%;white-space:pre-wrap;word-break:break-word;font-size:15px;line-height:1.35}
 #log .inf{color:#2a3f6b;font-weight:600}#log.navy .inf,#log.dark .inf,html[data-theme=dark] #log .inf{color:#dbe6ff}
 #log .inf.ok{color:#2a6a50}#log.navy .inf.ok,#log.dark .inf.ok,html[data-theme=dark] #log .inf.ok{color:#7fe0b0}
+img.emt{width:1.35em;height:1.35em;vertical-align:-.3em;margin:0 1px;display:inline-block}.rpk img.emt{width:30px;height:30px;vertical-align:middle;margin:0}#emp img.emt{width:26px;height:26px}.acts img.emt{width:1.3em;height:1.3em}
 #log .emo{color:#8b4a2b;font-weight:600}#log.navy .emo,#log.dark .emo,html[data-theme=dark] #log .emo{color:#f0b184}
 #log .emo.p{color:#e8337a}#log.navy .emo.p,#log.dark .emo.p,html[data-theme=dark] #log .emo.p{color:#ff7ab0}
 #log .nt{color:#6b7480;font-weight:600}#log .nt span{color:#f7931e}
@@ -819,6 +820,7 @@ html #gp .gb,html #gp .cp,html #gp .side{font-family:inherit}
 #rbt svg{width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:2.6;stroke-linecap:round;stroke-linejoin:round;transition:transform .3s}#rbw.hid+#rbt svg{transform:rotate(180deg)}
 #rbw:not(.hid)+#rbt svg{transform:rotate(180deg)}#rbw.hid+#rbt svg{transform:none}
 #rbar .on1{overflow:hidden}.o1t{display:flex;align-items:baseline;gap:8px;min-width:0;flex:1}.o1t b{white-space:nowrap;font-size:15px}.o1n{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:13px;font-weight:600;opacity:.95}
+#rpop.sm{min-width:150px;max-width:210px;z-index:200}#rpop.sm button{font-size:14px;padding:7px 12px;display:flex;align-items:center;gap:8px}
 #rpop.wide{min-width:230px;max-width:320px;max-height:62vh;overflow:auto}#rpop .ph2{padding:6px 12px 8px;font-weight:800;font-size:14px;opacity:.85;border-bottom:1px solid rgba(255,255,255,.18);margin-bottom:4px}#rpop .ri{padding:5px 12px;font-size:13.5px}#rpop.wide button{display:flex;align-items:center;gap:8px}
 html .lgo,html[data-skin] .lgo{color:#ff4d4d!important}
 @media (max-width:430px){#top .lg{display:none}#top #coins{margin-left:auto}}
@@ -853,10 +855,10 @@ html .lgo,html[data-skin] .lgo{color:#ff4d4d!important}
 :root[data-skin][data-theme] .mfab{background:linear-gradient(180deg,#ffa63d,#f7931e)!important;color:#1b1206!important;border:1px solid rgba(255,200,120,.8)!important}
 .mview,.mcomp{margin-bottom:120px}
 /* white liquid-glass buttons (small); post React/Comment/Share stay flat */
-html[data-skin][data-theme] :is(#view,#sheet,.pc) button:not(.sc):not(.mrow):not(.mfab):not(.cnt):not(.lgo):not(.tabbar *):not(.chips *):not(.mtabs *):not(.rpk *):not(.acts *):not(.box *):not(#gp *):not(#tp *):not(#rbar *):not(#tools *):not(#recbar *):not(#rtabs *){padding:5px 12px!important;font-size:13px!important;font-weight:600!important;line-height:1.3!important;min-height:0!important;border-radius:99px!important;background:linear-gradient(160deg,rgba(255,255,255,.66),rgba(255,255,255,.28) 55%,rgba(255,255,255,.46))!important;border:1px solid rgba(255,255,255,.8)!important;color:#fff!important;text-shadow:0 1px 2px rgba(0,25,70,.4)!important;backdrop-filter:blur(14px) saturate(170%)!important;-webkit-backdrop-filter:blur(14px) saturate(170%)!important;box-shadow:inset 1.5px 1.5px 1px rgba(255,255,255,.85),inset -1px -1.5px 2px rgba(255,255,255,.25),0 3px 10px rgba(5,15,45,.28)!important}
-html[data-skin][data-theme] :is(#view,#sheet,.pc) button:not(.sc):not(.mrow):not(.mfab):not(.cnt):not(.lgo):not(.tabbar *):not(.chips *):not(.mtabs *):not(.rpk *):not(.acts *):not(.box *):not(#gp *):not(#tp *):not(#rbar *):not(#tools *):not(#recbar *):not(#rtabs *).o{color:#ffc27a!important}
-html[data-skin=white][data-theme] :is(#view,#sheet,.pc) button:not(.sc):not(.mrow):not(.mfab):not(.cnt):not(.lgo):not(.tabbar *):not(.chips *):not(.mtabs *):not(.rpk *):not(.acts *):not(.box *):not(#gp *):not(#tp *):not(#rbar *):not(#tools *):not(#recbar *):not(#rtabs *){background:linear-gradient(160deg,rgba(255,255,255,.98),rgba(255,255,255,.7) 60%,rgba(255,255,255,.9))!important;border:1px solid #fff!important;color:#222833!important;text-shadow:none!important;box-shadow:inset 1.5px 1.5px 1px #fff,inset -1px -1.5px 2px rgba(255,255,255,.6),0 3px 10px rgba(90,80,50,.2)!important}
-html[data-skin=white][data-theme] :is(#view,#sheet,.pc) button:not(.sc):not(.mrow):not(.mfab):not(.cnt):not(.lgo):not(.tabbar *):not(.chips *):not(.mtabs *):not(.rpk *):not(.acts *):not(.box *):not(#gp *):not(#tp *):not(#rbar *):not(#tools *):not(#recbar *):not(#rtabs *).o{color:#d9560f!important}
+html[data-skin][data-theme] :is(#view,#sheet,.pc) button:not(.sc):not(.mrow):not(.mfab):not(.cnt):not(.lgo):not(.tabbar *):not(.chips *):not(.mtabs *):not(.rpk *):not(.acts *):not(.box *):not(#gp *):not(#tp *):not(#rbar *):not(#tools *):not(#recbar *):not(#rtabs *):not(#emp *){padding:5px 12px!important;font-size:13px!important;font-weight:600!important;line-height:1.3!important;min-height:0!important;border-radius:99px!important;background:linear-gradient(160deg,rgba(255,255,255,.66),rgba(255,255,255,.28) 55%,rgba(255,255,255,.46))!important;border:1px solid rgba(255,255,255,.8)!important;color:#fff!important;text-shadow:0 1px 2px rgba(0,25,70,.4)!important;backdrop-filter:blur(14px) saturate(170%)!important;-webkit-backdrop-filter:blur(14px) saturate(170%)!important;box-shadow:inset 1.5px 1.5px 1px rgba(255,255,255,.85),inset -1px -1.5px 2px rgba(255,255,255,.25),0 3px 10px rgba(5,15,45,.28)!important}
+html[data-skin][data-theme] :is(#view,#sheet,.pc) button:not(.sc):not(.mrow):not(.mfab):not(.cnt):not(.lgo):not(.tabbar *):not(.chips *):not(.mtabs *):not(.rpk *):not(.acts *):not(.box *):not(#gp *):not(#tp *):not(#rbar *):not(#tools *):not(#recbar *):not(#rtabs *):not(#emp *).o{color:#ffc27a!important}
+html[data-skin=white][data-theme] :is(#view,#sheet,.pc) button:not(.sc):not(.mrow):not(.mfab):not(.cnt):not(.lgo):not(.tabbar *):not(.chips *):not(.mtabs *):not(.rpk *):not(.acts *):not(.box *):not(#gp *):not(#tp *):not(#rbar *):not(#tools *):not(#recbar *):not(#rtabs *):not(#emp *){background:linear-gradient(160deg,rgba(255,255,255,.98),rgba(255,255,255,.7) 60%,rgba(255,255,255,.9))!important;border:1px solid #fff!important;color:#222833!important;text-shadow:none!important;box-shadow:inset 1.5px 1.5px 1px #fff,inset -1px -1.5px 2px rgba(255,255,255,.6),0 3px 10px rgba(90,80,50,.2)!important}
+html[data-skin=white][data-theme] :is(#view,#sheet,.pc) button:not(.sc):not(.mrow):not(.mfab):not(.cnt):not(.lgo):not(.tabbar *):not(.chips *):not(.mtabs *):not(.rpk *):not(.acts *):not(.box *):not(#gp *):not(#tp *):not(#rbar *):not(#tools *):not(#recbar *):not(#rtabs *):not(#emp *).o{color:#d9560f!important}
 html[data-skin][data-theme] #view .acts button,html[data-skin][data-theme] #view .acts .ac button{background:none!important;border:0!important;box-shadow:none!important;backdrop-filter:none!important;-webkit-backdrop-filter:none!important;border-radius:0!important}
 html[data-skin][data-theme] #view .acts button.cnt{background:rgba(120,180,255,.2)!important;border-radius:99px!important}
 </style>
@@ -976,12 +978,13 @@ function coinDelta(d){const c=$('coins');if(!c||!d)return;const r=c.getBoundingC
   document.body.append(e);setTimeout(()=>e.remove(),2200);c.classList.remove('cpop');void c.offsetWidth;c.classList.add('cpop')}
 async function on(m){
   if(m.t==='error'){if(m.error==='auth'||m.error==='banned'){if(m.error==='banned')alert('Your account has been banned.');logout()}else alert(m.error)}
-  if(m.t==='ready'){const first=!me;me=m.user;G=m.gifts;$('auth').style.display='none';$('app').style.display='flex';document.body.classList.add('in');
+  if(m.t==='ready'){const first=!me;me=m.user;api('GET','/emoticons').then(setCE).catch(()=>{});G=m.gifts;$('auth').style.display='none';$('app').style.display='flex';document.body.classList.add('in');
     ST=await api('GET','/me').catch(()=>({}));ROLES[me]=ST.role;api('GET','/mail/unread').then(x=>setMailN(x.n)).catch(()=>{});await refreshVer();$('coins').textContent=cn(ST.coins);drawNav();document.documentElement.removeAttribute('data-boot');saveOpen();if(!first&&room&&OPEN.includes(room)&&!room.startsWith('dm:')&&!AL.has(room)){skipIntro=true;tx({t:'join',room})}if(first)api('GET','/announcement').then(showAnn).catch(()=>{});if(first){let r=null;try{r=JSON.parse(sessionStorage.lastv||'null')}catch{}if(r&&V[r[0]]&&r[0]!=='admin')go(r[0],r[1]===null?undefined:r[1]);else go('home')}}
   if(m.t==='announce')showAnn(m.a);
   if(m.t==='mail'){setMailN(m.n);toast(`📧 New mail from ${m.from}: ${m.subject}`);if(cur==='mail'&&!MOPEN)V.mail()}
   if(m.t==='roomcfg'&&m.room===room&&RI){const ch=(RI.descr||'')!==m.descr;Object.assign(RI,{descr:m.descr,minlv:m.minlv,mods:m.mods,supers:m.supers});if(ch&&m.descr&&$('log'))L(m.room[0].toUpperCase()+m.room.slice(1),`📝 ${esc(m.descr)}`)}
   if(m.t==='levelup'){ST.xp=Math.max(ST.xp||0,CUM[m.level]);toast(`🎉 Level ${m.level}!${m.reward?` +${m.reward.toLocaleString()} coins`:''}`)}
+  if(m.t==='emos'){setCE(m.list);if(cur==='home')try{loadFeed()}catch{}}
   if(m.t==='gifts'){G=m.gifts;if($('gifts'))$('gifts').innerHTML=Object.entries(G).map(([k,g])=>`<button data-g="${k}" title="${esc(g.n)} (${k}) · ${g.c} coins">${g.img?`<img src="${esc(g.img)}" alt="" style="height:20px;width:20px;object-fit:contain;vertical-align:middle">`:g.e} ${g.c}</button>`).join(' ')}
   if(m.t==='actxp'){toast(`+${m.xp} XP`)}
   if(m.t==='xp'){ST.xp=m.xp;drawNav();if(cur==='profile')go('profile',me)}
@@ -1028,7 +1031,7 @@ function drawNav(){const items=[['🪪','My Profile','profile'],['🏠','Home','
   if(!window.__na){window.__na=1;setTimeout(navAnim)}
   $('ds').onsubmit=e=>{e.preventDefault();const q=$('dq').value.trim();if(q)go('profile',q)};
   $('dn').onclick=e=>{const b=e.target.closest('[data-v]');if(b){b.dataset.v==='out'?(b.classList.add('go'),setTimeout(logout,900)):go(b.dataset.v,b.dataset.v==='profile'?me:undefined);return}
-    if(e.target.closest('#mc'))statusSheet()}}
+    if(e.target.closest('#mc'))statusSheet($('mc'))}}
 
 /* ---------- OTP boxes ---------- */
 function otpPaint(){const v=$('sc').value.replace(/\D/g,'').slice(0,6),ds=document.querySelectorAll('#otp .od'),foc=document.activeElement===$('sc');$('sc').value=v;ds.forEach((d,i)=>{d.textContent=v[i]||'';d.classList.toggle('f',!!v[i]);d.classList.toggle('act',foc&&i===Math.min(v.length,5))})}
@@ -1042,19 +1045,74 @@ $('rsb').onclick=async()=>{$('rsb').disabled=true;const[r,d]=await post('/api/si
 /* ---------- bottom bar ---------- */
 function bnSet(v,a){document.body.classList.toggle('bn',v!=='chat');const ix={home:0,friends:1,explore:3},mine=v==='profile'&&(!a||a===me);const i=mine?4:ix[v]??-1;document.querySelectorAll('#bnav button[data-b]').forEach(b=>{const k=b.dataset.b;b.classList.toggle('on',k==='rooms'?(v==='rooms'||v==='chat'):(i>=0&&['home','friends','','explore','profile'][i]===k))});const n=$('bind');n.style.opacity=i>=0?1:0;if(i>=0)n.style.left=i*20+'%'}
 $('bnav').onclick=e=>{const b=e.target.closest('[data-b]');if(!b)return;const k=b.dataset.b;go(k,k==='profile'?me:undefined)};
-function statusSheet(){const o=[['online','Online','Available and active'],['away','Away','Be right back'],['busy','Busy','Do not disturb'],['offline','Offline','Appear offline to others']];
-  $('sh').innerHTML='<h2>Set your status</h2>'+o.map(([k,t,d])=>`<button data-p="${k}" style="text-align:left"><span class="dot ${k}"></span><b>${t}</b> <span class="mu">${d}</span>${ST.presence===k?' ✓':''}</button>`).join('');
-  $('sheet').classList.add('open');
-  $('sh').onclick=async e=>{const p=e.target.closest('[data-p]')?.dataset.p;if(!p)return;ST=await api('PUT','/me',{presence:p}).then(x=>({...ST,...x}));$('sheet').classList.remove('open');drawNav()}}
+function statusSheet(anchor){const o=[['online','Online'],['away','Away'],['busy','Busy'],['offline','Offline']];
+  if(!anchor)anchor=$('mc')||$('ss')||document.body;
+  popOpen(anchor,o.map(([k,t])=>`<button data-p="${k}"><span class="dot ${k}"></span><b>${t}</b>${(ST.presence||'online')===k?' ✓':''}</button>`).join(''),(e)=>{
+    const pk=e.target.closest('[data-p]')?.dataset.p;if(!pk)return false;
+    api('PUT','/me',{presence:pk}).then(x=>{ST={...ST,...x};drawNav();if($('ss'))$('ss').textContent=(ST.presence||'online')+' — change'}).catch(fail)});
+  const rp=$('rpop');if(rp)rp.classList.add('sm')}
 $('sheet').onclick=e=>{if(e.target.id==='sheet')$('sheet').classList.remove('open')};
 /* ---------- home feed ---------- */
-const EM={like:'👍',love:'❤️',haha:'😂',wow:'😮',sad:'😢',angry:'😡'};
-const rich=t=>esc(t).replace(/(^|[\s(])@([A-Za-z0-9._-]{3,16})/g,'$1<a class="mn" data-u="$2">@$2</a>').replace(/(^|[\s(])#([A-Za-z0-9_]{2,30})/g,'$1<a class="ht" data-tag="$2">#$2</a>');
+/* Migv33 emoticons: original round faces drawn as SVG. Shortcodes like :) :D ;) or :name: turn into pictures. */
+const EMOD=(()=>{
+  const K='#3b2a10',eye=(x,y,r=3.6)=>`<circle cx="${x}" cy="${y}" r="${r}" fill="${K}"/><circle cx="${x+1.2}" cy="${y-1.3}" r="${r*.32}" fill="#fff"/>`;
+  const arc=(x,y)=>`<path d="M${x-6} ${y+2}Q${x} ${y-7} ${x+6} ${y+2}" fill="none" stroke="${K}" stroke-width="3.2" stroke-linecap="round"/>`;
+  const line=(x,y)=>`<path d="M${x-6} ${y}H${x+6}" stroke="${K}" stroke-width="3.2" stroke-linecap="round"/>`;
+  const heart=(x,y,s=1)=>`<path transform="translate(${x} ${y}) scale(${s})" d="M0 5C-9 -2 -5 -9 0 -4C5 -9 9 -2 0 5Z" fill="#e63950"/>`;
+  const smile=`<path d="M19 40Q32 53 45 40" fill="none" stroke="${K}" stroke-width="3.4" stroke-linecap="round"/>`;
+  const grin=`<path d="M17 38Q32 60 47 38Z" fill="#7a2210"/><path d="M20 39.5Q32 44 44 39.5Q32 47 20 39.5Z" fill="#fff"/>`;
+  const sadm=`<path d="M22 49Q32 39 42 49" fill="none" stroke="${K}" stroke-width="3.4" stroke-linecap="round"/>`;
+  const tear=(x,y)=>`<path d="M${x} ${y}Q${x-4} ${y+7} ${x} ${y+9}Q${x+4} ${y+7} ${x} ${y}Z" fill="#5fb7ff"/>`;
+  const blush=`<ellipse cx="14" cy="40" rx="5" ry="3" fill="#ff7a8a" opacity=".6"/><ellipse cx="50" cy="40" rx="5" ry="3" fill="#ff7a8a" opacity=".6"/>`;
+  const E={
+    smile:[eye(22,27)+eye(42,27),smile],
+    grin:[eye(22,27)+eye(42,27),grin],
+    haha:[arc(22,27)+arc(42,27)+tear(12,34)+tear(52,34),grin],
+    wink:[eye(22,27)+arc(42,28),smile],
+    tongue:[eye(22,27)+arc(42,28),smile+`<path d="M27 44H39V49Q33 56 27 49Z" fill="#ff6f8d"/>`],
+    cool:[`<path d="M10 24H54" stroke="${K}" stroke-width="3"/><rect x="12" y="22" width="18" height="12" rx="5" fill="${K}"/><rect x="34" y="22" width="18" height="12" rx="5" fill="${K}"/><path d="M15 25L20 25" stroke="#fff" stroke-width="2" opacity=".7"/>`,`<path d="M20 42Q32 52 44 42" fill="none" stroke="${K}" stroke-width="3.4" stroke-linecap="round"/>`],
+    love:[heart(22,27,1.15)+heart(42,27,1.15),grin],
+    kiss:[eye(22,27)+arc(42,28),`<path d="M32 38c4-5 9 0 0 7c-9-7-4-12 0-7Z" fill="#ff5d7a"/>`],
+    sad:[eye(22,28)+eye(42,28)+`<path d="M15 22L28 19M49 22L36 19" stroke="${K}" stroke-width="2.6" stroke-linecap="round"/>`,sadm],
+    cry:[eye(22,27)+eye(42,27)+tear(20,33)+tear(44,33),`<path d="M21 50Q32 40 43 50" fill="none" stroke="${K}" stroke-width="3.4" stroke-linecap="round"/>`],
+    angry:[`<path d="M13 19L29 26M51 19L35 26" stroke="${K}" stroke-width="3.6" stroke-linecap="round"/>`+eye(22,30,3.2)+eye(42,30,3.2),`<path d="M22 49Q32 41 42 49" fill="none" stroke="${K}" stroke-width="3.4" stroke-linecap="round"/>`],
+    wow:[`<ellipse cx="22" cy="26" rx="4.4" ry="5.6" fill="${K}"/><ellipse cx="42" cy="26" rx="4.4" ry="5.6" fill="${K}"/>`,`<ellipse cx="32" cy="46" rx="6" ry="8" fill="#7a2210"/>`],
+    shy:[eye(22,27)+eye(42,27)+blush,`<path d="M24 42Q32 48 40 42" fill="none" stroke="${K}" stroke-width="3.2" stroke-linecap="round"/>`],
+    sleepy:[line(22,28)+line(42,28),`<ellipse cx="32" cy="46" rx="4.5" ry="3.5" fill="#7a2210"/><text x="46" y="16" font-size="12" font-weight="700" fill="#5a79d8" font-family="Arial">z</text>`],
+    worried:[eye(22,28)+eye(42,28),`<path d="M23 47Q28 43 32 47Q36 51 41 47" fill="none" stroke="${K}" stroke-width="3.2" stroke-linecap="round"/>`],
+    think:[eye(22,28)+eye(42,28)+`<path d="M36 20L50 18" stroke="${K}" stroke-width="2.8" stroke-linecap="round"/>`,`<path d="M24 46H38" stroke="${K}" stroke-width="3.2" stroke-linecap="round"/>`],
+    devil:[eye(22,28)+eye(42,28)+`<path d="M14 18L27 24M50 18L37 24" stroke="${K}" stroke-width="3.2" stroke-linecap="round"/>`,smile+`<path d="M12 8L16 18L22 12ZM52 8L48 18L42 12Z" fill="#c4261a"/>`],
+    heart:null,
+  };
+  const out={};
+  for(const [n,v] of Object.entries(E)){
+    if(!v)continue;
+    const tint=n==='angry'?['#ff9a7a','#e0452b']:n==='devil'?['#ff8f7a','#d0361f']:['#ffe98a','#ffb21c'];
+    out[n]=`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><defs><radialGradient id="g" cx="38%" cy="30%" r="75%"><stop offset="0" stop-color="${tint[0]}"/><stop offset="1" stop-color="${tint[1]}"/></radialGradient></defs><circle cx="32" cy="32" r="30" fill="url(#g)" stroke="#cf8a00" stroke-width="2"/><ellipse cx="24" cy="12" rx="11" ry="5" fill="#fff" opacity=".35"/>${v[0]}${v[1]}</svg>`;
+  }
+  out.heart=`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><defs><radialGradient id="g" cx="35%" cy="30%" r="80%"><stop offset="0" stop-color="#ff8a9a"/><stop offset="1" stop-color="#d6203a"/></radialGradient></defs><path d="M32 56C6 36 8 10 22 10C28 10 31 14 32 18C33 14 36 10 42 10C56 10 58 36 32 56Z" fill="url(#g)" stroke="#a8142b" stroke-width="2"/><ellipse cx="22" cy="19" rx="6" ry="3.5" fill="#fff" opacity=".45"/></svg>`;
+  return out})();
+const EMC={':)':'smile',':-)':'smile',':D':'grin',':-D':'grin','xD':'haha','XD':'haha',';)':'wink',';-)':'wink',':P':'tongue',':p':'tongue',':-P':'tongue','8)':'cool','B)':'cool','<3':'heart',':*':'kiss',':(':'sad',':-(':'sad',":'(":'cry',':@':'angry','>:(':'angry',':O':'wow',':o':'wow',':-O':'wow',':$':'shy','-_-':'sleepy',':/':'worried',':-/':'worried',':?':'think','>:)':'devil'};
+const emi=(n,s)=>EMOD[n]?`<img class="emt" alt=":${n}:" draggable="false" ${s?`style="width:${s}px;height:${s}px" `:''}src="data:image/svg+xml;utf8,${encodeURIComponent(EMOD[n])}">`:'';
+let CE=[];   // custom emoticons added by staff: {name,code,icon}
+const ceImg=c=>`<img class="emt" alt=":${c.name}:" draggable="false" src="${esc(c.icon)}">`;
+let EMX=null,EMAP={};
+const emoBuild=()=>{EMAP={};const keys=[];
+  for(const [c,n] of Object.entries(EMC)){const k=esc(c);EMAP[k]=()=>emi(n);keys.push(k)}
+  for(const c of CE)if(c.code){const k=esc(c.code);EMAP[k]=()=>ceImg(c);keys.push(k)}
+  keys.sort((x,y)=>y.length-x.length);
+  EMX=new RegExp('(^|[\\s(])('+keys.map(k=>k.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')).join('|')+')(?=$|[\\s.,!?)])|:([a-z0-9]{2,12}):','g')};
+const emoT=t=>{if(!EMX)emoBuild();return t.replace(EMX,(m,a,c,n)=>{if(c)return a+EMAP[c]();const cu=CE.find(x=>x.name===n);return cu?ceImg(cu):EMOD[n]?emi(n):m})};
+const emo=h=>h.split(/(<[^>]*>)/).map((x,i)=>i%2?x:emoT(x)).join('');
+const EM=Object.fromEntries(['like:smile','love:love','haha:haha','wow:wow','sad:sad','angry:angry','wink:wink','cool:cool','kiss:kiss','cry:cry','shy:shy','sleepy:sleepy'].map(x=>x.split(':')).map(([k,n])=>[k,emi(n)]));
+const setCE=l=>{CE=Array.isArray(l)?l:[];EMX=null;for(const k of Object.keys(EM))if(k.startsWith('e:'))delete EM[k];CE.forEach(c=>{EM['e:'+c.name]=ceImg(c)})};
+const rich0=t=>esc(t).replace(/(^|[\s(])@([A-Za-z0-9._-]{3,16})/g,'$1<a class="mn" data-u="$2">@$2</a>').replace(/(^|[\s(])#([A-Za-z0-9_]{2,30})/g,'$1<a class="ht" data-tag="$2">#$2</a>');
+const rich=t=>emo(rich0(t));
 function snack(msg,label,fn){const d=document.createElement('div');d.className='snack';d.innerHTML=`<span>${esc(msg)}</span>${label?`<button>${esc(label)}</button>`:''}`;if(label)d.querySelector('button').onclick=()=>{d.remove();fn()};document.body.append(d);setTimeout(()=>d.remove(),6000)}
 let homeTag='',PS={},postImg=null;
 V.home=async(tag)=>{homeTag=typeof tag==='string'?tag:'';postImg=null;
   view(`<div id="stories" class="stor"></div><div class="cmpx"><div class="cr">${av(me,44)}<textarea id="pt" rows="2" maxlength="500" placeholder="What's on your mind, ${esc(me)}? Use @name and #tag"></textarea></div><div id="pprev"></div><div id="sug" hidden></div>
-  <div class="cb"><button id="pph" type="button" title="Add a photo">📷<span> Photo</span></button><button id="pmn" type="button" title="Mention someone">@<span> Mention</span></button><button id="pht" type="button" title="Add a hashtag">#<span> Tag</span></button><button id="pem" type="button" title="Add an emoji">😊</button><input type="file" id="pfi" accept="image/*" hidden><span class="mu" id="pcnt">0/500</span><button class="o" id="pb">Post</button></div><div id="emp" hidden>${["😀","😂","😍","🥰","😎","🤩","😢","😡","👍","🙏","❤️","🔥","🎉","💯","🎮","🌹"].map(e=>`<button type="button" data-e="${e}">${e}</button>`).join("")}</div></div><div id="feed" class="mu pad">Loading…</div>`);
+  <div class="cb"><button id="pph" type="button" title="Add a photo">📷<span> Photo</span></button><button id="pmn" type="button" title="Mention someone">@<span> Mention</span></button><button id="pht" type="button" title="Add a hashtag">#<span> Tag</span></button><button id="pem" type="button" title="Add an emoji">😊</button><input type="file" id="pfi" accept="image/*" hidden><span class="mu" id="pcnt">0/500</span><button class="o" id="pb">Post</button></div><div id="emp" hidden>${Object.keys(EMOD).map(n=>`<button type="button" data-e=":${n}:" title=":${n}:">${emi(n,26)}</button>`).join("")}${CE.map(c=>`<button type="button" data-e=":${c.name}:" title=":${c.name}:">${ceImg(c).replace('class="emt"','class="emt" style="width:26px;height:26px"')}</button>`).join("")}</div></div><div id="feed" class="mu pad">Loading…</div>`);
   const pt=$('pt');
   const ins=t=>{const a=pt.selectionStart??pt.value.length,b=pt.selectionEnd??a;if(pt.value.length-(b-a)+t.length>500)return;pt.value=pt.value.slice(0,a)+t+pt.value.slice(b);pt.focus();pt.selectionStart=pt.selectionEnd=a+t.length;pt.oninput()};
   $('pph').onclick=()=>$('pfi').click();
@@ -1081,7 +1139,7 @@ function postHTML(p,i){const mod=['staff','admin'].includes(ST.role),own=p.user=
   <header>${av(p.user,44)}<div class="who"><div class="nm" style="color:${nc(p.user)}"><span data-u="${esc(p.user)}">${esc(p.user)}</span>${rt(p.role,p.user)}<span class="lvp">${lvi(lv(p.xp),16)}Lv ${lv(p.xp)}</span></div><div class="meta">${ago(p.ts)}${p.edited?' · Edited':''} · 🌐</div></div><button class="pm" data-a="menu" aria-label="Post options">⋯</button></header>
   ${p.text?`<div class="txt${!p.image&&p.text.length<70?' xl':''}">${rich(p.text)}</div>`:''}
   ${p.image?`<img class="pimg" src="${esc(p.image)}" loading="lazy" alt="Photo">`:''}
-  <div class="acts"><div class="ac"><button data-a="react" class="${p.mine?'on':''}">${EM[p.mine]||'👍'} <span>${p.mine?p.mine[0].toUpperCase()+p.mine.slice(1):'React'}</span></button><button class="cnt" data-w="react" data-n="${p.reacts}" title="Who reacted">${p.reacts}</button><div class="rpk" hidden>${Object.entries(EM).map(([k,e])=>`<button data-k="${k}" class="${p.mine===k?'on':''}" title="${k}">${e}</button>`).join('')}</div></div>
+  <div class="acts"><div class="ac"><button data-a="react" class="${p.mine?'on':''}">${EM[p.mine]||'👍'} <span>${p.mine?(p.mine.startsWith('e:')?p.mine.slice(2):p.mine)[0].toUpperCase()+(p.mine.startsWith('e:')?p.mine.slice(2):p.mine).slice(1):'React'}</span></button><button class="cnt" data-w="react" data-n="${p.reacts}" title="Who reacted">${p.reacts}</button><div class="rpk" hidden>${Object.entries(EM).map(([k,e])=>`<button data-k="${k}" class="${p.mine===k?'on':''}" title="${k}">${e}</button>`).join('')}</div></div>
   <div class="ac"><button data-a="comment">${p.locked?'🔒':'💬'} <span>Comment</span></button><button class="cnt" data-w="comment" title="Who commented">${p.comments}</button></div>
   <div class="ac"><button data-a="share">↗ <span>Share</span></button><button class="cnt" data-w="share" title="Who shared">${p.shares}</button></div></div><div class="cm" hidden data-canc="${canC?1:0}"></div></article>`}
 
@@ -1126,15 +1184,19 @@ function whoSheet(id,type){const T={react:'Reactions',comment:'Comments',share:'
   api('GET',`/posts/${id}/who?type=${type}`).then(l=>{l.forEach(x=>ROLES[x.user]=x.role);const w=document.querySelector('#sh .whol');if(!w)return;w.className='whol';
     w.innerHTML=l.map(x=>`<button class="wr" data-u="${esc(x.user)}">${av(x.user,38)}<span class="wt"><b style="color:${nc(x.user)}">${esc(x.user)}</b>${rt(x.role,x.user)}${type==='comment'?`<small>${esc(x.text)}</small>`:(type==='react'?'':`<small>${ago(x.ts)}${type==='share'?' ago':''}</small>`)}</span>${type==='react'?`<span class="wem">${EM[x.kind]||'👍'}</span>`:''}</button>`).join('')||'<small class="mu">Nobody yet.</small>'}).catch(fail);
   $('sh').onclick=e=>{const b=e.target.closest('[data-u]');if(b){$('sheet').classList.remove('open');go('profile',b.dataset.u)}}}
-function menuSheet(p){const mod=['staff','admin'].includes(ST.role),own=p.user===me;
+function menuSheet(p,anchor){const mod=['staff','admin'].includes(ST.role),own=p.user===me;
   const it=[];if(own)it.push(['edit','✏️','Edit post']);if(mod)it.push(['pin','📌',p.pinned?'Unpin post':'Pin post']);if(own||mod)it.push(['lock',p.locked?'🔓':'🔒',p.locked?'Unlock comments':'Lock comments']);it.push(['hide','🙈','Hide post']);if(own||mod)it.push(['del','🗑️','Delete post']);
-  sheetOpen(`<h2>Post options</h2>`+it.map(([k,i,t])=>`<button class="pmi${k==='del'?' dng':''}" data-m="${k}"><i>${i}</i>${t}</button>`).join(''));
-  $('sh').onclick=async e=>{const b=e.target.closest('[data-m]');if(!b)return;const k=b.dataset.m,close=()=>$('sheet').classList.remove('open');
-    try{if(k==='edit'){$('sh').innerHTML=`<h2>Edit post</h2><textarea id="ept" rows="5" maxlength="500" style="width:100%">${esc(p.text)}</textarea><button class="o" id="esv" style="margin-top:8px;width:100%">Save</button>`;$('esv').onclick=async()=>{try{await api('PUT','/posts/'+p.id,{text:$('ept').value});close();loadFeed()}catch(er){fail(er)}};return}
-      if(k==='pin'){const r=await api('POST',`/posts/${p.id}/pin`);close();toast(r.pinned?'Post pinned':'Post unpinned');loadFeed()}
-      else if(k==='lock'){const r=await api('POST',`/posts/${p.id}/lock`);close();toast(r.locked?'Comments locked':'Comments unlocked');loadFeed()}
-      else if(k==='hide'){await api('POST',`/posts/${p.id}/hide`,{});close();loadFeed();snack('Post hidden from your feed','Undo',async()=>{try{await api('POST',`/posts/${p.id}/hide`,{undo:1});loadFeed()}catch(er){fail(er)}})}
-      else if(k==='del'){if(!confirm('Delete this post permanently?'))return;await api('DELETE','/posts/'+p.id);close();toast('Post deleted');loadFeed()}}catch(er){fail(er)}}}
+  const close=()=>$('sheet').classList.remove('open');
+  popOpen(anchor,it.map(([k,i,t])=>`<button data-m="${k}"${k==='del'?' class="dg"':''}><i style="font-style:normal;width:22px;text-align:center">${i}</i>${t}</button>`).join(''),(e,pp)=>{
+    const bt=e.target.closest('[data-m]');if(!bt)return false;const k=bt.dataset.m;
+    if(k==='del'&&!bt._s){bt._s=1;bt.lastChild.textContent='Tap again to delete';return false}
+    (async()=>{try{
+      if(k==='edit'){sheetOpen(`<h2>Edit post</h2><textarea id="ept" rows="5" maxlength="500" style="width:100%">${esc(p.text)}</textarea><button class="o" id="esv" style="margin-top:8px;width:100%">Save</button>`);$('esv').onclick=async()=>{try{await api('PUT','/posts/'+p.id,{text:$('ept').value});close();loadFeed()}catch(er){fail(er)}};return}
+      if(k==='pin'){const r=await api('POST',`/posts/${p.id}/pin`);toast(r.pinned?'Post pinned':'Post unpinned');loadFeed()}
+      else if(k==='lock'){const r=await api('POST',`/posts/${p.id}/lock`);toast(r.locked?'Comments locked':'Comments unlocked');loadFeed()}
+      else if(k==='hide'){await api('POST',`/posts/${p.id}/hide`,{});loadFeed();snack('Post hidden from your feed','Undo',async()=>{try{await api('POST',`/posts/${p.id}/hide`,{undo:1});loadFeed()}catch(er){fail(er)}})}
+      else if(k==='del'){await api('DELETE','/posts/'+p.id);toast('Post deleted');loadFeed()}}catch(er){fail(er)}})()});
+  const rp=$('rpop');if(rp)rp.classList.add('sm')}
 async function feedClick(e){
   if(!e.target.closest('.ac'))document.querySelectorAll('.rpk').forEach(x=>x.hidden=true);
   const u=e.target.closest('[data-u]');if(u&&!e.target.closest('#sh')){go('profile',u.dataset.u);return}
@@ -1147,7 +1209,7 @@ async function feedClick(e){
     const b=e.target.closest('[data-a]');if(!b)return;const a=b.dataset.a,cm=art?.querySelector('.cm');
     if(a==='cleartag')go('home');
     else if(a==='react'){const pk=art.querySelector('.rpk');const was=pk.hidden;document.querySelectorAll('.rpk').forEach(x=>x.hidden=true);pk.hidden=!was}
-    else if(a==='menu')menuSheet(PS[id]);
+    else if(a==='menu')menuSheet(PS[id],b);
     else if(a==='share'){await api('POST',`/posts/${id}/share`);loadFeed()}
     else if(a==='comment'){if(!cm.hidden){cm.hidden=true;return}
       const loadC=async()=>{const cs=await api('GET',`/posts/${id}/comments`);cs.forEach(c=>ROLES[c.user]=c.role);const canC=cm.dataset.canc==='1';
@@ -1606,7 +1668,7 @@ function add(m){if(['info','ok','err','emote','emotep','note','notel','notea','g
     const body=m.kind==='image'?`<img class="chimg" src="${esc(safe)}" alt="Photo" loading="lazy" data-big="${esc(safe)}">`:`<audio controls preload="none" src="${esc(safe)}"></audio>${dur?` <small>${fmtDur(+dur)}</small>`:''}`;
     d.innerHTML=`<b data-u="${esc(m.user)}" style="color:${nc(m.user,light?40:72)}">${esc(m.user)}</b><div class="mdia">${m.kind==='image'?'📷 ':'🎤 '}</div><div>${body}</div>`;d.querySelector('.mdia').remove()}
   else if(m.kind==='game'){d.className='b game';d.style.whiteSpace='pre-wrap';d.innerHTML=`<span class="gn">${m.priv?'🔒 ':''}${esc(m.user||'Teen Patti Gold')}:</span> ${esc(m.text)}`}
-  else{const light=$('log').classList.contains('light');d.className='b';d.innerHTML=`<b data-u="${esc(m.user)}" style="color:${nc(m.user,light?40:72)}">${esc(m.user)}</b>: ${esc(m.text)}`}
+  else{const light=$('log').classList.contains('light');d.className='b';d.innerHTML=`<b data-u="${esc(m.user)}" style="color:${nc(m.user,light?40:72)}">${esc(m.user)}</b>: ${emo(esc(m.text))}`}
   $('log').append(d);if(m.kind==='msg'||m.kind==='image'||m.kind==='voice')$('log').append(stamp());$('log').scrollTop=1e9}
 const uno=o=>tx({t:'uno',...o});
 const lbl=c=>c==='W'?'Wild':c==='F'?'+4':({S:'Skip',V:'Rev',D:'+2'}[c[1]]||c[1]);
@@ -1689,11 +1751,13 @@ V.admin=async(name)=>{
   if(name==='@gifts')return adminGifts();
   if(name==='@announce')return adminAnnounce();
   if(name==='@support')return adminSupport();
+  if(name==='@emo')return adminEmo();
   if(name==='@rooms')return adminRooms();
   if(name)return adminUser(name);
   const q=window.AQ||'';const [us,lg,rq]=await Promise.all([api('GET','/admin/users?q='+encodeURIComponent(q)),api('GET','/admin/log'),api('GET','/admin/requests')]);
   view(`<div class="card"><b>🛡️ Admin Panel</b><div class="mu">Search a user, then open to edit everything about the account.</div></div>
   <div class="card row" data-u="@rooms" style="cursor:pointer"><div class="g"><b>🏠 Manage rooms</b><div class="mu">Rename rooms and set how many users fit</div></div><span class="mu">Open ›</span></div>
+  <div class="card row" data-u="@emo" style="cursor:pointer"><div class="g"><b>😀 Manage emoticons</b><div class="mu">Upload emoticon pictures with a shortcode for chat, posts and reactions</div></div><span class="mu">Open ›</span></div>
   <div class="card row" data-u="@support" style="cursor:pointer"><div class="g"><b>📧 Support Mail</b><div class="mu">Send and receive support@migv33.com mail</div></div><span class="mu">Open ›</span></div>
   <div class="card row" data-u="@announce" style="cursor:pointer"><div class="g"><b>📢 Announcements</b><div class="mu">Send a pop-up message that every user sees when they open the app</div></div><span class="mu">Open ›</span></div>
   <div class="card row" data-u="@gifts" style="cursor:pointer"><div class="g"><b>🎁 Manage gifts</b><div class="mu">Upload gift icons, set price and what the receiver gets</div></div><span class="mu">Open ›</span></div>
@@ -1893,6 +1957,24 @@ function adminSupportComp(to='',sub='',body=''){
   <form id="sf" class="card mcomp" style="display:grid;gap:8px"><input id="sto" type="email" placeholder="To (email address)" maxlength="200" value="${esc(to)}"><input id="ssb" placeholder="Subject" maxlength="300" value="${esc(sub)}"><textarea id="sbd" rows="10" maxlength="20000" placeholder="Message">${esc(body)}</textarea><button class="o" id="ssn">Send</button></form>`);
   $('abk').onclick=()=>adminSupport();
   $('sf').onsubmit=async e=>{e.preventDefault();$('ssn').disabled=true;try{await api('POST','/admin/support/send',{to:$('sto').value,subject:$('ssb').value,body:$('sbd').value});toast('Sent ✔');SUPBOX='out';adminSupport()}catch(er){$('ssn').disabled=false;fail(er)}}}
+async function adminEmo(){
+  const L=await api('GET','/admin/emoticons');let icon='';
+  view(`<div class="card row"><button class="o" id="abk">‹ Back</button><div class="g"><b>😀 Emoticon manager</b><div class="mu">Users type the shortcode (for example <b>:)</b>) or <b>:name:</b> and the picture appears. Each one also becomes a reaction on posts. Only upload pictures you have the right to use.</div></div></div>
+  <div class="card"><b>New emoticon</b>
+    <div class="row"><img id="eprev" alt="" style="height:48px;width:48px;object-fit:contain;display:none"><button class="o" id="epick" type="button">📷 Upload picture</button><input type="file" id="efile" accept="image/*" hidden></div>
+    <input id="ename" placeholder="Name (letters/numbers, e.g. happy)" maxlength="12">
+    <input id="ecode" placeholder="Shortcode (optional, e.g. :)  or  (y) )" maxlength="8">
+    <button class="o" id="eadd">Add emoticon</button></div>
+  <h2>Custom emoticons <span class="lv">${L.length}</span></h2>
+  ${L.map(x=>`<div class="card row"><img src="${esc(x.icon)}" alt="" style="height:40px;width:40px;object-fit:contain"><div class="g"><b>:${esc(x.name)}:</b> <span class="mu">${x.code?esc(x.code):'no shortcode'}</span>${x.active?'':' <span class="neg">hidden</span>'}</div><button data-et="${esc(x.name)}" data-on="${x.active?0:1}">${x.active?'Hide':'Show'}</button><button data-ed="${esc(x.name)}">Delete</button></div>`).join('')||'<div class="card mu">No custom emoticons yet. The built-in set still works.</div>'}`);
+  $('abk').onclick=()=>go('admin');
+  $('epick').onclick=()=>$('efile').click();
+  $('efile').onchange=async()=>{const f=$('efile').files[0];if(!f)return;try{icon=await upload('gift',f);$('eprev').src=icon;$('eprev').style.display='block'}catch(er){fail(er)}};
+  $('eadd').onclick=async()=>{try{await api('POST','/admin/emoticons',{name:$('ename').value,code:$('ecode').value,icon});toast('Emoticon added ✔');adminEmo()}catch(er){fail(er)}};
+  let sure='';$('view').onclick=async e=>{const b=e.target.closest('[data-et],[data-ed]');if(!b)return;
+    try{if(b.dataset.et){await api('POST','/admin/emoticons/'+b.dataset.et,{active:b.dataset.on==='1'});adminEmo()}
+      else if(sure!==b.dataset.ed){sure=b.dataset.ed;b.textContent='Tap again';}
+      else{await api('DELETE','/admin/emoticons/'+b.dataset.ed);adminEmo()}}catch(er){fail(er)}}}
 async function adminAnnounce(){
   const L=await api('GET','/admin/announcements');
   view(`<div class="card row"><button class="o" id="abk">‹ Back</button><div class="g"><b>📢 Announcements</b><div class="mu">The newest announcement pops up for every user the next time they open the app, and right now for anyone online.</div></div></div>
@@ -1946,7 +2028,7 @@ V.settings=async()=>{const bg=localStorage.cbg||'light';
   <form id="pw" class="card" style="display:grid;gap:8px"><b>Change password</b><input id="po" type="password" placeholder="Current password" autocomplete="current-password"><input id="pn" type="password" placeholder="New password (6+ characters)" autocomplete="new-password"><button class="o">Update password</button></form>
   <button class="mi out card" id="lo">⎋ Log out</button><div class="mu" id="ver" style="text-align:center;margin:8px">App b8 · server …</div>`);
   fetch('/api/version').then(r=>r.json()).then(d=>{$('ver').textContent='App b8 · server '+(d.build||'?')}).catch(()=>{if($('ver'))$('ver').textContent='App b8 · server OLD (no version)'});
-  $('sp').onclick=()=>go('profile',me);$('spp').onclick=()=>go('profile',me);$('ss').onclick=statusSheet;$('lo').onclick=logout;
+  $('sp').onclick=()=>go('profile',me);$('spp').onclick=()=>go('profile',me);$('ss').onclick=e=>statusSheet(e.currentTarget);$('lo').onclick=logout;
   $('pw').onsubmit=async e=>{e.preventDefault();try{await api('POST','/password',{old:$('po').value,pass:$('pn').value});toast('Password updated ✔');V.settings()}catch(er){fail(er)}};
   $('mpf').onsubmit=async e=>{e.preventDefault();try{await api('POST','/security/pin',{pin:$('mpn').value,old:$('mpo')?.value||''});toast('MPIN saved');ST=await api('GET','/me');V.settings()}catch(er){fail(er)}};
   $('sqf').onsubmit=async e=>{e.preventDefault();try{await api('POST','/security/question',{question:$('sqq').value,answer:$('sqa').value,pass:$('sqp')?.value||''});toast('Security question saved');ST=await api('GET','/me');V.settings()}catch(er){fail(er)}};
