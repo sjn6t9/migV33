@@ -1388,10 +1388,10 @@ function moderate(ws, act, t, secs, text) {
   else if (act === 'unsilenceall') { setCfg(room, 'silence_until', 0); note(`Room silence lifted by ${u}`); }
   else if (act === 'lock') { setCfg(room, 'locked', 1); note(`This chatroom has been locked by ${u}.`, 'notel'); }
   else if (act === 'unlock') { setCfg(room, 'locked', 0); note(`This chatroom has been unlocked by ${u}.`, 'notel'); }
-  else if (act === 'mod') { db.prepare('insert or ignore into room_mods values(?,?)').run(room, t); note(`${t} is now moderator of this chatroom`); }
+  else if (act === 'mod') { db.prepare('insert or ignore into room_mods(room,user) values(?,?)').run(room, t); note(`${t} is now moderator of this chatroom`); castRoomCfg(room); }
   else if (act === 'dmod') {
     if (isSuper(room, t) && !(ownerOf(room) === u || isSA(u))) return err('Only the room admin can remove a super moderator.');
-    db.prepare('delete from room_mods where room=? and user=?').run(room, t); note(`${t} is no longer moderator of this room`);
+    db.prepare('delete from room_mods where room=? and user=?').run(room, t); note(`${t} is no longer moderator of this room`); castRoomCfg(room);
   }
   else if (act === 'smod') { if (t === ownerOf(room)) return err('That is the room admin.'); db.prepare('insert into room_mods(room,user,super) values(?,?,1) on conflict(room,user) do update set super=1').run(room, t); note(`${L(t)} is now a super moderator (by ${L(u)})`); }
   else if (act === 'dsmod') { db.prepare('update room_mods set super=0 where room=? and user=?').run(room, t); note(`${t} is no longer a super moderator (still a moderator)`); }
@@ -1618,7 +1618,11 @@ function command(ws, line) {
 setInterval(() => { for (const w of wss.clients) { if (w._alive === false) { try { w.terminate(); } catch {} continue; } w._alive = false; try { w.ping(); } catch {} } }, 30e3).unref();
 wss.on('connection', ws => {
   ws._alive = true; ws.on('pong', () => { ws._alive = true; }); ws.on('message', () => { ws._alive = true; });
-  ws.on('message', raw => {
+  ws.on('message', raw => { try { onWsMessage(ws, raw); } catch (e) { console.error('[ws]', e); try { send(ws, { t: 'msg', room: ws.room, user: '', text: 'Something went wrong with that command.', kind: 'err', ts: Date.now() }); } catch {} } });
+  ws.on('close', () => closeWs(ws));
+});
+function onWsMessage(ws, raw) {
+  {
     let m; try { m = JSON.parse(raw); } catch { return; }
     if (m.t === 'auth') {
       try { const t = jwt.verify(m.token, SECRET), u = db.prepare('select name,banned from users where id=?').get(t.id); if (!u || u.banned) throw 0; ws.user = u.name; } catch { return send(ws, { t: 'error', error: 'auth' }); }
@@ -1679,13 +1683,15 @@ wss.on('connection', ws => {
     } else if (m.t === 'gift') giftOne(ws, m.to, m.gift);
     else if (m.t === 'mod') moderate(ws, m.act, String(m.user || ''), (+m.minutes || 10) * 60);
     else if (m.t === 'uno') unoAct(ws.room, ws.user, m);
-  });
-  ws.on('close', () => {   // keep a person in their room for a short while so a quick app switch / reconnect does not kick them out
-    const r0 = ws.room;
-    if (r0 && ws.user && !r0.startsWith('dm:')) setTimeout(() => { if (ws.room === r0) leaveRoom(ws); online(); }, 90e3);
-    else leaveRoom(ws);
-    online();
-  });
-});
+  }
+}
+function closeWs(ws) {   // keep a person in their room for a short while so a quick app switch / reconnect does not kick them out
+  const r0 = ws.room;
+  if (r0 && ws.user && !r0.startsWith('dm:')) setTimeout(() => { if (ws.room === r0) leaveRoom(ws); online(); }, 90e3);
+  else leaveRoom(ws);
+  online();
+}
+process.on('uncaughtException', e => console.error('[uncaught]', e));
+process.on('unhandledRejection', e => console.error('[unhandled]', e));
 
 server.listen(PORT, () => console.log('Migv33 running on :' + PORT));
