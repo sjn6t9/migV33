@@ -1866,6 +1866,12 @@ function onWsMessage(ws, raw) {
     }
     if (!ws.user) return;
     if (m.t === 'tabs') { ws.tabs = new Set((Array.isArray(m.rooms) ? m.rooms : []).slice(0, 30).map(x => String(x).slice(0, 60))); return; }
+    if (m.t === 'leave') {   // the user closed a room tab on purpose
+      const r1 = String(m.room || '');
+      if (r1 && ws.room === r1) leaveRoom(ws);
+      else if (r1 && ws.user) { try { db.prepare('delete from room_seen where user=? and room=?').run(ws.user, r1); } catch {} }
+      return;
+    }
     if (m.t === 'join') {
       const ok = roomOk(m.room) && (!/^dm:/.test(m.room) || m.room.slice(3).split(':').includes(ws.user));
       if (!ok) return;
@@ -1880,7 +1886,7 @@ function onWsMessage(ws, raw) {
         if (need && level(xpOf(ws.user)) < need) return send(ws, { t: 'denied', room: m.room, error: `This room needs level ${need} or higher to enter.` });
       }
       const sameRoom = ws.room === m.room;
-      leaveRoom(ws, sameRoom);
+      leaveRoom(ws, true);   // switching tabs/rooms is not leaving: no 'left' line, and the 30-minute 'entered' memory is kept
       ws.room = m.room; ws.roomAt = Date.now();
       if (!members.has(m.room)) members.set(m.room, new Set());
       const wasHere = sameRoom || [...members.get(m.room)].some(w => w.user === ws.user && w !== ws) || !!recentlyIn(ws.user, m.room);
