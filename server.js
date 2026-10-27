@@ -1168,7 +1168,7 @@ const online = () => {
   wss.clients.forEach(w => send(w, { t: 'online', list: l }));
 };
 const coins = n => db.prepare('select coins from users where name=?').get(n).coins;
-// Normal users are removed from a public room 30 minutes after joining. Staff/admins and the room's admin/moderators stay.
+// Normal users are removed from a public room after 30 minutes without chatting (joining or talking restarts the timer). Staff/admins and the room's admin/moderators stay.
 const ROOM_STAY_MS = 30 * 60e3;
 setInterval(() => {
   const now = Date.now();
@@ -1182,6 +1182,7 @@ const roster = room => [...new Set([...(members.get(room) || [])].map(w => w.use
 const castRoster = room => { if (room && !/^dm:/.test(room)) cast(room, { t: 'members', room, list: roster(room) }); };
 const leaveRoom = (ws, quiet = false) => {
   const r0 = ws.room; if (!r0) return; members.get(r0)?.delete(ws); ws.room = null;
+  if (!quiet && !r0.startsWith('dm:') && ws.user && ![...(members.get(r0) || [])].some(w => w.user === ws.user)) { try { db.prepare('delete from room_seen where user=? and room=?').run(ws.user, r0); } catch {} } 
   if (!quiet && !r0.startsWith('dm:') && ws.user && ![...(members.get(r0) || [])].some(w => w.user === ws.user)) cast(r0, { t: 'leave', room: r0, user: ws.user, role: roleOf(ws.user), xp: xpOf(ws.user), ts: Date.now() });
   castRoster(r0);
   if (!quiet) purgeRoomMsgs(r0);
@@ -1782,6 +1783,12 @@ function command(ws, line) {
 
 // ---------- WebSocket ----------
 // Keepalive: phones drop sockets silently; ping often so dead sockets are noticed quickly and live ones are never mistaken for dead
+db.exec('create table if not exists room_seen(user text, room text, ts int, primary key(user,room))');
+// remember who is in which room (survives a server restart), so a quick reconnect is not announced as a new entry
+const seenUp = db.transaction(() => { const st = db.prepare('insert into room_seen(user,room,ts) values(?,?,?) on conflict(user,room) do update set ts=excluded.ts'); for (const w of wss.clients) if (w.user && w.room && !w.room.startsWith('dm:')) st.run(w.user, w.room, Date.now()); });
+setInterval(() => { try { seenUp(); } catch {} }, 1e3).unref();
+setInterval(() => { try { db.prepare('delete from room_seen where ts<?').run(Date.now() - 3600e3); } catch {} }, 60e3).unref();
+const recentlyIn = (u, room) => db.prepare('select 1 from room_seen where user=? and room=? and ts>?').get(u, room, Date.now() - 1800e3);
 setInterval(() => { for (const w of wss.clients) { if (w._alive === false) { try { w.terminate(); } catch {} continue; } w._alive = false; try { w.ping(); } catch {} } }, 30e3).unref();
 wss.on('connection', ws => {
   ws._alive = true; ws.on('pong', () => { ws._alive = true; }); ws.on('message', () => { ws._alive = true; });
@@ -1817,7 +1824,7 @@ function onWsMessage(ws, raw) {
       leaveRoom(ws, sameRoom);
       ws.room = m.room; ws.roomAt = Date.now();
       if (!members.has(m.room)) members.set(m.room, new Set());
-      const wasHere = sameRoom || [...members.get(m.room)].some(w => w.user === ws.user && w !== ws);
+      const wasHere = sameRoom || [...members.get(m.room)].some(w => w.user === ws.user && w !== ws) || !!recentlyIn(ws.user, m.room);
       members.get(m.room).add(ws);
       const isDm = /^dm:/.test(m.room);
       if (!isDm) send(ws, { t: 'roominfo', room: m.room, owner: ownerOf(m.room) || STAFF_USER, mods: db.prepare('select user from room_mods where room=?').all(m.room).map(x => x.user), supers: db.prepare('select user from room_mods where room=? and super=1').all(m.room).map(x => x.user), cap: db.prepare('select cap from rooms where name=?').get(m.room)?.cap || 0, descr: db.prepare('select descr from rooms where name=?').get(m.room)?.descr || '', minlv: db.prepare('select minlv from rooms where name=?').get(m.room)?.minlv || 0, announce: cfg(m.room).announce || '', users: roster(m.room), fav: !!db.prepare('select 1 from favs where user=? and room=?').get(ws.user, m.room) });
@@ -1829,6 +1836,7 @@ function onWsMessage(ws, raw) {
       if (games.has(m.room)) send(ws, unoState(games.get(m.room), ws.user));
     } else if (!ws.room) return;
     else if (m.t === 'msg') {
+      ws.roomAt = Date.now();   // talking restarts the 30-minute idle timer
       const text = String(m.text || '').trim().slice(0, 500);
       if (!text) return;
       if (/^\/bot(\s|$)/i.test(text)) return botCommand(ws, text).catch(e => console.error('[bot]', e));
@@ -1840,6 +1848,7 @@ function onWsMessage(ws, raw) {
       addXp(ws.user, 1);
       cast(ws.room, { t: 'msg', room: ws.room, ...o });
     } else if (m.t === 'media') {
+      ws.roomAt = Date.now();
       const url = String(m.url || ''), kind = m.kind === 'voice' ? 'voice' : 'image';
       if (!MEDIA_URL.test(url) || !fs.existsSync('.' + url)) return;
       if (!speakOk(ws)) return;
@@ -1847,7 +1856,7 @@ function onWsMessage(ws, raw) {
       const o = { user: ws.user, text: kind === 'voice' ? url + '|' + dur : url, kind, ts: Date.now(), role: roleOf(ws.user), xp: xpOf(ws.user) };
       db.prepare('insert into msgs(room,user,text,kind,ts) values(?,?,?,?,?)').run(ws.room, o.user, o.text, o.kind, o.ts);
       cast(ws.room, { t: 'msg', room: ws.room, ...o });
-    } else if (m.t === 'gift') giftOne(ws, m.to, m.gift);
+    } else if (m.t === 'gift') { ws.roomAt = Date.now(); giftOne(ws, m.to, m.gift); }
     else if (m.t === 'mod') moderate(ws, m.act, String(m.user || ''), (+m.minutes || 10) * 60);
     else if (m.t === 'uno') unoAct(ws.room, ws.user, m);
   }

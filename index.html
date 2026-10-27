@@ -807,6 +807,7 @@ html #gp .gb,html #gp .cp,html #gp .side{font-family:inherit}
 #log .emo{color:#8b4a2b;font-weight:600}#log.navy .emo,#log.dark .emo,html[data-theme=dark] #log .emo{color:#f0b184}
 #log .emo.p{color:#e8337a}#log.navy .emo.p,#log.dark .emo.p,html[data-theme=dark] #log .emo.p{color:#ff7ab0}
 #log .nt{color:#6b7480;font-weight:600}#log .nt span{color:#f7931e}
+.alnote{margin:40px 16px;padding:18px;border-radius:18px;text-align:center;display:grid;gap:10px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.25)}
 #log .gf{font-weight:700}#log .gf .gfi{height:26px;width:26px;object-fit:contain;vertical-align:middle;margin:0 3px}
 #log .errb{display:flex;gap:10px;align-items:flex-start;background:#fdeeee;border:1.5px solid #f2a9a9;border-radius:16px;padding:10px 14px;color:#8b1c1c;font-weight:700}
 #log .errb i{font-style:normal;font-size:20px;color:#d93a3a}#log .errb small{display:block;font-size:11px;font-weight:700;margin-top:3px;color:#b03030}
@@ -969,7 +970,7 @@ function coinDelta(d){const c=$('coins');if(!c||!d)return;const r=c.getBoundingC
 async function on(m){
   if(m.t==='error'){if(m.error==='auth'||m.error==='banned'){if(m.error==='banned')alert('Your account has been banned.');logout()}else alert(m.error)}
   if(m.t==='ready'){const first=!me;me=m.user;G=m.gifts;$('auth').style.display='none';$('app').style.display='flex';document.body.classList.add('in');
-    ST=await api('GET','/me').catch(()=>({}));ROLES[me]=ST.role;api('GET','/mail/unread').then(x=>setMailN(x.n)).catch(()=>{});await refreshVer();$('coins').textContent=cn(ST.coins);drawNav();document.documentElement.removeAttribute('data-boot');saveOpen();if(!first&&room&&OPEN.includes(room)&&!room.startsWith('dm:')){skipIntro=true;tx({t:'join',room})}if(first)api('GET','/announcement').then(showAnn).catch(()=>{});if(first){let r=null;try{r=JSON.parse(sessionStorage.lastv||'null')}catch{}if(r&&V[r[0]]&&r[0]!=='admin')go(r[0],r[1]===null?undefined:r[1]);else go('home')}}
+    ST=await api('GET','/me').catch(()=>({}));ROLES[me]=ST.role;api('GET','/mail/unread').then(x=>setMailN(x.n)).catch(()=>{});await refreshVer();$('coins').textContent=cn(ST.coins);drawNav();document.documentElement.removeAttribute('data-boot');saveOpen();if(!first&&room&&OPEN.includes(room)&&!room.startsWith('dm:')&&!AL.has(room)){skipIntro=true;tx({t:'join',room})}if(first)api('GET','/announcement').then(showAnn).catch(()=>{});if(first){let r=null;try{r=JSON.parse(sessionStorage.lastv||'null')}catch{}if(r&&V[r[0]]&&r[0]!=='admin')go(r[0],r[1]===null?undefined:r[1]);else go('home')}}
   if(m.t==='announce')showAnn(m.a);
   if(m.t==='mail'){setMailN(m.n);toast(`📧 New mail from ${m.from}: ${m.subject}`);if(cur==='mail'&&!MOPEN)V.mail()}
   if(m.t==='roomcfg'&&m.room===room&&RI){const ch=(RI.descr||'')!==m.descr;Object.assign(RI,{descr:m.descr,minlv:m.minlv,mods:m.mods,supers:m.supers});if(ch&&m.descr&&$('log'))L(m.room[0].toUpperCase()+m.room.slice(1),`📝 ${esc(m.descr)}`)}
@@ -990,10 +991,15 @@ async function on(m){
   if(m.t==='history'&&$('log')&&(!m.room||m.room===room))m.items.forEach(add)
   if(m.t==='msg'){if(m.room===room&&$('log'))add(m);else if(m.room&&!m.room.startsWith('dm:')&&(m.room===room||OPEN.includes(m.room))){(BUF[m.room]=BUF[m.room]||[]).push(m);if(BUF[m.room].length>200)BUF[m.room].shift();if(m.bg&&m.room!==room){UNR[m.room]=(UNR[m.room]||0)+1;drawTabs()}}}
   if(m.t==='uno')renderUno(m);
-  if(m.t==='kicked'){OPEN=OPEN.filter(x=>x!==m.room);dropRoom(m.room);saveOpen();if(m.auto)toast(`You left ${m.room} after 30 minutes. Join again any time.`);else if(m.renamed)toast(`${m.room} was renamed to ${m.renamed}.`);else toast(m.text||`You were removed from ${m.room} by ${m.by}.`,true);go('rooms')}
+  if(m.t==='kicked'&&m.auto){AL.add(m.room);dropRoom(m.room);if(cur==='chat'&&room===m.room)showAL(m.room);else drawTabs();return}
+  if(m.t==='kicked'){OPEN=OPEN.filter(x=>x!==m.room);dropRoom(m.room);saveOpen();if(m.auto)toast(`You left ${m.room} after 30 minutes without chatting. Join again any time.`);else if(m.renamed)toast(`${m.room} was renamed to ${m.renamed}.`);else toast(m.text||`You were removed from ${m.room} by ${m.by}.`,true);go('rooms')}
   if(m.t==='denied'){OPEN=OPEN.filter(x=>x!==m.room);dropRoom(m.room);saveOpen();toast(m.error,true);go('rooms')}
 }
 let G={},RM=[],RI=null,OPEN=[];try{OPEN=JSON.parse(sessionStorage.open||'[]')}catch{}
+const AL=new Set();   // rooms the server removed me from after 30 minutes
+function showAL(r){const lg=$('log');if(!lg)return;lg.innerHTML=`<div class="alnote"><div>⏱ You left <b>${esc(r)}</b> automatically after 30 minutes without chatting.</div><div class="mu">Earlier chat is not shown after you come back.</div><button class="o" id="alj">Rejoin</button></div>`;
+  ['t','phb','mic'].forEach(i=>{const e=$(i);if(e)e.disabled=true});const t=$('t');if(t)t.placeholder='You left this room';
+  $('alj').onclick=()=>{AL.delete(r);dropRoom(r);V.chat(r)};drawTabs()}
 const UNR={},LOGC={},BUF={};let skipIntro=false;const dropRoom=x=>{delete LOGC[x];delete BUF[x];delete UNR[x]};
 const saveOpen=()=>{try{sessionStorage.open=JSON.stringify(OPEN)}catch{}try{if(ws&&ws.readyState===1)ws.send(JSON.stringify({t:'tabs',rooms:OPEN}))}catch{}};
 /* ---------- navigation ---------- */
@@ -1445,7 +1451,7 @@ V.chat=async(r)=>{room=r;if(!r.startsWith('dm:'))lastRoom=r;target='';pend=null;
   if(!dm&&LOGC[r]){$('log').innerHTML=LOGC[r];skipIntro=true}
   if(BUF[r]){const q=BUF[r];delete BUF[r];q.forEach(add)}
   UNR[r]=0;drawTabs();
-  drawOnline();tx({t:'join',room:r});
+  drawOnline();if(AL.has(r)){showAL(r);return}tx({t:'join',room:r});
   if(r==='games'){$('uno').style.display='block';$('uno').innerHTML='<button class="o" id="jn">Join UNO</button>';$('jn').onclick=()=>uno({a:'join'})}};
 /* room tabs: tap to switch, swipe left/right to move between open rooms */
 function drawTabs(){const t=$('rtabs');if(!t)return;
