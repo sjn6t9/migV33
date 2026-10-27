@@ -645,6 +645,15 @@ app.post('/api/admin/rooms/rename', auth, ok(async (q, r) => {
   })();
   alog(q.user, from, 'room_rename', `${from} → ${to}`); r.json({ ok: true });
 }));
+app.post('/api/admin/rooms/delete', auth, ok(async (q, r) => {
+  if (!staffOnly(q, r)) return;
+  const name = String(q.body?.room || '');
+  if (!db.prepare('select 1 from rooms where name=?').get(name)) return bad(r, 'Room not found', 404);
+  if (!(await stopGame(name))) return bad(r, 'A game is running in that room. Try again when it ends.');
+  [...(members.get(name) || [])].forEach(w => { w.room = null; send(w, { t: 'kicked', room: name, by: 'staff', text: `${name} was deleted by staff.` }); }); members.delete(name);
+  db.transaction(() => { for (const [t, c] of ROOM_TABLES) db.prepare(`delete from ${t} where ${c}=?`).run(name); try { db.prepare('delete from room_seen where room=?').run(name); } catch {} })();
+  alog(q.user, name, 'room_delete', name); r.json({ ok: true });
+}));
 app.post('/api/admin/rooms/cap', auth, ok((q, r) => {
   if (!staffOnly(q, r)) return;
   const name = String(q.body?.room || ''), cap = Math.floor(+q.body?.cap);

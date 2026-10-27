@@ -908,6 +908,19 @@ body.hb #bnav{transform:translateY(170%)!important}
 .dk .chv{width:22px;height:22px;flex:none;margin-left:auto;fill:none;stroke:currentColor;stroke-width:2.4;stroke-linecap:round;stroke-linejoin:round;transition:transform .25s}.dk.cl .chv{transform:rotate(-90deg)}
 #view .cmp,#view .dk,#view .rm{box-sizing:border-box;margin-left:10px!important;margin-right:10px!important;width:auto!important;max-width:calc(100% - 20px)}
 #view .rm .rn{font-size:17px}
+#spb{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(92px + env(safe-area-inset-bottom));z-index:8;display:flex;align-items:center;gap:8px;padding:6px 8px 6px 14px;border-radius:99px;max-width:calc(100% - 24px);white-space:nowrap;background:rgba(22,38,82,.92);border:1px solid rgba(255,255,255,.35);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);box-shadow:inset 1.5px 1.5px 1px rgba(255,255,255,.3),0 10px 26px rgba(5,15,45,.45);color:#f2f6ff;font-size:14px;font-weight:700;animation:tstin .3s ease-out}
+#spb svg{width:22px;height:22px;flex:none;fill:none;stroke:#ffb020;stroke-width:1.8;stroke-linecap:round;animation:spbr 3s linear infinite}@keyframes spbr{to{transform:rotate(360deg)}}
+#spb button{margin:0;min-height:0;border-radius:99px!important;font-size:13px!important;padding:6px 16px!important}
+#spb #spx{width:28px;height:28px;padding:0!important;font-size:18px!important;line-height:1;display:grid;place-items:center;background:rgba(255,255,255,.12)!important;border:1px solid rgba(255,255,255,.3)!important;color:#f2f6ff!important}
+html[data-skin=white] #spb{background:rgba(255,255,255,.96);color:#222833;border-color:#fff;box-shadow:0 10px 26px rgba(90,80,50,.25)}
+#view#view#view#view#view#view#view#view#view#view .rdel{color:#ff8f8f!important;border-color:rgba(255,120,120,.55)!important}html[data-skin=white] #view#view#view#view#view#view#view#view#view#view .rdel{color:#d02f2f!important}
+#view#view#view#view#view#view#view#view#view#view .ibn{width:38px!important;height:38px!important;min-width:38px;padding:0!important;border-radius:50%!important;display:inline-grid!important;place-items:center;flex:none;font-size:18px!important;line-height:1}
+#view#view#view#view#view#view#view#view#view#view .ibn svg{width:20px!important;height:20px!important}
+#view#view#view#view#view#view#view#view#view#view .cb button:not(.o){height:38px!important;min-width:44px;padding:0 12px!important;border-radius:99px!important;font-size:17px!important;display:inline-flex!important;align-items:center;justify-content:center;gap:4px;flex:none}
+#view#view#view#view#view#view#view#view#view#view .cb button.o{height:38px!important;padding:0 20px!important}
+#view#view#view#view#view#view#view#view#view#view [data-r1],#view#view#view#view#view#view#view#view#view#view [data-r2]{min-width:132px;white-space:nowrap}
+#view#view#view#view#view#view#view#view#view#view .rdel{width:100%}
+#spb{bottom:calc(114px + env(safe-area-inset-bottom))!important}
 </style>
 <script>try{var t=localStorage.theme||(matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light');if(localStorage.tk||sessionStorage.tk)document.documentElement.dataset.boot=1;var k=localStorage.skin||'navy';if(k==='navy'){t='dark'}else if(k==='white'){t='light'}if(k==='navy'||k==='white')document.documentElement.dataset.skin=k;document.documentElement.dataset.theme=t}catch(e){document.documentElement.dataset.theme='light'}</script>
 </head>
@@ -1852,12 +1865,15 @@ async function adminUser(name){
 
 async function adminRooms(){
   const rs=await api('GET','/admin/rooms');
-  view(`<div class="card row"><button class="o" id="abk">‹ Back</button><div class="g"><b>🏠 Room manager</b><div class="mu">Renaming moves everyone out of the room (they can join again). The user limit applies to new joins; 0 = no limit. Staff are never blocked by the limit.</div></div></div>
+  view(`<div class="card row"><button class="o" id="abk">‹ Back</button><div class="g"><b>🏠 Room manager</b><div class="mu">Deleting a room removes it and its chat history for good. Renaming moves everyone out of the room (they can join again). The user limit applies to new joins; 0 = no limit. Staff are never blocked by the limit.</div></div></div>
   ${rs.map(x=>`<div class="card"><div class="row"><b class="g">${esc(x.name)}</b><span class="mu">${x.cat} · ${x.count}${x.cap?'/'+x.cap:''} online${x.game?' · 🎮 '+esc(x.game):''}</span></div>
     <div class="row"><input data-rn="${esc(x.name)}" value="${esc(x.name)}" maxlength="20"><button class="o" data-r1="${esc(x.name)}">Rename</button></div>
-    <div class="row"><input data-cp="${esc(x.name)}" type="number" min="0" max="5000" value="${x.cap||0}" title="Max users (0 = no limit)"><button class="o" data-r2="${esc(x.name)}">Set user limit</button></div></div>`).join('')}`);
+    <div class="row"><input data-cp="${esc(x.name)}" type="number" min="0" max="5000" value="${x.cap||0}" title="Max users (0 = no limit)"><button class="o" data-r2="${esc(x.name)}">Set user limit</button></div>
+    <div class="row"><button class="rdel" data-r3="${esc(x.name)}">Delete room</button></div></div>`).join('')}`);
   $('abk').onclick=()=>go('admin');
-  $('view').onclick=async e=>{const b=e.target.closest('[data-r1],[data-r2]');if(!b)return;
+  $('view').onclick=async e=>{const b=e.target.closest('[data-r1],[data-r2],[data-r3]');if(!b)return;
+    if(b.dataset.r3){if(!b.dataset.s){b.dataset.s=1;b.textContent='Tap again to delete';setTimeout(()=>{if(b.isConnected){delete b.dataset.s;b.textContent='Delete room'}},3500);return}
+      try{await api('POST','/admin/rooms/delete',{room:b.dataset.r3});toast('Room deleted ✔');adminRooms()}catch(er){fail(er)}return}
     try{if(b.dataset.r1){const n=b.dataset.r1;await api('POST','/admin/rooms/rename',{from:n,to:document.querySelector(`[data-rn="${CSS.escape(n)}"]`).value});toast('Room renamed ✔')}
       else{const n=b.dataset.r2;await api('POST','/admin/rooms/cap',{room:n,cap:document.querySelector(`[data-cp="${CSS.escape(n)}"]`).value});toast('Saved ✔')}
       adminRooms()}catch(er){fail(er)}};
@@ -2082,6 +2098,20 @@ if(tok())connect();
     if(y<50||v.scrollHeight-v.clientHeight<160){set(false);last=y;return}
     if(dy>10){set(true);last=y}else if(dy<-10){set(false);last=y}},{passive:true});
   addEventListener('resize',()=>{if(innerWidth>=1000)document.body.classList.remove('hb')})})();
+
+/* ---------- spin reminder ---------- */
+let spinHide=0;
+async function spinCheck(){let pill=$('spb');const off=()=>{if(pill)pill.remove()};
+  if(!me||cur==='spin'||cur==='chat'||Date.now()<spinHide)return off();
+  try{const d=await api('GET','/spin');if(!(d.free||d.spins>0))return off()}catch{return}
+  if($('spb'))return;pill=document.createElement('div');pill.id='spb';
+  pill.innerHTML='<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 3v18M3 12h18M5.6 5.6l12.8 12.8M18.4 5.6L5.6 18.4"/></svg><span>Your spin is ready!</span><button type="button" class="o" id="spg">Spin</button><button type="button" id="spx" aria-label="Close">×</button>';
+  document.body.append(pill);$('spg').onclick=()=>{pill.remove();go('spin')};$('spx').onclick=()=>{spinHide=Date.now()+30*60e3;pill.remove()}}
+setTimeout(spinCheck,4000);setInterval(spinCheck,45000);
+
+/* tag icon-only buttons so all share one size */
+new MutationObserver(()=>{document.querySelectorAll('#view button:not(.ibn)').forEach(b=>{if(b.closest('.cb,.tabbar,.chips,.acts,.swb,.mtabs,.rpk,#bnav,#rbar,#f,#tools,#recbar,#rtabs,#sug,#emp,#gp,#tp,.pc,#pop,.lgo,.mi,.sc,.dk,.tpmin,.stor,.fbp'))return;
+  const t=(b.textContent||'').trim();if((t.length<=2&&!/^\w{2}$/.test(t)&&t.length>0)||(!t&&b.querySelector('svg')&&!b.querySelector('span,b,i,img')))b.classList.add('ibn')})}).observe(document.getElementById('view')||document.body,{childList:true,subtree:true});
 </script>
 </body>
 </html>
