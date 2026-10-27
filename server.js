@@ -1567,7 +1567,20 @@ const allGifts = () => { const o = {}; for (const [k, g] of Object.entries(GIFTS
   for (const g of db.prepare('select * from gifts where active=1 order by ts').all()) o[g.key] = { n: g.name, c: g.cost, r: g.recv, e: '🎁', img: g.icon }; return o; };
 const allGiftsAny = key => { if (GIFTS[key]) return GIFTS[key]; const g = db.prepare('select name n,icon img from gifts where key=?').get(key); return g && { ...g, e: '🎁' }; };
 const giftIcon = gf => gf.img ? `[g:${gf.img}] ` : gf.e + ' ';
-const payGift = (from, to, gf, ctx = 'room') => db.transaction(() => {
+// XP for gifts: [max price, gifts needed, xp earned]. One gift is worth xp/gifts XP, kept as exact fractions (units of 1/4200 XP).
+const GIFT_XP = [[5, 100, 2], [10, 20, 4], [20, 40, 10], [40, 30, 15], [100, 50, 30], [300, 60, 40], [500, 70, 70], [1000, 30, 80], [10000, 10, 100], [20000, 10, 120], [100000, 1, 200]]; // never less XP per gift for a pricier gift
+const GXU = 4200;
+db.exec('create table if not exists gift_xp(user text primary key, u int default 0)');
+function giftXp(name, price) {
+  const t = GIFT_XP.find(x => price <= x[0]) || GIFT_XP[GIFT_XP.length - 1];
+  const units = Math.round(t[2] * GXU / t[1]);
+  const row = db.prepare('select u from gift_xp where user=?').get(name);
+  const tot = (row?.u || 0) + units, whole = Math.floor(tot / GXU);
+  db.prepare('insert into gift_xp(user,u) values(?,?) on conflict(user) do update set u=excluded.u').run(name, tot % GXU);
+  if (whole > 0) { addXp(name, whole); wss.clients.forEach(w => { if (w.user === name) send(w, { t: 'xp', xp: xpOf(name) }); }); }
+}
+const payGift = (from, to, gf, ctx = 'room') => { const ok = payGift0(from, to, gf, ctx); if (ok) { try { giftXp(from, gf.c); giftXp(to, gf.c); } catch (e) { console.log('[giftxp]', e.message); } } return ok; };
+const payGift0 = (from, to, gf, ctx = 'room') => db.transaction(() => {
   if (!db.prepare('update users set coins=coins-? where name=? and coins>=?').run(gf.c, from, gf.c).changes) return false;
   const rc = gf.r ?? Math.floor(gf.c / 2);
   db.prepare('update users set coins=coins+? where name=?').run(rc, to);
@@ -1578,7 +1591,7 @@ const payGift = (from, to, gf, ctx = 'room') => db.transaction(() => {
   return true;
 })();
 const GCOL = ['#d9342b', '#3aa655', '#1c1c1e', '#e8337a', '#2f6fd6', '#d98a00'];
-const gcol = gf => GCOL[seed(String(gf.key || gf.n)) % GCOL.length];
+const gcol = gf => gf.c >= 1000 ? '#d9342b' : gf.c >= 300 ? '#e8337a' : gf.c >= 20 ? '#3aa655' : '#1c1c1e'; // red 1000+, pink 300-999, green 20-299, black 1-19
 function giftOne(ws, to, key, note = '') {
   const gf = giftDef(key);
   if (!gf) return reply(ws, `Unknown gift. Try: ${Object.keys(allGifts()).join(', ')}`);

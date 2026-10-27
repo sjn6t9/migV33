@@ -78,3 +78,6 @@ Mail: menu item between Home and Chat Rooms; tables mails/mail_files; endpoints 
 Staff-only inbox/sent/compose for support@migv33.com. Run `npm install` (adds imapflow + mailparser), then set in the service environment:
 `SUPPORT_PASS` (the mailbox password; required). Optional: `SUPPORT_USER` (default support@migv33.com), `SUPPORT_SMTP_HOST`/`SUPPORT_SMTP_PORT` (smtp.hostinger.com/465), `SUPPORT_IMAP_HOST`/`SUPPORT_IMAP_PORT` (imap.hostinger.com/993).
 Inbox is checked every 2 minutes and with the Refresh button. Without the packages, sending still works; receiving shows a hint.
+
+## Gift XP
+Sending or receiving a gift gives XP by price tier (table GIFT_XP in server.js), kept as exact fractions per user (table gift_xp).
