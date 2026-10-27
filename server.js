@@ -1863,6 +1863,9 @@ function onWsMessage(ws, raw) {
       try { const t = jwt.verify(m.token, SECRET), u = db.prepare('select name,banned from users where id=?').get(t.id); if (!u || u.banned) throw 0; ws.user = u.name; } catch { return send(ws, { t: 'error', error: 'auth' }); }
       if (m.offline) db.prepare("update users set presence='offline' where name=?").run(ws.user);
       else db.prepare("update users set presence='online' where name=? and presence='offline'").run(ws.user);
+      // The phone's connection dropped and came back (e.g. while the user was on Home/Friends): put them back in the room they were in, with the same 30-minute timer
+      const gh = ghosts.get(ws.user);
+      if (gh) { ghosts.delete(ws.user); clearTimeout(gh._ghostT); if (gh.room && !ws.room && members.has(gh.room)) { members.get(gh.room).delete(gh); ws.room = gh.room; ws.roomAt = gh.roomAt; members.get(gh.room).add(ws); gh.room = null; } }
       send(ws, { t: 'ready', user: ws.user, coins: coins(ws.user), gifts: allGifts() });
       return online();
     }
@@ -1933,10 +1936,15 @@ function onWsMessage(ws, raw) {
     else if (m.t === 'uno') unoAct(ws.room, ws.user, m);
   }
 }
+const ghosts = new Map();
 function closeWs(ws) {   // keep a person in their room for a short while so a quick app switch / reconnect does not kick them out
   const r0 = ws.room;
   if (ws.tabs && ws.user) { const tr = [...ws.tabs].filter(x => x !== r0); setTimeout(() => tr.forEach(castRoster), 90e3); }
-  if (r0 && ws.user && !r0.startsWith('dm:')) setTimeout(() => { if (ws.room === r0) leaveRoom(ws); online(); }, 90e3);
+  if (r0 && ws.user && !r0.startsWith('dm:')) {   // stays in the room until the 30-minute no-chat limit, so leaving the chat screen or a dropped connection never removes them early
+    const wait = canMod(r0, ws.user) ? 6 * 3600e3 : Math.max(5e3, (ws.roomAt || Date.now()) + ROOM_STAY_MS - Date.now());
+    ghosts.set(ws.user, ws);
+    ws._ghostT = setTimeout(() => { if (ghosts.get(ws.user) === ws) ghosts.delete(ws.user); if (ws.room === r0) leaveRoom(ws); online(); }, wait);
+  }
   else leaveRoom(ws);
   online();
 }
