@@ -822,6 +822,33 @@ html #gp .gb,html #gp .cp,html #gp .side{font-family:inherit}
 html .lgo,html[data-skin] .lgo{color:#ff4d4d!important}
 @media (max-width:430px){#top .lg{display:none}#top #coins{margin-left:auto}}
 #rpop.wide>*{flex:none}#rpop .rinf{padding:5px 12px;font-size:13.5px;line-height:1.35}
+
+.mailh{display:flex;align-items:center;gap:10px;padding:12px 14px 6px}.mailh b{display:block;font-size:20px}.mailh small{display:block;opacity:.75;font-size:12.5px;margin-top:2px}
+.mback{width:40px;height:40px;border-radius:50%;padding:0;font-size:20px;display:grid;place-items:center;flex:none}
+.mtabs{display:flex;gap:6px;margin:6px 12px 8px;padding:5px;border-radius:999px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.25)}
+.mtabs button{flex:1;border:0;background:none;box-shadow:none;border-radius:999px;padding:9px 6px;font-weight:700;font-size:14px;color:inherit}
+.mtabs button.on{background:linear-gradient(180deg,#ffa63d,#f7931e);color:#1b1206;box-shadow:0 2px 8px rgba(247,147,30,.45)}
+.mrow.unread{border-left:3px solid #ff8a1f}.mrow .g{min-width:0}.mrow .g>div{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.mrow{display:flex;align-items:center;gap:11px;margin:6px 12px;padding:10px 12px;cursor:pointer;position:relative}
+.mrow .mm{flex:1;min-width:0}.mrow .mt{display:flex;justify-content:space-between;gap:8px;font-size:14px}.mrow .mt .mu{font-size:11.5px;white-space:nowrap}
+.mrow .ms{font-weight:700;font-size:14.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.mrow .mp{font-size:12.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mrow:not(.un) .ms{font-weight:500}.mrow.un{border-color:rgba(247,147,30,.7)!important}.mdot{width:10px;height:10px;border-radius:50%;background:#f7931e;box-shadow:0 0 8px #f7931e;flex:none}.mclip{font-size:14px;flex:none}
+.mempty{display:grid;place-items:center;gap:8px;text-align:center;padding:60px 20px 90px}.mempty .mic{width:84px;height:84px;border-radius:50%;display:grid;place-items:center;background:rgba(255,255,255,.12);border:1.5px solid rgba(255,255,255,.35)}
+.mempty .mic svg{width:42px;height:42px;stroke:#f7931e;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}.mempty b{font-size:19px}.mempty p{margin:0}
+.mfab{position:fixed;right:16px;bottom:calc(88px + env(safe-area-inset-bottom,0px));z-index:12;border:1px solid rgba(255,200,120,.8);border-radius:999px;padding:13px 20px;font-weight:800;font-size:15px;color:#1b1206;background:linear-gradient(180deg,#ffa63d,#f7931e);box-shadow:0 8px 22px rgba(0,0,0,.4)}
+@media (min-width:1000px){.mfab{bottom:24px}}
+.mview,.mcomp{margin:8px 12px 24px;padding:14px;display:grid;gap:10px}.mfrom{display:flex;align-items:center;gap:11px}.mbody{white-space:pre-wrap;word-break:break-word;line-height:1.5;font-size:15.5px}
+.matts{display:grid;gap:10px}.matts figure{margin:0}.mimg{max-width:100%;max-height:340px;border-radius:14px;display:block;cursor:zoom-in}.matts figcaption{font-size:12px;margin-top:3px}
+.mpdf{display:flex;align-items:center;gap:10px;padding:10px 14px;border-radius:14px;border:1px solid rgba(255,255,255,.3);background:rgba(255,255,255,.1);color:inherit;text-decoration:none;font-size:22px}.mpdf span{display:grid;font-size:14px}.mpdf small{opacity:.75;font-size:12px}
+.gacts2{display:flex;gap:8px;flex-wrap:wrap}.gacts2 button{flex:1;min-width:110px}.mdel{color:#e5533d!important}
+.mcomp label{font-size:13px;margin-bottom:-6px}.mcomp textarea{resize:vertical;min-height:140px}.mrow2{display:flex;gap:8px}.mrow2 button{flex:1}
+#mat{display:flex;flex-wrap:wrap;gap:6px}.mchip{display:inline-flex;align-items:center;gap:6px;padding:5px 6px 5px 11px;border-radius:999px;background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.3);font-size:13px;max-width:100%}
+.mchip small{opacity:.7}.mchip button{width:22px;height:22px;padding:0;border-radius:50%;font-size:11px;display:grid;place-items:center}
+.mbadge{margin-left:auto;background:#f7931e;color:#1b1206;border-radius:999px;font-size:12px;font-weight:800;padding:1px 8px;min-width:22px;text-align:center}
+:root[data-skin][data-theme] .mtabs button{background:none!important;border:0!important;box-shadow:none!important;color:inherit!important}
+:root[data-skin][data-theme] .mtabs button.on{background:linear-gradient(180deg,#ffa63d,#f7931e)!important;color:#1b1206!important;box-shadow:0 2px 8px rgba(247,147,30,.45)!important}
+:root[data-skin][data-theme] .mfab{background:linear-gradient(180deg,#ffa63d,#f7931e)!important;color:#1b1206!important;border:1px solid rgba(255,200,120,.8)!important}
+.mview,.mcomp{margin-bottom:120px}
 </style>
 <script>try{var t=localStorage.theme||(matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light');if(localStorage.tk||sessionStorage.tk)document.documentElement.dataset.boot=1;var k=localStorage.skin||'navy';if(k==='navy'){t='dark'}else if(k==='white'){t='light'}if(k==='navy'||k==='white')document.documentElement.dataset.skin=k;document.documentElement.dataset.theme=t}catch(e){document.documentElement.dataset.theme='light'}</script>
 </head>
@@ -940,8 +967,9 @@ function coinDelta(d){const c=$('coins');if(!c||!d)return;const r=c.getBoundingC
 async function on(m){
   if(m.t==='error'){if(m.error==='auth'||m.error==='banned'){if(m.error==='banned')alert('Your account has been banned.');logout()}else alert(m.error)}
   if(m.t==='ready'){const first=!me;me=m.user;G=m.gifts;$('auth').style.display='none';$('app').style.display='flex';document.body.classList.add('in');
-    ST=await api('GET','/me').catch(()=>({}));ROLES[me]=ST.role;await refreshVer();$('coins').textContent=cn(ST.coins);drawNav();document.documentElement.removeAttribute('data-boot');saveOpen();if(!first&&room&&OPEN.includes(room)&&!room.startsWith('dm:')){skipIntro=true;tx({t:'join',room})}if(first)api('GET','/announcement').then(showAnn).catch(()=>{});if(first){let r=null;try{r=JSON.parse(sessionStorage.lastv||'null')}catch{}if(r&&V[r[0]]&&r[0]!=='admin')go(r[0],r[1]===null?undefined:r[1]);else go('home')}}
+    ST=await api('GET','/me').catch(()=>({}));ROLES[me]=ST.role;api('GET','/mail/unread').then(x=>setMailN(x.n)).catch(()=>{});await refreshVer();$('coins').textContent=cn(ST.coins);drawNav();document.documentElement.removeAttribute('data-boot');saveOpen();if(!first&&room&&OPEN.includes(room)&&!room.startsWith('dm:')){skipIntro=true;tx({t:'join',room})}if(first)api('GET','/announcement').then(showAnn).catch(()=>{});if(first){let r=null;try{r=JSON.parse(sessionStorage.lastv||'null')}catch{}if(r&&V[r[0]]&&r[0]!=='admin')go(r[0],r[1]===null?undefined:r[1]);else go('home')}}
   if(m.t==='announce')showAnn(m.a);
+  if(m.t==='mail'){setMailN(m.n);toast(`📧 New mail from ${m.from}: ${m.subject}`);if(cur==='mail'&&!MOPEN)V.mail()}
   if(m.t==='roomcfg'&&m.room===room&&RI){const ch=(RI.descr||'')!==m.descr;Object.assign(RI,{descr:m.descr,minlv:m.minlv,mods:m.mods,supers:m.supers});if(ch&&m.descr&&$('log'))L(m.room[0].toUpperCase()+m.room.slice(1),`📝 ${esc(m.descr)}`)}
   if(m.t==='levelup'){ST.xp=Math.max(ST.xp||0,CUM[m.level]);toast(`🎉 Level ${m.level}!${m.reward?` +${m.reward.toLocaleString()} coins`:''}`)}
   if(m.t==='gifts'){G=m.gifts;if($('gifts'))$('gifts').innerHTML=Object.entries(G).map(([k,g])=>`<button data-g="${k}" title="${esc(g.n)} (${k}) · ${g.c} coins">${g.img?`<img src="${esc(g.img)}" alt="" style="height:20px;width:20px;object-fit:contain;vertical-align:middle">`:g.e} ${g.c}</button>`).join(' ')}
@@ -968,7 +996,7 @@ const UNR={},LOGC={},BUF={};let skipIntro=false;const dropRoom=x=>{delete LOGC[x
 const saveOpen=()=>{try{sessionStorage.open=JSON.stringify(OPEN)}catch{}try{if(ws&&ws.readyState===1)ws.send(JSON.stringify({t:'tabs',rooms:OPEN}))}catch{}};
 /* ---------- navigation ---------- */
 const cn=c=>ST.unlimited?'∞ coins':c+' coins';
-const V={};const TT={panel:'Panel',admin:'Admin Panel',home:'Home',rooms:'Chat Rooms',chat:'Chat',profile:'Profile',account:'My Account',friends:'Friends',explore:'Explore',spin:'Daily Spin',cmds:'Command List',settings:'Settings'};
+const V={};const TT={panel:'Panel',admin:'Admin Panel',home:'Home',rooms:'Chat Rooms',chat:'Chat',profile:'Profile',account:'My Account',friends:'Friends',explore:'Explore',spin:'Daily Spin',cmds:'Command List',settings:'Settings',mail:'Mail',mailc:'New Mail'};
 async function go(v,a){document.body.classList.toggle('inchat',v==='chat');document.body.style.overflow='';document.documentElement.style.overflow='';$('view')&&($('view').style.overflowY='');if(cur==='chat'&&$('log')&&room&&OPEN.includes(room)&&!room.startsWith('dm:'))LOGC[room]=$('log').innerHTML;cur=v;try{if(v!=='chat')sessionStorage.lastv=JSON.stringify([v,a===undefined?null:a])}catch{}$('drawer').classList.remove('open');bnSet(v,a);
   $('th').classList.toggle('on',v==='home');$('tf').classList.toggle('on',v==='friends');$('tr').classList.toggle('on',v==='rooms'||v==='chat');
   if(innerWidth>=1000)drawNav();$('view').scrollTop=0;$('stt').textContent=TT[v]||'';$('strip').style.display='none';$('view').onclick=null;document.body.classList.remove('hb');try{await refreshVer();await V[v](a)}catch(e){fail(e)}}
@@ -977,11 +1005,11 @@ $('drawer').onclick=e=>{if(e.target.id==='drawer')$('drawer').classList.remove('
 function navAnim(){const d=$('dn');d.classList.remove('anim');void d.offsetWidth;d.classList.add('anim');setTimeout(()=>d.classList.remove('anim'),1200)}
 try{if(localStorage.navoff)document.body.classList.add('nav-off')}catch(e){}
 $('dtg').onclick=e=>{e.stopPropagation();if(innerWidth>=1000){const off=document.body.classList.toggle('nav-off');try{localStorage.navoff=off?1:''}catch(e){}if(!off)setTimeout(navAnim,120)}else $('drawer').classList.remove('open')};
-function drawNav(){const items=[['🪪','My Profile','profile'],['🏠','Home','home'],['💬','Chat Rooms','rooms'],['👥','Friends','friends'],['💰','My Account','account'],['🧭','Explore','explore'],['🎡','Daily Spin','spin'],['⌨️','Command List','cmds'],['⚙️','Settings','settings']];if(ST.role==='staff')items.splice(items.length-1,0,['🛡️','Admin Panel','admin']);
+function drawNav(){const items=[['🪪','My Profile','profile'],['🏠','Home','home'],['✉️','Mail','mail'],['💬','Chat Rooms','rooms'],['👥','Friends','friends'],['💰','My Account','account'],['🧭','Explore','explore'],['🎡','Daily Spin','spin'],['⌨️','Command List','cmds'],['⚙️','Settings','settings']];if(ST.role==='staff')items.splice(items.length-1,0,['🛡️','Admin Panel','admin']);
   else if(ST.role!=='admin')items.splice(items.length-1,0,['🏪',{user:'Become a Merchant',merchant:'Merchant Panel',mentor:'Mentor Panel',headmentor:'Head Mentor Panel'}[ST.role]||'Panel','panel']);
   $('dn').innerHTML=`<form class="dsr" id="ds"><input id="dq" placeholder="Search for a user" maxlength="16" aria-label="Search for a user"><button class="o" aria-label="Search"><svg viewBox="0 0 24 24"><circle cx="10" cy="10" r="6"/><path d="M15 15l6 6"/></svg></button></form>
   <div class="dme" id="mc">${av(me,84)}<div class="g"><span class="nm" style="color:${nc(me)}">${esc(me)}</span>${rt(ST.role,me)}<div class="mu"><span class="dot ${ST.presence||'online'}"></span>${ST.presence||'online'}</div><div class="mu">${lvi(lv(ST.xp||0),22)} Level ${lv(ST.xp||0)}</div><div class="mu">${ST.xp||0} XP · ${cn(ST.coins||0)}</div></div></div><div class="dh">Discover</div>`+
-  items.map(([i,t,v])=>`<button class="mi${(cur===v||(cur==='chat'&&v==='rooms'))?' on':''}" data-v="${v}"><i>${i}</i>${t}</button>`).join('')+`<button class="lgo" data-v="out" type="button"><span>Log Out</span><svg viewBox="0 0 60 44" aria-hidden="true"><g class="rn"><circle cx="14" cy="10" r="4.5"/><path d="M15 16l-3 8-6 3M15 16l5 6 5 1M12 24l-2 10M12 24l6 5 1 9"/></g><rect class="fr" x="34" y="4" width="20" height="36" rx="2"/><path class="dp" d="M36 6h16v32H36z"/><circle class="kn" cx="48" cy="22" r="1.5"/></svg></button>`;
+  items.map(([i,t,v])=>`<button class="mi${(cur===v||(cur==='chat'&&v==='rooms'))?' on':''}" data-v="${v}"><i>${i}</i>${t}${v==='mail'&&MAILN?`<b class="mbadge">${MAILN>99?'99+':MAILN}</b>`:''}</button>`).join('')+`<button class="lgo" data-v="out" type="button"><span>Log Out</span><svg viewBox="0 0 60 44" aria-hidden="true"><g class="rn"><circle cx="14" cy="10" r="4.5"/><path d="M15 16l-3 8-6 3M15 16l5 6 5 1M12 24l-2 10M12 24l6 5 1 9"/></g><rect class="fr" x="34" y="4" width="20" height="36" rx="2"/><path class="dp" d="M36 6h16v32H36z"/><circle class="kn" cx="48" cy="22" r="1.5"/></svg></button>`;
   if(!window.__na){window.__na=1;setTimeout(navAnim)}
   $('ds').onsubmit=e=>{e.preventDefault();const q=$('dq').value.trim();if(q)go('profile',q)};
   $('dn').onclick=e=>{const b=e.target.closest('[data-v]');if(b){b.dataset.v==='out'?(b.classList.add('go'),setTimeout(logout,900)):go(b.dataset.v,b.dataset.v==='profile'?me:undefined);return}
@@ -1336,6 +1364,54 @@ const isTp=n=>String(n||'').toLowerCase()==='legendary';let TPV=null;
 Panel.onCommand=t=>tx({t:'msg',text:t});Panel.onTop=()=>tx({t:'msg',text:'!top'});
 Panel.onHelp=()=>sheetOpen(`<h2>🎴 Teen Patti Gold</h2><div class="mu">Just for fun. Coins have no cash value.</div><div style="font-size:14px;line-height:1.5"><b>How to play:</b> tap <b>Start</b>, then others tap <b>Sit down</b> within 30 seconds. Everyone gets 3 cards. Play Blind (don't look) or tap <b>See</b>. On your turn: <b>Call</b>, <b>Raise</b> or <b>Fold</b> (15 s per turn). When only 2 players are left you can <b>Show</b>.<br><b>Hands (low → high):</b> High Card · Jutt (pair) · Color · Run · Double Run · Tirel (three of a kind).<br><b>Run order:</b> A-K-Q is highest, then A-2-3, then K-Q-J … down to 2-3-4.<br><b>Commands:</b> <code>!start</code> <code>!j</code> <code>!bet</code> <code>!raise</code> <code>!pack</code> <code>!see</code> <code>!show</code> <code>!allin</code> <code>!auto</code> <code>!autoblind</code> <code>!bal</code> <code>!top</code></div>`);
 /* ---------- rooms ---------- */
+
+/* ---------- Mail ---------- */
+let MAILN=0,MBOX='inbox',MOPEN=false;
+const setMailN=n=>{MAILN=n|0;if($('dn'))drawNav()};
+const mdate=ts=>{const d=new Date(ts),n=new Date();return d.toDateString()===n.toDateString()?d.toLocaleTimeString([],{hour:'numeric',minute:'2-digit'}):d.toLocaleDateString([],{day:'numeric',month:'short'})};
+const msize=n=>n>1e6?(n/1e6).toFixed(1)+' MB':Math.max(1,Math.round(n/1e3))+' KB';
+const ENV='<svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2.5"/><path d="M3.5 7l8.5 6.5L20.5 7"/></svg>';
+V.mail=async a=>{MOPEN=false;if(a)return mailOpen(a);
+  const d=await api('GET','/mail?box='+MBOX);setMailN(d.unread);
+  const E={inbox:['Your inbox is empty','When someone sends you mail, it will land here.'],unread:['No unread mail','You are all caught up.'],sent:['Nothing sent yet','Mail you send will show up here.']}[MBOX];
+  view(`<div class="mailh"><div><b>Mail</b><small>${d.unread?d.unread+' unread message'+(d.unread>1?'s':''):'No unread messages'}</small></div></div>
+   <div class="mtabs">${['inbox','unread','sent'].map(k=>`<button data-t="${k}" class="${k===MBOX?'on':''}">${{inbox:'Inbox',unread:'Unread',sent:'Sent'}[k]}</button>`).join('')}</div>
+   ${d.items.length?d.items.map(m=>{const o=MBOX==='sent'?m.to_user:m.from_user,un=MBOX!=='sent'&&!m.read;return `<div class="card mrow${un?' un':''}" data-id="${m.id}">${av(o,44)}<div class="mm"><div class="mt"><b style="color:${nc(o)}">${MBOX==='sent'?'To: ':''}${esc(o)}</b><span class="mu">${esc(mdate(m.ts))}</span></div><div class="ms">${esc(m.subject)}</div><div class="mu mp">${esc(m.pv.replace(/\s+/g,' '))}</div></div>${m.att?`<span class="mclip" title="${m.att} attachment(s)">📎</span>`:''}${un?'<i class="mdot"></i>':''}</div>`}).join(''):`<div class="mempty"><span class="mic">${ENV}</span><b>${E[0]}</b><p class="mu">${E[1]}</p><button class="o" id="mw">✏️ Write your first message</button></div>`}
+   <button class="mfab" id="mnew">✏️ Compose</button>`);
+  const v=$('view');v.onclick=e=>{const t=e.target.closest('[data-t]');if(t){MBOX=t.dataset.t;return V.mail()}const r=e.target.closest('[data-id]');if(r)return go('mail',+r.dataset.id);if(e.target.closest('#mnew,#mw'))go('mailc',{})}};
+async function mailOpen(id){MOPEN=true;const m=await api('GET','/mail/'+id);setMailN(m.unread);const mine=m.from_user===me,o=mine?m.to_user:m.from_user;
+  view(`<div class="mailh"><button class="mback" id="mbk" aria-label="Back">←</button><div><b>${esc(m.subject)}</b><small>${mine?'Sent':'Received'} · ${esc(new Date(m.ts).toLocaleString([],{day:'numeric',month:'short',hour:'numeric',minute:'2-digit'}))}</small></div></div>
+   <div class="card mview"><div class="mfrom">${av(o,44)}<div><div class="mu">${mine?'To':'From'}</div><b data-u="${esc(o)}" style="color:${nc(o)}">${esc(o)}</b></div></div>
+   ${m.body?`<div class="mbody">${esc(m.body)}</div>`:''}
+   ${m.atts.length?`<div class="matts">${m.atts.map(a=>a.type==='pdf'?`<a class="mpdf" href="${esc(a.url)}" target="_blank" rel="noopener">📄<span><b>${esc(a.name)}</b><small>PDF · ${msize(a.size)}</small></span></a>`:`<figure><img class="mimg" src="${esc(a.url)}" alt="${esc(a.name)}" data-big="${esc(a.url)}"><figcaption class="mu">${esc(a.name)} · ${msize(a.size)}</figcaption></figure>`).join('')}</div>`:''}
+   <div class="gacts2">${mine?'':'<button class="o" id="mrp">↩ Reply</button>'}<button id="mdl" class="mdel">🗑 Delete</button></div></div>`);
+  $('mbk').onclick=()=>go('mail');
+  $('view').onclick=async e=>{const b=e.target.dataset.big;if(b)return lightbox(b);
+    if(e.target.closest('#mrp'))return go('mailc',{to:m.from_user,subject:/^re:/i.test(m.subject)?m.subject:'Re: '+m.subject});
+    if(e.target.closest('#mdl')){const d=$('mdl');if(!d.dataset.s){d.dataset.s=1;d.textContent='🗑 Tap again to delete';setTimeout(()=>{if(d.isConnected){delete d.dataset.s;d.textContent='🗑 Delete'}},3500);return}try{const r=await api('DELETE','/mail/'+id);setMailN(r.unread);toast('Mail deleted');go('mail')}catch(er){fail(er)}}}}
+V.mailc=async a=>{MOPEN=true;const pre=a||{};let att=[],busy=0;
+  view(`<div class="mailh"><button class="mback" id="mbk" aria-label="Back">←</button><div><b>New mail</b><small>Send a private message to any user</small></div></div>
+   <div class="card mcomp"><label class="mu" for="mto">To</label><input id="mto" maxlength="16" placeholder="Username" autocomplete="off" value="${esc(pre.to||'')}">
+   <label class="mu" for="msb">Subject</label><input id="msb" maxlength="100" placeholder="Subject" autocomplete="off" value="${esc(pre.subject||'')}">
+   <label class="mu" for="mbd">Message</label><textarea id="mbd" rows="8" maxlength="5000" placeholder="Write your message…"></textarea>
+   <div id="mat"></div>
+   <div class="mrow2"><button type="button" id="mpick">📎 Attach</button><button class="o" id="msend">Send ➤</button></div>
+   <input type="file" id="mf" accept="image/jpeg,image/png,application/pdf,.jpg,.jpeg,.png,.pdf" multiple hidden>
+   <small class="mu">JPG, PNG or PDF · up to 3 files · 5 MB each</small></div>`);
+  const draw=()=>{$('mat').innerHTML=att.map((x,i)=>`<span class="mchip">${x.type==='pdf'?'📄':'🖼️'} ${esc(x.name)} <small>${msize(x.size)}</small><button type="button" data-rm="${i}" aria-label="Remove">✕</button></span>`).join('')+(busy?'<span class="mchip">Uploading…</span>':'')};
+  $('mbk').onclick=()=>go('mail');$('mpick').onclick=()=>$('mf').click();
+  $('mat').onclick=e=>{const i=e.target.closest('[data-rm]')?.dataset.rm;if(i!==undefined){att.splice(+i,1);draw()}};
+  $('mf').onchange=async e=>{const fs=[...e.target.files];e.target.value='';
+    for(const f of fs){if(att.length+busy>=3){toast('You can attach up to 3 files',1);break}
+      const okT=/^(image\/(jpeg|png)|application\/pdf)$/.test(f.type)||/\.(jpe?g|png|pdf)$/i.test(f.name);
+      if(!okT){toast('Only JPG, PNG and PDF files can be attached',1);continue}
+      if(f.size>5e6){toast(f.name+' is larger than 5 MB',1);continue}
+      busy++;draw();
+      try{const r=await fetch('/api/upload?kind=mail&name='+encodeURIComponent(f.name),{method:'POST',headers:{'Content-Type':'application/octet-stream',Authorization:'Bearer '+tok()},body:f});const d=await r.json().catch(()=>({}));if(r.status===401)logout();if(!r.ok)throw new Error(d.error||'Upload failed');att.push(d)}catch(er){fail(er)}
+      busy--;draw()}};
+  $('msend').onclick=async()=>{if(busy)return toast('Please wait for the upload to finish',1);const to=$('mto').value.trim();if(!to)return toast('Enter a username',1);
+    const b=$('msend');b.disabled=true;try{await api('POST','/mail',{to,subject:$('msb').value.trim(),body:$('mbd').value.trim(),atts:att.map(x=>x.url)});toast('Mail sent ✓');MBOX='sent';go('mail')}catch(er){fail(er);b.disabled=false}};
+  if(pre.to)$('mbd').focus()}
 V.rooms=async()=>{const rs=await api('GET','/rooms');
   const q=($('rq')?.value||'').toLowerCase();
   const S=[['Favorite rooms','#f7931e',rs.filter(x=>x.fav)],['Official rooms','#4aa8e8',rs.filter(x=>x.cat==='official')],['Game rooms','#9b59d0',rs.filter(x=>x.cat==='game')],['Your & community rooms','#2e9d4f',rs.filter(x=>x.cat==='user')],["What's hot",'#e8431a',[...rs].filter(x=>x.count>0).sort((a,b)=>b.count-a.count).slice(0,5)]];
@@ -1597,11 +1673,13 @@ V.admin=async(name)=>{
   if(ST.role!=='staff'){view('<div class="card mu">Staff only.</div>');return}
   if(name==='@gifts')return adminGifts();
   if(name==='@announce')return adminAnnounce();
+  if(name==='@support')return adminSupport();
   if(name==='@rooms')return adminRooms();
   if(name)return adminUser(name);
   const q=window.AQ||'';const [us,lg,rq]=await Promise.all([api('GET','/admin/users?q='+encodeURIComponent(q)),api('GET','/admin/log'),api('GET','/admin/requests')]);
   view(`<div class="card"><b>🛡️ Admin Panel</b><div class="mu">Search a user, then open to edit everything about the account.</div></div>
   <div class="card row" data-u="@rooms" style="cursor:pointer"><div class="g"><b>🏠 Manage rooms</b><div class="mu">Rename rooms and set how many users fit</div></div><span class="mu">Open ›</span></div>
+  <div class="card row" data-u="@support" style="cursor:pointer"><div class="g"><b>📧 Support Mail</b><div class="mu">Send and receive support@migv33.com mail</div></div><span class="mu">Open ›</span></div>
   <div class="card row" data-u="@announce" style="cursor:pointer"><div class="g"><b>📢 Announcements</b><div class="mu">Send a pop-up message that every user sees when they open the app</div></div><span class="mu">Open ›</span></div>
   <div class="card row" data-u="@gifts" style="cursor:pointer"><div class="g"><b>🎁 Manage gifts</b><div class="mu">Upload gift icons, set price and what the receiver gets</div></div><span class="mu">Open ›</span></div>
   <form id="aq" class="card row"><input id="aqi" placeholder="Search by ID, name, email or mobile" maxlength="40" value="${esc(q)}"><button class="o">Search</button></form>
@@ -1774,6 +1852,32 @@ let annQ=null;
 const showAnn=async a=>{if(!a||!a.id||!a.title||!me)return;let seen=0;try{seen=+localStorage['ann_'+me]||0}catch{}if(a.id<=seen||annQ===a.id)return;annQ=a.id;
   const link=a.link;const i=await popup({icon:'📢',title:a.title,body:a.body,buttons:link?[['Dismiss',''],[a.btn||'View','o']]:[['OK','o']]});
   try{localStorage['ann_'+me]=a.id}catch{}if(link&&i===1)window.open(link,'_blank','noopener')};
+let SUPBOX='in';
+async function adminSupport(id){
+  if(id)return adminSupportOpen(id);
+  const D=await api('GET','/admin/support?box='+SUPBOX);
+  const warn=!D.canSend?'Set SUPPORT_PASS on the server to send and receive.':!D.canReceive?'Receiving needs "npm install" on the server (imapflow, mailparser).':D.err?'Last check failed: '+D.err:'';
+  view(`<div class="card row"><button class="o" id="abk">‹ Back</button><div class="g"><b>📧 Support Mail</b><div class="mu">${esc(D.address)}</div></div><button id="sref">⟳ Refresh</button></div>
+  ${warn?`<div class="card mu" style="color:#ff9d57">${esc(warn)}</div>`:''}
+  <div class="mtabs"><button data-b="in" class="${D.box==='in'?'on':''}">Inbox${D.unread?` <span class="mbadge">${D.unread}</span>`:''}</button><button data-b="out" class="${D.box==='out'?'on':''}">Sent</button><button id="snew" class="o">✎ Compose</button></div>
+  ${D.list.map(x=>`<div class="card mrow${x.read?'':' unread'}" data-sm="${x.id}"><div class="g"><b>${esc(D.box==='in'?x.from_addr:x.to_addr)}</b><div>${esc(x.subject)}</div><div class="mu">${esc(x.snip)}</div></div><span class="mu">${new Date(x.ts).toLocaleDateString()}</span></div>`).join('')||'<div class="mempty card mu">No mail here yet.</div>'}`);
+  $('abk').onclick=()=>go('admin');
+  $('snew').onclick=()=>adminSupportComp();
+  $('sref').onclick=async()=>{try{toast('Checking mail…');await api('POST','/admin/support/sync');adminSupport()}catch(er){fail(er)}};
+  $('view').onclick=e=>{const t=e.target.closest('[data-b]');if(t){SUPBOX=t.dataset.b;return adminSupport()}const m=e.target.closest('[data-sm]');if(m)adminSupportOpen(m.dataset.sm)}}
+async function adminSupportOpen(id){
+  const m=await api('GET','/admin/support/'+id),inb=m.dir==='in';
+  view(`<div class="card row"><button class="o" id="abk">‹ Back</button><div class="g"><b>${esc(m.subject)}</b></div></div>
+  <div class="card mview"><div class="mu">${inb?'From':'To'}: <b>${esc(inb?m.from_addr:m.to_addr)}</b> · ${new Date(m.ts).toLocaleString()}</div><div style="white-space:pre-wrap;margin-top:10px;word-break:break-word">${esc(m.body)}</div></div>
+  <div class="row" style="gap:8px;margin:0 16px 90px">${inb?'<button class="o" id="srep">↩ Reply</button>':''}<button id="sdel">🗑 Delete</button></div>`);
+  $('abk').onclick=()=>adminSupport();
+  if($('srep'))$('srep').onclick=()=>{const em=(m.from_addr.match(/<([^>]+)>/)||[0,m.from_addr])[1];adminSupportComp(em,/^re:/i.test(m.subject)?m.subject:'Re: '+m.subject,'\n\n\n--- '+m.from_addr+' wrote ---\n'+m.body.split('\n').map(l=>'> '+l).join('\n'))};
+  let sure=0;$('sdel').onclick=async()=>{if(!sure){sure=1;$('sdel').textContent='Tap again to delete';return}try{await api('DELETE','/admin/support/'+id);adminSupport()}catch(er){fail(er)}}}
+function adminSupportComp(to='',sub='',body=''){
+  view(`<div class="card row"><button class="o" id="abk">‹ Back</button><div class="g"><b>✎ New mail</b><div class="mu">From: support@migv33.com</div></div></div>
+  <form id="sf" class="card mcomp" style="display:grid;gap:8px"><input id="sto" type="email" placeholder="To (email address)" maxlength="200" value="${esc(to)}"><input id="ssb" placeholder="Subject" maxlength="300" value="${esc(sub)}"><textarea id="sbd" rows="10" maxlength="20000" placeholder="Message">${esc(body)}</textarea><button class="o" id="ssn">Send</button></form>`);
+  $('abk').onclick=()=>adminSupport();
+  $('sf').onsubmit=async e=>{e.preventDefault();$('ssn').disabled=true;try{await api('POST','/admin/support/send',{to:$('sto').value,subject:$('ssb').value,body:$('sbd').value});toast('Sent ✔');SUPBOX='out';adminSupport()}catch(er){$('ssn').disabled=false;fail(er)}}}
 async function adminAnnounce(){
   const L=await api('GET','/admin/announcements');
   view(`<div class="card row"><button class="o" id="abk">‹ Back</button><div class="g"><b>📢 Announcements</b><div class="mu">The newest announcement pops up for every user the next time they open the app, and right now for anyone online.</div></div></div>

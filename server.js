@@ -374,7 +374,8 @@ app.post('/api/rooms', auth, ok((q, r) => {
   const name = String(q.body?.name || '').trim().replace(/\s+/g, ' ');
   if (!/^[A-Za-z0-9 ]{5,20}$/.test(name)) return bad(r, 'Room name: 5–20 characters, English letters, numbers and spaces only');
   if (db.prepare('select 1 from rooms where lower(name)=lower(?)').get(name)) return bad(r, 'That room already exists', 409);
-  db.prepare('insert into rooms(name,cat,owner) values(?,?,?)').run(name, 'user', q.user); r.json({ ok: true });
+  const descr = String(q.body?.descr || '').trim().slice(0, 200), minlv = Math.max(0, Math.min(MAXLV, parseInt(q.body?.minlv, 10) || 0));
+  db.prepare('insert into rooms(name,cat,owner,descr,minlv) values(?,?,?,?,?)').run(name, 'user', q.user, descr, minlv); r.json({ ok: true });
 }));
 app.post('/api/rooms/:n/fav', auth, ok((q, r) => {
   const d = db.prepare('delete from favs where user=? and room=?').run(q.user, q.params.n);
@@ -941,6 +942,7 @@ const sniff = b => {
 const upHits = new Map();
 const MEDIA_URL = /^\/uploads\/[a-f0-9]{32}\.(jpg|png|gif|webp|webm|ogg|m4a|mp3|wav)$/;
 app.post('/api/upload', auth, express.raw({ type: () => true, limit: '6mb' }), (q, r) => {
+  if (String(q.query.kind || '') === 'mail') return mailUpload(q, r);
   const now = Date.now(), h = (upHits.get(q.user) || []).filter(t => now - t < 600e3);
   if (h.length >= 4 && roleOf(q.user) !== 'staff') return bad(r, 'Upload limit reached: 4 uploads per 10 minutes. Please wait a little.', 429);
   upHits.set(q.user, [...h, now]);
@@ -966,6 +968,158 @@ app.post('/api/upload', auth, express.raw({ type: () => true, limit: '6mb' }), (
   }
   r.json({ url });
 });
+
+// ---------- Mail (user to user, with JPG / PNG / PDF attachments) ----------
+db.exec(`create table if not exists mails(id integer primary key, from_user text, to_user text, subject text, body text, ts int, read int default 0, del_from int default 0, del_to int default 0);
+create index if not exists mails_to on mails(to_user, ts);create index if not exists mails_from on mails(from_user, ts);
+create table if not exists mail_files(url text primary key, user text, name text, size int, mail int default 0, ts int)`);
+const MAIL_URL = /^\/uploads\/[a-f0-9]{32}\.(jpg|png|pdf)$/;
+const mailHits = new Map(), mailUp = new Map();
+const mailType = b => b.length < 12 ? null : (b[0] === 0xFF && b[1] === 0xD8 && b[2] === 0xFF) ? 'jpg' : b.slice(0, 8).equals(Buffer.from([0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A])) ? 'png' : b.slice(0, 5).toString() === '%PDF-' ? 'pdf' : null;
+function mailUpload(q, r) {
+  const now = Date.now(), h = (mailUp.get(q.user) || []).filter(t => now - t < 600e3);
+  if (h.length >= 12) return bad(r, 'Too many attachments. Please wait a few minutes.', 429);
+  const b = q.body;
+  if (!Buffer.isBuffer(b) || !b.length) return bad(r, 'No file received.');
+  const t = mailType(b);
+  if (!t) return bad(r, 'Only JPG, PNG and PDF files can be attached.');
+  if (b.length > 5e6) return bad(r, 'File is too large (max 5 MB).', 413);
+  mailUp.set(q.user, [...h, now]);
+  const url = '/uploads/' + crypto.randomBytes(16).toString('hex') + '.' + t;
+  const name = (String(q.query.name || 'file').replace(/[^\w .()\-]/g, '_').slice(0, 60) || 'file').replace(/\.(jpe?g|png|pdf)$/i, '') + '.' + t;
+  fs.writeFileSync('.' + url, b);
+  db.prepare('insert into mail_files(url,user,name,size,ts) values(?,?,?,?,?)').run(url, q.user, name, b.length, now);
+  r.json({ url, name, size: b.length, type: t });
+}
+const mailUnread = n => db.prepare('select count(*) c from mails where to_user=? and read=0 and del_to=0').get(n).c;
+const mailAtts = id => db.prepare('select url,name,size from mail_files where mail=?').all(id).map(a => ({ ...a, type: a.url.split('.').pop() }));
+app.get('/api/mail/unread', auth, ok((q, r) => r.json({ n: mailUnread(q.user) })));
+app.get('/api/mail', auth, ok((q, r) => {
+  const box = ['inbox', 'unread', 'sent'].includes(q.query.box) ? q.query.box : 'inbox';
+  const rows = box === 'sent'
+    ? db.prepare('select id,from_user,to_user,subject,substr(body,1,120) pv,ts,read from mails where from_user=? and del_from=0 order by id desc limit 100').all(q.user)
+    : db.prepare(`select id,from_user,to_user,subject,substr(body,1,120) pv,ts,read from mails where to_user=? and del_to=0 ${box === 'unread' ? 'and read=0' : ''} order by id desc limit 100`).all(q.user);
+  r.json({ box, unread: mailUnread(q.user), items: rows.map(m => ({ ...m, att: db.prepare('select count(*) c from mail_files where mail=?').get(m.id).c })) });
+}));
+app.get('/api/mail/:id', auth, ok((q, r) => {
+  const m = db.prepare('select * from mails where id=?').get(+q.params.id);
+  if (!m || !((m.to_user === q.user && !m.del_to) || (m.from_user === q.user && !m.del_from))) return bad(r, 'Mail not found', 404);
+  if (m.to_user === q.user && !m.read) { db.prepare('update mails set read=1 where id=?').run(m.id); m.read = 1; }
+  r.json({ ...m, atts: mailAtts(m.id), unread: mailUnread(q.user) });
+}));
+app.post('/api/mail', auth, ok((q, r) => {
+  const b = q.body || {}, to = String(b.to || '').trim().replace(/^@/, '');
+  const dest = db.prepare('select name,banned from users where lower(name)=lower(?)').get(to);
+  if (!dest || dest.banned) return bad(r, 'No user with that name.');
+  if (dest.name === q.user) return bad(r, "You can't send mail to yourself.");
+  if (isBlocked(q.user, dest.name)) return bad(r, "You can't send mail to this user.", 403);
+  const subject = String(b.subject || '').trim().slice(0, 100) || '(no subject)', body = String(b.body || '').trim().slice(0, 5000);
+  const urls = [...new Set(Array.isArray(b.atts) ? b.atts.map(String) : [])].slice(0, 3);
+  if (!body && !urls.length) return bad(r, 'Write a message or attach a file.');
+  for (const u of urls) if (!MAIL_URL.test(u) || !db.prepare('select 1 from mail_files where url=? and user=? and mail=0').get(u, q.user)) return bad(r, 'An attachment is no longer available. Please attach it again.');
+  const now = Date.now(), h = (mailHits.get(q.user) || []).filter(t => now - t < 3600e3);
+  if (h.length >= 30 && roleOf(q.user) !== 'staff') return bad(r, 'Mail limit reached: 30 per hour. Please wait a little.', 429);
+  mailHits.set(q.user, [...h, now]);
+  const id = db.prepare('insert into mails(from_user,to_user,subject,body,ts) values(?,?,?,?,?)').run(q.user, dest.name, subject, body, now).lastInsertRowid;
+  for (const u of urls) db.prepare('update mail_files set mail=? where url=?').run(id, u);
+  wss.clients.forEach(w => w.user === dest.name && send(w, { t: 'mail', id, from: q.user, subject, n: mailUnread(dest.name) }));
+  r.json({ ok: true, id });
+}));
+app.delete('/api/mail/:id', auth, ok((q, r) => {
+  const m = db.prepare('select * from mails where id=?').get(+q.params.id);
+  if (!m) return r.json({ ok: true });
+  if (m.to_user === q.user) db.prepare('update mails set del_to=1 where id=?').run(m.id);
+  else if (m.from_user === q.user) db.prepare('update mails set del_from=1 where id=?').run(m.id);
+  else return bad(r, 'Mail not found', 404);
+  const x = db.prepare('select * from mails where id=?').get(m.id);
+  if (x.del_to && x.del_from) { for (const f of db.prepare('select url from mail_files where mail=?').all(m.id)) fs.unlink('.' + f.url, () => {}); db.prepare('delete from mail_files where mail=?').run(m.id); db.prepare('delete from mails where id=?').run(m.id); }
+  r.json({ ok: true, unread: mailUnread(q.user) });
+}));
+// uploaded but never sent attachments are cleaned up after a day
+setInterval(() => { try { for (const f of db.prepare('select url from mail_files where mail=0 and ts<?').all(Date.now() - 864e5)) { fs.unlink('.' + f.url, () => {}); db.prepare('delete from mail_files where url=?').run(f.url); } } catch {} }, 3600e3).unref();
+// ---- support@migv33.com mailbox (Admin Panel) ----
+db.exec(`create table if not exists support_mail(id integer primary key autoincrement, dir text, mid text, from_addr text, to_addr text, subject text, body text, ts int, read int default 0)`);
+db.exec(`create unique index if not exists support_mid on support_mail(mid) where mid is not null`);
+const SUP = {
+  user: process.env.SUPPORT_USER || 'support@migv33.com',
+  pass: process.env.SUPPORT_PASS || (process.env.SMTP_USER === (process.env.SUPPORT_USER || 'support@migv33.com') ? process.env.SMTP_PASS : ''),
+  smtp: process.env.SUPPORT_SMTP_HOST || 'smtp.hostinger.com', smtpPort: +(process.env.SUPPORT_SMTP_PORT || 465),
+  imap: process.env.SUPPORT_IMAP_HOST || 'imap.hostinger.com', imapPort: +(process.env.SUPPORT_IMAP_PORT || 993),
+};
+const supMailer = SUP.pass ? nodemailer.createTransport({ host: SUP.smtp, port: SUP.smtpPort, secure: SUP.smtpPort === 465, auth: { user: SUP.user, pass: SUP.pass } }) : null;
+let ImapFlow = null, simpleParser = null;
+try { ({ ImapFlow } = await import('imapflow')); ({ simpleParser } = await import('mailparser')); } catch { /* run: npm install */ }
+const supState = { last: 0, err: '', busy: false };
+const htmlText = h => String(h || '').replace(/<(style|script)[\s\S]*?<\/\1>/gi, '').replace(/<br\s*\/?>|<\/p>|<\/div>|<\/tr>/gi, '\n').replace(/<[^>]+>/g, '').replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/\n{3,}/g, '\n\n').trim();
+async function supSync() {
+  if (!ImapFlow || !SUP.pass || supState.busy) return;
+  supState.busy = true;
+  const c = new ImapFlow({ host: SUP.imap, port: SUP.imapPort, secure: true, auth: { user: SUP.user, pass: SUP.pass }, logger: false });
+  c.on('error', () => {});
+  try {
+    await c.connect();
+    const lock = await c.getMailboxLock('INBOX');
+    try {
+      const total = c.mailbox.exists;
+      if (total) {
+        const from = Math.max(1, total - 49);
+        for await (const m of c.fetch(`${from}:*`, { source: true, uid: true })) {
+          try {
+            const p = await simpleParser(m.source);
+            const mid = p.messageId || `uid-${m.uid}`;
+            if (db.prepare('select 1 from support_mail where mid=?').get(mid)) continue;
+            const body = (p.text || htmlText(p.html) || '').slice(0, 20000);
+            const att = (p.attachments || []).map(a => a.filename || 'file').join(', ');
+            db.prepare('insert into support_mail(dir,mid,from_addr,to_addr,subject,body,ts) values(?,?,?,?,?,?,?)')
+              .run('in', mid, (p.from?.text || '').slice(0, 200), SUP.user, (p.subject || '(no subject)').slice(0, 300), body + (att ? `\n\n[Attachments not shown here: ${att}]` : ''), +new Date(p.date || Date.now()));
+          } catch (e) { console.log('[support] parse failed', e.message); }
+        }
+      }
+    } finally { lock.release(); }
+    await c.logout();
+    supState.err = '';
+  } catch (e) { supState.err = e.message || 'IMAP error'; console.log('[support] sync failed:', supState.err); try { c.close(); } catch {} }
+  supState.last = Date.now(); supState.busy = false;
+}
+setInterval(() => supSync().catch(() => {}), 120000);
+setTimeout(() => supSync().catch(() => {}), 8000);
+const supUnread = () => db.prepare("select count(*) n from support_mail where dir='in' and read=0").get().n;
+app.get('/api/admin/support', auth, ok((q, r) => {
+  if (!staffChk(q, r)) return;
+  const box = q.query.box === 'out' ? 'out' : 'in';
+  r.json({ box, unread: supUnread(), address: SUP.user, canSend: !!supMailer, canReceive: !!(ImapFlow && SUP.pass), err: supState.err, last: supState.last,
+    list: db.prepare('select id,from_addr,to_addr,subject,substr(body,1,120) snip,ts,read from support_mail where dir=? order by ts desc limit 200').all(box) });
+}));
+app.post('/api/admin/support/sync', auth, ok(async (q, r) => {
+  if (!staffChk(q, r)) return;
+  if (!SUP.pass) return bad(r, 'Support mailbox password is not set on the server (SUPPORT_PASS)');
+  if (!ImapFlow) return bad(r, 'Run "npm install" on the server (imapflow and mailparser are needed to receive mail)');
+  await supSync();
+  r.json({ ok: true, unread: supUnread(), err: supState.err });
+}));
+app.get('/api/admin/support/:id', auth, ok((q, r) => {
+  if (!staffChk(q, r)) return;
+  const m = db.prepare('select * from support_mail where id=?').get(+q.params.id);
+  if (!m) return bad(r, 'Not found', 404);
+  if (!m.read) db.prepare('update support_mail set read=1 where id=?').run(m.id);
+  r.json(m);
+}));
+app.post('/api/admin/support/send', auth, ok(async (q, r) => {
+  if (!staffChk(q, r)) return;
+  if (!supMailer) return bad(r, 'Support mailbox password is not set on the server (SUPPORT_PASS)');
+  const to = String(q.body.to || '').trim(), subject = String(q.body.subject || '').trim().slice(0, 300), text = String(q.body.body || '').slice(0, 20000);
+  if (!/^[^\s@,;]+@[^\s@,;]+\.[^\s@,;]+$/.test(to)) return bad(r, 'Enter one valid email address');
+  if (!subject) return bad(r, 'Write a subject');
+  if (!text.trim()) return bad(r, 'Write a message');
+  try { await supMailer.sendMail({ from: `"Migv33 Support" <${SUP.user}>`, to, subject, text }); }
+  catch (e) { return bad(r, 'Could not send: ' + (e.message || 'SMTP error'), 502); }
+  db.prepare('insert into support_mail(dir,from_addr,to_addr,subject,body,ts,read) values(?,?,?,?,?,?,1)').run('out', SUP.user, to, subject, text, Date.now());
+  r.json({ ok: true });
+}));
+app.delete('/api/admin/support/:id', auth, ok((q, r) => {
+  if (!staffChk(q, r)) return;
+  db.prepare('delete from support_mail where id=?').run(+q.params.id); r.json({ ok: true });
+}));
 app.delete('/api/me/avatar', auth, (q, r) => {
   const old = db.prepare('select avatar from users where name=?').get(q.user)?.avatar;
   db.prepare("update users set avatar='' where name=?").run(q.user);
