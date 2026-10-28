@@ -990,7 +990,8 @@ const col=(n,l=38)=>{let h=0;for(const c of n)h=(h*31+c.charCodeAt(0))%360;retur
 let AV={};
 const av=(n,s=40)=>AV[n]?`<span class="av" style="width:${s}px;height:${s}px;background:#cfd8e6 url(${esc(AV[n])}) center/cover" role="img" aria-label="${esc(n)}"></span>`:`<span class="av" style="width:${s}px;height:${s}px;background:${col(n)};font-size:${s/2.2}px">${esc(n[0]||'?').toUpperCase()}</span>`;
 const ROLES={},RC={admin:'#ff7a33',staff:'#4cc24f',mentor:'#f2394a',headmentor:'#e8c23c',merchant:'#a284e0',vip:'#2ec4bf'},RL={admin:'#e8591f',staff:'#2f9a3d',mentor:'#b01020',headmentor:'#8a6a14',merchant:'#50408a',vip:'#00706f'};
-const nc=n=>`var(--nm-${RC[ROLES[n]]?ROLES[n]:'user'})`;
+let UCOL={},UFX={};// personal name colours (hex) and name effects (glow) from the colour shop
+const nc=n=>{const c=UCOL[n]||`var(--nm-${RC[ROLES[n]]?ROLES[n]:'user'})`;return UFX[n]?`${c};text-shadow:${UFX[n]}`:c};
 const VERS=new Set();const refreshVer=()=>Promise.all([api('GET','/verified').then(l=>{VERS.clear();l.forEach(n=>VERS.add(n))}).catch(()=>{}),api('GET','/avatars').then(o=>{AV=o||{}}).catch(()=>{})]);
 const rt=(r,n)=>(RC[r]?`<img class="ri" src="/badges/${r==='headmentor'?'hmt':r}.png" alt="${r}" title="${r==='headmentor'?'head mentor':r==='vip'?'VIP user':r}">`:'')+(VERS.has(n)?'<img class="ri" src="/badges/verified.png" alt="verified" title="Verified">':'');
 const LST=[20,98,176,253,331,409,487,564,640,641,760,878,996,1113,1231,1349,1467,1584,1702,1820,1938,2056,2172,2290,2291,2684,3076];
@@ -1041,12 +1042,14 @@ function coinDelta(d){const c=$('coins');if(!c||!d)return;const r=c.getBoundingC
   document.body.append(e);setTimeout(()=>e.remove(),2200);c.classList.remove('cpop');void c.offsetWidth;c.classList.add('cpop')}
 async function on(m){
   if(m.t==='error'){if(m.error==='auth'||m.error==='banned'){if(m.error==='banned')alert('Your account has been banned.');logout()}else alert(m.error)}
-  if(m.t==='ready'){const first=!me;me=m.user;api('GET','/emoticons').then(setCE).catch(()=>{});G=m.gifts;$('auth').style.display='none';$('app').style.display='flex';document.body.classList.add('in');
+  if(m.t==='ready'){const first=!me;me=m.user;api('GET','/emoticons').then(setCE).catch(()=>{});G=m.gifts;UCOL=m.ucols||{};UFX=m.ufx||{};$('auth').style.display='none';$('app').style.display='flex';document.body.classList.add('in');
     ST=await api('GET','/me').catch(()=>({}));ROLES[me]=ST.role;api('GET','/mail/unread').then(x=>setMailN(x.n)).catch(()=>{});await refreshVer();$('coins').textContent=cn(ST.coins);drawNav();document.documentElement.removeAttribute('data-boot');saveOpen();if(!first&&room&&OPEN.includes(room)&&!room.startsWith('dm:')&&!AL.has(room)){skipIntro=true;tx({t:'join',room})}if(first)api('GET','/announcement').then(showAnn).catch(()=>{});if(first){let r=null;try{r=JSON.parse(sessionStorage.lastv||'null')}catch{}if(r&&V[r[0]]&&r[0]!=='admin')go(r[0],r[1]===null?undefined:r[1]);else go('home')}}
   if(m.t==='announce')showAnn(m.a);
   if(m.t==='mail'){setMailN(m.n);toast(`📧 New mail from ${m.from}: ${m.subject}`);if(cur==='mail'&&!MOPEN)V.mail()}
   if(m.t==='roomcfg'&&m.room===room&&RI){const ch=(RI.descr||'')!==m.descr;Object.assign(RI,{descr:m.descr,minlv:m.minlv,mods:m.mods,supers:m.supers});if(ch&&m.descr&&$('log'))L(m.room[0].toUpperCase()+m.room.slice(1),`📝 ${esc(m.descr)}`)}
   if(m.t==='levelup'){ST.xp=Math.max(ST.xp||0,CUM[m.level]);toast(`🎉 Level ${m.level}!${m.reward?` +${m.reward.toLocaleString()} coins`:''}`)}
+  if(m.t==='ucol'){if(m.hex)UCOL[m.user]=m.hex;else delete UCOL[m.user];if(cur==='colors')try{V.colors()}catch{}}
+  if(m.t==='ufx'){if(m.shadow)UFX[m.user]=m.shadow;else delete UFX[m.user];if(cur==='colors')try{V.colors()}catch{}}
   if(m.t==='emos'){setCE(m.list);if(cur==='home')try{loadFeed()}catch{}}
   if(m.t==='gifts'){G=m.gifts;if($('gifts'))$('gifts').innerHTML=Object.entries(G).map(([k,g])=>`<button data-g="${k}" title="${esc(g.n)} (${k}) · ${g.c} coins">${g.img?`<img src="${esc(g.img)}" alt="" style="height:20px;width:20px;object-fit:contain;vertical-align:middle">`:g.e} ${g.c}</button>`).join(' ')}
   if(m.t==='xp'){ST.xp=m.xp;drawNav();if(cur==='profile')go('profile',me)}
@@ -1977,7 +1980,9 @@ V.explore=async()=>{const lb=await api('GET','/leaderboard');lb.forEach(u=>ROLES
   <div class="card"><b>👑 Members</b><div class="mu">Admin (orange) · Staff (green) · Head Mentor (gold) · Mentor (red) · Merchant (purple) · VIP (teal)</div>${mem.map(u=>`<div class="rm" data-u="${esc(u.name)}"><b style="color:${nc(u.name)}">${esc(u.name)}</b>${rt(u.role,u.name)}</div>`).join('')||'<div class="mu">No members yet.</div>'}</div>
   <div class="card row" data-go="spin" style="cursor:pointer"><div class="g"><b>🎡 Daily Spin</b><div class="mu">Two draws a day: 12 PM and 12 AM</div></div>›</div>
   <div class="card row" data-go="cmds" style="cursor:pointer"><div class="g"><b>⌨️ Command List</b><div class="mu">All chat commands and what they do</div></div>›</div>
-  <div class="card"><b>Coming soon</b><div class="mu">Gift store · Color shop · Effect shop · Pets · Daily spin · Lucky draw · Contests</div></div>`);
+  <div class="card row" data-go="gshop" style="cursor:pointer"><div class="g"><b>🎁 Gift store</b><div class="mu">All gifts, prices and what the receiver gets</div></div>›</div>
+  <div class="card row" data-go="colors" style="cursor:pointer"><div class="g"><b>🎨 Color shop</b><div class="mu">Buy name colours and effects, then apply one</div></div>›</div>
+  <div class="card"><b>Coming soon</b><div class="mu">Pets · Lucky draw · Contests</div></div>`);
   $('view').onclick=e=>{const g=e.target.closest('[data-go]');if(g)return go(g.dataset.go);const c=e.target.closest('[data-u]');if(c)go('profile',c.dataset.u)}};
 const CMDS=[['/balance','Show your coin balance (private)','Everyone'],['/packet coins people · /grab','Drop a Lucky Packet of coins in the room (2–30 people); others type /grab for a random share','Everyone'],['/gift username gift [-m message]','Send a gift (rose, heart, crown) with an optional private note','Everyone'],['/g all gift','Gift shower to everyone in the room','Everyone'],['/f username','Follow a user; mutual follows become friends','Everyone'],['/block username · /unblock username','Block or unblock: neither side sees the other in rooms','Everyone'],['/tag username','Check a merchant tag','Everyone'],['/whois username','Role, level and gender of a user (private)','Everyone'],['/me','Broadcast your username as a styled action','Everyone'],['/roll','Roll a number from 1 to 100','Everyone'],['/sing','Sing a random fun line','Everyone'],['/flames [username]','Random FLAMES relationship','Everyone'],['/findmymatch','Match with a random member','Everyone'],['/getmyluck','Daily love, money, health and success luck','Everyone'],['/kick','Football kick emote (with a username it is moderation)','Everyone'],['/ban username · /unban username','Ban or unban a user in the room','Room owner/mod, staff, admin'],['/kick username','Remove and suspend for 1 hour','Room owner/mod, staff, admin'],['/bump username','Remove and suspend for 5 minutes','Room owner/mod, staff, admin'],['/unkick username','Remove a suspension','Staff, admin'],['/mod username · /dmod username','Add or remove a room moderator','Room admin, super moderator, staff'],['/smod username · /dsmod username','Make or remove a Super Moderator (can do everything the room admin can, except change the admin)','Room admin, staff'],['/bot cricket · /bot lowcard · /bot dice','Turn a pot game bot on in this room, then type !start [amount], !j, !d','Room admin/moderators, staff, admin'],['/bot teenpatti [boot] · /bot royalebattle','Turn Teen Patti Gold or Royale Battle on in this room','Staff, admin'],['/bot stop','Turn the room\'s game bot off (not while a game is running)','Room admin/moderators (pot games), staff, admin'],['/silence [seconds]','Silence ordinary chat for the whole room','Room owner/mod, staff, admin'],['/silence username [seconds]','Silence one user','Room owner/mod, staff, admin'],['/unsilence [username]','Unsilence the room or a user','Room owner/mod, staff, admin'],['/lock · /unlock','Lock or unlock ordinary messages','Room owner/mod, staff, admin'],['/broadcast message','One-time highlighted message','Room owner/mod, staff, admin'],['/announcement message|off','Set or remove the room announcement','Room owner/mod, staff, admin']];
 V.cmds=async()=>{const d=await api('GET','/commands');const q=($('cq')?.value||'').toLowerCase();
@@ -1985,6 +1990,31 @@ V.cmds=async()=>{const d=await api('GET','/commands');const q=($('cq')?.value||'
   ${[['Action commands — username required',d.required,' username'],['Action commands — optional username',d.optional,' [username]'],['Action commands — solo',d.solo,'']].map(([t,l,x])=>`<div class="card"><b>${t}</b><div class="chips">${l.filter(a=>a.includes(q.replace('/',''))).map(a=>`<span class="lv" style="margin:0">/${a}${x}</span>`).join('')}</div></div>`).join('')}
   <div class="card mu">Coin-stake room games are not part of Migv33 — it is fun-only. UNO is in #games.</div>`);
   $('cb').onclick=()=>go('explore');$('cq').oninput=()=>{const p=$('cq').selectionStart;V.cmds().then(()=>{$('cq').focus();$('cq').setSelectionRange(p,p)})}};
+V.colors=async()=>{
+  const d=await api('GET','/colors');
+  const rows=Object.values(d.shop).map(c=>{const fx=!!c.shadow,own=d.owned.includes(c.k),on=fx?d.fxActive===c.k:d.active===c.k;
+    const left=own?Math.max(0,Math.ceil((d.expires[c.k]-Date.now())/86400000)):0,renew=own&&left<=d.renewDays;
+    const status=!own?Number(c.c).toLocaleString()+' coins':`${on?'Applied · ':''}${left} day${left===1?'':'s'} left`;
+    const name=fx?`<b style="color:#ffffff;text-shadow:${esc(c.shadow)}">${esc(c.n)}</b>`:`<b style="color:${esc(c.hex)}">${esc(c.n)}</b>`;
+    return `<div class="card row"><div class="g">${name}<div class="mu">${fx?'Effect · ':''}${status}</div></div>${own?`${renew?`<button class="o" data-buy="${c.k}">Renew</button>`:''}<button class="o" data-ap="${c.k}" data-on="${on?1:0}" data-fx="${fx?1:0}">${on?'Remove':'Apply'}</button>`:`<button class="o" data-buy="${c.k}">Buy</button>`}</div>`;}).join('');
+  view(`<div class="cmp"><button id="colb">←</button><h2 style="margin:0 0 0 8px">Color shop</h2></div>
+  <div class="card mu">Your coins: ${Number(d.coins).toLocaleString()}. A colour lasts 30 days. Two days before it ends you can renew it. Apply one at a time: it shows on your username.</div>${rows}`);
+  $('colb').onclick=()=>go('explore');
+  $('view').onclick=async e=>{const b=e.target.closest('[data-buy],[data-ap]');if(!b)return;
+    try{
+      if(b.dataset.buy)await api('POST','/colors/buy/'+b.dataset.buy);
+      else if(b.dataset.on==='1')await api('POST',b.dataset.fx==='1'?'/colors/fx/remove':'/colors/remove');
+      else await api('POST','/colors/apply/'+b.dataset.ap);
+      V.colors();
+    }catch(er){fail(er)}};
+};
+V.gshop=async()=>{
+  const list=Object.entries(G);
+  view(`<div class="cmp"><button id="gsb">←</button><h2 style="margin:0 0 0 8px">Gift store</h2></div>
+  <div class="card mu">To send a gift, open a chat room, tap Send Gift, and pick one. Or type /gift username gift-name in any room.</div>
+  ${list.length?list.map(([k,g])=>`<div class="card row"><div class="g"><b>${g.img?`<img src="${esc(g.img)}" alt="" style="height:28px;width:28px;object-fit:contain;vertical-align:middle"> `:esc(g.e||'')+' '}${esc(g.n)}</b><div class="mu">Price: ${Number(g.c).toLocaleString()} coins · Receiver gets: ${Number(g.r??Math.floor(g.c/2)).toLocaleString()} coins</div></div></div>`).join(''):'<div class="card mu">No gifts yet.</div>'}`);
+  $('gsb').onclick=()=>go('explore');
+};
 const popup=o=>new Promise(res=>{document.getElementById('pop')?.remove();const d=document.createElement('div');d.id='pop';
   d.innerHTML=`<section class="pc"><div class="pi">${o.icon||'📢'}</div><h3>${esc(o.title||'')}</h3>${o.body?`<div class="pb">${esc(o.body)}</div>`:''}${o.html||''}<div class="pa">${(o.buttons||[['OK','o']]).map(([t,c],i)=>`<button class="${c||''}" data-i="${i}">${esc(t)}</button>`).join('')}</div></section>`;
   const end=i=>{d.remove();res(i)};d.onclick=e=>{const b=e.target.closest('[data-i]');if(b)end(+b.dataset.i);else if(e.target===d&&!o.sticky)end(-1)};document.body.appendChild(d)});

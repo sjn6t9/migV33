@@ -663,6 +663,86 @@ app.post('/api/admin/rooms/cap', auth, ok((q, r) => {
   alog(q.user, name, 'room_cap', cap ? String(cap) : 'unlimited'); cast(name, { t: 'roomcap', room: name, cap }); r.json({ ok: true });
 }));
 
+// ---------- Colour shop: buy name colours, apply one at a time ----------
+db.exec(`create table if not exists user_colors(user text, color text, primary key(user,color));
+create table if not exists user_color_active(user text primary key, color text)`);
+const COLOR_SHOP = {
+  // Shop colours are kept apart from the role colours (Admin, Staff, Mentor, Head Mentor, Merchant, VIP, Maroon)
+  hotpink:  { n: 'Hot Pink',      c: 100000, hex: '#ff1493' },
+  eblue:    { n: 'Electric Blue', c: 100000, hex: '#2979ff' },
+  nlime:    { n: 'Neon Lime',     c: 120000, hex: '#76ff03' },
+  epurple:  { n: 'Electric Purple', c: 110000, hex: '#d500f9' },
+  aqua:     { n: 'Aqua',          c: 110000, hex: '#00e5ff' },
+  amber:    { n: 'Amber',         c: 140000, hex: '#ffc400' },
+  violet:   { n: 'Violet',        c: 150000, hex: '#7c4dff' },
+  magenta:  { n: 'Magenta',       c: 160000, hex: '#ff00ff' },
+  nyellow:  { n: 'Neon Yellow',   c: 200000, hex: '#ffea00' },
+  // Effects: a glow drawn around the username in the wearer's colour (shadow uses the name colour)
+  fx_glow:   { n: 'Soft Glow',   c: 150000, shadow: '0 0 6px currentColor' },
+  fx_neon:   { n: 'Neon Glow',   c: 180000, shadow: '0 0 8px currentColor, 0 0 16px currentColor' },
+  fx_double: { n: 'Double Glow', c: 200000, shadow: '0 0 3px currentColor, 0 0 10px currentColor, 0 0 20px currentColor' }
+};
+for (const k of Object.keys(COLOR_SHOP)) COLOR_SHOP[k].k = k;
+try { db.exec('alter table user_colors add column expires int default 0'); } catch {} // older table without expiry
+const COL_DAYS = 30, COL_RENEW_DAYS = 2, DAY_MS = 86400000;
+try { db.exec('create table if not exists user_fx_active(user text primary key, color text)'); } catch {}
+const bcastColors = (user, hex) => wss.clients.forEach(w => w.user && send(w, { t: 'ucol', user, hex }));
+const bcastFx = (user, shadow) => wss.clients.forEach(w => w.user && send(w, { t: 'ufx', user, shadow }));
+// A colour or effect lasts 30 days. When it ends it is removed from the user, and can be bought again.
+const purgeColors = () => {
+  const now = Date.now();
+  const gone = db.prepare('select distinct a.user from user_color_active a join user_colors c on c.user=a.user and c.color=a.color where c.expires>0 and c.expires<=?').all(now).map(x => x.user);
+  const goneFx = db.prepare('select distinct a.user from user_fx_active a join user_colors c on c.user=a.user and c.color=a.color where c.expires>0 and c.expires<=?').all(now).map(x => x.user);
+  db.prepare('delete from user_colors where expires>0 and expires<=?').run(now);
+  db.prepare('delete from user_color_active where not exists (select 1 from user_colors c where c.user=user_color_active.user and c.color=user_color_active.color)').run();
+  db.prepare('delete from user_fx_active where not exists (select 1 from user_colors c where c.user=user_fx_active.user and c.color=user_fx_active.color)').run();
+  gone.forEach(u => bcastColors(u, null));
+  goneFx.forEach(u => bcastFx(u, null));
+};
+setInterval(purgeColors, 10 * 60 * 1000);
+const activeColors = () => { purgeColors(); const o = {}; db.prepare('select a.user, c.color from user_color_active a join user_colors c on c.user=a.user and c.color=a.color').all().forEach(x => { if (COLOR_SHOP[x.color]) o[x.user] = COLOR_SHOP[x.color].hex; }); return o; };
+const activeFx = () => { purgeColors(); const o = {}; db.prepare('select a.user, c.color from user_fx_active a join user_colors c on c.user=a.user and c.color=a.color').all().forEach(x => { if (COLOR_SHOP[x.color]?.shadow) o[x.user] = COLOR_SHOP[x.color].shadow; }); return o; };
+app.get('/api/colors', auth, ok((q, r) => {
+  purgeColors();
+  const rows = db.prepare('select color, expires from user_colors where user=?').all(q.user);
+  const active = db.prepare('select color from user_color_active where user=?').get(q.user)?.color || null;
+  const fxActive = db.prepare('select color from user_fx_active where user=?').get(q.user)?.color || null;
+  r.json({ shop: COLOR_SHOP, owned: rows.map(x => x.color), expires: Object.fromEntries(rows.map(x => [x.color, x.expires])), active, fxActive, coins: coins(q.user), days: COL_DAYS, renewDays: COL_RENEW_DAYS });
+}));
+app.post('/api/colors/buy/:k', auth, ok((q, r) => {
+  purgeColors();
+  const c = COLOR_SHOP[q.params.k]; if (!c) return bad(r, 'Colour not found', 404);
+  const now = Date.now();
+  const row = db.prepare('select expires from user_colors where user=? and color=?').get(q.user, c.k);
+  if (row && row.expires - now > COL_RENEW_DAYS * DAY_MS) return bad(r, `You can renew this colour ${COL_RENEW_DAYS} days before it ends.`, 409);
+  const paid = db.transaction(() => {
+    if (!db.prepare('update users set coins=coins-? where name=? and coins>=?').run(c.c, q.user, c.c).changes) throw new Error('funds');
+    if (row) db.prepare('update user_colors set expires=max(expires,?)+? where user=? and color=?').run(now, COL_DAYS * DAY_MS, q.user, c.k);
+    else db.prepare('insert into user_colors(user,color,expires) values(?,?,?)').run(q.user, c.k, now + COL_DAYS * DAY_MS);
+    addTx(q.user, 'shop', `${row ? 'Renewed' : 'Bought'} ${c.n} colour for ${COL_DAYS} days`, -c.c);
+  });
+  try { paid(); } catch (e) { if (e.message === 'funds') return bad(r, 'Not enough coins for this colour.'); throw e; }
+  r.json({ ok: true, coins: coins(q.user) });
+}));
+app.post('/api/colors/apply/:k', auth, ok((q, r) => {
+  const c = COLOR_SHOP[q.params.k]; if (!c) return bad(r, 'Colour not found', 404);
+  if (!db.prepare('select 1 from user_colors where user=? and color=?').get(q.user, c.k)) return bad(r, 'Buy this colour first.', 403);
+  if (c.shadow) { // an effect goes in its own slot, so a colour and an effect can both be worn
+    db.prepare('insert into user_fx_active(user,color) values(?,?) on conflict(user) do update set color=excluded.color').run(q.user, c.k);
+    bcastFx(q.user, c.shadow); return r.json({ ok: true });
+  }
+  db.prepare('insert into user_color_active(user,color) values(?,?) on conflict(user) do update set color=excluded.color').run(q.user, c.k);
+  bcastColors(q.user, c.hex); r.json({ ok: true });
+}));
+app.post('/api/colors/fx/remove', auth, ok((q, r) => {
+  db.prepare('delete from user_fx_active where user=?').run(q.user);
+  bcastFx(q.user, null); r.json({ ok: true });
+}));
+app.post('/api/colors/remove', auth, ok((q, r) => {
+  db.prepare('delete from user_color_active where user=?').run(q.user);
+  bcastColors(q.user, null); r.json({ ok: true });
+}));
+
 // ---------- Staff: custom gifts ----------
 const staffOnly = (q, r) => roleOf(q.user) === 'staff' || (bad(r, 'Only staff can manage gifts', 403), false);
 const bcastGifts = () => wss.clients.forEach(w => w.user && send(w, { t: 'gifts', gifts: allGifts() }));
@@ -1871,7 +1951,7 @@ function onWsMessage(ws, raw) {
       // The phone's connection dropped and came back (e.g. while the user was on Home/Friends): put them back in the room they were in, with the same 30-minute timer
       const gh = ghosts.get(ws.user);
       if (gh) { ghosts.delete(ws.user); clearTimeout(gh._ghostT); if (gh.room && !ws.room && members.has(gh.room)) { members.get(gh.room).delete(gh); ws.room = gh.room; ws.roomAt = gh.roomAt; members.get(gh.room).add(ws); gh.room = null; } }
-      send(ws, { t: 'ready', user: ws.user, coins: coins(ws.user), gifts: allGifts() });
+      send(ws, { t: 'ready', user: ws.user, coins: coins(ws.user), gifts: allGifts(), ucols: activeColors(), ufx: activeFx() });
       return online();
     }
     if (!ws.user) return;
