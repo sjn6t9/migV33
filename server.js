@@ -677,10 +677,15 @@ const COLOR_SHOP = {
   violet:   { n: 'Violet',        c: 150000, hex: '#7c4dff' },
   magenta:  { n: 'Magenta',       c: 160000, hex: '#ff00ff' },
   nyellow:  { n: 'Neon Yellow',   c: 200000, hex: '#ffea00' },
-  // Effects: a glow drawn around the username in the wearer's colour (shadow uses the name colour)
-  fx_glow:   { n: 'Soft Glow',   c: 150000, shadow: '0 0 6px currentColor' },
-  fx_neon:   { n: 'Neon Glow',   c: 180000, shadow: '0 0 8px currentColor, 0 0 16px currentColor' },
-  fx_double: { n: 'Double Glow', c: 200000, shadow: '0 0 3px currentColor, 0 0 10px currentColor, 0 0 20px currentColor' }
+  // Effects: animated glows around the username. "shadow" holds the CSS animation (keyframes are in the page stylesheet)
+  fx_glow:   { n: 'Soft Pulse',   c: 150000, shadow: 'fxPulse 2.4s ease-in-out infinite' },
+  fx_neon:   { n: 'Neon Flicker', c: 180000, shadow: 'fxFlicker 1.8s linear infinite' },
+  fx_double: { n: 'Wave Glow',    c: 200000, shadow: 'fxWave 2s ease-in-out infinite' },
+  fx_rose:    { n: 'Rose',         c: 180000, shadow: 'fxRose 3s ease-in-out infinite' },
+  fx_sparkle: { n: 'Sparkle',      c: 150000, shadow: 'fxSparkle 1.6s ease-in-out infinite' },
+  fx_fire:    { n: 'Fire',         c: 170000, shadow: 'fxFire 1.2s ease-in-out infinite' },
+  fx_ice:     { n: 'Ice',          c: 160000, shadow: 'fxIce 3s ease-in-out infinite' },
+  fx_rainbow: { n: 'Rainbow',      c: 200000, shadow: 'fxRainbow 4s linear infinite' }
 };
 for (const k of Object.keys(COLOR_SHOP)) COLOR_SHOP[k].k = k;
 try { db.exec('alter table user_colors add column expires int default 0'); } catch {} // older table without expiry
