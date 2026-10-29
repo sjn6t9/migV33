@@ -917,3 +917,10 @@ html body .fbp header .pm{position:static!important;margin-left:auto!important;f
 /* Home: Create story tile - plus sits centred on the photo area */
 html body .sc.mk{position:relative!important}
 html body .sc.mk .pl{position:absolute!important;left:50%!important;top:46px!important;width:30px!important;height:30px!important;min-width:30px!important;margin:0 0 0 -15px!important;line-height:26px!important;border-radius:50%!important;text-align:center!important;transform:none!important}
+/* Stories shown like Facebook: tall cards, same height, photo to the edge, avatar ring top-left, name at the bottom. Colours stay our theme. */
+html body #stories{align-items:flex-start!important;gap:8px!important;overflow-x:auto!important;scrollbar-width:none!important}
+html body .sc{width:112px!important;min-width:112px!important;height:196px!important;flex:0 0 112px!important;align-self:flex-start!important;border-radius:14px!important;box-sizing:border-box!important;position:relative!important}
+html body .sc:not(.mk) .rg{position:absolute!important;top:10px!important;left:10px!important;z-index:2!important}
+html body .sc.mk b{white-space:nowrap!important;font-size:12px!important}
+html body .sc.mk .pl{top:52px!important}
+html body .sc:not(.mk) b{left:8px!important;right:8px!important;bottom:10px!important;font-size:13px!important}
