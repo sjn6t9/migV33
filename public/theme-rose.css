@@ -539,7 +539,9 @@ html body #gp:empty{display:none!important}
 html body #rbar .ib{padding:0!important;width:36px!important;height:36px!important;min-width:36px!important;display:grid!important;place-items:center!important;justify-content:center!important;align-items:center!important;box-sizing:border-box!important}
 html body #rbar .ib svg{display:block!important;margin:0 auto!important;width:22px!important;height:22px!important}
 /* Post action row (React / Comment / Share): each count stays next to its button, all on one line */
-html body .fbp .acts{display:flex!important;flex-direction:row!important;margin:0 6px!important;padding:0!important;overflow:hidden!important}
+html body .fbp .acts{display:flex!important;flex-direction:row!important;margin:0 6px!important;padding:0!important}
+/* Reaction picker (emoji popup from the React button): floats above the page so it can be tapped */
+html body #rpick{position:fixed!important;z-index:200!important;display:flex!important;flex-wrap:wrap!important;gap:2px!important;width:max-content!important;max-width:min(94vw,376px)!important;max-height:50vh!important;overflow:auto!important;padding:8px!important;border-radius:20px!important;background:#0b1626!important;border:1px solid rgba(34,211,238,.35)!important;box-shadow:0 0 18px rgba(34,211,238,.18)!important;backdrop-filter:none!important}
 html body .fbp .acts > .ac{display:flex!important;flex-direction:row!important;flex-wrap:nowrap!important;align-items:center!important;justify-content:center!important;flex:1 1 auto!important;min-width:0!important}
 html body .fbp .acts > .ac > button:first-child{flex:1 1 auto!important;display:inline-flex!important;width:auto!important;min-width:0!important;font-size:11px!important;letter-spacing:-.2px!important;padding:8px 4px!important;gap:2px!important;overflow:visible!important;white-space:nowrap!important}
 html body .fbp .acts > .ac > button:first-child svg{width:12px!important;height:12px!important;flex:none!important}
