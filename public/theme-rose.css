@@ -924,3 +924,11 @@ html body .sc:not(.mk) .rg{position:absolute!important;top:10px!important;left:1
 html body .sc.mk b{white-space:nowrap!important;font-size:12px!important}
 html body .sc.mk .pl{top:52px!important}
 html body .sc:not(.mk) b{left:8px!important;right:8px!important;bottom:10px!important;font-size:13px!important}
+/* Story row: one straight line of tiles; names sit at the bottom of each tile */
+html body #stories{display:flex!important;flex-direction:row!important;align-items:flex-start!important;gap:8px!important}
+html body #stories > .sc{vertical-align:top!important;display:block!important;margin:0!important;top:auto!important}
+html body #stories .sc b{position:absolute!important;left:8px!important;right:8px!important;bottom:10px!important;top:auto!important;text-align:left!important}
+/* Post header: three dots sit inside the header row, at the right, not touching the edge */
+html body .fbp header{padding:12px 12px 6px 14px!important;box-sizing:border-box!important;max-width:100%!important}
+html body .fbp header .pm{margin:0 0 0 auto!important;position:static!important;right:auto!important;flex:none!important}
+html body .fbp header .who{min-width:0!important;flex:1 1 0!important}
