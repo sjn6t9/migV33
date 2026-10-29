@@ -544,6 +544,8 @@ html body .fbp .acts > .ac{display:flex!important;flex-direction:row!important;f
 html body .fbp .acts > .ac > button:first-child{flex:1 1 auto!important;display:inline-flex!important;width:auto!important;min-width:0!important;font-size:11px!important;letter-spacing:-.2px!important;padding:8px 4px!important;gap:2px!important;overflow:visible!important;white-space:nowrap!important}
 html body .fbp .acts > .ac > button:first-child svg{width:12px!important;height:12px!important;flex:none!important}
 html body .fbp .acts > .ac > button.cnt{display:inline-flex!important;flex:0 0 auto!important;width:auto!important;min-width:20px!important;font-size:11px!important;padding:2px 4px!important;margin:0 3px 0 0!important}
+/* Chat room tabs: every tab is the same width, so switching rooms never moves the other tabs */
+html body #hdr #rtabs .rt, html body #hdr #rtabs .rt.on, html body #hdr #rtabs .rt.mini{flex:0 0 96px!important;width:96px!important;min-width:96px!important;max-width:96px!important;justify-content:center!important;overflow:hidden!important;text-overflow:ellipsis!important;white-space:nowrap!important;font-size:12px!important}
 /* Header: bigger top icons (home, friends, chat) and room tabs lined up on one row, none overlapping */
 html body #top button svg{width:32px!important;height:32px!important;max-width:32px!important;max-height:32px!important}
 html body #top button{display:grid!important;place-items:center!important;width:58px!important;height:48px!important;min-height:48px!important}
