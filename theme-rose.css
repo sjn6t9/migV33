@@ -1,0 +1,524 @@
+﻿/* MigV33 - Stonic-matched dark theme (local preview, not uploaded). */
+:root{
+  --bg:#05080c; --sf:#0b1117; --sf2:#0f171f; --ln:rgba(34,211,238,.22);
+  --tx:#e6f1f5; --mu:#7d93a0; --ac:#22d3ee; --ac2:#0891b2;
+  --red:#ef4444; --grn:#4ade80;
+  --gsh:0 0 0 1px rgba(34,211,238,.12), 0 0 22px rgba(34,211,238,.10), inset 0 1px 0 rgba(255,255,255,.04);
+}
+html, body{
+  background: radial-gradient(900px 500px at 50% -15%, #0a2430 0%, #05080c 60%) fixed, var(--bg) !important;
+  color: var(--tx) !important;
+}
+/* panels: dark slate, thin cyan edge, small radius like Stonic's tiles */
+.box, .fbp, .pimg, .cm, .card, .mview, .mcomp{
+  background: linear-gradient(160deg, rgba(15,23,31,.96), rgba(8,13,18,.98)) !important;
+  border: 1px solid var(--ln) !important;
+  border-radius: 10px !important;
+  box-shadow: var(--gsh) !important;
+  color: var(--tx) !important;
+}
+.card.row{
+  background: linear-gradient(90deg, rgba(34,211,238,.10), rgba(11,17,23,.96) 60%) !important;
+  border-left: 2px solid var(--ac) !important;
+  border-radius: 8px !important;
+  transition: border-color .2s ease, box-shadow .2s ease !important;
+}
+.card.row:hover{ box-shadow: 0 0 0 1px rgba(34,211,238,.35), 0 0 18px rgba(34,211,238,.18) !important; }
+.mu, .mu *{ color: var(--mu) !important; }
+b, h1, h2, h3{ color: var(--tx) !important; }
+
+/* buttons: Stonic-style mono, uppercase, cyan glow */
+button, .btn{
+  color: var(--tx) !important;
+  background: var(--sf2) !important;
+  border: 1px solid rgba(34,211,238,.28) !important;
+  border-radius: 6px !important;
+  transition: transform .15s ease, box-shadow .15s ease, border-color .15s ease !important;
+}
+button:hover, .btn:hover{
+  border-color: var(--ac) !important;
+  box-shadow: 0 0 0 1px rgba(34,211,238,.35), 0 0 16px rgba(34,211,238,.28) !important;
+}
+button:active, .btn:active{ transform: scale(.97) !important; }
+button.o, .o{
+  background: linear-gradient(135deg, #22d3ee, #0891b2) !important;
+  color: #03141a !important;
+  border-color: transparent !important;
+  font-weight: 700 !important;
+}
+button.o:hover, .o:hover{ box-shadow: 0 0 22px rgba(34,211,238,.45) !important; }
+button:disabled{ opacity: .45 !important; }
+
+/* inputs */
+input, textarea, select{
+  background: #070d12 !important;
+  color: var(--tx) !important;
+  border: 1px solid rgba(34,211,238,.20) !important;
+  border-radius: 6px !important;
+}
+input:focus, textarea:focus, select:focus{
+  outline: none !important;
+  border-color: var(--ac) !important;
+  box-shadow: 0 0 0 2px rgba(34,211,238,.18) !important;
+}
+
+/* mail tabs: active = cyan, like Stonic's selected tab */
+.mtabs button.on, button.on{
+  background: rgba(34,211,238,.14) !important;
+  border-color: var(--ac) !important;
+  color: var(--ac) !important;
+}
+.mbadge{ background: var(--ac) !important; color: #03141a !important; }
+
+/* bottom navigation: dark glass bar, cyan active */
+#bnav .bg{
+  background: linear-gradient(160deg, rgba(15,23,31,.94), rgba(5,8,12,.94)) !important;
+  border: 1px solid var(--ln) !important;
+  box-shadow: 0 14px 34px rgba(0,0,0,.6), 0 0 22px rgba(34,211,238,.12) !important;
+}
+#bnav button{ color: var(--mu) !important; background: none !important; border: 0 !important; box-shadow: none !important; }
+#bnav button.on{ color: var(--ac) !important; }
+#bnav button.on svg{ filter: drop-shadow(0 0 6px rgba(34,211,238,.7)) !important; }
+#bnav .ind b{ background: linear-gradient(90deg, #22d3ee, #0891b2) !important; box-shadow: 0 0 8px #22d3ee !important; }
+#bnav .fab .disc{ background: linear-gradient(145deg, #22d3ee, #0891b2) !important; box-shadow: 0 0 22px rgba(34,211,238,.5) !important; }
+
+/* override the site's stacked light/blue backgrounds with Stonic's black-navy */
+html body, body, body.in, html[data-theme=dark] body, html[data-theme=light] body{
+  background-color: #05080c !important;
+  background-image: radial-gradient(900px 500px at 50% -15%, #0a2430 0%, rgba(5,8,12,0) 60%) !important;
+  background-attachment: fixed !important;
+  color: var(--tx) !important;
+}
+#app, #view{ background: transparent !important; box-shadow: none !important; }
+#view{ background: rgba(8,13,18,.6) !important; }
+body.in #drawer{ border-right: 1px solid var(--ln) !important; }
+body.in #drawer nav, #drawer nav{
+  background: linear-gradient(180deg, rgba(11,17,23,.97), rgba(5,8,12,.97)) !important;
+  color: var(--tx) !important;
+}
+#auth{
+  background: radial-gradient(900px 500px at 50% -15%, #0a2430 0%, #05080c 60%) !important;
+}
+html[data-theme=dark] .b, .b{
+  background: linear-gradient(135deg, rgba(15,23,31,.96), rgba(8,13,18,.98)) !important;
+  border: 1px solid var(--ln) !important;
+  color: var(--tx) !important;
+}
+html[data-theme=dark] .b.mine, .b.mine{
+  background: linear-gradient(135deg, rgba(34,211,238,.22), rgba(8,145,178,.18)) !important;
+  border-color: rgba(34,211,238,.45) !important;
+}
+#dtg, .tabbar{ background: var(--sf) !important; border-color: var(--ln) !important; }
+
+/* high-specificity pass so the site's own stacked rules do not win */
+html body .card, html body .card.row, html body .card.mrow, html body .box, html body .mview, html body .mcomp, html body .mempty{
+  background: linear-gradient(160deg, rgba(15,23,31,.97), rgba(8,13,18,.99)) !important;
+  border: 1px solid rgba(34,211,238,.22) !important;
+  color: var(--tx) !important;
+}
+html body .card.row{ border-left: 2px solid var(--ac) !important; }
+html body button.o, html body .o, html body .mtabs button.o{
+  background: linear-gradient(135deg, #22d3ee, #0891b2) !important;
+  color: #03141a !important;
+  border: 1px solid transparent !important;
+}
+html body .mtabs button.on, html body button.on{
+  background: rgba(34,211,238,.16) !important;
+  border: 1px solid var(--ac) !important;
+  color: var(--ac) !important;
+}
+html body button, html body .btn{
+  background: var(--sf2) !important;
+  color: var(--tx) !important;
+  border: 1px solid rgba(34,211,238,.28) !important;
+}
+html body #bnav .fab .disc{ background: linear-gradient(145deg, #22d3ee, #0891b2) !important; box-shadow: 0 0 22px rgba(34,211,238,.5) !important; }
+html body .mu, html body .mu *{ color: var(--mu) !important; }
+
+/* top header, room bar, bottom nav and grey action buttons */
+html body #hdr, html body #top, html body #tb{
+  background-color: rgba(8,13,18,.92) !important;
+  background-image: linear-gradient(180deg, rgba(15,23,31,.96), rgba(5,8,12,.96)) !important;
+  border-color: rgba(34,211,238,.22) !important;
+  color: var(--tx) !important;
+}
+html body #hdr button, html body #top button{ background: rgba(255,255,255,.04) !important; }
+html body #hdr button.on, html body #top button.on{ background: rgba(34,211,238,.18) !important; color: var(--ac) !important; }
+html body .b, html body .box input, html body textarea, html body .composer, html body #cmp{
+  background-color: #0b1117 !important;
+  background-image: none !important;
+}
+html body #sub{
+  background: rgba(8,13,18,.94) !important;
+  background-image: none !important;
+  border-bottom: 1px solid var(--ln) !important;
+  box-shadow: none !important;
+}
+html body #stt, html body #strip, html body #stt *{
+  background-color: transparent !important;
+  background-image: none !important;
+}
+html body #stt{ color: var(--tx) !important; }
+html body #strip{ background-color: rgba(11,17,23,.92) !important; border-color: var(--ln) !important; }
+html body button{
+  background-image: none !important;
+  box-shadow: 0 0 0 1px rgba(34,211,238,.12) !important;
+}
+html body button.o{ background-image: linear-gradient(135deg, #22d3ee, #0891b2) !important; }
+html body button.on{ background-image: none !important; }
+html body #hdr button, html body #top button, html body #hdr .btn{ box-shadow: none !important; }
+
+/* the site has a navy skin that uses !important; beat it with a stronger selector */
+html[data-skin] body #sub, html[data-skin] body #top, html[data-skin] body #strip, html[data-skin] body #rbar, html[data-skin] body #tools,
+html[data-skin] body .card, html[data-skin] body .box, html[data-skin] body .cmp, html[data-skin] body .cmpx, html[data-skin] body .fr,
+html[data-skin] body .b, html[data-skin] body .chips button, html[data-skin] body .tabbar, html[data-skin] body .tabbar button,
+html[data-skin] body .acts button, html[data-skin] body #drawer nav, html[data-skin] body #bnav .bg, html[data-skin] body #rtabs{
+  background-color: rgba(11,17,23,.94) !important;
+  background-image: linear-gradient(160deg, rgba(15,23,31,.97), rgba(8,13,18,.98)) !important;
+  border-color: var(--ln) !important;
+  color: var(--tx) !important;
+  box-shadow: 0 0 0 1px rgba(34,211,238,.10) !important;
+}
+html[data-skin] body .chips button, html[data-skin] body .tabbar button, html[data-skin] body button{
+  background-color: var(--sf2) !important;
+  background-image: none !important;
+  color: var(--tx) !important;
+}
+html[data-skin] body .tabbar button.on, html[data-skin] body .chips button.on, html[data-skin] body button.on{
+  background-color: rgba(34,211,238,.16) !important;
+  color: var(--ac) !important;
+  border-color: var(--ac) !important;
+}
+html[data-skin] body button.o{
+  background-color: #0891b2 !important;
+  background-image: linear-gradient(135deg, #22d3ee, #0891b2) !important;
+  color: #03141a !important;
+}
+
+/* scrollbars */
+::-webkit-scrollbar{ width: 8px; height: 8px; }
+::-webkit-scrollbar-thumb{ background: rgba(34,211,238,.25); border-radius: 8px; }
+::-webkit-scrollbar-track{ background: transparent; }
+
+
+/* id-doubling for the navy-skin bars (site uses id + attribute selectors with !important) */
+html body #sub#sub{ background-color: rgba(8,13,18,.94) !important; background-image: none !important; border-bottom: 1px solid var(--ln) !important; color: var(--tx) !important; }
+html body #top#top{ background-color: rgba(8,13,18,.94) !important; background-image: linear-gradient(180deg, rgba(15,23,31,.96), rgba(5,8,12,.96)) !important; }
+html body #strip#strip{ background-color: rgba(11,17,23,.92) !important; background-image: none !important; }
+
+/* final pass: orange primary and active tabs -> Stonic cyan (id/class doubling beats the site's skin rules) */
+html body button.o.o, html body .o.o.o{ background-color: #0891b2 !important; background-image: linear-gradient(135deg, #22d3ee, #0891b2) !important; color: #03141a !important; border-color: transparent !important; }
+html body .mtabs button.on.on, html body button.on.on{ background-color: rgba(34,211,238,.18) !important; background-image: none !important; color: var(--ac) !important; border: 1px solid var(--ac) !important; }
+
+/* ===== Stonic button system: square-ish, uppercase, cyan edge, compact size ===== */
+html body #view button, html body #drawer button, html body .box button, html body #rtabs button, html body .mtabs button, html body .card button{
+  min-height: 36px !important;
+  padding: 8px 14px !important;
+  border-radius: 4px !important;
+  font-size: 12px !important;
+  font-weight: 600 !important;
+  letter-spacing: .06em !important;
+  text-transform: none !important;
+  background-color: rgba(12,20,28,.92) !important;
+  background-image: linear-gradient(180deg, rgba(34,211,238,.07), rgba(0,0,0,0)) !important;
+  border: 1px solid rgba(34,211,238,.35) !important;
+  color: #d8f6ff !important;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.05), 0 0 0 1px rgba(0,0,0,.45) !important;
+  transition: border-color .15s ease, box-shadow .15s ease, background-color .15s ease !important;
+}
+html body #view button:hover, html body #drawer button:hover, html body .box button:hover, html body .card button:hover, html body .mtabs button:hover{
+  border-color: var(--ac) !important;
+  box-shadow: 0 0 14px rgba(34,211,238,.30), inset 0 1px 0 rgba(255,255,255,.06) !important;
+}
+html body #view button:active, html body .card button:active{ transform: translateY(1px) !important; }
+html body #view button:disabled, html body .card button:disabled{ opacity: .4 !important; box-shadow: none !important; }
+
+/* primary (orange in the site) -> Stonic cyan solid */
+html body #view button.o, html body .box button.o, html body .card button.o, html body .mtabs button.o, html body button.o.o{
+  background-color: #14b8d4 !important;
+  background-image: linear-gradient(180deg, #5ee7ff, #0891b2) !important;
+  color: #02141a !important;
+  border: 1px solid #67e8f9 !important;
+  box-shadow: 0 0 16px rgba(34,211,238,.35), inset 0 1px 0 rgba(255,255,255,.35) !important;
+  font-weight: 700 !important;
+}
+/* active tab / selected */
+html body #view button.on, html body .mtabs button.on, html body .box button.on, html body button.on.on{
+  background-color: rgba(34,211,238,.16) !important;
+  background-image: none !important;
+  border: 1px solid var(--ac) !important;
+  color: var(--ac) !important;
+  box-shadow: 0 0 12px rgba(34,211,238,.25) !important;
+}
+/* destructive actions -> Stonic red */
+html body #sdel, html body button.danger, html body button[id*="del"], html body button[class*="danger"]{
+  border-color: rgba(239,68,68,.6) !important;
+  color: #fca5a5 !important;
+  background-color: rgba(60,12,16,.85) !important;
+}
+/* icon-only round/bottom-nav/top bar buttons keep their own shape */
+html body #top button, html body #bnav button{ text-transform: none !important; letter-spacing: 0 !important; border-radius: 0 !important; }
+
+/* composer chips (PHOTO, MENTION, TAG, emoji) and POST: same Stonic button shape and size */
+html body .cmpx button, html body #tools button, html body .chips button, html body .acts button, html body .fr button, html body #rbar button, html body #recbar button{
+  min-height: 34px !important;
+  height: 34px !important;
+  padding: 0 12px !important;
+  border-radius: 4px !important;
+  font-size: 11px !important;
+  font-weight: 700 !important;
+  letter-spacing: .06em !important;
+  text-transform: none !important;
+  background-color: rgba(12,20,28,.92) !important;
+  background-image: linear-gradient(180deg, rgba(34,211,238,.07), rgba(0,0,0,0)) !important;
+  border: 1px solid rgba(34,211,238,.35) !important;
+  color: #d8f6ff !important;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.05), 0 0 0 1px rgba(0,0,0,.45) !important;
+  line-height: 1 !important;
+}
+html body .cmpx button svg, html body #tools button svg{ width: 14px !important; height: 14px !important; }
+html body .cmpx button:last-child, html body #tools button:last-child{
+  background-color: #14b8d4 !important;
+  background-image: linear-gradient(180deg, #5ee7ff, #0891b2) !important;
+  color: #02141a !important;
+  border-color: #67e8f9 !important;
+  box-shadow: 0 0 14px rgba(34,211,238,.35) !important;
+  min-width: 72px !important;
+}
+html body .cmpx button:hover, html body .chips button:hover, html body #tools button:hover{
+  border-color: var(--ac) !important;
+  box-shadow: 0 0 12px rgba(34,211,238,.30) !important;
+}
+
+/* POST button -> Stonic primary cyan */
+html body button#pb, html body #pb#pb{
+  background-color: #14b8d4 !important;
+  background-image: linear-gradient(180deg, #5ee7ff, #0891b2) !important;
+  color: #02141a !important;
+  border: 1px solid #67e8f9 !important;
+  box-shadow: 0 0 14px rgba(34,211,238,.35) !important;
+  min-width: 72px !important;
+}
+
+/* strongest pass for composer chips and POST (body.in is set while logged in) */
+html body.in .cmpx button, html body.in #tools button, html body.in .chips button{
+  min-height: 34px !important; height: 34px !important; padding: 0 12px !important; border-radius: 4px !important;
+  font-size: 11px !important; font-weight: 700 !important; letter-spacing: .06em !important; text-transform: none !important;
+  background-color: rgba(12,20,28,.95) !important; background-image: linear-gradient(180deg, rgba(34,211,238,.07), rgba(0,0,0,0)) !important;
+  border: 1px solid rgba(34,211,238,.35) !important; color: #d8f6ff !important;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.05), 0 0 0 1px rgba(0,0,0,.45) !important;
+}
+html body.in button#pb{
+  min-height: 34px !important; height: 34px !important; border-radius: 4px !important; min-width: 72px !important;
+  background-color: #14b8d4 !important; background-image: linear-gradient(180deg, #5ee7ff, #0891b2) !important;
+  color: #02141a !important; border: 1px solid #67e8f9 !important; box-shadow: 0 0 14px rgba(34,211,238,.35) !important;
+  font-size: 11px !important; font-weight: 700 !important; text-transform: none !important; letter-spacing: .06em !important;
+}
+
+/* composer exact targets: .cb row with Photo, Mention, Tag, emoji and Post (#pb) */
+html body.in .cmpx .cb button:not(.o), html body.in .cb #pph, html body.in .cb #pmn, html body.in .cb #pht, html body.in .cb #pem{
+  height: 34px !important; min-height: 34px !important; padding: 0 12px !important; border-radius: 4px !important;
+  font-size: 11px !important; font-weight: 700 !important; letter-spacing: .06em !important; text-transform: none !important;
+  background: rgba(12,20,28,.95) !important; background-image: linear-gradient(180deg, rgba(34,211,238,.07), rgba(0,0,0,0)) !important;
+  border: 1px solid rgba(34,211,238,.35) !important; color: #d8f6ff !important; box-shadow: inset 0 1px 0 rgba(255,255,255,.05) !important;
+}
+html body.in .cmpx .cb button.o, html body.in .cb button#pb, html body.in .cb button#pb:disabled, html body.in .cb button#pb:not(:disabled){
+  height: 34px !important; min-height: 34px !important; padding: 0 16px !important; border-radius: 4px !important; min-width: 76px !important;
+  font-size: 11px !important; font-weight: 700 !important; letter-spacing: .06em !important; text-transform: none !important;
+  background: linear-gradient(180deg, #5ee7ff, #0891b2) !important; color: #02141a !important; border: 1px solid #67e8f9 !important;
+  box-shadow: 0 0 14px rgba(34,211,238,.35) !important; opacity: 1 !important;
+}
+html body.in .cb button#pb:disabled{ opacity: .55 !important; box-shadow: none !important; }
+html body.in .cb .mu#pcnt{ color: var(--mu) !important; font-size: 11px !important; }
+
+/* composer row: the site repeats #view to win; match that weight so Stonic sizing applies */
+#view#view#view#view#view#view#view#view#view#view#view#view .cb button:not(.o), #view#view#view#view#view#view#view#view#view#view#view#view .cb #pph, #view#view#view#view#view#view#view#view#view#view#view#view .cb #pmn, #view#view#view#view#view#view#view#view#view#view#view#view .cb #pht, #view#view#view#view#view#view#view#view#view#view#view#view .cb #pem{
+  height: 34px !important; min-width: 0 !important; padding: 0 12px !important; border-radius: 4px !important;
+  font-size: 11px !important; font-weight: 700 !important; letter-spacing: .06em !important; text-transform: none !important;
+  display: inline-flex !important; align-items: center !important; justify-content: center !important; gap: 4px !important;
+  background: rgba(12,20,28,.95) !important; background-image: linear-gradient(180deg, rgba(34,211,238,.07), rgba(0,0,0,0)) !important;
+  border: 1px solid rgba(34,211,238,.35) !important; color: #d8f6ff !important; box-shadow: inset 0 1px 0 rgba(255,255,255,.05) !important;
+}
+#view#view#view#view#view#view#view#view#view#view#view#view .cb button.o, #view#view#view#view#view#view#view#view#view#view#view#view .cb button#pb{
+  height: 34px !important; padding: 0 16px !important; border-radius: 4px !important; min-width: 76px !important;
+  font-size: 11px !important; font-weight: 700 !important; letter-spacing: .06em !important; text-transform: none !important;
+  background: linear-gradient(180deg, #5ee7ff, #0891b2) !important; color: #02141a !important; border: 1px solid #67e8f9 !important;
+  box-shadow: 0 0 14px rgba(34,211,238,.35) !important;
+}
+#view#view#view#view#view#view#view#view#view#view#view#view .cb button#pb:disabled{ opacity: .55 !important; box-shadow: none !important; }
+
+/* sidebar menu (drawer): Stonic tile style — dark, square, cyan edge, uppercase */
+#drawer#drawer .mi, #drawer#drawer nav button.mi{
+  background: linear-gradient(90deg, rgba(34,211,238,.08), rgba(11,17,23,.95) 70%) !important;
+  border: 1px solid rgba(34,211,238,.22) !important;
+  border-left: 2px solid rgba(34,211,238,.55) !important;
+  border-radius: 4px !important;
+  color: #d8f6ff !important;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.04) !important;
+  min-height: 40px !important;
+  font-size: 12px !important;
+  font-weight: 600 !important;
+  letter-spacing: .06em !important;
+  text-transform: none !important;
+  text-align: left !important;
+}
+#drawer#drawer .mi:hover{ border-color: var(--ac) !important; box-shadow: 0 0 12px rgba(34,211,238,.25) !important; }
+#drawer#drawer .mi.on{ background: rgba(34,211,238,.16) !important; border-color: var(--ac) !important; color: var(--ac) !important; }
+#drawer#drawer .mi i{
+  background: rgba(34,211,238,.10) !important;
+  border: 1px solid rgba(34,211,238,.35) !important;
+  border-radius: 4px !important;
+}
+#drawer#drawer .lgo{
+  background: #0f1a2b !important;
+  border: 1px solid rgba(34,211,238,.3) !important;
+  color: #ff4d4d !important;
+  border-radius: 4px !important;
+  text-transform: none !important;
+  letter-spacing: .06em !important;
+  font-weight: 700 !important;
+}
+
+/* every button inside the page view: Stonic dark tile; selected = cyan; primary = cyan solid */
+#view#view#view#view#view#view#view#view#view#view#view#view button:not(.o):not(.on){
+  background: rgba(12,20,28,.95) !important; background-image: linear-gradient(180deg, rgba(34,211,238,.06), rgba(0,0,0,0)) !important;
+  border: 1px solid rgba(34,211,238,.30) !important; border-radius: 4px !important; color: #d8f6ff !important; box-shadow: inset 0 1px 0 rgba(255,255,255,.04) !important;
+}
+#view#view#view#view#view#view#view#view#view#view#view#view button.on{
+  background: linear-gradient(180deg, #5ee7ff, #0891b2) !important; background-image: linear-gradient(180deg, #5ee7ff, #0891b2) !important; color: #02141a !important; border: 1px solid #67e8f9 !important; border-radius: 4px !important; box-shadow: 0 0 12px rgba(34,211,238,.30) !important;
+}
+#view#view#view#view#view#view#view#view#view#view#view#view button.o{
+  background: linear-gradient(180deg, #5ee7ff, #0891b2) !important; color: #02141a !important; border: 1px solid #67e8f9 !important; border-radius: 4px !important; box-shadow: 0 0 12px rgba(34,211,238,.30) !important;
+}
+/* tabs (FRIENDS / REQUESTS / DISCOVER) and active top icon: Stonic cyan + tile shape */
+#top#top#top#top button.on{ background: linear-gradient(180deg, #5ee7ff, #0891b2) !important; color: #02141a !important; }
+#top#top#top#top button.on svg{ stroke: #02141a !important; }
+#view#view#view#view#view#view#view#view#view#view#view#view .tabbar button, #view#view#view#view#view#view#view#view#view#view#view#view .tabbar button, #view#view#view#view#view#view#view#view#view#view#view#view .mtabs button, #view#view#view#view#view#view#view#view#view#view#view#view .rtabs button, #view#view#view#view#view#view#view#view#view#view#view#view #rtabs button{
+  background: rgba(12,20,28,.95) !important; background-image: linear-gradient(180deg, rgba(34,211,238,.07), rgba(0,0,0,0)) !important;
+  border: 1px solid rgba(34,211,238,.30) !important; border-radius: 4px !important; color: #d8f6ff !important;
+  text-transform: none !important; letter-spacing: .06em !important; font-size: 12px !important; font-weight: 700 !important; min-height: 36px !important;
+}
+#view#view#view#view#view#view#view#view#view#view#view#view .tabbar button.on, #view#view#view#view#view#view#view#view#view#view#view#view .tabbar button.on, #view#view#view#view#view#view#view#view#view#view#view#view .mtabs button.on, #view#view#view#view#view#view#view#view#view#view#view#view #rtabs button.on{
+  background: linear-gradient(180deg, #5ee7ff, #0891b2) !important; color: #02141a !important; border-color: #67e8f9 !important; box-shadow: 0 0 14px rgba(34,211,238,.35) !important;
+}
+/* top bar active icon -> cyan; sidebar section pill and profile card -> Stonic panel */
+#top#top button.on, #top#top button.on svg{ background: linear-gradient(180deg, #5ee7ff, #0891b2) !important; color: #02141a !important; stroke: #02141a !important; }
+#drawer#drawer .dh, #drawer#drawer .sec, #drawer#drawer .disc-h, #drawer#drawer h4{
+  background: rgba(34,211,238,.10) !important; border: 1px solid rgba(34,211,238,.30) !important; color: var(--ac) !important; border-radius: 4px !important; letter-spacing: .08em !important; text-transform: none !important;
+}
+#drawer#drawer .me, #drawer#drawer .prof, #drawer#drawer .mecard{
+  background: linear-gradient(160deg, rgba(15,23,31,.97), rgba(8,13,18,.99)) !important; border: 1px solid rgba(34,211,238,.25) !important; border-radius: 6px !important;
+}
+
+/* ===== Liquid glass -> Stonic dark glass: kill the blur, remap the site's glass variables ===== */
+:root:root{
+  --gl: rgba(12,20,28,.92);
+  --glb: rgba(15,23,31,.96);
+  --gdk: rgba(5,8,12,.94);
+  --gbl: none;
+  --gsh: 0 0 0 1px rgba(34,211,238,.12), 0 0 18px rgba(34,211,238,.10);
+  --rim: inset 0 1px 0 rgba(255,255,255,.04);
+  --lg: linear-gradient(160deg, rgba(15,23,31,.97), rgba(8,13,18,.98));
+  --lg2: linear-gradient(160deg, rgba(15,23,31,.97), rgba(8,13,18,.98));
+}
+html body *, html body *::before, html body *::after{
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+html body .liquid, html body [class*="glass"], html body [class*="liquid"]{
+  background: linear-gradient(160deg, rgba(15,23,31,.96), rgba(8,13,18,.98)) !important;
+  border: 1px solid rgba(34,211,238,.22) !important;
+  box-shadow: 0 0 18px rgba(34,211,238,.10) !important;
+  color: var(--tx) !important;
+}
+/* popups / dialogs / sheets: Stonic panel */
+html body #popup, html body .popup, html body .modal, html body #sheet, html body #sheet div, html body .dlg, html body .toast, html body #toast{
+  background: linear-gradient(160deg, rgba(15,23,31,.98), rgba(8,13,18,.99)) !important;
+  border: 1px solid rgba(34,211,238,.28) !important;
+  color: var(--tx) !important;
+  box-shadow: 0 16px 40px rgba(0,0,0,.6), 0 0 18px rgba(34,211,238,.12) !important;
+}
+
+/* mobile bottom nav: centre chat button and active items in Stonic cyan */
+html body #bnav#bnav .fab .disc, html body #bnav#bnav .fab.on .disc{
+  background: linear-gradient(145deg, #5ee7ff, #0891b2) !important;
+  box-shadow: 0 0 22px rgba(34,211,238,.55), inset 0 1px 0 rgba(255,255,255,.4) !important;
+}
+html body #bnav#bnav button.on, html body #bnav#bnav button.on svg{ color: var(--ac) !important; stroke: var(--ac) !important; }
+html body #bnav#bnav .ind b{ background: linear-gradient(90deg, #22d3ee, #0891b2) !important; }
+
+/* login screen: Stonic dark panel instead of the blue liquid-glass card */
+html body #auth#auth{
+  background: radial-gradient(900px 500px at 50% -15%, #0a2430 0%, #05080c 60%) !important;
+  background-image: radial-gradient(900px 500px at 50% -15%, #0a2430 0%, rgba(5,8,12,0) 60%) !important;
+  background-color: #05080c !important;
+}
+html body #auth#auth .box{
+  background: linear-gradient(160deg, rgba(15,23,31,.97), rgba(8,13,18,.99)) !important;
+  border: 1px solid rgba(34,211,238,.28) !important;
+  border-radius: 8px !important;
+  box-shadow: 0 0 30px rgba(34,211,238,.12), 0 20px 50px rgba(0,0,0,.6) !important;
+}
+html body #auth#auth h1{ color: var(--ac) !important; text-transform: none !important; letter-spacing: .08em !important; font-size: 18px !important; }
+html body #auth#auth input{
+  background: #070d12 !important; border: 1px solid rgba(34,211,238,.25) !important; border-radius: 4px !important; color: #e6f1f5 !important;
+  box-shadow: none !important;
+}
+html body #auth#auth input:focus{ border-color: var(--ac) !important; box-shadow: 0 0 0 2px rgba(34,211,238,.18) !important; }
+html body #auth#auth button, html body #auth#auth button.o{
+  border-radius: 4px !important; text-transform: none !important; letter-spacing: .08em !important; font-weight: 700 !important; font-size: 12px !important; min-height: 40px !important;
+}
+html body #auth#auth button.o, html body #auth#auth #lf button{
+  background: linear-gradient(180deg, #5ee7ff, #0891b2) !important; color: #02141a !important; border: 1px solid #67e8f9 !important; box-shadow: 0 0 16px rgba(34,211,238,.35) !important;
+}
+html body #auth#auth button:not(.o){
+  background: rgba(12,20,28,.95) !important; color: #d8f6ff !important; border: 1px solid rgba(34,211,238,.30) !important; box-shadow: none !important;
+}
+html body #auth#auth a, html body #auth#auth .link{ color: var(--ac) !important; }
+
+/* drawer (sidebar) inner glass: profile card, search, status pill, collapse tab -> Stonic dark */
+html body #drawer#drawer{
+  background: linear-gradient(180deg, rgba(11,17,23,.97), rgba(5,8,12,.98)) !important;
+  backdrop-filter: none !important; -webkit-backdrop-filter: none !important;
+  border-right: 1px solid rgba(34,211,238,.22) !important;
+  box-shadow: none !important;
+}
+html body #drawer#drawer div:not([style*="background"]):not(.mi):not(.mbadge),
+html body #drawer#drawer input:not([style*="background"]),
+html body #drawer#drawer button:not(.mi):not(.lgo):not([style*="background"]){
+  background-color: rgba(12,20,28,.92) !important;
+  background-image: linear-gradient(160deg, rgba(15,23,31,.96), rgba(8,13,18,.98)) !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important; -webkit-backdrop-filter: none !important;
+}
+html body #drawer#drawer input{ border: 1px solid rgba(34,211,238,.25) !important; border-radius: 4px !important; color: #e6f1f5 !important; }
+html body #drawer#drawer button:not(.mi):not(.lgo){ border: 1px solid rgba(34,211,238,.30) !important; border-radius: 4px !important; color: #d8f6ff !important; }
+html body #dtg, html body #dtg#dtg, html body #drawer#drawer ~ button, html body #mb#mb{
+  background: rgba(12,20,28,.95) !important; background-image: none !important; border: 1px solid rgba(34,211,238,.35) !important; box-shadow: 0 0 10px rgba(34,211,238,.18) !important; color: var(--ac) !important;
+}
+
+/* header logo: no glass plate behind it */
+html body #top .lg, html body #top#top .lg, html body #hdr .lg, html body .lgo{
+  background-color: transparent !important; box-shadow: none !important; border: 0 !important; backdrop-filter: none !important;
+}
+html body #top .lg img, html body #top#top .lg img{ filter: drop-shadow(0 0 6px rgba(34,211,238,.35)); }
+
+/* drawer outer frame: flat Stonic panel, no rim glow */
+html body #drawer#drawer nav, html body #drawer#drawer > div, html body #drawer#drawer .dn, html body #drawer#drawer #dn{
+  background: linear-gradient(180deg, rgba(11,17,23,.98), rgba(5,8,12,.99)) !important;
+  background-image: linear-gradient(180deg, rgba(11,17,23,.98), rgba(5,8,12,.99)) !important;
+  border: 1px solid rgba(34,211,238,.20) !important;
+  border-radius: 8px !important;
+  box-shadow: 0 0 0 1px rgba(0,0,0,.4) !important;
+  backdrop-filter: none !important;
+}
+html body #drawer#drawer nav::before, html body #drawer#drawer nav::after, html body #drawer#drawer::before, html body #drawer#drawer::after,
+html body #drawer#drawer > div::before, html body #drawer#drawer > div::after{
+  background: none !important; background-image: none !important; box-shadow: none !important; filter: none !important; animation: none !important; opacity: 0 !important;
+}
+
+/* drawer inner cards: cyan hairline instead of white glass rims */
+html body #drawer#drawer div:not([style*="background"]), html body #drawer#drawer button:not(.mi):not(.lgo):not([style*="background"]), html body #drawer#drawer input{
+  border-color: rgba(34,211,238,.22) !important;
+}
+
