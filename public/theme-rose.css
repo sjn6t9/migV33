@@ -895,3 +895,8 @@ html body #view .sw input:checked + i::after{transform:translateX(18px)!importan
 /* Mobile fix: post photos fit the phone width instead of showing at full desktop size */
 html body #feed .fbp, html body .fbp{max-width:calc(100% - 16px)!important;box-sizing:border-box!important}
 html body #feed .fbp img.pimg, html body .fbp img.pimg, html body img.pimg{width:100%!important;max-width:100%!important;min-width:0!important;height:auto!important;max-height:520px!important;object-fit:cover!important;box-sizing:border-box!important}
+/* Stonic layout for the story row: dark tiles, cyan edge, cyan plus button */
+html body .sc.mk{background:linear-gradient(160deg,#0f171f,#0b1117)!important;color:#e6f1f5!important;border:1px solid rgba(34,211,238,.28)!important;box-shadow:0 0 14px rgba(34,211,238,.12)!important}
+html body .sc.mk .top{background:linear-gradient(160deg,#0a2430,#05080c)!important}
+html body .sc.mk b{color:#67e8f9!important;text-shadow:none!important;font-size:12px!important;font-weight:700!important;letter-spacing:.06em!important;text-transform:uppercase!important}
+html body .sc.mk .pl{background:#22d3ee!important;color:#05080c!important;border:2px solid #05080c!important;box-shadow:0 0 10px rgba(34,211,238,.45)!important}
