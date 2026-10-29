@@ -900,3 +900,13 @@ html body .sc.mk{background:linear-gradient(160deg,#0f171f,#0b1117)!important;co
 html body .sc.mk .top{background:linear-gradient(160deg,#0a2430,#05080c)!important}
 html body .sc.mk b{color:#67e8f9!important;text-shadow:none!important;font-size:12px!important;font-weight:700!important;letter-spacing:.06em!important;text-transform:uppercase!important}
 html body .sc.mk .pl{background:#22d3ee!important;color:#05080c!important;border:2px solid #05080c!important;box-shadow:0 0 10px rgba(34,211,238,.45)!important}
+/* Day mode: the light version of the Stonic design (cyan edges kept) */
+html[data-skin=day]{--bg:#eef6fb;--sf:#ffffff;--sf2:#e6f0f8;--ln:rgba(8,145,178,.35);--tx:#0b1a2a;--mu:#4b5d73;--ac:#0891b2;--ac2:#0e7490}
+html[data-skin=day] body,html[data-skin=day] #auth{background:radial-gradient(900px 500px at 50% -15%,#d6f2fa 0%,#eef6fb 60%) fixed!important;background-image:none!important;color:#0b1a2a!important}
+html[data-skin=day] :is(.card,.fr,.cmp,.cmpx,.rm,#rbar,#tools,.ph,.dme,.tiles div,.box,.xpc,.tagbar,#sheet div,#drawer nav,#sug,.rpk,#top,#sub,#strip,#bnav .bg,#f,#recbar,#rtabs,#dtg,.tabbar,.dh,.fbp,.post,.cm,.b,.b.mine){background:#ffffff!important;background-image:none!important;border:1px solid rgba(8,145,178,.35)!important;box-shadow:0 0 14px rgba(8,145,178,.12)!important;color:#0b1a2a!important;backdrop-filter:none!important}
+html[data-skin=day] :is(#top,#top *,#sub,#sub *,#view>h2,#view h2,#strip,#strip *,.box,.box *:not(button.o),.fbp,.fbp *){color:#0b1a2a!important;text-shadow:none!important}
+html[data-skin=day] :is(button:not(.sc),.chips button,.acts button,.tabbar button,#rbar .ib,.rm button){background:#f2f8fc!important;background-image:none!important;border:1px solid rgba(8,145,178,.35)!important;color:#0b1a2a!important;box-shadow:none!important}
+html[data-skin=day] .chips button.on{background:#0891b2!important;color:#ffffff!important;border-color:#0891b2!important}
+html[data-skin=day] :is(input,select,textarea){background:#ffffff!important;border:1px solid rgba(8,145,178,.4)!important;color:#0b1a2a!important;box-shadow:none!important}
+html[data-skin=day] #bnav button.on{color:#0891b2!important}
+html[data-skin=day] #top svg{stroke:#0b1a2a}
