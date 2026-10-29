@@ -522,3 +522,373 @@ html body #drawer#drawer div:not([style*="background"]), html body #drawer#drawe
   border-color: rgba(34,211,238,.22) !important;
 }
 
+
+/* Rose: room icon strip on Chat Rooms (replaces orange headings) */
+.rstrip{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0 12px}
+.rchip{display:inline-flex;align-items:center;gap:6px;padding:7px 12px;border-radius:99px;border:1px solid rgba(34,211,238,.35);background:#0f1a2b;color:#eaf0ff;font-size:14px;font-weight:700;box-shadow:none;max-width:100%}
+.rchip svg{width:16px;height:16px;flex:none;stroke:#22d3ee;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.rchip span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.rchip i{font-style:normal;font-size:12px;opacity:.7}
+.rchip.fv{box-shadow:inset 0 0 0 1px rgba(34,211,238,.55)}
+
+/* Rose: room options (3 dots) moved to the bottom-left corner of the chat text bar */
+#f #more{flex:none;width:36px;height:36px;min-width:36px;padding:0;border-radius:50%;display:grid;place-items:center;background:#0f1a2b;border:1px solid rgba(34,211,238,.35);box-shadow:none}
+#f #more svg{width:18px;height:18px;fill:#22d3ee;stroke:none}
+
+/* Rose: inside a room, the room icons take the place of the main MigV33 header; no other options above the room */
+body.inchat #top{display:none!important}
+body:not(.inchat) #rtabs{display:none!important}
+body.inchat #hdr #rtabs{display:flex!important;align-items:center;gap:8px;margin:0!important;padding:8px 10px!important;border:0!important;border-radius:0!important;background:#0b1420!important;box-shadow:none!important;backdrop-filter:none!important;overflow-x:auto;scrollbar-width:none}
+body.inchat #hdr #rtabs::-webkit-scrollbar{display:none}
+body.inchat #hdr #rtabs .rt{flex:none;position:relative;border-radius:99px!important;min-height:34px}
+
+/* Rose: room info bar becomes a drawer under the header; opens from the handle, auto-hides after ten seconds */
+body:not(.inchat) #rbw,body:not(.inchat) #rbt{display:none!important}
+body.inchat #hdr #rbw{position:absolute!important;left:8px;right:8px;top:100%;z-index:40;display:block!important;margin:0!important;transform:translateY(-120%);opacity:0;pointer-events:none;transition:transform .32s ease,opacity .25s ease;grid-template-rows:none!important}
+body.inchat #hdr #rbw.show{transform:none;opacity:1;pointer-events:auto}
+body.inchat #hdr #rbw .rbi{overflow:visible!important;min-height:0!important}
+body.inchat #hdr #rbw #rbar{margin:0 0 6px!important;opacity:1!important}
+body.inchat #hdr #rbt{position:absolute!important;left:50%;top:100%;transform:translateX(-50%);z-index:41;margin:0!important;width:56px!important;height:20px!important;min-width:0!important;padding:0!important;border:0!important;border-radius:0 0 14px 14px!important;background:#0f1a2b!important;display:grid!important;place-items:center}
+body.inchat #hdr #rbw+#rbt svg{transform:none!important;width:16px!important;height:16px!important}
+body.inchat #hdr #rbw.show+#rbt svg{transform:rotate(180deg)!important}
+
+/* Rose: room info drawer - final layout: handle sits under the header, drawer slides down from the top and hides after ten seconds */
+body.inchat #hdr #rbw{position:relative!important;left:auto!important;right:auto!important;top:auto!important;transform:none!important;display:block!important;grid-template-rows:none!important;max-height:0!important;overflow:hidden!important;opacity:0!important;pointer-events:none!important;margin:0 8px!important;transition:max-height .32s ease,opacity .25s ease!important}
+body.inchat #hdr #rbw.show{max-height:200px!important;opacity:1!important;pointer-events:auto!important;overflow:visible!important}
+body.inchat #hdr #rbt{position:relative!important;left:auto!important;top:auto!important;transform:none!important;margin:0 auto 2px!important;width:56px!important;height:20px!important;display:grid!important;place-items:center}
+
+/* Rose: inside a room, hide the room-name title above the handle and the empty tools pill under the chat */
+body.inchat #hdr #sub{display:none!important}
+body.inchat #tools:has(#to:empty){display:none!important}
+body.inchat #tools:empty{display:none!important}
+
+/* Rose: tighten the gaps between the room icons, the handle and the chat box */
+body.inchat #hdr #rtabs{padding:4px 10px!important;gap:6px!important}
+body.inchat #hdr #rtabs .rt{min-height:0!important;height:28px!important;padding-top:0!important;padding-bottom:0!important;box-sizing:border-box!important}
+body.inchat #hdr #rbt{height:12px!important;width:48px!important;margin:0 auto!important;border-radius:0 0 10px 10px!important}
+body.inchat #hdr #rbt svg{width:12px!important;height:12px!important}
+body.inchat #chatbox{margin-top:0!important;padding-top:0!important}
+body.inchat #view{padding-top:0!important}
+
+/* Rose: inside a room, Home / Friends / Rooms stay on the header in their own colour, room icons sit beside them */
+body.inchat #hdr{display:flex!important;flex-wrap:wrap;align-items:center;gap:4px 6px;padding:4px 8px}
+body.inchat #hdr #top{display:flex!important;order:0;flex:none!important;gap:4px;padding:0!important;margin:0!important;background:none!important;border:0!important;box-shadow:none!important;align-items:center}
+body.inchat #hdr #top > *:not(#th):not(#tf):not(#tr){display:none!important}
+body.inchat #hdr #top #th,body.inchat #hdr #top #tf,body.inchat #hdr #top #tr{width:38px!important;height:34px!important;min-width:0!important;padding:0!important;border-radius:9px!important;background:rgba(34,211,238,.16)!important;border:1px solid rgba(34,211,238,.6)!important;box-shadow:none!important;display:grid!important;place-items:center}
+body.inchat #hdr #top #th svg,body.inchat #hdr #top #tf svg,body.inchat #hdr #top #tr svg{width:18px!important;height:18px!important;stroke:#67e8f9!important;fill:none!important}
+body.inchat #hdr #rtabs{order:1;flex:1 1 0!important;min-width:0;margin:0!important;padding:0 2px!important;background:none!important;border:0!important;box-shadow:none!important}
+body.inchat #hdr #sub,body.inchat #hdr #strip{display:none!important}
+body.inchat #hdr #rbw{order:5;flex:0 0 100%!important;width:100%!important}
+body.inchat #hdr #rbt{order:6;flex:0 0 100%!important;width:100%!important;background:transparent!important;border:0!important;box-shadow:none!important;display:flex!important;justify-content:center!important;margin:0!important;height:12px!important}
+body.inchat #hdr #rbt svg{width:12px!important;height:12px!important}
+
+/* Rose: game bar (cricket / games / legendary) - clean panel, pill chips, spaced buttons */
+#gp{background:#0b1420!important;border:1px solid rgba(34,211,238,.3)!important;border-radius:18px!important;padding:10px 12px!important;margin:6px 8px 6px!important;box-shadow:0 8px 22px rgba(0,0,0,.35)!important;backdrop-filter:none!important}
+#gp .gh{display:flex!important;align-items:center;gap:8px}
+#gp .gh b{color:#eaf6ff!important;font-size:14px!important}
+#gp .chip{background:rgba(34,211,238,.12)!important;border:1px solid rgba(34,211,238,.45)!important;border-radius:99px!important;padding:3px 10px!important;font-size:12px!important;font-weight:700!important;color:#e6f7ff!important;box-shadow:none!important;text-shadow:none!important}
+#gp .chip.tm{background:rgba(247,147,30,.18)!important;border-color:rgba(247,170,70,.6)!important;color:#ffe2b8!important}
+#gp .gmin{width:28px!important;height:28px!important;min-width:0!important;padding:0!important;border-radius:50%!important;background:#0f1a2b!important;border:1px solid rgba(34,211,238,.45)!important;color:#e6f7ff!important;box-shadow:none!important}
+#gp .gnote{background:transparent!important;border:0!important;padding:4px 2px!important;margin:6px 0 0!important;text-align:left!important;color:#cfe9f2!important;font-size:13px!important}
+#gp .gacts{display:flex!important;gap:8px!important;flex-wrap:wrap;margin-top:8px!important}
+#gp .gb{flex:1 1 0!important;min-width:90px!important;border-radius:99px!important;padding:9px 12px!important;background:#0f1a2b!important;border:1px solid rgba(34,211,238,.45)!important;color:#e6f7ff!important;font-weight:700!important;font-size:13px!important;box-shadow:none!important;text-shadow:none!important}
+#gp .gb.pri{background:linear-gradient(135deg,#22d3ee,#0891b2)!important;border-color:transparent!important;color:#03141a!important}
+#gp .gb:disabled{opacity:.45!important}
+#gp .gbar{background:#0f1a2b!important;border-radius:6px!important}
+
+/* Rose: game bar header tools on the right - live result, sound on/off, then the hider */
+#gp .gtl{display:inline-flex;align-items:center;gap:6px;margin-left:auto}
+#gp .gtb{width:28px!important;height:28px!important;min-width:0!important;padding:0!important;border-radius:50%!important;background:#0f1a2b!important;border:1px solid rgba(34,211,238,.45)!important;color:#e6f7ff!important;font-size:13px!important;line-height:1!important;box-shadow:none!important;display:grid!important;place-items:center}
+#gp .gtb:active{transform:scale(.94)}
+#gp .gh .gmin{margin-left:0!important}
+.gl-list{display:flex;flex-direction:column;gap:8px;margin-top:10px}
+.gl-r{display:grid;grid-template-columns:1fr auto auto;gap:10px;align-items:center;padding:9px 12px;border-radius:14px;background:#0f1a2b;border:1px solid rgba(34,211,238,.25)}
+.gl-r b{font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.gl-r span{font-weight:800;color:#ffd58a}
+.gl-r i{font-style:normal;font-size:12px;color:#cfdcff;min-width:60px;text-align:right}
+
+/* Rose: how-to-play sheet for each game */
+.gi-list{padding-left:22px;display:flex;flex-direction:column;gap:9px;font-size:14px;line-height:1.5;margin:10px 0}
+.gi-list b{color:#ffd58a}
+
+/* Rose: bottom navigation - smaller, lower, tidier */
+#bnav{width:min(340px,calc(100% - 24px))!important;height:50px!important;bottom:max(8px,env(safe-area-inset-bottom))!important}
+#bnav .bg{border-radius:25px!important;-webkit-mask:radial-gradient(circle 29px at 50% 0,#0000 97%,#000 100%)!important;mask:radial-gradient(circle 29px at 50% 0,#0000 97%,#000 100%)!important}
+#bnav button{padding:5px 0 0!important;font-size:9.5px!important;gap:1px!important}
+#bnav button svg{width:19px!important;height:19px!important}
+#bnav .fab svg{width:21px!important;height:21px!important}
+#bnav .fab .disc{top:-23px!important;width:46px!important;height:46px!important;margin-left:-23px!important}
+#bnav .ind{bottom:2px!important}
+#bnav .ind b{width:16px!important;height:3px!important}
+body.in.bn #view{padding-bottom:78px!important}
+
+/* Rose: round Chat Rooms button; bottom bar slides away when scrolling down and returns when scrolling up (same as the top header) */
+#bnav .fab .disc{border-radius:50%!important}
+#bnav{transition:transform .35s cubic-bezier(.22,.8,.25,1),opacity .3s ease}
+body.hb #bnav{transform:translate(-50%,170%)!important;opacity:0;pointer-events:none}
+
+/* Rose: hide-on-scroll rules (phones and tablets): scroll down hides the header and bottom bar, scroll up shows them */
+#hdr{transition:transform .42s cubic-bezier(.22,.8,.25,1),opacity .3s ease}
+#bnav{transition:transform .42s cubic-bezier(.22,.8,.25,1),opacity .3s ease}
+@media (max-width:999px){
+  body.hb #hdr{transform:translateY(-115%)!important;opacity:0!important;pointer-events:none!important}
+}
+body.hb #bnav{transform:translate(-50%,170%)!important;opacity:0!important;pointer-events:none!important}
+
+/* Daily spin toast: keep its icon small (it was stretching to a huge black disc) */
+#spb svg{width:22px!important;height:22px!important;max-width:22px!important;max-height:22px!important;flex:none!important;display:block!important;fill:none!important;stroke:#ffb020!important}
+#spb{position:fixed!important;left:0!important;right:0!important;top:auto!important;margin:0 auto!important;width:max-content!important;max-width:calc(100% - 24px)!important;transform:none!important;bottom:calc(120px + env(safe-area-inset-bottom))!important;z-index:8!important}
+
+
+/* Compact spin toast + spin wheel shown as a small sheet in front (no separate page) */
+#spb{font-size:12px!important;gap:6px!important;padding:3px 4px 3px 9px!important;min-height:0!important;height:auto!important;max-width:calc(100% - 24px)!important}
+#spb svg{width:16px!important;height:16px!important;max-width:16px!important;max-height:16px!important}
+#spb span{font-size:12px!important;line-height:1.2!important}
+#spb button{font-size:11px!important;padding:3px 10px!important;min-height:0!important;line-height:1.2!important}
+#spb #spx{width:20px!important;height:20px!important;font-size:13px!important}
+#sh #sb,#spsheet #sb{display:none!important}
+#spsheet .card{box-shadow:none!important;margin:0!important;padding:12px 10px!important}
+#spsheet #res{min-height:24px!important}
+
+#spsheet .cmp{display:none!important}
+#spsheet div[style*="min(290px"]{width:245px!important}
+#spsheet .card:first-child{margin-top:0!important}
+
+
+
+
+/* Spin sheet: outer frame stays; a snug frame sits just around the wheel, wheel size unchanged */
+#spsheet .card{border:0!important;background:none!important;box-shadow:none!important;padding:4px 0!important}
+#spsheet div[style*="min(290px"]{border:1px solid rgba(34,211,238,.4)!important;border-radius:18px!important;box-shadow:none!important;background:none!important;padding:0!important;margin:6px auto 4px!important;box-sizing:content-box!important;width:245px!important}
+#spsheet div[style*="inset:0"]{border:0!important;box-shadow:none!important;background:none!important}
+#spsheet .big{border:0!important;background:none!important;box-shadow:none!important}
+/* Spin sheet: only the outer sheet frame stays; drop the inner frame around the content */
+#spsheet{border:0!important;box-shadow:none!important;background:none!important;outline:0!important}
+
+html body #sheet #sh #spsheet, html body #sheet #sh div#spsheet{border:0!important;border-width:0!important;box-shadow:none!important;outline:0!important}
+
+/* Spin sheet: centre the dice icon in its box */
+#spsheet .card > div:first-child{display:flex!important;align-items:center!important;justify-content:center!important;position:static!important;width:44px!important;height:44px!important;margin:0 auto 4px!important;padding:0!important;box-sizing:border-box!important;font-size:24px!important;line-height:1!important;text-align:center!important}
+
+/* Spin wheel: new colour design (navy rim, orange accent, five-colour slices, white labels with a dark outline) */
+#spsheet #wh svg > circle:nth-child(1){fill:#0f1a2b!important;stroke:#f7931e!important;stroke-width:4!important}
+#spsheet #wh svg > circle:nth-child(2){fill:none!important;stroke:#22d3ee!important;stroke-width:2!important}
+#spsheet #wh svg > path:nth-of-type(5n+1){fill:#1e66c8!important}
+#spsheet #wh svg > path:nth-of-type(5n+2){fill:#f7931e!important}
+#spsheet #wh svg > path:nth-of-type(5n+3){fill:#22d3ee!important}
+#spsheet #wh svg > path:nth-of-type(5n+4){fill:#e8431a!important}
+#spsheet #wh svg > path:nth-of-type(5n+5){fill:#2e9d4f!important}
+#spsheet #wh svg > text{fill:#ffffff!important;stroke:#0f1a2b!important;stroke-width:3px!important;paint-order:stroke!important;font-weight:800!important}
+/* Spin wheel: only the wheel itself rotates; the frame around it stays still */
+#spsheet #wh, html body #sheet #sh #spsheet #wh{border:0!important;outline:0!important;box-shadow:none!important;background:none!important;border-radius:0!important}
+
+/* Daily spin toast: new design (dark glass pill, orange accent, clear label and button) */
+#spb{background:linear-gradient(135deg,#0f1a2b,#18294a)!important;border:1px solid rgba(247,147,30,.6)!important;border-radius:99px!important;box-shadow:0 10px 26px rgba(0,0,0,.45),0 0 0 3px rgba(247,147,30,.14)!important;color:#f2f6ff!important;font-family:"Open Sans",system-ui,sans-serif!important;font-size:13px!important;padding:5px 5px 5px 12px!important;gap:9px!important;align-items:center!important}
+#spb svg{width:18px!important;height:18px!important;max-width:18px!important;max-height:18px!important;stroke:#f7931e!important}
+#spb span{font-size:13px!important;font-weight:600!important;color:#f2f6ff!important;letter-spacing:.2px!important}
+#spb #spg{background:linear-gradient(145deg,#ffb15c,#f7931e 55%,#e8431a)!important;color:#fff!important;border:0!important;border-radius:99px!important;padding:6px 14px!important;font-size:12px!important;font-weight:700!important;box-shadow:0 4px 12px rgba(247,147,30,.45)!important;min-height:0!important;line-height:1.2!important;cursor:pointer!important}
+#spb #spx{background:transparent!important;border:1px solid rgba(255,255,255,.28)!important;color:#c9d6ea!important;width:24px!important;height:24px!important;min-width:24px!important;border-radius:50%!important;font-size:14px!important;padding:0!important;line-height:1!important;cursor:pointer!important}
+html[data-skin=white] #spb{background:linear-gradient(135deg,#ffffff,#fff6e8)!important;color:#2a3340!important;border-color:rgba(232,67,26,.45)!important}
+html[data-skin=white] #spb span{color:#2a3340!important}
+/* Daily spin toast: clean one-line row, icon centred and still spinning */
+#spb{display:flex!important;flex-direction:row!important;flex-wrap:nowrap!important;align-items:center!important;height:auto!important;min-height:0!important;line-height:1.2!important}
+#spb svg{display:block!important;flex:none!important;align-self:center!important;margin:0!important;position:static!important;transform-origin:50% 50%!important;animation:spbr 3s linear infinite!important}
+#spb button{height:auto!important;min-height:0!important;line-height:1.2!important}
+/* Bottom navigation: phones only. Hidden on tablet and PC widths. */
+@media (min-width:768px){#bnav{display:none!important}body.in.bn #view{padding-bottom:0!important}}
+/* Desktop sidebar: remove the small collapse arrow under Log Out; the menu always stays visible */
+@media (min-width:1000px){#dtg{display:none!important}body.in.nav-off #drawer nav{transform:none!important;opacity:1!important;visibility:visible!important;pointer-events:auto!important}}
+/* Sidebar: profile and Log Out stay fixed; only the menu list scrolls */
+#dn{display:flex!important;flex-direction:column!important;overflow:hidden!important}
+#dn > *{flex:none}
+#dn > .dmenu{flex:1 1 auto!important;min-height:0!important;overflow-y:auto!important;overflow-x:hidden!important}
+#dn > .lgo{flex:none!important}
+/* Sidebar menu: bigger labels, slimmer bars, tighter spacing */
+#dn .dmenu{padding:2px 0!important;gap:0!important}
+#dn .dmenu .mi{height:auto!important;min-height:0!important;padding:7px 10px!important;margin:0 0 3px!important;font-size:17px!important;font-weight:600!important;line-height:1.2!important;letter-spacing:.2px!important}
+#dn .dmenu .mi i{width:30px!important;height:30px!important;font-size:16px!important}
+/* Sidebar: slimmer search bar and Discover heading */
+#dn .dsr{height:34px!important;min-height:0!important;margin:6px 8px!important;padding:0 3px!important;gap:4px!important;align-items:center!important}
+#dn .dsr input{height:28px!important;min-height:0!important;font-size:13px!important;padding:0 8px!important;line-height:1.2!important}
+#dn .dsr button{height:28px!important;width:28px!important;min-width:28px!important;min-height:0!important;padding:0!important}
+#dn .dh{height:auto!important;min-height:0!important;padding:3px 8px!important;margin:4px 0 2px!important;font-size:14px!important;line-height:1.2!important}
+/* Sidebar: "Set your status" row, neatly aligned under the profile and above Discover */
+#dn .dst{display:flex!important;align-items:center!important;gap:6px!important;box-sizing:border-box!important;width:auto!important;margin:4px 8px 6px!important;padding:6px 10px!important;border:1px solid rgba(255,255,255,.22)!important;border-radius:12px!important;background:rgba(15,26,43,.55)!important;font-size:13px!important;line-height:1.2!important;cursor:pointer!important;min-height:0!important}
+#dn .dst svg{width:16px!important;height:16px!important;flex:none!important;margin:0!important;stroke:#9fb0c8!important;fill:none!important}
+#dn .dst .dtx{flex:1 1 auto!important;min-width:0!important;overflow:hidden!important;text-overflow:ellipsis!important;white-space:nowrap!important;color:#e6f1f5!important}
+#dn .dst .dtx.none{opacity:.75!important}
+/* Room name chips strip: smaller, thin borders, original rounded look */
+.rstrip{gap:6px!important;padding:4px 0!important}
+.rstrip .rchip{height:28px!important;min-height:0!important;padding:2px 9px!important;margin:0!important;border:1px solid rgba(255,255,255,.3)!important;border-radius:8px!important;box-shadow:none!important;font-size:13px!important;font-weight:600!important;line-height:1.2!important;gap:4px!important;background:#ffffff12!important}
+.rstrip .rchip.fv{border-color:#f7931e!important}
+/* In-chat room tabs: the open room is full size; other rooms are small, so swiping between many rooms stays easy. Bar above and below is untouched. */
+body.inchat #hdr #rtabs .rt{transition:all .2s ease!important}
+body.inchat #hdr #rtabs .rt:not(.on):not(.mini){height:22px!important;min-height:0!important;max-width:72px!important;padding:0 6px!important;font-size:11px!important;font-weight:600!important;line-height:20px!important;overflow:hidden!important;text-overflow:ellipsis!important;border-radius:6px!important;opacity:.85!important;gap:3px!important}
+body.inchat #hdr #rtabs .rt.on{height:28px!important;min-height:0!important;max-width:none!important;padding:0 10px!important;font-size:14px!important;font-weight:700!important;line-height:26px!important;border-radius:8px!important}
+/* Rooms tab: every joined room keeps its name visible (small) until you leave it or reopen the app */
+body.inchat #hdr #rtabs .rt.mini{width:auto!important;max-width:96px!important;height:22px!important;padding:0 7px!important;justify-content:center!important;overflow:hidden!important;text-overflow:ellipsis!important;font-size:11px!important;font-weight:600!important;line-height:20px!important;opacity:.9!important;gap:3px!important}
+body.inchat #hdr #rtabs .rt.mini .rnm{overflow:hidden!important;text-overflow:ellipsis!important;white-space:nowrap!important;min-width:0!important}
+body.inchat #hdr #rtabs .rt.mini.has{border-color:#f7931e!important}
+/* Rooms you are not in: icon only, no name. A new message lights the tab until you click it. */
+body.inchat #hdr #rtabs .rt.mini{width:34px!important;max-width:34px!important;height:30px!important;padding:0!important;justify-content:center!important;gap:0!important;opacity:1!important;font-size:0!important;overflow:visible!important}
+body.inchat #hdr #rtabs .rt.mini .rnm{display:none!important}
+body.inchat #hdr #rtabs .rt.mini svg{display:block!important}
+body.inchat #hdr #rtabs .rt.mini.has{border-color:#f7931e!important;box-shadow:0 0 0 2px rgba(247,147,30,.45)!important;animation:rtPing 1.4s ease-in-out infinite!important}
+@keyframes rtPing{0%,100%{box-shadow:0 0 0 2px rgba(247,147,30,.45)}50%{box-shadow:0 0 0 5px rgba(247,147,30,.1)}}
+/* Inside a room: the room you are in uses the same tab size as on Home; rooms you are not in stay small icons on the edges */
+body.inchat #hdr #rtabs .rt.on{height:26px!important;min-height:0!important;max-width:46vw!important;padding:0 10px!important;font-size:13px!important;font-weight:700!important;line-height:24px!important;border-radius:8px!important;gap:6px!important}
+body.inchat #hdr #rtabs .rt.mini{width:34px!important;max-width:34px!important;height:30px!important;padding:0!important;font-size:0!important}
+/* Front page: room tabs show here (no separate page), and the MigV33 logo is removed from the header */
+body:not(.inchat) #hdr .lg{display:none!important}
+body:not(.inchat) #hdr #rtabs{display:flex!important;align-items:center!important;gap:6px!important;overflow-x:auto!important;scrollbar-width:none!important;padding:6px 10px!important;margin:0!important;border:0!important;border-radius:0!important;background:#0b1420!important;box-shadow:none!important;backdrop-filter:none!important}
+body:not(.inchat) #hdr #rtabs::-webkit-scrollbar{display:none}
+body:not(.inchat) #hdr #rtabs .rt{flex:0 0 auto!important;height:26px!important;min-height:0!important;max-width:120px!important;padding:0 9px!important;font-size:12px!important;font-weight:700!important;line-height:24px!important;border-radius:8px!important;border:1px solid rgba(255,255,255,.3)!important;background:#ffffff14!important;color:#fff!important;box-shadow:none!important;gap:4px!important;overflow:hidden!important;text-overflow:ellipsis!important;white-space:nowrap!important}
+body:not(.inchat) #hdr #rtabs .rt.on{background:linear-gradient(#f9a13a,#e8431a)!important;border-color:#ffd2a0!important}
+body:not(.inchat) #hdr #rtabs .rt.mini{width:auto!important;max-width:120px!important;padding:0 9px!important;font-size:0!important}
+body:not(.inchat) #hdr #rtabs .rt.mini .rnm{display:inline!important;font-size:12px!important;overflow:hidden!important;text-overflow:ellipsis!important}
+body:not(.inchat) #hdr #rtabs .rt.mini svg{display:none!important}
+body.inchat #hdr #rtabs .rt.mini .rnm{display:none!important}
+/* Front page: room tabs sit in the top bar where day/night and coins were; those two are hidden on the front page */
+body:not(.inchat) #hdr{position:relative!important}
+body:not(.inchat) #hdr #tn,body:not(.inchat) #hdr #coins{display:none!important}
+body:not(.inchat) #hdr #rtabs{position:absolute!important;top:0!important;left:160px!important;right:8px!important;height:52px!important;width:auto!important;margin:0!important;padding:0 4px!important;background:transparent!important;border:0!important;display:flex!important;align-items:center!important;z-index:2!important}
+/* Room tabs now look like the Home / Friends / Rooms buttons: same height, teal outline, dark fill; the open room is filled cyan like the active button */
+#hdr #rtabs .rt{height:38px!important;min-height:38px!important;min-width:38px!important;max-height:38px!important;padding:0 12px!important;margin:0!important;border:1px solid rgba(34,211,238,.35)!important;border-radius:10px!important;background:#0f1a2b!important;color:#cfe9f2!important;box-shadow:none!important;font-size:13px!important;font-weight:600!important;line-height:36px!important;gap:6px!important;backdrop-filter:none!important}
+#hdr #rtabs .rt.on{background:#22c7e6!important;border-color:#67e8f9!important;color:#04121a!important;font-weight:700!important;box-shadow:0 0 0 1px rgba(103,232,249,.4)!important}
+#hdr #rtabs .rt.mini{width:38px!important;min-width:38px!important;max-width:38px!important;padding:0!important;justify-content:center!important;font-size:0!important}
+#hdr #rtabs .rt.mini svg{display:block!important;color:#67e8f9!important;width:18px!important;height:18px!important}
+#hdr #rtabs .rt.mini.has{border-color:#f7931e!important;box-shadow:0 0 0 2px rgba(247,147,30,.45)!important}
+#hdr #rtabs .rt.mini .ub{top:-6px!important;right:-6px!important}
+body:not(.inchat) #hdr #rtabs .rt.mini{width:auto!important;min-width:38px!important;max-width:120px!important;padding:0 12px!important;font-size:0!important}
+body:not(.inchat) #hdr #rtabs .rt.mini .rnm{display:inline!important;font-size:13px!important;font-weight:600!important;color:#cfe9f2!important}
+body:not(.inchat) #hdr #rtabs .rt.on{background:#22c7e6!important;color:#04121a!important}
+#hdr #rtabs{gap:8px!important}
+/* Room chips: same 36px height as the Home / Friends / Rooms buttons, on every screen */
+html body #hdr #rtabs .rt,html body:not(.inchat) #hdr #rtabs .rt,html body.inchat #hdr #rtabs .rt{height:36px!important;min-height:36px!important;max-height:36px!important;line-height:34px!important;border-radius:10px!important}
+html body #hdr #rtabs .rt.mini,html body:not(.inchat) #hdr #rtabs .rt.mini{height:36px!important;width:36px!important;min-width:36px!important}
+/* Front page room chips keep their full names; only the in-room icon-only chips are fixed at 36px */
+html body:not(.inchat) #hdr #rtabs .rt.mini{width:auto!important;min-width:90px!important;max-width:150px!important;height:36px!important;padding:0 12px!important;font-size:0!important}
+html body:not(.inchat) #hdr #rtabs .rt.mini .rnm{font-size:13px!important;overflow:hidden!important;text-overflow:ellipsis!important}
+html body:not(.inchat) #hdr #rtabs .rt{max-width:150px!important}
+/* One header everywhere (Home and inside rooms): Home / Friends / Rooms buttons, then the room tabs in place of logo, day/night and coins */
+html body #hdr{position:relative!important;display:block!important}
+html body #hdr .lg,html body #hdr #tn,html body #hdr #coins{display:none!important}
+html body #hdr #rtabs{position:absolute!important;top:0!important;left:160px!important;right:8px!important;height:52px!important;width:auto!important;margin:0!important;padding:0 4px!important;background:transparent!important;border:0!important;display:flex!important;align-items:center!important;gap:8px!important;order:0!important;flex:none!important;z-index:2!important;overflow-x:auto!important;scrollbar-width:none!important;box-shadow:none!important;backdrop-filter:none!important}
+html body #hdr #rtabs::-webkit-scrollbar{display:none}
+/* Final header rule, same in every view: main header row (Home / Friends / Rooms) always shows, room tabs sit to its right */
+html body #hdr{display:block!important;position:relative!important;padding:0!important;gap:0!important}
+html body #top{display:flex!important;align-items:center!important;position:relative!important;z-index:1!important;padding:0!important;margin:0!important;background:none!important;border:0!important;box-shadow:none!important;order:0!important;flex:none!important}
+html body #top #th,html body #top #tf,html body #top #tr{display:inline-grid!important;width:38px!important;height:34px!important;min-width:0!important;padding:0!important;border-radius:9px!important;background:rgba(34,211,238,.16)!important;border:1px solid rgba(34,211,238,.45)!important}
+html body #top #th svg,html body #top #tf svg,html body #top #tr svg{width:18px!important;height:18px!important;stroke:#67e8f9!important;fill:none!important}
+html body #hdr #rtabs{position:absolute!important;top:50%!important;transform:translateY(-50%)!important;left:160px!important;right:8px!important;height:44px!important;margin:0!important;padding:0 4px!important;display:flex!important;align-items:center!important;gap:8px!important;overflow-x:auto!important;scrollbar-width:none!important;background:transparent!important;border:0!important;box-shadow:none!important;order:0!important;flex:none!important;z-index:2!important}
+html body #hdr #rbw,html body #hdr #rbt{display:none!important}
+/* Room chips, final: the open room shows its full name; every other room is a same-height icon-only chip */
+html body #hdr #rtabs .rt{height:36px!important;min-height:36px!important;max-height:36px!important;line-height:34px!important;box-sizing:border-box!important;flex:0 0 auto!important}
+html body #hdr #rtabs .rt.on{width:auto!important;min-width:0!important;max-width:46vw!important;padding:0 12px!important;font-size:13px!important;font-weight:700!important;overflow:hidden!important;text-overflow:ellipsis!important;white-space:nowrap!important}
+html body #hdr #rtabs .rt.mini{width:36px!important;min-width:36px!important;max-width:36px!important;padding:0!important;font-size:0!important;justify-content:center!important;overflow:visible!important}
+html body #hdr #rtabs .rt.mini .rnm{display:none!important}
+html body #hdr #rtabs .rt.mini svg{display:block!important;width:18px!important;height:18px!important}
+/* Room chips stay in the header row on every view: no offset, no shift upward */
+html body #hdr #rtabs{top:0!important;bottom:auto!important;transform:none!important;height:52px!important;align-items:center!important;margin:0!important}
+html body #hdr{min-height:52px!important}
+/* Room chips sit right beside the Home / Friends / Rooms buttons; the open room is first, the others follow as icons */
+html body #hdr #rtabs{display:flex!important;flex-direction:row!important;justify-content:flex-start!important;left:160px!important}
+html body #hdr #rtabs .rt.on{order:-1!important;margin-left:0!important}
+html body #hdr #rtabs .rt.mini{order:0!important}
+/* Group headers (Official rooms, Game rooms, Your & community rooms): same size as the room names below them */
+html body #view .dk > div:first-child{font-size:16px!important;font-weight:700!important;line-height:1.3!important;letter-spacing:0!important}
+html body #view .dk > div:first-child .n{font-size:12px!important;font-weight:700!important;padding:1px 7px!important;vertical-align:middle!important}
+html body #view .rm .rn{font-size:16px!important;font-weight:700!important}
+/* Room names inside Official / Game / community groups now match the small group header size */
+html body #view .dk > div:first-child{font-size:14px!important}
+html body #view .rm .rn{font-size:14px!important;font-weight:700!important}
+/* Chat room groups: Stonic glass design (translucent panels, soft light edge, blur) for group headers and room cards */
+html body #view .dk{background:linear-gradient(160deg,rgba(255,255,255,.14),rgba(255,255,255,.04))!important;border:1px solid rgba(255,255,255,.28)!important;border-radius:16px!important;box-shadow:0 10px 26px rgba(0,0,0,.35),inset 0 1px 0 rgba(255,255,255,.3)!important;backdrop-filter:blur(14px) saturate(140%)!important;-webkit-backdrop-filter:blur(14px) saturate(140%)!important;margin:8px 0!important}
+html body #view .rm{background:linear-gradient(160deg,rgba(255,255,255,.12),rgba(255,255,255,.035))!important;border:1px solid rgba(255,255,255,.24)!important;border-radius:16px!important;box-shadow:0 8px 22px rgba(0,0,0,.3),inset 0 1px 0 rgba(255,255,255,.25)!important;backdrop-filter:blur(12px) saturate(130%)!important;-webkit-backdrop-filter:blur(12px) saturate(130%)!important;margin:6px 0!important}
+html body #view .dk .n{background:rgba(255,255,255,.18)!important;border:1px solid rgba(255,255,255,.3)!important}
+/* Chat room groups: Stonic design (flat dark navy panels, thin cyan edge, soft cyan glow, no glass blur) */
+html body #view .dk{background:#0b1626!important;border:1px solid rgba(34,211,238,.45)!important;border-radius:12px!important;box-shadow:0 0 0 1px rgba(34,211,238,.08),0 0 14px rgba(34,211,238,.12)!important;backdrop-filter:none!important;-webkit-backdrop-filter:none!important;margin:8px 0!important;color:#e6f6fb!important}
+html body #view .dk > div:first-child{color:#67e8f9!important;text-shadow:0 0 8px rgba(34,211,238,.35)!important}
+html body #view .rm{background:#0b1626!important;border:1px solid rgba(34,211,238,.28)!important;border-radius:12px!important;box-shadow:0 0 12px rgba(34,211,238,.08)!important;backdrop-filter:none!important;-webkit-backdrop-filter:none!important;margin:6px 0!important}
+html body #view .rm .rn{color:#67e8f9!important}
+html body #view .dk .n{background:rgba(34,211,238,.15)!important;border:1px solid rgba(34,211,238,.45)!important;color:#67e8f9!important}
+/* Room rows: only the star icon, no box around it; the row is slimmer and fits its text */
+html body #view .rm{padding:6px 12px!important;min-height:0!important;height:auto!important;align-items:center!important;margin:5px 0!important}
+html body #view .rm button.fv,html body #view .rm button[data-f]{background:none!important;border:0!important;box-shadow:none!important;padding:0!important;min-width:0!important;width:auto!important;height:auto!important;min-height:0!important;margin:0 0 0 8px!important;outline:0!important}
+html body #view .rm button.fv svg{width:18px!important;height:18px!important;stroke:#67e8f9!important}
+html body #view .rm .mu{font-size:12px!important}
+/* Group headers use the same cyan edge and dark navy as the room rows, for Official, Game and community groups alike */
+html body #view .dk{border-left:1px solid rgba(34,211,238,.45)!important;border-top:1px solid rgba(34,211,238,.45)!important;border-right:1px solid rgba(34,211,238,.45)!important;border-bottom:1px solid rgba(34,211,238,.45)!important;background:#0b1626!important;box-shadow:0 0 12px rgba(34,211,238,.08)!important}
+html body #view .dk::before,html body #view .dk::after{background:none!important;box-shadow:none!important}
+html body #view .dk > div:first-child{color:#67e8f9!important}
+html body #view .dk .n{background:rgba(34,211,238,.12)!important;color:#67e8f9!important;border-color:rgba(34,211,238,.45)!important}
+/* Group header bars (Official, Game, Your & community): green and cyan mix */
+html body #view .dk{background:linear-gradient(90deg,rgba(20,184,166,.28),rgba(34,211,238,.22) 55%,rgba(16,185,129,.2))!important;border:1px solid rgba(45,212,191,.7)!important;border-left:3px solid #2dd4bf!important;box-shadow:0 0 14px rgba(45,212,191,.22)!important}
+html body #view .dk > div:first-child{color:#e6fffb!important;text-shadow:0 0 8px rgba(45,212,191,.4)!important}
+html body #view .dk .n{background:rgba(45,212,191,.22)!important;color:#ecfeff!important;border-color:rgba(45,212,191,.7)!important}
+html body #view .dk .chv{stroke:#a7f3d0!important}
+/* Official / Game / community groups show 5 rooms; See more reveals the rest */
+html body #view div[id^="rs"] > .rm:nth-child(n+6){display:none!important}
+html body #view div[id^="rs"].more > .rm:nth-child(n+6){display:flex!important}
+html body #view .seemore{display:block;width:100%;margin:6px 0 2px;padding:7px;border-radius:10px;border:1px solid rgba(34,211,238,.45);background:#0b1626;color:#67e8f9;font-weight:700;font-size:13px;cursor:pointer}
+/* Flag icons replace flag text */
+img.flg{width:18px;height:13px;object-fit:cover;border-radius:2px;vertical-align:-2px;margin-right:5px;display:inline-block}
+/* Chat Rooms page: hide the quick room chip strip between Search room and the room groups */
+html body #view .rstrip{display:none!important}
+/* Create post: Photo and emoji become round cyan Stonic icon buttons with clean line icons */
+html body #pph,html body #pem{font-size:0!important;color:transparent!important;width:38px!important;height:38px!important;min-width:38px!important;min-height:0!important;padding:0!important;margin:0 4px 0 0!important;border-radius:50%!important;display:inline-flex!important;align-items:center!important;justify-content:center!important;background:rgba(34,211,238,.14)!important;border:1px solid rgba(34,211,238,.55)!important;box-shadow:0 0 10px rgba(34,211,238,.2)!important;line-height:1!important}
+html body #pph span,html body #pem span{display:none!important}
+html body #pph::before,html body #pem::before{content:'';display:block;width:20px;height:20px;background:#67e8f9;-webkit-mask-repeat:no-repeat;mask-repeat:no-repeat;-webkit-mask-position:center;mask-position:center;-webkit-mask-size:contain;mask-size:contain}
+html body #pph::before{-webkit-mask-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M3 8h4l2-3h6l2 3h4v11H3z'/%3E%3Ccircle cx='12' cy='13' r='3.5'/%3E%3C/svg%3E");mask-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M3 8h4l2-3h6l2 3h4v11H3z'/%3E%3Ccircle cx='12' cy='13' r='3.5'/%3E%3C/svg%3E")}
+html body #pem::before{-webkit-mask-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round'%3E%3Ccircle cx='12' cy='12' r='9'/%3E%3Cpath d='M8.5 14.5c1 1.2 2.2 1.8 3.5 1.8s2.5-.6 3.5-1.8'/%3E%3Cpath d='M9 9.5h.01M15 9.5h.01'/%3E%3C/svg%3E");mask-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round'%3E%3Ccircle cx='12' cy='12' r='9'/%3E%3Cpath d='M8.5 14.5c1 1.2 2.2 1.8 3.5 1.8s2.5-.6 3.5-1.8'/%3E%3Cpath d='M9 9.5h.01M15 9.5h.01'/%3E%3C/svg%3E")}
+html body #pph:hover,html body #pem:hover{background:rgba(34,211,238,.28)!important;box-shadow:0 0 14px rgba(34,211,238,.4)!important}
+/* Create post icons (stronger selector so it beats the existing button rules) */
+#view#view#view#view#view#view#view#view#view#view#view#view #pph,#view#view#view#view#view#view#view#view#view#view#view#view #pem{font-size:0!important;color:transparent!important;width:38px!important;height:38px!important;min-width:38px!important;min-height:38px!important;max-width:38px!important;padding:0!important;margin:0 4px 0 0!important;border-radius:50%!important;display:inline-flex!important;align-items:center!important;justify-content:center!important;background:rgba(34,211,238,.14)!important;border:1px solid rgba(34,211,238,.55)!important;box-shadow:0 0 10px rgba(34,211,238,.2)!important;line-height:1!important}
+#view#view#view#view#view#view#view#view#view#view#view#view #pph span,#view#view#view#view#view#view#view#view#view#view#view#view #pem span{display:none!important}
+#view#view#view#view#view#view#view#view#view#view#view#view #pph::before,#view#view#view#view#view#view#view#view#view#view#view#view #pem::before{content:'';display:block;width:20px;height:20px;background:#67e8f9;-webkit-mask-repeat:no-repeat;mask-repeat:no-repeat;-webkit-mask-position:center;mask-position:center;-webkit-mask-size:contain;mask-size:contain}
+#view#view#view#view#view#view#view#view#view#view#view#view #pph::before{-webkit-mask-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M3 8h4l2-3h6l2 3h4v11H3z'/%3E%3Ccircle cx='12' cy='13' r='3.5'/%3E%3C/svg%3E");mask-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M3 8h4l2-3h6l2 3h4v11H3z'/%3E%3Ccircle cx='12' cy='13' r='3.5'/%3E%3C/svg%3E")}
+#view#view#view#view#view#view#view#view#view#view#view#view #pem::before{-webkit-mask-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round'%3E%3Ccircle cx='12' cy='12' r='9'/%3E%3Cpath d='M8.5 14.5c1 1.2 2.2 1.8 3.5 1.8s2.5-.6 3.5-1.8'/%3E%3Cpath d='M9 9.5h.01M15 9.5h.01'/%3E%3C/svg%3E");mask-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round'%3E%3Ccircle cx='12' cy='12' r='9'/%3E%3Cpath d='M8.5 14.5c1 1.2 2.2 1.8 3.5 1.8s2.5-.6 3.5-1.8'/%3E%3Cpath d='M9 9.5h.01M15 9.5h.01'/%3E%3C/svg%3E")}
+/* Create post icons: hide the original emoji text completely, keep only the cyan line icon */
+#view#view#view#view#view#view#view#view#view#view#view#view #pph,#view#view#view#view#view#view#view#view#view#view#view#view #pem{text-indent:-9999px!important;overflow:hidden!important;white-space:nowrap!important;position:relative!important}
+#view#view#view#view#view#view#view#view#view#view#view#view #pph::before,#view#view#view#view#view#view#view#view#view#view#view#view #pem::before{position:absolute!important;left:50%!important;top:50%!important;transform:translate(-50%,-50%)!important;text-indent:0!important}
+/* Create post: Mention and Tag become round cyan icon buttons showing a bold @ and # */
+#view#view#view#view#view#view#view#view#view#view#view#view #pmn,#view#view#view#view#view#view#view#view#view#view#view#view #pht{font-size:0!important;width:38px!important;height:38px!important;min-width:38px!important;min-height:38px!important;max-width:38px!important;padding:0!important;margin:0 4px 0 0!important;border-radius:50%!important;display:inline-flex!important;align-items:center!important;justify-content:center!important;background:rgba(34,211,238,.14)!important;border:1px solid rgba(34,211,238,.55)!important;box-shadow:0 0 10px rgba(34,211,238,.2)!important;color:#67e8f9!important;line-height:1!important;text-indent:0!important;overflow:visible!important}
+#view#view#view#view#view#view#view#view#view#view#view#view #pmn span,#view#view#view#view#view#view#view#view#view#view#view#view #pht span{display:none!important}
+#view#view#view#view#view#view#view#view#view#view#view#view #pmn{font-size:20px!important;font-weight:800!important}
+#view#view#view#view#view#view#view#view#view#view#view#view #pht{font-size:20px!important;font-weight:800!important}
+#view#view#view#view#view#view#view#view#view#view#view#view #pmn:hover,#view#view#view#view#view#view#view#view#view#view#view#view #pht:hover{background:rgba(34,211,238,.28)!important;box-shadow:0 0 14px rgba(34,211,238,.4)!important}
+/* @ and # now sized like the photo and emoji icons */
+#view#view#view#view#view#view#view#view#view#view#view#view #pmn,#view#view#view#view#view#view#view#view#view#view#view#view #pht{font-size:26px!important;font-weight:900!important;line-height:1!important;font-family:system-ui,'Segoe UI',sans-serif!important}
+/* @ and # drawn as large symbols (same visual size as the photo and emoji icons) */
+#view#view#view#view#view#view#view#view#view#view#view#view #pmn,#view#view#view#view#view#view#view#view#view#view#view#view #pht{text-indent:-9999px!important;overflow:hidden!important;position:relative!important;white-space:nowrap!important}
+#view#view#view#view#view#view#view#view#view#view#view#view #pmn::before,#view#view#view#view#view#view#view#view#view#view#view#view #pht::before{content:'@';position:absolute!important;left:50%!important;top:50%!important;transform:translate(-50%,-50%)!important;font-size:24px!important;font-weight:900!important;line-height:1!important;color:#67e8f9!important;text-indent:0!important;font-family:system-ui,'Segoe UI',sans-serif!important}
+#view#view#view#view#view#view#view#view#view#view#view#view #pht::before{content:'#'!important}
+/* @ and # regular weight, not bold */
+#view#view#view#view#view#view#view#view#view#view#view#view #pmn::before,#view#view#view#view#view#view#view#view#view#view#view#view #pht::before{font-weight:400!important}
+/* @ and # slightly smaller, matching the photo and emoji icons */
+#view#view#view#view#view#view#view#view#view#view#view#view #pmn::before,#view#view#view#view#view#view#view#view#view#view#view#view #pht::before{font-size:19px!important}
+/* Home sidebar menu labels: bigger text */
+html body #dn .dmenu .mi,html body #dn .mi{font-size:19px!important;font-weight:600!important;line-height:1.25!important}
+/* Sidebar profile card: pointer cursor on the name/avatar and on the online dot */
+html body #dn #mc{cursor:pointer!important}
+html body #dn #mc .dot{cursor:pointer!important;outline:0!important}
+/* Pop-up menus (status options, etc.) stay above the sidebar */
+html body #rpop{z-index:60!important;position:fixed!important}
+/* Status pop-up: smaller labels and tighter buttons */
+html body #rpop.wide{padding:4px!important}
+html body #rpop button{font-size:12px!important;padding:4px 9px!important;line-height:1.2!important;min-height:0!important;height:auto!important;gap:4px!important}
+html body #rpop button b{font-size:12px!important;font-weight:600!important}
+html body #rpop .dot{width:7px!important;height:7px!important}
+/* Status menu: vertical list, one option per row */
+html body #rpop.wide{display:flex!important;flex-direction:column!important;align-items:stretch!important;min-width:150px!important;width:auto!important;max-width:180px!important}
+html body #rpop button{display:flex!important;flex-direction:row!important;align-items:center!important;justify-content:flex-start!important;width:100%!important;text-align:left!important;margin:2px 0!important}
+/* Profile page: Stonic design. Flat dark navy panels, thin cyan edge, soft cyan glow; no glass, no gradients */
+html body #view .ph{background:#0b1626!important;background-image:none!important;border:1px solid rgba(34,211,238,.45)!important;border-radius:14px!important;box-shadow:0 0 0 1px rgba(34,211,238,.08),0 0 14px rgba(34,211,238,.12)!important;backdrop-filter:none!important;-webkit-backdrop-filter:none!important;color:#e6f6fb!important}
+html body #view .tiles{background:none!important}
+html body #view .tiles div{background:#0b1626!important;background-image:none!important;border:1px solid rgba(34,211,238,.4)!important;border-radius:12px!important;box-shadow:0 0 12px rgba(34,211,238,.1)!important;backdrop-filter:none!important;-webkit-backdrop-filter:none!important;color:#e6f6fb!important}
+html body #view .tiles b{color:#67e8f9!important}
+/* Avatar / Photo switch on the profile: smaller, compact, and centred under the avatar buttons */
+html body #view .sw{display:inline-flex!important;align-items:center!important;justify-content:center!important;gap:6px!important;font-size:12px!important;font-weight:700!important;margin:6px auto 0!important;padding:0!important;line-height:1!important}
+html body #view .sw i{width:38px!important;height:20px!important;min-width:38px!important;border-radius:99px!important}
+html body #view .sw i::after{top:2px!important;left:2px!important;width:14px!important;height:14px!important}
+html body #view .sw input:checked + i::after{transform:translateX(18px)!important}
