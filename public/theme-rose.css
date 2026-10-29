@@ -532,7 +532,7 @@ html body #drawer#drawer div:not([style*="background"]), html body #drawer#drawe
 .rchip.fv{box-shadow:inset 0 0 0 1px rgba(34,211,238,.55)}
 
 /* Rose: room options (3 dots) moved to the bottom-left corner of the chat text bar */
-#f #more{flex:none;width:36px;height:36px;min-width:36px;padding:0;border-radius:50%;display:grid;place-items:center;background:#0f1a2b;border:1px solid rgba(34,211,238,.35);box-shadow:none}
+#f #more{display:none!important}
 #f #more svg{width:18px;height:18px;fill:#22d3ee;stroke:none}
 
 /* Rose: inside a room, the room icons take the place of the main MigV33 header; no other options above the room */
@@ -930,5 +930,5 @@ html body #stories > .sc{vertical-align:top!important;display:block!important;ma
 html body #stories .sc b{position:absolute!important;left:8px!important;right:8px!important;bottom:10px!important;top:auto!important;text-align:left!important}
 /* Post header: three dots sit inside the header row, at the right, not touching the edge */
 html body .fbp header{padding:12px 12px 6px 14px!important;box-sizing:border-box!important;max-width:100%!important}
-html body .fbp header .pm{margin:0 0 0 auto!important;position:static!important;right:auto!important;flex:none!important}
+html body .fbp header .pm, html body .fbp > header > button.pm.pm{margin:-2px 0 0 auto!important;position:static!important;right:auto!important;flex:none!important;align-self:flex-start!important;width:36px!important;height:36px!important;min-width:36px!important;border:0!important;outline:0!important;background:transparent!important;background-image:none!important;box-shadow:none!important;border-radius:50%!important;padding:0!important;font-size:24px!important;line-height:1!important;color:#9db0c6!important}
 html body .fbp header .who{min-width:0!important;flex:1 1 0!important}
