@@ -910,3 +910,10 @@ html[data-skin=day] .chips button.on{background:#0891b2!important;color:#ffffff!
 html[data-skin=day] :is(input,select,textarea){background:#ffffff!important;border:1px solid rgba(8,145,178,.4)!important;color:#0b1a2a!important;box-shadow:none!important}
 html[data-skin=day] #bnav button.on{color:#0891b2!important}
 html[data-skin=day] #top svg{stroke:#0b1a2a}
+/* Home: post header in one row (avatar, name, three dots at the right) */
+html body .fbp header{display:flex!important;align-items:center!important;gap:10px!important}
+html body .fbp header .who{flex:1 1 auto!important;min-width:0!important}
+html body .fbp header .pm{position:static!important;margin-left:auto!important;flex:none!important}
+/* Home: Create story tile - plus sits centred on the photo area */
+html body .sc.mk{position:relative!important}
+html body .sc.mk .pl{position:absolute!important;left:50%!important;top:46px!important;width:30px!important;height:30px!important;min-width:30px!important;margin:0 0 0 -15px!important;line-height:26px!important;border-radius:50%!important;text-align:center!important;transform:none!important}
