@@ -1765,7 +1765,7 @@ const IC={ppl:'<svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.5"/><path d="
 function drawOnline(){const b=$('rbar');if(!b)return;
   const nm=RM.map(u=>`<span style="color:${nc(u.name)}">${esc(u.name)}</span>`).join(', ');
   b.innerHTML=`<button class="on1" data-b="ppl"><span class="dot online" style="width:14px;height:14px;flex:none"></span><span class="o1t"><b>${RM.length} online</b><span class="o1n">${nm}</span></span></button>
-   <button class="ib" data-b="ppl" aria-label="Members">${IC.ppl}</button><button class="ib star ${RI?.fav?'on':''}" data-b="fav" aria-label="Favorite">${IC.star}</button><button class="ib" data-b="mods" aria-label="Room info">${IC.shield}</button>`;
+   <button class="ib" data-b="ppl" aria-label="Members">${IC.ppl}</button><button class="ib star ${RI?.fav?'on':''}" data-b="fav" aria-label="Favorite">${IC.star}</button><button class="ib" data-b="mods" aria-label="Room info">${IC.shield}</button><button class="ib" data-b="more" aria-label="Room options">${IC.more}</button>`;
   const bt=$('rbt');if(bt&&!bt._b){bt._b=1;bt.onclick=()=>{const w=$('rbw');const open=!w.classList.contains('show');w.classList.toggle('show',open);clearTimeout(window.RBT);if(open)window.RBT=setTimeout(()=>w.classList.remove('show'),10000)}}
   b.onclick=async e=>{const el=e.target.closest('[data-b]'),k=el?.dataset.b;if(!k)return;
     if(k==='ppl')return memPop(el);
