@@ -533,6 +533,18 @@ html body #drawer#drawer div:not([style*="background"]), html body #drawer#drawe
 
 /* Rose: room options (3 dots) moved to the bottom-left corner of the chat text bar */
 #f #more{display:none!important}
+/* Chat room: remove the empty long bar above the chat box (empty game panel) */
+html body #gp:empty{display:none!important}
+/* Room bar icons (members, favourite, info, options): centred inside their boxes */
+html body #rbar .ib{padding:0!important;width:36px!important;height:36px!important;min-width:36px!important;display:grid!important;place-items:center!important;justify-content:center!important;align-items:center!important;box-sizing:border-box!important}
+html body #rbar .ib svg{display:block!important;margin:0 auto!important;width:22px!important;height:22px!important}
+/* Header: bigger top icons (home, friends, chat) and room tabs lined up on one row, none overlapping */
+html body #top button svg{width:32px!important;height:32px!important;max-width:32px!important;max-height:32px!important}
+html body #top button{display:grid!important;place-items:center!important;width:58px!important;height:48px!important;min-height:48px!important}
+html body #hdr #rtabs{align-items:center!important}
+html body #hdr #rtabs .rt{height:34px!important;min-height:34px!important;max-height:34px!important;align-self:center!important;margin:0!important;line-height:32px!important}
+html body #hdr #rtabs .rt.mini{width:40px!important;min-width:40px!important;max-width:40px!important}
+html body #hdr #rtabs .rt svg{width:22px!important;height:22px!important}
 #f #more svg{width:18px;height:18px;fill:#22d3ee;stroke:none}
 
 /* Rose: inside a room, the room icons take the place of the main MigV33 header; no other options above the room */
