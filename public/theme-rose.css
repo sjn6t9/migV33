@@ -892,3 +892,6 @@ html body #view .sw{display:inline-flex!important;align-items:center!important;j
 html body #view .sw i{width:38px!important;height:20px!important;min-width:38px!important;border-radius:99px!important}
 html body #view .sw i::after{top:2px!important;left:2px!important;width:14px!important;height:14px!important}
 html body #view .sw input:checked + i::after{transform:translateX(18px)!important}
+/* Mobile fix: post photos fit the phone width instead of showing at full desktop size */
+html body #feed .fbp, html body .fbp{max-width:calc(100% - 16px)!important;box-sizing:border-box!important}
+html body #feed .fbp img.pimg, html body .fbp img.pimg, html body img.pimg{width:100%!important;max-width:100%!important;min-width:0!important;height:auto!important;max-height:520px!important;object-fit:cover!important;box-sizing:border-box!important}
