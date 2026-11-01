@@ -2029,6 +2029,7 @@ function drawOnline(){const b=$('rbar');if(!b)return;
   const nm=RM.map(u=>`<span style="color:${nc(u.name)}">${esc(u.name)}</span>`).join(', ');
   b.innerHTML=`<button class="on1" data-b="ppl"><span class="dot online" style="width:14px;height:14px;flex:none"></span><span class="o1t"><b>${RM.length} online</b><span class="o1n">${nm}</span></span></button>
    <button class="ib" data-b="ppl" aria-label="Members">${IC.ppl}</button><button class="ib star ${RI?.fav?'on':''}" data-b="fav" aria-label="Favorite">${IC.star}</button><button class="ib" data-b="mods" aria-label="Room info">${IC.shield}</button><button class="ib" data-b="more" aria-label="Room options">${IC.more}</button><span id="rbx"></span>`;try{placeHdr(true)}catch{}
+  if(!window._ro&&$('hdr')&&window.ResizeObserver){window._ro=new ResizeObserver(()=>{if($('chatbox'))fitChat()});window._ro.observe($('hdr'))}
   const bt=$('rbt');if(bt&&!bt._b){bt._b=1;bt.onclick=()=>{const w=$('rbw');const h=w.classList.toggle('hid');try{localStorage.rbarHide=h?'1':'0'}catch{}}}
   b.onclick=async e=>{const el=e.target.closest('[data-b]'),k=el?.dataset.b;if(!k)return;
     if(k==='ppl')return memPop(el);
