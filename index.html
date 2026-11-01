@@ -731,7 +731,8 @@ html[data-theme=dark] .fbp .pimg{background:#101830}
 .spv img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
 .spv textarea{position:relative;width:86%;min-height:90px;background:none!important;border:0!important;box-shadow:none!important;color:#fff;text-align:center;font:800 24px/1.3 Fredoka,"Open Sans",sans-serif;resize:none;text-shadow:0 2px 6px #0007}
 .spv textarea::placeholder{color:#ffffffbb}
-.spv.ph{height:min(56vh,480px);aspect-ratio:9/16;min-height:0;margin:8px auto;display:block;cursor:grab;touch-action:none;user-select:none}
+.spv.ph{height:clamp(240px,calc(100dvh - 340px),1100px);aspect-ratio:9/16;max-width:100%;min-height:0;margin:8px auto;display:block;cursor:grab;touch-action:none;user-select:none}
+#sheet #sh.stw{max-width:min(96vw,920px)}
 .spv.ph textarea{position:absolute;left:7%;bottom:8px;width:86%;min-height:46px;font-size:18px;z-index:2}
 .szm{display:flex;align-items:center;gap:8px;margin-top:8px;flex-wrap:wrap}.szm span{font-size:12px;opacity:.7;flex:1 0 100%;text-align:center}.szm input{flex:1}.szm button{padding:6px 12px;font-size:13px}
 
@@ -1236,6 +1237,25 @@ html #ctm#ctm#ctm#ctm#ctm#ctm#ctm#ctm#ctm#ctm#ctm#ctm#ctm#ctm .ctred,html[data-s
 #cal .cwk,#cal .cgr{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;text-align:center;margin:6px 0}#cal .cwk span{font-size:12px;opacity:.7}
 #cal .cdy{padding:8px 0;min-height:0;border-radius:8px;width:100%}#cal .cdy.on{background:var(--ac,#f7931e)!important;color:#fff!important;border-color:var(--ac,#f7931e)!important}#cal .cdy:disabled{opacity:.3}
 #cal select{width:auto}
+
+.ctd .ctbn{position:relative;min-height:150px;background:linear-gradient(135deg,#1f3a8a,#0e7490) center/cover;display:flex;align-items:flex-end;padding:0}
+.ctd .ctbn:after{content:"";position:absolute;inset:0;background:linear-gradient(transparent 35%,#000c)}
+.ctd .ctst,.ctd .cttm{position:absolute;top:8px;z-index:2;font-size:11px;font-weight:800;padding:3px 9px;border-radius:99px;background:#000a;color:#fff;border:1px solid #fff4}
+.ctd .ctst{left:8px}.ctd .ctst.live{color:#4ade80;border-color:#4ade80aa}.ctd .cttm{right:8px;font-variant-numeric:tabular-nums}
+.ctd .ctti{position:relative;z-index:2;display:flex;gap:10px;align-items:center;padding:10px 12px;width:100%;color:#fff}.ctd .ctti b{display:block;font-size:18px}.ctd .ctti small{opacity:.85;font-size:12px}
+.ctd .ctti button{min-width:36px;height:36px;padding:0;flex:none}
+.ctd .ctch{display:flex;gap:6px;flex-wrap:wrap;padding:10px 12px}.ctd .ctch span{font-size:12px;font-weight:700;padding:4px 10px;border-radius:99px;border:1px solid var(--ln,#ccc);background:rgba(128,128,128,.12)}
+.ctd .ctds{margin:6px 12px;white-space:normal;font-size:14px}
+.ctd .ctme{display:flex;gap:12px;align-items:center;margin:10px 12px;padding:12px;border-radius:12px;border:1px solid var(--ln,#ccc);background:rgba(128,128,128,.1);font-size:22px}.ctd .ctme b{display:block;font-size:14px}.ctd .ctme small{font-size:12px;opacity:.7}
+.ctd .ctsec{margin:14px 12px 4px;font-size:11px;font-weight:800;letter-spacing:.08em;opacity:.75}.ctd .ctsec b{color:#4ade80;margin-left:6px}
+.ctd .ctpr{display:flex;align-items:center;gap:10px;padding:8px 12px;border-bottom:1px solid var(--ln,#ddd)}
+.ctd .ctmd{min-width:34px;height:26px;border-radius:99px;display:inline-grid;place-items:center;font-size:11px;font-weight:800;background:rgba(128,128,128,.25)}.ctd .ctmd.g{background:#b8860b;color:#fff}.ctd .ctmd.s{background:#8a96a3;color:#fff}.ctd .ctmd.b{background:#a0522d;color:#fff}
+.ctd .ctpod{display:grid;grid-template-columns:1fr 1.2fr 1fr;gap:6px;align-items:end;margin:8px 12px;padding:14px 8px 0;border-radius:14px;background:linear-gradient(160deg,#3b82f6,#1e40af);color:#fff;overflow:hidden}
+.ctd .pc{display:flex;flex-direction:column;align-items:center;text-align:center;gap:2px;cursor:pointer;min-width:0}.ctd .pc b{font-size:13px;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#fff!important}.ctd .pc .nm{font-size:20px;font-weight:800}.ctd .pc small{font-size:11px;opacity:.85}.ctd .pc .crw{height:22px;font-size:18px}
+.ctd .pc .bar{display:block;width:80%;background:#ffffff33;border-radius:8px 8px 0 0;margin-top:6px}.ctd .pc.p1 .bar{height:56px}.ctd .pc.p2 .bar{height:34px}.ctd .pc.p3 .bar{height:22px}
+.ctd .ctlr{display:flex;align-items:center;gap:10px;padding:8px 12px;border-bottom:1px solid var(--ln,#ddd);cursor:pointer}.ctd .ctlr .rk{width:22px;text-align:center;font-weight:700;opacity:.8}.ctd .ctlr .sc{margin-left:auto;text-align:right}.ctd .ctlr .sc b{display:block}.ctd .ctlr .sc small{font-size:11px;opacity:.7}
+.ctd .ctf2{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin:16px 12px 24px}
+html #view#view#view#view#view#view#view#view#view#view#view#view#view#view .ctd .ctred,html[data-skin] #view#view#view#view#view#view#view#view#view#view#view#view#view#view .ctd .ctred{color:#ff4d4d!important;border:1px solid #ff4d4d!important;background:rgba(255,77,77,.08)!important;box-shadow:none!important}
 </style>
 <script>try{if(localStorage.tk||sessionStorage.tk)document.documentElement.dataset.boot=1;var k=localStorage.skin==='dark'?'dark':'day';document.documentElement.dataset.skin=k==='dark'?'dark':'navy';document.documentElement.dataset.theme='dark'}catch(e){document.documentElement.dataset.skin='navy';document.documentElement.dataset.theme='dark'}</script>
 <style>/* Name effects from the colour shop: each one animates the glow around the username */
@@ -1343,7 +1363,7 @@ html body #hdr #top #rtabs .rt.mini .rfl{margin:0}
 html body #hdr #top #rtabs .rt .rfl{width:20px;height:14px}
 html body #hdr #top #rtabs .rt.on{display:inline-flex!important;align-items:center;justify-content:center;gap:0}
 </style>
-<link rel="stylesheet" href="theme-dark.css?v=17">
+<link rel="stylesheet" href="theme-dark.css?v=18">
 <style>/* role name colours: kept in their own block so they always load */
 :root{--nm-admin:#e8591f;--nm-staff:#2f9a3d;--nm-mentor:#b01020;--nm-headmentor:#8a6a14;--nm-merchant:#7e22ce;--nm-vip:#00706f;--nm-user:#2a7bd8}
 html[data-theme=dark],#log.navy,#log.dark{--nm-admin:#ff7a33;--nm-staff:#4cc24f;--nm-mentor:#f2394a;--nm-headmentor:#e8c23c;--nm-merchant:#b45cff;--nm-vip:#2ec4bf;--nm-user:#6db3ff}
@@ -1620,7 +1640,7 @@ function openCreateStory(){let bg=0,img=null,mode='text';
     img.x=Math.max(-.5-(w/W-1)/2,Math.min(.5+(w/W-1)/2,img.x));img.y=Math.max(-.5-(h/H-1)/2,Math.min(.5+(h/H-1)/2,img.y));
     if(w<W)img.x=0;if(h<H)img.y=0;
     im.style.cssText=`position:absolute;left:50%;top:50%;width:${w}px;height:${h}px;max-width:none;object-fit:fill;transform:translate(calc(-50% + ${img.x*W}px),calc(-50% + ${img.y*H}px));touch-action:none`};
-  const bindPos=()=>{const f=document.querySelector('.spv.ph');if(!f||!img)return;fit();const P=new Map();let last=null,d0=0,z0=1;
+  const bindPos=()=>{const f=document.querySelector('.spv.ph');if(!f||!img)return;fit();try{window._spro&&window._spro.disconnect();window._spro=new ResizeObserver(()=>fit());window._spro.observe(f)}catch{};const P=new Map();let last=null,d0=0,z0=1;
     f.onpointerdown=e=>{if(e.target.id==='stx')return;f.setPointerCapture(e.pointerId);P.set(e.pointerId,[e.clientX,e.clientY]);last=[e.clientX,e.clientY];if(P.size===2){const v=[...P.values()];d0=Math.hypot(v[0][0]-v[1][0],v[0][1]-v[1][1]);z0=img.z}};
     f.onpointermove=e=>{if(!P.has(e.pointerId))return;P.set(e.pointerId,[e.clientX,e.clientY]);
       if(P.size===2){const v=[...P.values()],d=Math.hypot(v[0][0]-v[1][0],v[0][1]-v[1][1]);if(d0){img.z=Math.max(.5,Math.min(4,z0*d/d0));const r=$('szr');if(r)r.value=Math.round(img.z*100)}}
@@ -1630,7 +1650,7 @@ function openCreateStory(){let bg=0,img=null,mode='text';
     f.onwheel=e=>{e.preventDefault();img.z=Math.max(.5,Math.min(4,img.z*(e.deltaY<0?1.08:.93)));const r=$('szr');if(r)r.value=Math.round(img.z*100);fit()};
     const r=$('szr');if(r)r.oninput=()=>{img.z=r.value/100;fit()};const rs=$('srs');if(rs)rs.onclick=()=>{img.x=img.y=0;img.z=1;if(r)r.value=100;fit()}};
   draw=()=>{draw0();bindPos()};
-  sheetOpen('');draw();
+  sheetOpen('');$('sh').classList.add('stw');draw();
   $('sh').onclick=async e=>{const m=e.target.closest('[data-md]'),c=e.target.closest('[data-bg]');
     if(m){const t=$('stx')?.value;mode=m.dataset.md;draw();$('stx').value=t||'';return}
     if(c){const t=$('stx').value;bg=+c.dataset.bg;draw();$('stx').value=t;return}
@@ -2111,7 +2131,7 @@ async function micStart(){if(REC)return;
   mr.start();$('f').hidden=true;$('recbar').hidden=false;
   const tick=()=>{const s=Math.round((Date.now()-t0)/1000);$('rect').textContent=fmtDur(s);if(s>=60)micStop(true)};tick();REC.tm=setInterval(tick,500)}
 function micStop(send){if(!REC)return;REC.send=send;try{REC.mr.stop()}catch{}}
-const sheetOpen=h=>{$('sh').innerHTML=h;$('sheet').classList.add('open')};
+const sheetOpen=h=>{$('sh').classList.remove('stw');$('sh').innerHTML=h;$('sheet').classList.add('open')};
 function memSheet(){sheetOpen(`<h2>${esc(lastRoom)} · ${RM.length} online</h2><div style="max-height:55vh;overflow:auto;display:grid;gap:6px">`+(RM.map(u=>`<button data-n="${esc(u.name)}" style="text-align:left;display:flex;gap:8px;align-items:center">${av(u.name,32)}<b style="color:${nc(u.name)}">${esc(u.name)}</b>${lvtag(u.name,u.xp)}${rt(u.role,u.name)}</button>`).join('')||'<div class="mu">Nobody here yet.</div>')+'</div>');
   $('sh').onclick=e=>{const n=e.target.closest('[data-n]')?.dataset.n;if(!n)return;$('sheet').classList.remove('open');if(n!==me)setTarget(n)}}
 function modInfo(){const o=RI?.owner||'—';sheetOpen(`<h2>Room staff</h2><div>Managed by: <b style="color:${nc(o)}">${esc(o)}</b></div><div class="mu">Moderators: ${(RI?.mods||[]).map(esc).join(', ')||'none'}</div><div class="mu">Staff and admins can kick, ban and silence in public rooms.</div>`)}
@@ -2491,27 +2511,41 @@ V.contests=async(a)=>{
   <nav class="tabbar">${tabs.map(([k,n])=>`<button data-tb="${k}" class="${tab===k?'on':''}">${n}</button>`).join('')}</nav>
   ${list.length?list.map(c=>`<div class="card ct" data-ct="${c.id}" style="cursor:pointer">${c.banner?`<img src="${esc(c.banner)}" alt="" style="width:100%;max-height:150px;object-fit:cover;border-radius:10px;margin-bottom:8px">`:''}<div class="row"><b>${esc(c.name)}</b><span class="lv" style="margin-left:auto">${ctState(c)}</span></div><div class="mu">${ctRule(c)} · ${esc(c.room)}</div><div class="mu">${ctDT(c.starts)} → ${ctDT(c.ends)}</div><div class="mu">Prize pool ${c.pool.toLocaleString()} coins · by ${esc(c.owner)}${c.mineScore?` · your score ${c.mineScore.toLocaleString()}`:''}</div></div>`).join(''):'<div class="card mu" style="text-align:center">No contests here yet.</div>'}`);
   $('view').onclick=e=>{const t=e.target.closest('[data-tb]');if(t){window.CTAB=t.dataset.tb;return V.contests()}const c=e.target.closest('[data-ct]');if(c)return go('contests',{id:+c.dataset.ct});if(e.target.closest('#ctn'))ctCreate()}};
+const CTU={spent:'coins',count:'gifts',won:'wins',earned:'coins'};
+let CTLIVE=null;
 async function ctDetail(id){
-  const c=await api('GET','/contests/'+id),mod=['staff','admin'].includes(ST.role),mine=c.owner===me;
-  view(`<div class="cmp"><button id="ctb">←</button><h2 style="margin:0 0 0 8px">${esc(c.name)}</h2></div>
-  <div class="card">${c.banner?`<img src="${esc(c.banner)}" alt="" style="width:100%;max-height:200px;object-fit:cover;border-radius:10px;margin-bottom:8px">`:''}
-    <div class="row"><span class="lv">${ctState(c)}</span><span class="mu" style="margin-left:auto">by <b style="color:${nc(c.owner)}">${esc(c.owner)}</b></span></div>
-    ${c.descr?`<p>${esc(c.descr)}</p>`:''}
-    <div class="mu">${ctRule(c)}${c.ref?' · '+esc(c.ref):''} · room <b>${esc(c.room)}</b></div>
-    ${c.ctype==='game'&&(c.minw||c.maxw)?`<div class="mu">Wager ${c.minw?'from '+c.minw.toLocaleString():''} ${c.maxw?'up to '+c.maxw.toLocaleString():''} coins</div>`:''}
-    <div class="mu">${ctDT(c.starts)} → ${ctDT(c.ends)}</div>
-    <div class="mu">${c.scope==='countries'?'Open to: '+esc(c.countries.join(', ')):'Open to everyone'}</div>
-    ${c.status==='rejected'||c.status==='cancelled'?`<div class="neg">${esc(c.reason||'')}</div>`:''}</div>
-  <div class="card"><b>🏅 Prizes</b>${c.prizes.map((x,i)=>`<div class="rm"><span>${ORD(i+1)} place</span><b>${x.toLocaleString()} coins</b></div>`).join('')}<div class="mu">Pool ${c.pool.toLocaleString()} coins</div></div>
-  <div class="card"><b>📊 Leaderboard</b>${c.board.length?c.board.map((b,i)=>`<div class="rm" data-u="${esc(b.user)}"><span>${i+1}. <b style="color:${nc(b.user)}">${esc(b.user)}</b></span><b>${b.score.toLocaleString()}</b></div>`).join(''):'<div class="mu">No scores yet.</div>'}${c.status==='approved'?`<div class="mu">Your score: ${c.mine.toLocaleString()}</div>`:''}</div>
-  <div class="row" style="gap:8px;flex-wrap:wrap;margin:8px 12px">${c.status==='approved'&&Date.now()<c.ends?`<button class="o" id="ctg">Go to ${esc(c.room)}</button>`:''}${mine&&(c.status==='pending'||(c.status==='approved'&&Date.now()<c.starts))?'<button id="ctx">Cancel contest</button>':''}${mod&&c.status==='pending'?'<button class="o" id="cta">Approve</button><button id="ctr">Reject</button>':''}</div>`);
-  const back=()=>go('contests');
-  $('ctb').onclick=back;
-  if($('ctg'))$('ctg').onclick=()=>go('chat',c.room);
-  if($('ctx'))$('ctx').onclick=async()=>{if(!confirm('Cancel this contest and get the prize pool back?'))return;try{await api('POST','/contests/'+id+'/cancel');toast('Cancelled — coins returned');back()}catch(er){fail(er)}};
-  if($('cta'))$('cta').onclick=async()=>{try{await api('POST','/admin/contests/'+id,{action:'approve'});toast('Approved ✔');ctDetail(id)}catch(er){fail(er)}};
-  if($('ctr'))$('ctr').onclick=async()=>{const why=prompt('Reason for rejecting (the creator gets the coins back):','');if(why===null)return;try{await api('POST','/admin/contests/'+id,{action:'reject',reason:why});toast('Rejected');back()}catch(er){fail(er)}};
-  $('view').onclick=e=>{const u=e.target.closest('[data-u]');if(u)go('profile',u.dataset.u)}}
+  clearInterval(CTLIVE);
+  const mod=['staff','admin'].includes(ST.role);let c=await api('GET','/contests/'+id),skew=(c.now||Date.now())-Date.now();
+  const unit=CTU[c.ranking]||'',clock=ms=>{ms=Math.max(0,ms);const d=Math.floor(ms/864e5),h=Math.floor(ms%864e5/36e5),m=Math.floor(ms%36e5/6e4),x=Math.floor(ms%6e4/1e3),z=n=>String(n).padStart(2,'0');return(d?d+'d ':'')+z(h)+':'+z(m)+':'+z(x)};
+  const medal=i=>i<3?['g','s','b'][i]:'';
+  const paint=()=>{const now=Date.now()+skew,live=c.status==='approved'&&now>=c.starts&&now<c.ends,up=c.status==='approved'&&now<c.starts,mine=c.owner===me;
+    const st=live?'Running':up?'Upcoming':(CTS[c.status]||c.status),tm=live?'Ends in '+clock(c.ends-now):up?'Starts in '+clock(c.starts-now):'';
+    const chips=[c.ctype==='gift'?'🎁 '+(c.ref?esc(c.ref):'All gifts'):'🎮 '+(c.ref?esc(c.ref):'All games'),c.scope==='countries'?'🌍 '+esc(c.countries.slice(0,3).join(', '))+(c.countries.length>3?' +'+(c.countries.length-3):''):'🌐 Global',`👥 ${c.players} in`]
+      .concat(c.ctype==='game'&&(c.minw||c.maxw)?[`Wager ${c.minw?c.minw.toLocaleString():'0'} – ${c.maxw?c.maxw.toLocaleString():'any'}`]:[]).concat(c.board.length?[`🏆 ${c.board[0].score.toLocaleString()} ${unit}`]:[]);
+    const top=c.board.slice(0,3),pod=[top[1],top[0],top[2]],rank=[2,1,3];
+    $('view').innerHTML=`<div class="ctd"><div class="ctbn" style="${c.banner?`background-image:url('${esc(c.banner)}')`:''}"><span class="ctst ${live?'live':''}">${esc(st)}</span>${tm?`<span class="cttm" id="cttm">${tm}</span>`:''}
+      <div class="ctti"><button id="ctb" aria-label="Back">←</button><div><b>${esc(c.name)}</b><small>${ctRule(c)} · ${ctDT(c.starts)} – ${ctDT(c.ends)}</small></div></div></div>
+      <div class="ctch">${chips.map(x=>`<span>${x}</span>`).join('')}</div>
+      ${c.descr?`<p class="ctds">${esc(c.descr).replace(/\n/g,'<br>')}</p>`:''}
+      <div class="mu" style="margin:6px 12px">Room <b>${esc(c.room)}</b> · created by <b style="color:${nc(c.owner)}">${esc(c.owner)}</b> · prize pool ${c.pool.toLocaleString()} coins</div>
+      ${c.status==='rejected'||c.status==='cancelled'||c.status==='expired'?`<div class="neg" style="margin:6px 12px">${esc(c.reason||'')}</div>`:''}
+      <div class="ctme">🏆<div><b>${c.myRank?`You are #${c.myRank} · ${c.mine.toLocaleString()} ${unit}`:"You're not on the board yet"}</b><small>${c.myRank?'Keep going to climb higher.':'Take part to climb into the top spots.'}</small></div></div>
+      <div class="ctsec">PRIZES <b>${c.prizes.length}</b></div>
+      ${c.prizes.map((x,i)=>`<div class="ctpr"><span class="ctmd ${medal(i)}">${ORD(i+1)}</span><span>🪙 <b>${x.toLocaleString()} coins</b></span></div>`).join('')}
+      <div class="ctsec">LEADERBOARD</div>
+      ${c.board.length?`<div class="ctpod">${pod.map((b,k)=>b?`<div class="pc p${rank[k]}" data-u="${esc(b.user)}"><div class="crw">${rank[k]===1?'👑':''}</div>${av(b.user,rank[k]===1?72:58)}<b>${esc(b.user)}</b>${rt(ROLES[b.user],b.user)}<span class="nm">${b.score.toLocaleString()}</span><small>${b.score.toLocaleString()} ${unit}</small><i class="bar"></i></div>`:'<div></div>').join('')}</div>
+      ${c.board.slice(3).map((b,i)=>`<div class="ctlr" data-u="${esc(b.user)}"><span class="rk">${i+4}</span>${av(b.user,40)}<b style="color:${nc(b.user)}">${esc(b.user)}</b>${rt(ROLES[b.user],b.user)}<span class="sc"><b>${b.score.toLocaleString()}</b><small>${b.score.toLocaleString()} ${unit}</small></span></div>`).join('')}`:'<div class="mu" style="text-align:center;margin:12px">No scores yet.</div>'}
+      <div class="ctf2">${live?`<button class="o" id="ctg">Go to ${esc(c.room)}</button>`:''}${mine&&(c.status==='pending'||up)?'<button id="ctx" class="ctred">Cancel contest</button>':''}${mod&&c.status==='pending'?'<button class="o" id="cta">Approve</button><button id="ctr" class="ctred">Reject</button>':''}</div></div>`;
+    $('ctb').onclick=()=>{clearInterval(CTLIVE);go('contests')};
+    if($('ctg'))$('ctg').onclick=()=>go('chat',c.room);
+    if($('ctx'))$('ctx').onclick=async()=>{if(!confirm('Cancel this contest and get the prize pool back?'))return;try{await api('POST','/contests/'+id+'/cancel');toast('Cancelled — coins returned');clearInterval(CTLIVE);go('contests')}catch(er){fail(er)}};
+    if($('cta'))$('cta').onclick=async()=>{try{await api('POST','/admin/contests/'+id,{action:'approve'});toast('Approved ✔');c=await api('GET','/contests/'+id);paint()}catch(er){fail(er)}};
+    if($('ctr'))$('ctr').onclick=async()=>{const why=prompt('Reason for rejecting (the creator gets the coins back):','');if(why===null)return;try{await api('POST','/admin/contests/'+id,{action:'reject',reason:why});toast('Rejected');clearInterval(CTLIVE);go('contests')}catch(er){fail(er)}};
+    $('view').onclick=e=>{const u=e.target.closest('[data-u]');if(u){clearInterval(CTLIVE);go('profile',u.dataset.u)}}};
+  c.board.forEach(b=>{if(!ROLES[b.user])ROLES[b.user]='user'});paint();
+  let n=0;CTLIVE=setInterval(async()=>{if(cur!=='contests'||!$('ctb')){clearInterval(CTLIVE);return}
+    const el=$('cttm');if(el){const now=Date.now()+skew,live=now>=c.starts;el.textContent=(live?'Ends in ':'Starts in ')+clock((live?c.ends:c.starts)-now);if(now>=c.ends||(!live&&now>=c.starts))n=99}
+    if(++n>=8){n=0;try{const f=await api('GET','/contests/'+id);skew=(f.now||Date.now())-Date.now();c=f;c.board.forEach(b=>{if(!ROLES[b.user])ROLES[b.user]='user'});const sy=$('view').scrollTop;paint();$('view').scrollTop=sy}catch{}}},1000)}
 async function ctCreate(){
   const o=await api('GET','/contests/options');let banner='';const pr=[''];
   const T={s:Math.ceil((Date.now()+5*60e3)/3e5)*3e5};T.e=T.s+86400e3;

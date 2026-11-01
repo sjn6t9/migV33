@@ -1396,8 +1396,11 @@ app.get('/api/contests', auth, ok((q, r) => {
 app.get('/api/contests/:id', auth, ok((q, r) => {
   const c = db.prepare('select * from contests where id=?').get(+q.params.id); if (!c) return bad(r, 'Contest not found', 404);
   if (c.status === 'pending' && c.owner !== q.user && !isMod(q.user)) return bad(r, 'Contest not found', 404);
-  const board = db.prepare('select user,score from contest_scores where cid=? and score>0 order by score desc, user limit 10').all(c.id);
-  r.json({ ...ctView(c), board, mine: db.prepare('select score from contest_scores where cid=? and user=?').get(c.id, q.user)?.score || 0 });
+  const board = db.prepare('select user,score from contest_scores where cid=? and score>0 order by score desc, user limit 50').all(c.id);
+  const players = db.prepare('select count(*) n from contest_scores where cid=? and score>0').get(c.id).n;
+  const mine = db.prepare('select score from contest_scores where cid=? and user=?').get(c.id, q.user)?.score || 0;
+  const myRank = mine > 0 ? db.prepare('select count(*)+1 n from contest_scores where cid=? and (score>? or (score=? and user<?))').get(c.id, mine, mine, q.user).n : 0;
+  r.json({ ...ctView(c), board, players, mine, myRank, now: Date.now() });
 }));
 app.post('/api/contests', auth, ok((q, r) => {
   const b = q.body || {}, me = q.user, now = Date.now();
