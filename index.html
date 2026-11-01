@@ -1221,6 +1221,8 @@ html.vvon body.inchat{overflow:hidden!important;overscroll-behavior:none}
 @media (max-width:999px){html.vvon body.inchat{position:fixed!important;left:0;width:100%;top:var(--vvt,0px)!important;height:var(--vvh,100dvh)!important}html.vvon body.inchat #app{height:100%!important}}
 #log{overscroll-behavior:contain}
 html body.kbd #bnav#bnav,html[data-skin] body.kbd #bnav#bnav{display:none!important}html[data-skin] body.kbd.inchat #view#view#view{padding-bottom:0!important}html[data-skin] body.kbd.inchat #chatbox#chatbox #f#f#f#f{margin-bottom:0!important}html[data-skin] body.kbd.inchat #chatbox#chatbox{margin-bottom:0!important;padding-bottom:2px!important}
+
+.cform label{display:block;margin:10px 0 4px;font-weight:700}.cform input,.cform select,.cform textarea{width:100%;box-sizing:border-box}.ctg{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px}.cform,.cform *{min-width:0;max-width:100%;box-sizing:border-box}.cform input[type=datetime-local]{font-size:12px;padding-left:6px;padding-right:4px}.cform [hidden]{display:none!important}
 </style>
 <script>try{if(localStorage.tk||sessionStorage.tk)document.documentElement.dataset.boot=1;var k=localStorage.skin==='dark'?'dark':'day';document.documentElement.dataset.skin=k==='dark'?'dark':'navy';document.documentElement.dataset.theme='dark'}catch(e){document.documentElement.dataset.skin='navy';document.documentElement.dataset.theme='dark'}</script>
 <style>/* Name effects from the colour shop: each one animates the glow around the username */
@@ -1406,8 +1408,8 @@ const av=(n,s=40)=>AV[n]?`<span class="av" style="width:${s}px;height:${s}px;bac
 const ROLES={},RC={admin:'#ff7a33',staff:'#4cc24f',mentor:'#f2394a',headmentor:'#e8c23c',merchant:'#b45cff',vip:'#2ec4bf'},RL={admin:'#e8591f',staff:'#2f9a3d',mentor:'#b01020',headmentor:'#8a6a14',merchant:'#7e22ce',vip:'#00706f'};
 let UCOL={},UFX={};// personal name colours (hex) and name effects (glow) from the colour shop
 const NMH={admin:'#ff7a33',staff:'#4cc24f',mentor:'#f2394a',headmentor:'#e8c23c',merchant:'#b45cff',vip:'#2ec4bf',user:'#6db3ff'};const nc=n=>{const rk=RC[ROLES[n]]?ROLES[n]:'user';const c=UCOL[n]||`var(--nm-${rk},${NMH[rk]})`;return UFX[n]?`${c};animation:${UFX[n]}`:c};
-const VERS=new Set();const refreshVer=()=>Promise.all([api('GET','/verified').then(l=>{VERS.clear();l.forEach(n=>VERS.add(n))}).catch(()=>{}),api('GET','/avatars').then(o=>{AV=o||{}}).catch(()=>{})]);
-const rt=(r,n)=>(RC[r]?`<img class="ri" src="/badges/${r==='headmentor'?'hmt':r}.png" alt="${r}" title="${r==='headmentor'?'head mentor':r==='vip'?'VIP user':r}">`:'')+(VERS.has(n)?'<img class="ri" src="/badges/verified.png" alt="verified" title="Verified">':'');
+const VERS=new Set(),VIPS=new Set();const refreshVer=()=>Promise.all([api('GET','/vips').then(l=>{VIPS.clear();l.forEach(n=>VIPS.add(n))}).catch(()=>{}),api('GET','/verified').then(l=>{VERS.clear();l.forEach(n=>VERS.add(n))}).catch(()=>{}),api('GET','/avatars').then(o=>{AV=o||{}}).catch(()=>{})]);
+const rt=(r,n)=>(RC[r]&&r!=='vip'?`<img class="ri" src="/badges/${r==='headmentor'?'hmt':r}.png" alt="${r}" title="${r==='headmentor'?'head mentor':r}">`:'')+(VIPS.has(n)?'<img class="ri" src="/badges/vip.png" alt="VIP" title="VIP user">':'')+(VERS.has(n)?'<img class="ri" src="/badges/verified.png" alt="verified" title="Verified">':'');
 const LST=[20,98,176,253,331,409,487,564,640,641,760,878,996,1113,1231,1349,1467,1584,1702,1820,1938,2056,2172,2290,2291,2684,3076];
 const lvStep=L=>LST[L-1]??Math.round(3076+392.5*(L-27));const CUM=[0,0];for(let L=1;L<1000;L++)CUM[L+1]=CUM[L]+lvStep(L);
 /* Level icons: [first level, icon]. Edit the numbers to change when an icon appears. */
@@ -1493,7 +1495,7 @@ const UNR={},LOGC={},BUF={};let skipIntro=false;const dropRoom=x=>{delete LOGC[x
 const saveOpen=()=>{try{sessionStorage.open=JSON.stringify(OPEN);localStorage.open=sessionStorage.open}catch{}try{if(ws&&ws.readyState===1)ws.send(JSON.stringify({t:'tabs',rooms:OPEN}))}catch{}};
 /* ---------- navigation ---------- */
 const cn=c=>ST.unlimited?'∞ coins':c+' coins';
-const V={};const TT={panel:'Panel',admin:'Admin Panel',home:'Home',rooms:'Chat Rooms',chat:'Chat',profile:'Profile',account:'My Account',friends:'Friends',explore:'Explore',spin:'Daily Spin',cmds:'Command List',settings:'Settings',mail:'Mail',mailc:'New Mail'};
+const V={};const TT={panel:'Panel',admin:'Admin Panel',home:'Home',rooms:'Chat Rooms',chat:'Chat',profile:'Profile',account:'My Account',friends:'Friends',explore:'Explore',store:'Store',contests:'Contests',peoples:'Peoples',spin:'Daily Spin',cmds:'Command List',settings:'Settings',mail:'Mail',mailc:'New Mail'};
 let PREV=null,CURA;const goBack=d=>{const p=PREV;if(p&&p.v&&p.v!=='spin')go(p.v,p.a);else go(d||'home')};
 let TNE=null,CNE=null;function placeHdr(on){TNE=TNE||$('tn');CNE=CNE||$('coins');if(!TNE||!CNE)return;const host=on&&$('rbx'),top=$('top');if(host){if(TNE.parentNode!==host){host.append(TNE,CNE)}}else if(top&&TNE.parentNode!==top){top.append(TNE,CNE)}}
 async function go(v,a){document.body.classList.toggle('inchat',v==='chat');try{drawTabs()}catch{}try{TNE=TNE||$('tn');CNE=CNE||$('coins');if(v!=='chat'){placeHdr(false);document.querySelectorAll('#hdr #rbw,#hdr #rbt').forEach(n=>n.remove())}}catch{}document.body.style.overflow='';document.documentElement.style.overflow='';$('view')&&($('view').style.overflowY='');if(cur==='chat'&&$('log')&&room&&OPEN.includes(room)&&!room.startsWith('dm:'))LOGC[room]=$('log').innerHTML;if(cur&&cur!==v)PREV={v:cur,a:CURA};cur=v;CURA=a;try{if(v!=='chat')sessionStorage.lastv=JSON.stringify([v,a===undefined?null:a])}catch{}$('drawer').classList.remove('open');bnSet(v,a);
@@ -1504,7 +1506,7 @@ $('drawer').onclick=e=>{if(e.target.id==='drawer')$('drawer').classList.remove('
 function navAnim(){const d=$('dn');d.classList.remove('anim');void d.offsetWidth;d.classList.add('anim');setTimeout(()=>d.classList.remove('anim'),1200)}
 try{if(localStorage.navoff)document.body.classList.add('nav-off')}catch(e){}
 $('dtg').onclick=e=>{e.stopPropagation();if(innerWidth>=1000){const off=document.body.classList.toggle('nav-off');try{localStorage.navoff=off?1:''}catch(e){}if(!off)setTimeout(navAnim,120)}else $('drawer').classList.remove('open')};
-function drawNav(){const items=[['🪪','My Profile','profile'],['🏠','Home','home'],['✉️','Mail','mail'],['💬','Chat Rooms','rooms'],['👥','Friends','friends'],['💰','My Account','account'],['🧭','Explore','explore'],['🎡','Daily Spin','spin'],['⌨️','Command List','cmds'],['⚙️','Settings','settings']];if(ST.role==='staff')items.splice(items.length-1,0,['🛡️','Admin Panel','admin']);
+function drawNav(){const items=[['🪪','My Profile','profile'],['🏠','Home','home'],['✉️','Mail','mail'],['💬','Chat Rooms','rooms'],['👥','Friends','friends'],['💰','My Account','account'],['🧭','Explore','explore'],['🛍️','Store','store'],['🏆','Contests','contests'],['🧑‍🤝‍🧑','Peoples','peoples'],['🎡','Daily Spin','spin'],['⌨️','Command List','cmds'],['⚙️','Settings','settings']];if(ST.role==='staff')items.splice(items.length-1,0,['🛡️','Admin Panel','admin']);
   else if(ST.role!=='admin')items.splice(items.length-1,0,['🏪',{user:'Become a Merchant',merchant:'Merchant Panel',mentor:'Mentor Panel',headmentor:'Head Mentor Panel'}[ST.role]||'Panel','panel']);
   $('dn').innerHTML=`<form class="dsr" id="ds"><input id="dq" placeholder="Search for a user" maxlength="16" aria-label="Search for a user"><button class="o" aria-label="Search"><svg viewBox="0 0 24 24"><circle cx="10" cy="10" r="6"/><path d="M15 15l6 6"/></svg></button></form>
   <div class="dme" id="mc">${av(me,84)}<div class="g"><span class="nm" style="color:${nc(me)}">${esc(me)}</span>${rt(ST.role,me)}<div class="mu"><span class="dot ${ST.presence||'online'}"></span>${ST.presence||'online'}</div><div class="mu">${lvi(lv(ST.xp||0),22)} Level ${lv(ST.xp||0)}</div><div class="mu">${(ST.xp||0).toLocaleString()} / ${(CUM[lv(ST.xp||0)+1]||ST.xp||0).toLocaleString()} XP</div></div></div><div class="dst" id="dst"><svg viewBox="0 0 24 24" class="dsi"><path d="M4 5h16v11H9l-5 4z"/></svg><span class="dtx${ST.status_text?'':' none'}" id="dtx">${ST.status_text?esc(ST.status_text):'Set your status'}</span><svg viewBox="0 0 24 24" class="dsp"><path d="M4 20l1-4L16 5l3 3L8 19zM14 7l3 3"/></svg></div><div class="dh">Discover</div><div class="dmenu">`+
@@ -2252,9 +2254,9 @@ V.profile=async(n)=>{n=n||me;const u=await api('GET','/users/'+n);ROLES[u.name]=
   const pa=$('pa');
   if(mine){pa.innerHTML='<button class="o" id="ed" style="flex:1">Edit Profile</button>';$('ed').onclick=()=>{pa.innerHTML=`<input id="es" placeholder="Status" maxlength="60" value="${esc(u.status_text||'')}"><input id="eb" placeholder="About you" maxlength="200" value="${esc(u.bio||'')}"><button class="o" id="sv">Save</button>`;
     $('sv').onclick=async()=>{try{await api('PUT','/me',{status_text:$('es').value,bio:$('eb').value});V.profile(me)}catch(e){fail(e)}}}}
-  else{const st=u.state;pa.innerHTML=(st==='none'?'<button class="o" data-x="request">Add friend</button>':st==='sent'?'<button disabled>Request sent</button>':st==='incoming'?'<button class="o" data-x="accept">Accept request</button>':'<button data-x="remove">Unfriend</button>')+(ST.role==='staff'?`<select id="rs" style="width:auto">${[['user','Regular user'],['vip','VIP User'],['merchant','Merchant'],['mentor','Mentor'],['admin','Admin'],['staff','Staff']].map(([k,t])=>`<option value="${k}" ${u.role===k?'selected':''}>${t}</option>`).join('')}</select><button data-x="role">Set role</button><button data-x="verify">${VERS.has(u.name)?'Remove verified':'Verify'}</button>`:'')+(['staff','admin'].includes(ST.role)&&u.role!=='staff'&&lastRoom?'<button id="mdb">Moderate</button>':'')+'<button id="pm">Private chat</button>';
+  else{const st=u.state;pa.innerHTML=(st==='none'?'<button class="o" data-x="request">Add friend</button>':st==='sent'?'<button disabled>Request sent</button>':st==='incoming'?'<button class="o" data-x="accept">Accept request</button>':'<button data-x="remove">Unfriend</button>')+(ST.role==='staff'?`<select id="rs" style="width:auto">${[['user','Regular user'],['vip','VIP User'],['merchant','Merchant'],['mentor','Mentor'],['admin','Admin'],['staff','Staff']].map(([k,t])=>`<option value="${k}" ${u.role===k?'selected':''}>${t}</option>`).join('')}</select><button data-x="role">Set role</button><button data-x="verify">${VERS.has(u.name)?'Remove verified':'Verify'}</button><button data-x="vip">${VIPS.has(u.name)?'Remove VIP':'Make VIP'}</button>`:'')+(['staff','admin'].includes(ST.role)&&u.role!=='staff'&&lastRoom?'<button id="mdb">Moderate</button>':'')+'<button id="pm">Private chat</button>';
     $('pm').onclick=()=>go('chat','dm:'+[me,u.name].sort().join(':'));if($('mdb'))$('mdb').onclick=()=>modSheet(u.name);
-    pa.onclick=async e=>{const x=e.target.dataset.x;if(!x)return;try{if(x==='role')await api('POST','/admin/role',{name:u.name,role:$('rs').value});else if(x==='verify')await api('POST','/admin/verify',{name:u.name,on:!VERS.has(u.name)});else await api('POST','/friends/'+x,{name:u.name});V.profile(u.name)}catch(er){fail(er)}}}};
+    pa.onclick=async e=>{const x=e.target.dataset.x;if(!x)return;try{if(x==='role')await api('POST','/admin/role',{name:u.name,role:$('rs').value});else if(x==='verify')await api('POST','/admin/verify',{name:u.name,on:!VERS.has(u.name)});else if(x==='vip')await api('POST','/admin/users/'+encodeURIComponent(u.name)+'/edit',{action:'vip',on:!VIPS.has(u.name)});else await api('POST','/friends/'+x,{name:u.name});V.profile(u.name)}catch(er){fail(er)}}}};
 /* ---------- account ---------- */
 V.account=async()=>{const a=await api('GET','/account');ST.coins=a.coins;$('coins').textContent=cn(a.coins);const f=window.AF||'all';
   const ok=x=>f==='all'||(f==='gifts'&&x.kind==='gift')||(f==='transfers'&&x.kind==='transfer')||(f==='games'&&x.kind==='game')||(f==='other'&&x.kind==='other');
@@ -2304,7 +2306,7 @@ async function adminUser(name){
     ${f('pf','Full name',u.full_name,'maxlength=40')}
     <label class="mu">Gender</label><select id="pg">${['','Male','Female','Other'].map(g=>`<option${g===u.gender?' selected':''}>${g}</option>`).join('')}</select>
     ${f('pb','Bio',u.bio,'maxlength=200')}${f('ps','Status text',u.status_text,'maxlength=60')}
-    <div class="row"><button class="o" data-a="profile">Save profile</button><button class="o" data-a="verify">${u.verified?'Remove verified ✔':'Mark verified ✔'}</button>${u.avatar?'<button class="o" data-a="avatar_remove">Remove photo</button>':''}</div></div>
+    <div class="row"><button class="o" data-a="profile">Save profile</button><button class="o" data-a="verify">${u.verified?'Remove verified ✔':'Mark verified ✔'}</button><button class="o" data-a="vip">${u.vip?'Remove VIP':'Mark VIP'}</button>${u.avatar?'<button class="o" data-a="avatar_remove">Remove photo</button>':''}</div></div>
   <div class="card"><b>Level</b><div class="mu">Currently Level ${u.level} (${u.xp} XP). Setting a level sets XP to that level's starting point.</div>
     <div class="row"><input id="lv" type="number" min="1" max="1000" placeholder="Level (1–1000)" value="${u.level}"><button class="o" data-a="level">Set level</button></div></div>
   <div class="card"><b>Coins</b><div class="mu">${prot?'The main staff ID has unlimited coins.':'Balance: '+u.coins}</div>
@@ -2323,12 +2325,12 @@ async function adminUser(name){
     <div class="row"><input id="pa" placeholder="Parent (merchant/mentor ID, empty = none)" maxlength="16" value="${esc(u.parent)}"><button class="o" data-a="parent">Set parent</button></div>
     <div class="row"><input id="tb" placeholder="Tagged by (ID, empty = untag)" maxlength="16" value="${esc(u.taggedBy)}"><button class="o" data-a="tag">Set tag</button></div>
     ${u.history.length?'<div class="mu">Role history: '+u.history.map(x=>esc(x.from_role)+' → '+esc(x.to_role)+' ('+new Date(x.ts).toLocaleDateString()+(x.by?' by '+esc(x.by):'')+')').join(' · ')+'</div>':''}
-    <div class="row"><select id="ro">${['user','vip','merchant','mentor','headmentor','admin'].concat(main?['staff']:[]).map(r=>`<option${r===u.role?' selected':''}>${r}</option>`).join('')}</select><button class="o" data-a="role">Apply role</button>${['mentor','headmentor','admin','merchant'].includes(u.role)?'<button class="o" data-a="role" data-r="user">De-moderate (→ user)</button>':''}</div></div>
+    <div class="row"><select id="ro">${['user','merchant','mentor','headmentor','admin'].concat(main?['staff']:[]).map(r=>`<option${r===u.role?' selected':''}>${r}</option>`).join('')}</select><button class="o" data-a="role">Apply role</button>${['mentor','headmentor','admin','merchant'].includes(u.role)?'<button class="o" data-a="role" data-r="user">De-moderate (→ user)</button>':''}</div></div>
   <div class="card"><b>Ban</b><div class="mu">${u.banned?'Banned'+(u.ban_reason?' — '+esc(u.ban_reason):''):'Account is active'}</div>
     ${u.banned?'<button class="o" data-a="unban">Unban</button>':'<div class="row"><input id="br" placeholder="Reason (optional)" maxlength="100"><button class="o" data-a="ban">Ban</button></div>'}</div>`);
   const run=async(b)=>{const a=b.dataset.a,v=id=>$(id)?.value;const P={
     rename:{newName:v('rn')},email:{email:v('aem')},mobile:{mobile:v('amb')},country:{country:v('cy')},level:{level:v('lv')},
-    profile:{full_name:v('pf'),gender:v('pg'),bio:v('pb'),status_text:v('ps')},verify:{on:!u.verified},avatar_remove:{},
+    profile:{full_name:v('pf'),gender:v('pg'),bio:v('pb'),status_text:v('ps')},verify:{on:!u.verified},vip:{on:!u.vip},avatar_remove:{},
     coins:{mode:b.dataset.m,amount:v('ca')},password:{password:v('pw')},secq_set:{question:v('sq'),answer:v('sa')},secq_reset:{},
     pin_set:{pin:v('mp')},parent:{parent:v('pa')},tag:{by:v('tb')},pin_reset:{},role:{role:b.dataset.r||v('ro')},ban:{reason:v('br')},unban:{}}[a];
     if(['ban','pin_reset','secq_reset','password'].includes(a)&&!confirm('Are you sure?'))return;
@@ -2440,11 +2442,106 @@ V.explore=async()=>{const lb=await api('GET','/leaderboard');lb.forEach(u=>ROLES
   <div class="card"><b>👑 Members</b><div class="mu">Admin (orange) · Staff (green) · Head Mentor (gold) · Mentor (red) · Merchant (purple) · VIP (teal)</div>${mem.map(u=>`<div class="rm" data-u="${esc(u.name)}"><b style="color:${nc(u.name)}">${esc(u.name)}</b>${rt(u.role,u.name)}</div>`).join('')||'<div class="mu">No members yet.</div>'}</div>
   <div class="card row" data-go="spin" style="cursor:pointer"><div class="g"><b>🎡 Daily Spin</b><div class="mu">Two draws a day: 12 PM and 12 AM</div></div>›</div>
   <div class="card row" data-go="cmds" style="cursor:pointer"><div class="g"><b>⌨️ Command List</b><div class="mu">All chat commands and what they do</div></div>›</div>
+      `);
+  $('view').onclick=e=>{const g=e.target.closest('[data-go]');if(g)return go(g.dataset.go);const c=e.target.closest('[data-u]');if(c)go('profile',c.dataset.u)}};
+/* ---------- store ---------- */
+V.store=async()=>{
+  view(`<h2 style="margin-top:12px">Store</h2>
   <div class="card row" data-go="gshop" style="cursor:pointer"><div class="g"><b>🎁 Gift store</b><div class="mu">All gifts, prices and what the receiver gets</div></div>›</div>
   <div class="card row" data-go="colors" style="cursor:pointer"><div class="g"><b>🎨 Color shop</b><div class="mu">Buy name colours, then apply one</div></div>›</div>
   <div class="card row" data-go="fxshop" style="cursor:pointer"><div class="g"><b>✨ Effect shop</b><div class="mu">Animated glows for your name</div></div>›</div>
-  <div class="card"><b>Coming soon</b><div class="mu">Pets · Lucky draw · Contests</div></div>`);
-  $('view').onclick=e=>{const g=e.target.closest('[data-go]');if(g)return go(g.dataset.go);const c=e.target.closest('[data-u]');if(c)go('profile',c.dataset.u)}};
+  <div class="card row" id="avi" style="cursor:pointer"><div class="g"><b>🧑‍🎨 Avatar items</b><div class="mu">Avatar pictures for your profile</div></div>›</div>`);
+  $('view').onclick=e=>{const g=e.target.closest('[data-go]');if(g)return go(g.dataset.go);if(e.target.closest('#avi'))go('profile',me)}};
+/* ---------- peoples ---------- */
+V.peoples=async()=>{
+  const G=await api('GET','/people');const COL={staff:'#4cc24f',admin:'#ff7a33',headmentor:'#e8c23c',mentor:'#f2394a',merchant:'#b45cff',vip:'#2ec4bf',verified:'#4aa8e8',top:'#f7931e'};
+  G.forEach(g=>g.list.forEach(u=>{if(!ROLES[u.name])ROLES[u.name]=u.role}));
+  view(`<h2 style="margin-top:12px">Peoples</h2>`+G.map(g=>`<div class="dk cl" style="--c:${COL[g.k]}" data-pg="${g.k}"><div>${esc(g.title)}<span class="n">${g.count}</span></div><svg class="chv" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg></div><div data-pl="${g.k}" style="display:none"></div>`).join(''));
+  const row=(u,i,top)=>`<div class="rm" data-u="${esc(u.name)}"><span class="rn">${top?(i+1)+'. ':''}<b style="color:${nc(u.name)}">${esc(u.name)}</b>${rt(u.role,u.name)} <span class="lv">${lvi(u.level,16)}Lv ${u.level}</span></span></div>`;
+  $('view').onclick=e=>{const d=e.target.closest('[data-pg]');
+    if(d){const k=d.dataset.pg,box=$('view').querySelector(`[data-pl="${k}"]`),g=G.find(x=>x.k===k),open=box.style.display==='none';d.classList.toggle('cl',!open);
+      if(open&&!box.dataset.f){box.dataset.f=1;box.innerHTML=g.list.length?g.list.map((u,i)=>row(u,i,k==='top')).join(''):'<div class="card mu" style="text-align:center">Nobody here yet.</div>'}
+      box.style.display=open?'':'none';return}
+    const c=e.target.closest('[data-u]');if(c)go('profile',c.dataset.u)}};
+/* ---------- contests ---------- */
+const CTS={pending:'Waiting for approval',rejected:'Not approved',cancelled:'Cancelled',expired:'Expired',ended:'Ended'};
+const ctState=c=>c.status==='approved'?(Date.now()<c.starts?'Upcoming':'Live'):(CTS[c.status]||c.status);
+const ctDT=t=>new Date(t).toLocaleString([], {day:'numeric',month:'short',hour:'numeric',minute:'2-digit'});
+const ORD=n=>{const s=['th','st','nd','rd'],v=n%100;return n+(s[(v-20)%10]||s[v]||s[0])};
+const ctRule=c=>{const r=c.ctype==='gift'?(c.ranking==='count'?'Gifts sent':'Coins spent on gifts'):(c.ranking==='earned'?'Coins won':'Games won');return `${c.ctype==='gift'?'🎁 Gift contest':'🎮 Game contest'} · ${r}`};
+V.contests=async(a)=>{
+  if(a&&typeof a==='object'&&a.id)return ctDetail(a.id);
+  const tab=window.CTAB||'active';let mod=['staff','admin'].includes(ST.role);
+  const tabs=[['active','Live'],['upcoming','Upcoming'],['ended','Ended'],['mine','Mine']].concat(mod?[['pending','To approve']]:[]);
+  const list=await api('GET','/contests?tab='+tab);
+  view(`<div class="cmp"><h2 style="margin:0">Contests</h2><button id="ctn" class="o" style="margin-left:auto">+ Create</button></div>
+  <nav class="tabbar">${tabs.map(([k,n])=>`<button data-tb="${k}" class="${tab===k?'on':''}">${n}</button>`).join('')}</nav>
+  ${list.length?list.map(c=>`<div class="card ct" data-ct="${c.id}" style="cursor:pointer">${c.banner?`<img src="${esc(c.banner)}" alt="" style="width:100%;max-height:150px;object-fit:cover;border-radius:10px;margin-bottom:8px">`:''}<div class="row"><b>${esc(c.name)}</b><span class="lv" style="margin-left:auto">${ctState(c)}</span></div><div class="mu">${ctRule(c)} · ${esc(c.room)}</div><div class="mu">${ctDT(c.starts)} → ${ctDT(c.ends)}</div><div class="mu">Prize pool ${c.pool.toLocaleString()} coins · by ${esc(c.owner)}${c.mineScore?` · your score ${c.mineScore.toLocaleString()}`:''}</div></div>`).join(''):'<div class="card mu" style="text-align:center">No contests here yet.</div>'}`);
+  $('view').onclick=e=>{const t=e.target.closest('[data-tb]');if(t){window.CTAB=t.dataset.tb;return V.contests()}const c=e.target.closest('[data-ct]');if(c)return go('contests',{id:+c.dataset.ct});if(e.target.closest('#ctn'))ctCreate()}};
+async function ctDetail(id){
+  const c=await api('GET','/contests/'+id),mod=['staff','admin'].includes(ST.role),mine=c.owner===me;
+  view(`<div class="cmp"><button id="ctb">←</button><h2 style="margin:0 0 0 8px">${esc(c.name)}</h2></div>
+  <div class="card">${c.banner?`<img src="${esc(c.banner)}" alt="" style="width:100%;max-height:200px;object-fit:cover;border-radius:10px;margin-bottom:8px">`:''}
+    <div class="row"><span class="lv">${ctState(c)}</span><span class="mu" style="margin-left:auto">by <b style="color:${nc(c.owner)}">${esc(c.owner)}</b></span></div>
+    ${c.descr?`<p>${esc(c.descr)}</p>`:''}
+    <div class="mu">${ctRule(c)}${c.ref?' · '+esc(c.ref):''} · room <b>${esc(c.room)}</b></div>
+    ${c.ctype==='game'&&(c.minw||c.maxw)?`<div class="mu">Wager ${c.minw?'from '+c.minw.toLocaleString():''} ${c.maxw?'up to '+c.maxw.toLocaleString():''} coins</div>`:''}
+    <div class="mu">${ctDT(c.starts)} → ${ctDT(c.ends)}</div>
+    <div class="mu">${c.scope==='countries'?'Open to: '+esc(c.countries.join(', ')):'Open to everyone'}</div>
+    ${c.status==='rejected'||c.status==='cancelled'?`<div class="neg">${esc(c.reason||'')}</div>`:''}</div>
+  <div class="card"><b>🏅 Prizes</b>${c.prizes.map((x,i)=>`<div class="rm"><span>${ORD(i+1)} place</span><b>${x.toLocaleString()} coins</b></div>`).join('')}<div class="mu">Pool ${c.pool.toLocaleString()} coins</div></div>
+  <div class="card"><b>📊 Leaderboard</b>${c.board.length?c.board.map((b,i)=>`<div class="rm" data-u="${esc(b.user)}"><span>${i+1}. <b style="color:${nc(b.user)}">${esc(b.user)}</b></span><b>${b.score.toLocaleString()}</b></div>`).join(''):'<div class="mu">No scores yet.</div>'}${c.status==='approved'?`<div class="mu">Your score: ${c.mine.toLocaleString()}</div>`:''}</div>
+  <div class="row" style="gap:8px;flex-wrap:wrap;margin:8px 12px">${c.status==='approved'&&Date.now()<c.ends?`<button class="o" id="ctg">Go to ${esc(c.room)}</button>`:''}${mine&&(c.status==='pending'||(c.status==='approved'&&Date.now()<c.starts))?'<button id="ctx">Cancel contest</button>':''}${mod&&c.status==='pending'?'<button class="o" id="cta">Approve</button><button id="ctr">Reject</button>':''}</div>`);
+  const back=()=>go('contests');
+  $('ctb').onclick=back;
+  if($('ctg'))$('ctg').onclick=()=>go('chat',c.room);
+  if($('ctx'))$('ctx').onclick=async()=>{if(!confirm('Cancel this contest and get the prize pool back?'))return;try{await api('POST','/contests/'+id+'/cancel');toast('Cancelled — coins returned');back()}catch(er){fail(er)}};
+  if($('cta'))$('cta').onclick=async()=>{try{await api('POST','/admin/contests/'+id,{action:'approve'});toast('Approved ✔');ctDetail(id)}catch(er){fail(er)}};
+  if($('ctr'))$('ctr').onclick=async()=>{const why=prompt('Reason for rejecting (the creator gets the coins back):','');if(why===null)return;try{await api('POST','/admin/contests/'+id,{action:'reject',reason:why});toast('Rejected');back()}catch(er){fail(er)}};
+  $('view').onclick=e=>{const u=e.target.closest('[data-u]');if(u)go('profile',u.dataset.u)}}
+async function ctCreate(){
+  const o=await api('GET','/contests/options');let banner='';const pr=[''];
+  const loc=t=>{const d=new Date(t-new Date(t).getTimezoneOffset()*6e4);return d.toISOString().slice(0,16)};
+  const t0=Date.now()+5*60e3;
+  sheetOpen(`<div class="cform"><h2>Create a room contest</h2><p class="mu">The full prize pool is reserved now. Any unawarded positions are returned automatically when the contest ends. Staff or admin must approve it before it starts.</p>
+   <label>Contest name</label><input id="cn" maxlength="60" placeholder="Weekend room challenge">
+   <label>Description (optional)</label><textarea id="cd" maxlength="500" rows="3"></textarea>
+   <label>Banner (optional)</label><button type="button" id="cbb" style="width:100%;min-height:90px">🖼️ Add banner</button><input type="file" id="cbf" accept="image/png,image/jpeg,image/webp" hidden>
+   <div class="ctg"><div><label>Chatroom</label><select id="cr">${o.rooms.map(r=>`<option>${esc(r)}</option>`).join('')}</select></div>
+   <div><label>Contest type</label><select id="ctt"><option value="gift">Gift contest</option><option value="game">Game contest</option></select></div></div>
+   <div class="ctg" id="cgf"><div><label>Ranking</label><select id="crk1"><option value="spent">Coins spent on gifts</option><option value="count">Gifts sent</option></select></div>
+   <div><label>Gift</label><select id="cgs"><option value="">All gifts</option>${o.gifts.map(g=>`<option value="${esc(g.k)}">${esc(g.n)}</option>`).join('')}</select></div></div>
+   <div id="cgm" hidden><div class="ctg"><div><label>Ranking</label><select id="crk2"><option value="won">Games won</option><option value="earned">Coins won</option></select></div>
+   <div><label>Game</label><select id="cgg"><option value="">All chatroom games</option>${Object.entries(o.games).map(([k,n])=>`<option value="${k}">${esc(n)}</option>`).join('')}</select></div></div>
+   <div class="ctg"><div><label>Minimum wager (optional)</label><input id="cmn" type="number" min="0" inputmode="numeric" placeholder="Any"></div><div><label>Maximum wager (optional)</label><input id="cmx" type="number" min="0" inputmode="numeric" placeholder="Any"></div></div></div>
+   <label>Who can take part</label><div class="row" style="gap:8px"><button type="button" class="o" id="csa">Everyone</button><button type="button" id="csc">Specific countries</button></div>
+   <select id="cco" multiple size="6" hidden>${o.countries.map(c=>`<option>${esc(c)}</option>`).join('')}</select>
+   <div class="ctg"><div><label>Starts</label><input id="cs" type="datetime-local" value="${loc(t0)}"></div><div><label>Ends</label><input id="ce" type="datetime-local" value="${loc(t0+86400e3)}"></div></div>
+   <div class="card" style="margin:12px 0"><b>Coin prizes</b><div class="mu">Award between 1 and ${o.maxPlaces} places. The full pool is reserved now; unawarded places are returned when the contest ends.</div><div id="cpl"></div><button type="button" id="cpa"></button>
+   <div class="row"><span class="mu">Reserved prize pool</span><b id="cpt" style="margin-left:auto">0</b></div><div class="neg" id="cpm"></div></div>
+   <div class="row" style="gap:8px;justify-content:flex-end"><button type="button" id="ccx">Cancel</button><button type="button" class="o" id="ccg">Reserve &amp; create</button></div></div>`);
+  let scope='all';
+  const fmt=n=>(+n||0).toLocaleString();
+  const calc=()=>{const s=new Date($('cs').value).getTime(),e=new Date($('ce').value).getTime(),pool=pr.reduce((a,x)=>a+(Math.floor(+x)||0),0);
+    $('cpt').textContent=fmt(pool)+' coins';const days=(e>s)?Math.max(1,Math.ceil((e-Math.max(s,Date.now()))/86400e3)):1,min=o.minPerDay*days;
+    $('cpm').textContent=pool<min?`Minimum for this contest's length: ${fmt(min)} coins.`:'';return{pool,min}};
+  const drawP=()=>{$('cpl').innerHTML=pr.map((v,i)=>`<label>${ORD(i+1)}</label><div class="row" style="gap:6px"><input data-p="${i}" type="number" min="1" inputmode="numeric" placeholder="0" value="${esc(v)}" style="flex:1">${pr.length>1?`<button type="button" data-px="${i}">✕</button>`:''}</div>`).join('');
+    $('cpa').style.display=pr.length>=o.maxPlaces?'none':'';$('cpa').textContent='+ Add '+ORD(pr.length+1)+' place';calc()};
+  drawP();
+  $('cpl').oninput=e=>{const i=e.target.dataset.p;if(i!==undefined){pr[+i]=e.target.value;calc()}};
+  $('cpl').onclick=e=>{const x=e.target.dataset.px;if(x!==undefined){pr.splice(+x,1);drawP()}};
+  $('cpa').onclick=()=>{pr.push('');drawP()};
+  $('cs').onchange=$('ce').onchange=calc;
+  $('ctt').onchange=()=>{const g=$('ctt').value==='game';$('cgf').hidden=g;$('cgm').hidden=!g};
+  $('csa').onclick=()=>{scope='all';$('cco').hidden=true;$('csa').classList.add('o');$('csc').classList.remove('o')};
+  $('csc').onclick=()=>{scope='countries';$('cco').hidden=false;$('csc').classList.add('o');$('csa').classList.remove('o')};
+  $('cbb').onclick=()=>$('cbf').click();
+  $('cbf').onchange=async e=>{const f=e.target.files[0];e.target.value='';if(!f)return;try{const b=await imgToBlob(f,1200,false);$('cbb').textContent='Uploading…';banner=await upload('image',b);$('cbb').innerHTML=`<img src="${esc(banner)}" alt="" style="width:100%;max-height:160px;object-fit:cover;border-radius:10px">`}catch(er){$('cbb').textContent='🖼️ Add banner';fail(er)}};
+  $('ccx').onclick=()=>$('sheet').classList.remove('open');
+  $('ccg').onclick=async()=>{const t=$('ctt').value,{pool,min}=calc();if(pool<min)return fail(new Error(`The prize pool must be at least ${fmt(min)} coins.`));
+    const b=$('ccg');b.disabled=true;try{await api('POST','/contests',{name:$('cn').value,descr:$('cd').value,banner,room:$('cr').value,ctype:t,ranking:t==='gift'?$('crk1').value:$('crk2').value,ref:t==='gift'?$('cgs').value:$('cgg').value,
+      minw:$('cmn').value,maxw:$('cmx').value,scope,countries:[...$('cco').selectedOptions].map(x=>x.value),starts:new Date($('cs').value).getTime(),ends:new Date($('ce').value).getTime(),prizes:pr.map(x=>Math.floor(+x)||0)});
+      $('sheet').classList.remove('open');toast('Contest sent for approval');window.CTAB='mine';V.contests();api('GET','/me').then(x=>{ST=x;$('coins').textContent=cn(x.coins)}).catch(()=>{})}catch(er){fail(er);b.disabled=false}}}
 const CMDS=[['/balance','Show your coin balance (private)','Everyone'],['/packet coins people · /grab','Drop a Lucky Packet of coins in the room (2–30 people); others type /grab for a random share','Everyone'],['/gift username gift [-m message]','Send a gift (rose, heart, crown) with an optional private note','Everyone'],['/g all gift','Gift shower to everyone in the room','Everyone'],['/f username','Follow a user; mutual follows become friends','Everyone'],['/block username · /unblock username','Block or unblock: neither side sees the other in rooms','Everyone'],['/tag username','Check a merchant tag','Everyone'],['/whois username','Role, level and gender of a user (private)','Everyone'],['/me','Broadcast your username as a styled action','Everyone'],['/roll','Roll a number from 1 to 100','Everyone'],['/sing','Sing a random fun line','Everyone'],['/flames [username]','Random FLAMES relationship','Everyone'],['/findmymatch','Match with a random member','Everyone'],['/getmyluck','Daily love, money, health and success luck','Everyone'],['/kick','Football kick emote (with a username it is moderation)','Everyone'],['/ban username · /unban username','Ban or unban a user in the room','Room owner/mod, staff, admin'],['/kick username','Remove and suspend for 1 hour','Room owner/mod, staff, admin'],['/bump username','Remove and suspend for 5 minutes','Room owner/mod, staff, admin'],['/unkick username','Remove a suspension','Staff, admin'],['/mod username · /dmod username','Add or remove a room moderator','Room admin, super moderator, staff'],['/smod username · /dsmod username','Make or remove a Super Moderator (can do everything the room admin can, except change the admin)','Room admin, staff'],['/bot cricket · /bot lowcard · /bot dice','Turn a pot game bot on in this room, then type !start [amount], !j, !d','Room admin/moderators, staff, admin'],['/bot teenpatti [boot] · /bot royalebattle','Turn Teen Patti Gold or Royale Battle on in this room','Staff, admin'],['/bot stop','Turn the room\'s game bot off (not while a game is running)','Room admin/moderators (pot games), staff, admin'],['/silence [seconds]','Silence ordinary chat for the whole room','Room owner/mod, staff, admin'],['/silence username [seconds]','Silence one user','Room owner/mod, staff, admin'],['/unsilence [username]','Unsilence the room or a user','Room owner/mod, staff, admin'],['/lock · /unlock','Lock or unlock ordinary messages','Room owner/mod, staff, admin'],['/broadcast message','One-time highlighted message','Room owner/mod, staff, admin'],['/announcement message|off','Set or remove the room announcement','Room owner/mod, staff, admin']];
 V.cmds=async()=>{const d=await api('GET','/commands');const q=($('cq')?.value||'').toLowerCase();
   view(`<div class="cmp"><button id="cb">←</button><input id="cq" placeholder="Search commands" value="${esc(q)}"></div><div class="card">${CMDS.filter(c=>(c[0]+c[1]).toLowerCase().includes(q)).map(c=>`<div class="cmd"><code>${esc(c[0])}</code><div>${esc(c[1])}</div><div class="mu">${esc(c[2])}</div></div>`).join('')||'<div class="mu">No match</div>'}</div>
@@ -2460,7 +2557,7 @@ V.colors=async()=>{
     return `<div class="card row"><div class="g">${name}<div class="mu">${fx?'Effect · ':''}${status}</div></div>${own?`${renew?`<button class="o" data-buy="${c.k}">Renew</button>`:''}<button class="o" data-ap="${c.k}" data-on="${on?1:0}" data-fx="${fx?1:0}">${on?'Remove':'Apply'}</button>`:`<button class="o" data-buy="${c.k}">Buy</button>`}</div>`;}).join('');
   view(`<div class="cmp"><button id="colb">←</button><h2 style="margin:0 0 0 8px">Color shop</h2></div>
   <div class="card mu">Your coins: ${Number(d.coins).toLocaleString()}. A colour lasts 30 days. Two days before it ends you can renew it. Apply one at a time: it shows on your username.</div>${rows}`);
-  $('colb').onclick=()=>go('explore');
+  $('colb').onclick=()=>go('store');
   $('view').onclick=async e=>{const b=e.target.closest('[data-buy],[data-ap]');if(!b)return;
     try{
       if(b.dataset.buy)await api('POST','/colors/buy/'+b.dataset.buy);
@@ -2477,7 +2574,7 @@ V.fxshop=async()=>{
     return `<div class="card row"><div class="g"><b style="color:#ffffff;animation:${esc(c.shadow)}">${esc(c.n)}</b><div class="mu">${status}</div></div>${own?`${renew?`<button class="o" data-buy="${c.k}">Renew</button>`:''}<button class="o" data-ap="${c.k}" data-on="${on?1:0}" data-fx="1">${on?'Remove':'Apply'}</button>`:`<button class="o" data-buy="${c.k}">Buy</button>`}</div>`;}).join('');
   view(`<div class="cmp"><button id="fxb">←</button><h2 style="margin:0 0 0 8px">Effect shop</h2></div>
   <div class="card mu">Your coins: ${Number(d.coins).toLocaleString()}. An effect lasts 30 days and animates the glow around your name. It works together with your colour.</div>${rows}`);
-  $('fxb').onclick=()=>go('explore');
+  $('fxb').onclick=()=>go('store');
   $('view').onclick=async e=>{const b=e.target.closest('[data-buy],[data-ap]');if(!b)return;
     try{
       if(b.dataset.buy)await api('POST','/colors/buy/'+b.dataset.buy);
@@ -2491,7 +2588,7 @@ V.gshop=async()=>{
   view(`<div class="cmp"><button id="gsb">←</button><h2 style="margin:0 0 0 8px">Gift store</h2></div>
   <div class="card mu">To send a gift, open a chat room, tap Send Gift, and pick one. Or type /gift username gift-name in any room.</div>
   ${list.length?list.map(([k,g])=>`<div class="card row"><div class="g"><b>${g.img?`<img src="${esc(g.img)}" alt="" style="height:28px;width:28px;object-fit:contain;vertical-align:middle"> `:esc(g.e||'')+' '}${esc(g.n)}</b><div class="mu">Price: ${Number(g.c).toLocaleString()} coins · Receiver gets: ${Number(g.r??Math.floor(g.c/2)).toLocaleString()} coins</div></div></div>`).join(''):'<div class="card mu">No gifts yet.</div>'}`);
-  $('gsb').onclick=()=>go('explore');
+  $('gsb').onclick=()=>go('store');
 };
 const popup=o=>new Promise(res=>{document.getElementById('pop')?.remove();const d=document.createElement('div');d.id='pop';
   d.innerHTML=`<section class="pc"><div class="pi">${o.icon||'📢'}</div><h3>${esc(o.title||'')}</h3>${o.body?`<div class="pb">${esc(o.body)}</div>`:''}${o.html||''}<div class="pa">${(o.buttons||[['OK','o']]).map(([t,c],i)=>`<button class="${c||''}" data-i="${i}">${esc(t)}</button>`).join('')}</div></section>`;

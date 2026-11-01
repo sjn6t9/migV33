@@ -163,6 +163,11 @@ try { db.exec("alter table rooms add column flag text default ''"); } catch {}
 // Rooms: every Asian country (with its flag) in Chat Rooms, and one room per game bot in Game Rooms.
 const ASIA = [['Afghanistan','af'],['Armenia','am'],['Azerbaijan','az'],['Bahrain','bh'],['Bangladesh','bd'],['Bhutan','bt'],['Brunei','bn'],['Cambodia','kh'],['China','cn'],['Cyprus','cy'],['Georgia','ge'],['Hong Kong','hk'],['India','in'],['Indonesia','id'],['Iran','ir'],['Iraq','iq'],['Israel','il'],['Japan','jp'],['Jordan','jo'],['Kazakhstan','kz'],['Kuwait','kw'],['Kyrgyzstan','kg'],['Laos','la'],['Lebanon','lb'],['Malaysia','my'],['Maldives','mv'],['Mongolia','mn'],['Myanmar','mm'],['Nepal','np'],['North Korea','kp'],['Oman','om'],['Pakistan','pk'],['Palestine','ps'],['Philippines','ph'],['Qatar','qa'],['Saudi Arabia','sa'],['Singapore','sg'],['South Korea','kr'],['Sri Lanka','lk'],['Syria','sy'],['Taiwan','tw'],['Tajikistan','tj'],['Thailand','th'],['Timor Leste','tl'],['Turkey','tr'],['Turkmenistan','tm'],['United Arab Emirates','ae'],['Uzbekistan','uz'],['Vietnam','vn'],['Yemen','ye']];
 const GAME_ROOMS = [['LowCard', 'lowcard'], ['Cricket', 'cricket'], ['Dice', 'dice'], ['TeenPatti', 'tp'], ['Royale Battle', 'royale']];
+try { db.exec('alter table users add column vip int default 0'); } catch {}
+if (!db.prepare("select 1 from kv where k='vip_flag_v1'").get()) {   // the old 'vip' role becomes a VIP badge, like Verified
+  db.prepare("update users set vip=1, role='user' where role='vip'").run();
+  db.prepare("insert into kv values('vip_flag_v1','1')").run();
+}
 if (!db.prepare("select 1 from kv where k='rooms_asia_v1'").get()) {   // first start with this version only: remove all old rooms
   db.transaction(() => {
     for (const t of ['rooms', 'favs', 'bans', 'room_mods', 'room_cfg', 'mutes', 'msgs', 'room_game', 'tp_pending', 'rb_pending', 'lc_pending']) { try { db.exec(`delete from ${t}`); } catch {} }
@@ -456,7 +461,7 @@ app.post('/api/transfer', auth, ok((q, r) => {
   wss.clients.forEach(w => (w.user === q.user || w.user === to) && send(w, { t: 'coins', coins: coins(w.user) }));
   r.json({ coins: coins(q.user) });
 }));
-app.get('/api/members', auth, ok((q, r) => r.json(db.prepare("select name,role,xp from users where role in ('admin','staff','headmentor','mentor','merchant','vip') order by case role when 'admin' then 0 when 'staff' then 1 when 'headmentor' then 2 when 'mentor' then 3 else 4 end, name").all())));
+app.get('/api/members', auth, ok((q, r) => r.json(db.prepare("select name,role,xp from users where role in ('admin','staff','headmentor','mentor','merchant') order by case role when 'admin' then 0 when 'staff' then 1 when 'headmentor' then 2 when 'mentor' then 3 else 4 end, name").all())));
 app.post('/api/admin/role', auth, ok((q, r) => {
   if (roleOf(q.user) !== 'staff') return bad(r, 'Only staff can change roles', 403);
   const { name = '', role = '' } = q.body || {};
@@ -465,6 +470,7 @@ app.post('/api/admin/role', auth, ok((q, r) => {
   if (!profile(name)) return bad(r, 'User not found', 404);
   setRole(name, role, q.user, 'Staff change'); online(); r.json({ ok: true });
 }));
+app.get('/api/vips', auth, ok((q, r) => r.json(db.prepare('select name from users where vip=1').all().map(u => u.name))));
 app.get('/api/verified', auth, ok((q, r) => r.json(db.prepare('select name from users where verified=1').all().map(u => u.name))));
 app.post('/api/admin/verify', auth, ok((q, r) => {
   if (roleOf(q.user) !== 'staff') return bad(r, 'Only staff can verify accounts', 403);
@@ -485,7 +491,7 @@ create table if not exists mevents(id integer primary key, user text, k text, n 
 create index if not exists mev on mevents(user,k,ts);
 create table if not exists payouts(id integer primary key, user text, cycle_start int, cycle_end int, points int, tier text, eligible int, trail int, result text, ts int);
 create table if not exists role_history(id integer primary key, user text, from_role text, to_role text, reason text, by text, ts int)`);
-const ROLE_LIST = ['user', 'vip', 'merchant', 'mentor', 'headmentor', 'admin', 'staff'];
+const ROLE_LIST = ['user', 'merchant', 'mentor', 'headmentor', 'admin', 'staff'];
 const RANK = { user: 0, merchant: 1, mentor: 2, headmentor: 3 };
 const TAG_COST = 50000, COMM_PCT = 5, CYCLE_MS = 30 * 864e5, MIN_PTS = 300, TRAIL_STEP = 100000, TRAIL_PTS = 20;
 const TIERS = [['red', 1000], ['pink', 500], ['purple', 300]];
@@ -814,7 +820,7 @@ function staffTarget(q, r, name) {
   return u;
 }
 const adminView = u => ({ name: u.name, full_name: u.full_name, email: u.email, mobile: u.mobile, country: u.country, gender: u.gender, bio: u.bio, status_text: u.status_text, presence: u.presence,
-  role: u.role, verified: !!u.verified, banned: !!u.banned, ban_reason: u.ban_reason, xp: u.xp, level: level(u.xp), coins: u.coins, unlimited: isMain(u.name), hasPin: !!u.mpin, secQ: u.sec_q, avatar: u.avatar || '', parent: u.parent || '', taggedBy: db.prepare('select parent from tags where user=?').get(u.name)?.parent || '', history: db.prepare('select from_role,to_role,reason,by,ts from role_history where user=? order by id desc limit 8').all(u.name) });
+  role: u.role, verified: !!u.verified, vip: !!u.vip, banned: !!u.banned, ban_reason: u.ban_reason, xp: u.xp, level: level(u.xp), coins: u.coins, unlimited: isMain(u.name), hasPin: !!u.mpin, secQ: u.sec_q, avatar: u.avatar || '', parent: u.parent || '', taggedBy: db.prepare('select parent from tags where user=?').get(u.name)?.parent || '', history: db.prepare('select from_role,to_role,reason,by,ts from role_history where user=? order by id desc limit 8').all(u.name) });
 app.get('/api/admin/countries', auth, ok((q, r) => r.json(COUNTRIES)));
 app.get('/api/admin/users', auth, ok((q, r) => {
   if (roleOf(q.user) !== 'staff') return bad(r, 'Only staff can use the admin panel', 403);
@@ -923,6 +929,7 @@ app.post('/api/admin/users/:n/edit', auth, ok((q, r) => {
     const g = ['Male', 'Female', 'Other', ''].includes(b.gender) ? b.gender : u.gender;
     db.prepare('update users set full_name=?, gender=?, bio=?, status_text=? where id=?').run(str(b.full_name, 40), g, str(b.bio, 200), str(b.status_text, 60), u.id); return done();
   }
+  if (a === 'vip') { db.prepare('update users set vip=? where id=?').run(b.on ? 1 : 0, u.id); return done(b.on ? 'on' : 'off'); }
   if (a === 'verify') { db.prepare('update users set verified=? where id=?').run(b.on ? 1 : 0, u.id); return done(b.on ? 'on' : 'off'); }
   if (a === 'avatar_remove') {
     const old = u.avatar; db.prepare("update users set avatar='' where id=?").run(u.id);
@@ -1320,6 +1327,128 @@ app.delete('/api/me/photos/:id', auth, ok((q, r) => {
 }));
 
 const server = http.createServer(app);
+// ---------- Peoples page ----------
+app.get('/api/people', auth, ok((q, r) => {
+  const rows = w => db.prepare(`select name,role,xp from users where banned=0 and ${w} order by xp desc, name`).all().map(u => ({ name: u.name, role: u.role, level: level(u.xp) }));
+  const G = (k, title, w) => { const list = rows(w); return { k, title, count: list.length, list }; };
+  const top = db.prepare('select name,role,xp from users where banned=0 order by xp desc, name limit 20').all().map(u => ({ name: u.name, role: u.role, level: level(u.xp) }));
+  r.json([G('staff', 'Staff', "role='staff'"), G('admin', 'Admins', "role='admin'"), G('headmentor', 'Head Mentors', "role='headmentor'"), G('mentor', 'Mentors', "role='mentor'"),
+    G('merchant', 'Merchants', "role='merchant'"), G('vip', 'VIP User', 'vip=1'), G('verified', 'Verified', 'verified=1'), { k: 'top', title: 'Top 20 Levels', count: top.length, list: top }]);
+}));
+
+// ---------- Contests ----------
+// Anyone with enough coins can create one: the whole prize pool is reserved at once. Staff/admin approve it; unawarded places go back to the creator.
+db.exec(`create table if not exists contests(id integer primary key, owner text, name text, descr text default '', banner text default '', room text, ctype text, ranking text, ref text default '', minw int default 0, maxw int default 0,
+  scope text default 'all', countries text default '[]', starts int, ends int, prizes text, pool int, status text default 'pending', decided_by text default '', reason text default '', created int, settled int default 0);
+create table if not exists contest_scores(cid int, user text, score int default 0, primary key(cid,user))`);
+const CT_MIN_DAY = 100000, CT_MAX_DAYS = 30, CT_MAX_PLACES = 10, DAY = 86400e3;
+const CT_GAMES = { lowcard: 'LowCard', cricket: 'Cricket', dice: 'Dice', tp: 'Teen Patti', royale: 'Royale Battle' };
+const ctMin = (s, e) => CT_MIN_DAY * Math.max(1, Math.ceil((e - s) / DAY));
+const ctView = c => ({ id: c.id, owner: c.owner, name: c.name, descr: c.descr, banner: c.banner, room: c.room, ctype: c.ctype, ranking: c.ranking, ref: c.ref, minw: c.minw, maxw: c.maxw, scope: c.scope,
+  countries: JSON.parse(c.countries || '[]'), starts: c.starts, ends: c.ends, prizes: JSON.parse(c.prizes || '[]'), pool: c.pool, status: c.status, reason: c.reason, decided_by: c.decided_by, created: c.created });
+function ctRefund(c, status, by = '', reason = '') {
+  db.transaction(() => {
+    if (!db.prepare("update contests set status=?, decided_by=?, reason=?, settled=1 where id=? and settled=0").run(status, by, reason, c.id).changes) return;
+    db.prepare('update users set coins=coins+? where name=?').run(c.pool, c.owner); addTx(c.owner, 'other', `Contest "${c.name}": prize pool returned`, c.pool);
+  })(); pushCoins(c.owner);
+}
+function ctSettle(c) {
+  const prizes = JSON.parse(c.prizes || '[]');
+  const top = db.prepare('select user,score from contest_scores where cid=? and score>0 order by score desc, user limit ?').all(c.id, prizes.length);
+  let paid = 0; const names = [c.owner];
+  db.transaction(() => {
+    if (!db.prepare("update contests set status='ended', settled=1 where id=? and settled=0").run(c.id).changes) return;
+    top.forEach((t, i) => { db.prepare('update users set coins=coins+? where name=?').run(prizes[i], t.user); addTx(t.user, 'other', `Contest "${c.name}": place ${i + 1} prize`, prizes[i]); paid += prizes[i]; names.push(t.user); });
+    if (c.pool - paid > 0) { db.prepare('update users set coins=coins+? where name=?').run(c.pool - paid, c.owner); addTx(c.owner, 'other', `Contest "${c.name}": unawarded prizes returned`, c.pool - paid); }
+  })(); pushCoins(...names);
+}
+function contestTick() {
+  const now = Date.now();
+  for (const c of db.prepare("select * from contests where settled=0 and status='pending' and ends<=?").all(now)) ctRefund(c, 'expired', '', 'Not approved before it ended');
+  for (const c of db.prepare("select * from contests where settled=0 and status='approved' and ends<=?").all(now)) ctSettle(c);
+}
+setInterval(() => { try { contestTick(); } catch (e) { console.log('[contest]', e.message); } }, 30e3).unref();
+function contestScore(room, kind, user, o = {}) {
+  const now = Date.now();
+  const rows = db.prepare("select * from contests where status='approved' and room=? and ctype=? and starts<=? and ends>?").all(room, kind, now, now);
+  if (!rows.length) return;
+  const country = db.prepare('select country from users where name=?').get(user)?.country || '';
+  for (const c of rows) {
+    if (c.owner === user) continue;
+    if (c.scope === 'countries' && !JSON.parse(c.countries || '[]').includes(country)) continue;
+    let pts = 0;
+    if (kind === 'gift') { if (c.ref && c.ref !== o.gift) continue; pts = c.ranking === 'count' ? 1 : (o.amount || 0); }
+    else { if (c.ref && c.ref !== o.game) continue; if (c.minw && (o.amount || 0) < c.minw) continue; if (c.maxw && (o.amount || 0) > c.maxw) continue; pts = c.ranking === 'earned' ? (o.won || 0) : 1; }
+    if (pts > 0) db.prepare('insert into contest_scores(cid,user,score) values(?,?,?) on conflict(cid,user) do update set score=score+excluded.score').run(c.id, user, pts);
+  }
+}
+app.get('/api/contests/options', auth, ok((q, r) => r.json({ minPerDay: CT_MIN_DAY, maxDays: CT_MAX_DAYS, maxPlaces: CT_MAX_PLACES, games: CT_GAMES, countries: COUNTRIES,
+  gifts: Object.entries(allGifts()).map(([k, g]) => ({ k, n: g.n })), rooms: db.prepare("select name from rooms order by name").all().map(x => x.name), isMod: isMod(q.user) })));
+app.get('/api/contests', auth, ok((q, r) => {
+  const now = Date.now(), tab = String(q.query.tab || 'active'), me = q.user;
+  const W = { active: ['status=\'approved\' and starts<=? and ends>? order by ends', [now, now]], upcoming: ['status=\'approved\' and starts>? order by starts', [now]], ended: ["status='ended' order by ends desc", []],
+    mine: ['owner=? order by id desc', [me]], pending: ["status='pending' order by id", []] }[tab];
+  if (!W) return bad(r, 'Unknown tab');
+  if (tab === 'pending' && !isMod(me)) return bad(r, 'Only staff or admin can see pending contests', 403);
+  const list = db.prepare(`select * from contests where ${W[0]} limit 60`).all(...W[1]).map(ctView);
+  r.json(list.map(c => ({ ...c, mineScore: db.prepare('select score from contest_scores where cid=? and user=?').get(c.id, me)?.score || 0 })));
+}));
+app.get('/api/contests/:id', auth, ok((q, r) => {
+  const c = db.prepare('select * from contests where id=?').get(+q.params.id); if (!c) return bad(r, 'Contest not found', 404);
+  if (c.status === 'pending' && c.owner !== q.user && !isMod(q.user)) return bad(r, 'Contest not found', 404);
+  const board = db.prepare('select user,score from contest_scores where cid=? and score>0 order by score desc, user limit 10').all(c.id);
+  r.json({ ...ctView(c), board, mine: db.prepare('select score from contest_scores where cid=? and user=?').get(c.id, q.user)?.score || 0 });
+}));
+app.post('/api/contests', auth, ok((q, r) => {
+  const b = q.body || {}, me = q.user, now = Date.now();
+  const name = String(b.name || '').trim().slice(0, 60); if (name.length < 3) return bad(r, 'Give the contest a name (3+ characters).');
+  const descr = String(b.descr || '').trim().slice(0, 500);
+  const banner = String(b.banner || ''); if (banner && !/^\/uploads\/[\w./-]+$/.test(banner)) return bad(r, 'Invalid banner');
+  if (!db.prepare('select 1 from rooms where name=?').get(b.room)) return bad(r, 'Choose a chatroom.');
+  const ctype = b.ctype === 'game' ? 'game' : 'gift';
+  const ranking = ctype === 'gift' ? (b.ranking === 'count' ? 'count' : 'spent') : (b.ranking === 'earned' ? 'earned' : 'won');
+  let ref = String(b.ref || ''); if (ref && (ctype === 'gift' ? !giftDef0(ref) : !CT_GAMES[ref])) return bad(r, 'Unknown gift or game.');
+  const minw = ctype === 'game' ? Math.max(0, Math.floor(+b.minw || 0)) : 0, maxw = ctype === 'game' ? Math.max(0, Math.floor(+b.maxw || 0)) : 0;
+  if (minw && maxw && maxw < minw) return bad(r, 'Maximum wager is below the minimum.');
+  const scope = b.scope === 'countries' ? 'countries' : 'all';
+  const countries = scope === 'countries' ? [...new Set((Array.isArray(b.countries) ? b.countries : []).filter(c => COUNTRIES.includes(c)))].slice(0, 60) : [];
+  if (scope === 'countries' && !countries.length) return bad(r, 'Choose at least one country.');
+  let starts = Math.floor(+b.starts || 0), ends = Math.floor(+b.ends || 0);
+  if (!starts || !ends) return bad(r, 'Set the start and end time.');
+  if (starts < now) starts = now;
+  if (ends <= starts + 3600e3) return bad(r, 'A contest must run for at least 1 hour.');
+  if (ends - starts > CT_MAX_DAYS * DAY) return bad(r, `A contest can run for at most ${CT_MAX_DAYS} days.`);
+  const prizes = (Array.isArray(b.prizes) ? b.prizes : []).map(x => Math.floor(+x)).slice(0, CT_MAX_PLACES);
+  if (!prizes.length || prizes.some(x => !(x >= 1))) return bad(r, 'Add a prize of at least 1 coin for each place.');
+  const pool = prizes.reduce((a, x) => a + x, 0), min = ctMin(starts, ends);
+  if (pool < min) return bad(r, `The prize pool must be at least ${min.toLocaleString()} coins for this length.`);
+  const info = db.transaction(() => {
+    if (!db.prepare('update users set coins=coins-? where name=? and coins>=?').run(pool, me, pool).changes) return null;
+    const x = db.prepare('insert into contests(owner,name,descr,banner,room,ctype,ranking,ref,minw,maxw,scope,countries,starts,ends,prizes,pool,created) values(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)')
+      .run(me, name, descr, banner, b.room, ctype, ranking, ref, minw, maxw, scope, JSON.stringify(countries), starts, ends, JSON.stringify(prizes), pool, now);
+    addTx(me, 'other', `Contest "${name}": prize pool reserved`, -pool); return x;
+  })();
+  if (!info) return bad(r, `You need ${pool.toLocaleString()} coins to reserve the prize pool.`);
+  pushCoins(me); r.json({ ok: true, id: info.lastInsertRowid });
+}));
+app.post('/api/contests/:id/cancel', auth, ok((q, r) => {
+  const c = db.prepare('select * from contests where id=?').get(+q.params.id); if (!c || c.owner !== q.user) return bad(r, 'Contest not found', 404);
+  if (c.settled || !(c.status === 'pending' || (c.status === 'approved' && c.starts > Date.now()))) return bad(r, 'This contest can no longer be cancelled.');
+  ctRefund(c, 'cancelled', q.user, 'Cancelled by the creator'); r.json({ ok: true });
+}));
+app.post('/api/admin/contests/:id', auth, ok((q, r) => {
+  if (!isMod(q.user)) return bad(r, 'Only staff or admin can review contests', 403);
+  const c = db.prepare('select * from contests where id=?').get(+q.params.id); if (!c) return bad(r, 'Contest not found', 404);
+  if (c.status !== 'pending' || c.settled) return bad(r, 'This contest was already reviewed.');
+  const act = q.body?.action;
+  if (act === 'approve') {
+    if (c.ends <= Date.now()) { ctRefund(c, 'expired', q.user, 'Approved too late'); return bad(r, 'It already ended, so the prize pool was returned.'); }
+    db.prepare("update contests set status='approved', decided_by=? where id=?").run(q.user, c.id); alog(q.user, c.owner, 'contest', `approved #${c.id} ${c.name}`); return r.json({ ok: true });
+  }
+  if (act === 'reject') { const why = String(q.body?.reason || '').trim().slice(0, 200) || 'Not approved'; ctRefund(c, 'rejected', q.user, why); alog(q.user, c.owner, 'contest', `rejected #${c.id} ${c.name}: ${why}`); return r.json({ ok: true }); }
+  bad(r, 'Unknown action');
+}));
+
 const wss = new WebSocketServer({ server, path: '/ws' });
 const members = new Map(); // room -> Set<ws>
 const send = (ws, o) => ws.readyState === 1 && ws.send(JSON.stringify(o));
@@ -1444,6 +1573,8 @@ const gameApi = label => ({
     if (ok) pushCoins(user); return ok;
   },
   settle: async (room, winner, prize) => {
+    const wrow = db.prepare('select * from lc_pending where room=? and user=?').get(room, winner);
+    try { contestScore(room, 'game', winner, { game: 'lowcard', amount: wrow ? Object.values(wrow)[2] : 0, won: prize }); } catch (e) { console.log('[contest]', e.message); }
     const names = db.prepare('select user from lc_pending where room=?').all(room).map(x => x.user);
     db.transaction(() => { db.prepare('update users set coins=coins+? where name=?').run(prize, winner); addTx(winner, 'game', `${label}: win`, prize); db.prepare('delete from lc_pending where room=?').run(room); })();
     pushCoins(winner, ...names);
@@ -1770,6 +1901,7 @@ function giftOne(ws, to, key, note = '') {
   if (isBlocked(ws.user, to)) return reply(ws, "You can't gift this user.");
   if (!speakOk(ws)) return;
   if (!payGift(ws.user, to, gf, ws.room?.startsWith('dm:') ? 'dm' : 'room')) return reply(ws, 'Not enough coins.');
+  if (!ws.room?.startsWith('dm:')) try { contestScore(ws.room, 'gift', ws.user, { gift: gf.key, amount: gf.c }); } catch (e) { console.log('[contest]', e.message); }
   say(ws.room, ws.user, `{c:${gcol(gf)}}<<${ws.user} [${level(xpOf(ws.user))}] gives a ${gf.n} ${giftIcon(gf).trim()} to ${to} [${level(xpOf(to))}]${note ? ' -- ' + note : ''}>>`, 'gift');
   reply(ws, `Congratulations for sending gift! You have used ${gf.c} coins and your estimated remaining balance after gifting will be ${coins(ws.user)} coins.`, 'ok');
   refreshCoins(ws.user, to);
@@ -1784,7 +1916,7 @@ function shower(ws, key) {
   if (wait > 0) return reply(ws, `Please wait ${Math.ceil(wait / 1000)} more seconds before sending another gift shower.`);
   if (coins(ws.user) < gf.c * to.length) return reply(ws, `You need ${gf.c * to.length} coins to send ${gf.n} to ${to.length} members.`);
   showerAt.set(ws.user, Date.now());
-  to.forEach(n => payGift(ws.user, n, gf, 'room'));
+  to.forEach(n => { if (payGift(ws.user, n, gf, 'room')) try { contestScore(ws.room, 'gift', ws.user, { gift: gf.key, amount: gf.c }); } catch (e) { console.log('[contest]', e.message); } });
   const shown = to.length > 8 ? to.slice(0, 8).join(', ') + ` and ${to.length - 8} others` : to.join(', ');
   say(ws.room, ws.user, `{c:${gcol(gf)}}<< 🎆 *GIFT SHOWER* ${ws.user} [${level(xpOf(ws.user))}] gives a ${gf.n} ${giftIcon(gf).trim()} to ${shown}! Hurray! >>`, 'gift');
   reply(ws, `Congratulations for sending gift! You have used ${gf.c * to.length} coins and your estimated remaining balance after gifting will be ${coins(ws.user)} coins.`, 'ok');
