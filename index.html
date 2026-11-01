@@ -1262,16 +1262,31 @@ html body #hdr #top>#tn,html body #hdr #top>#coins{display:none!important}
 /* post pictures keep their own shape */
 html body .fbp img.pimg,html body img.pimg{width:auto!important;max-width:100%!important;height:auto!important;max-height:75vh!important;object-fit:contain!important;margin:0 auto!important;display:block!important}
 /* same icon sizes in both designs */
-html body #hdr #top#top>button:not(#tn){width:38px!important;height:38px!important;min-width:0!important}
-html body #hdr #top#top>button:not(#tn) svg{width:20px!important;height:20px!important;max-width:20px!important;max-height:20px!important}
-html[data-skin=navy] body #hdr #top{min-height:54px!important;height:54px!important}
-html body #hdr #rbar#rbar{min-height:50px!important}
-html body #hdr #rbar#rbar .ib,html body #hdr #rbar#rbar #tn{width:38px!important;height:38px!important}
-html body #hdr #rbar#rbar #coins{height:38px!important}
+html body #hdr #top#top>button:not(#tn){width:42px!important;height:42px!important;min-width:0!important}
+html body #hdr #top#top>button:not(#tn) svg{width:24px!important;height:24px!important;max-width:24px!important;max-height:24px!important}
+html[data-skin=navy] body #hdr #top{min-height:58px!important;height:58px!important}
+html body #hdr #rbar#rbar{min-height:54px!important}
+html body #hdr #rbar#rbar .ib,html body #hdr #rbar#rbar #tn{width:40px!important;height:40px!important}
+html body #hdr #rbar#rbar .ib svg,html body #hdr #rbar#rbar #tn svg{width:22px!important;height:22px!important}
+html body #hdr #rbar#rbar #coins{height:40px!important}
 
 /* Daily Spin: only the wheel turns, never its box */
 html body #view#view #whw,html body #view#view #wh{background:none!important;background-color:transparent!important;border:0!important;box-shadow:none!important;backdrop-filter:none!important;-webkit-backdrop-filter:none!important;outline:0!important;padding:0!important;border-radius:0!important}
 html body #view#view #wh>svg,html body #view#view #whw>svg{background:none!important;border:0!important;box-shadow:none!important}
+
+/* one text size scale for both designs (menu a little larger) */
+html body #drawer#drawer#drawer#drawer#drawer#drawer#drawer#drawer #dn#dn#dn .mi,html body #drawer#drawer#drawer#drawer#drawer#drawer#drawer#drawer #dn#dn#dn button.mi{font-size:17px!important;font-weight:600!important;letter-spacing:0!important;text-transform:none!important}
+html body #drawer#drawer#drawer#drawer#drawer#drawer#drawer#drawer #dn#dn#dn .dh{font-size:13px!important;font-weight:800!important;letter-spacing:.8px!important}
+html body #drawer#drawer#drawer#drawer#drawer#drawer#drawer#drawer #dn#dn#dn .dsr input{font-size:15px!important}
+html body #view#view#view#view#view#view#view#view#view#view#view#view#view#view .dk,html body #view#view#view#view#view#view#view#view#view#view#view#view#view#view .dk div{font-size:16px!important;font-weight:800!important;letter-spacing:-.16px!important;text-transform:none!important}
+html body #view#view#view#view#view#view#view#view#view#view#view#view#view#view .rm .rn{font-size:17px!important;font-weight:700!important;letter-spacing:-.16px!important}
+html body #view#view#view#view#view#view#view#view#view#view#view#view#view#view .rm .mu{font-size:13px!important}
+html body #view#view#view#view#view#view#view#view#view#view#view#view#view#view .tabbar button,html body #view#view#view#view#view#view#view#view#view#view#view#view#view#view .mtabs button{font-size:13px!important;font-weight:600!important;letter-spacing:0!important;text-transform:none!important}
+html body #view#view#view#view#view#view#view#view#view#view#view#view#view#view .chips button{font-size:16px!important;font-weight:600!important;letter-spacing:0!important;text-transform:none!important}
+html body #view#view#view#view#view#view#view#view#view#view#view#view#view#view .cmpx .cb button{font-size:17px!important;font-weight:600!important;letter-spacing:0!important;text-transform:none!important}
+html body #view#view#view#view#view#view#view#view#view#view#view#view#view#view .cmpx .cb #pb{font-size:13px!important}
+html body #view#view#view#view#view#view#view#view#view#view#view#view#view#view .acts button{font-size:12.5px!important;font-weight:700!important;letter-spacing:0!important;text-transform:none!important}
+html body #bnav button span{font-size:10.5px!important;font-weight:700!important;letter-spacing:0!important}
 /* Day/Night and coin buttons live in the room-info bar while chatting; the bar can be folded with its handle */
 #rbar #rbx{display:flex;align-items:center;gap:3px;flex:none;margin-left:2px}
 html body #hdr #rbar #tn{display:grid!important;place-items:center;width:36px!important;height:36px!important;min-width:0!important;padding:0!important;margin:0!important;border-radius:50%!important}
@@ -1293,7 +1308,7 @@ html body #hdr #top #rtabs .rt.mini .rfl{margin:0}
 html body #hdr #top #rtabs .rt .rfl{width:20px;height:14px}
 html body #hdr #top #rtabs .rt.on{display:inline-flex!important;align-items:center;justify-content:center;gap:0}
 </style>
-<link rel="stylesheet" href="theme-dark.css?v=6">
+<link rel="stylesheet" href="theme-dark.css?v=7">
 <style>/* role name colours: kept in their own block so they always load */
 :root{--nm-admin:#e8591f;--nm-staff:#2f9a3d;--nm-mentor:#b01020;--nm-headmentor:#8a6a14;--nm-merchant:#7e22ce;--nm-vip:#00706f;--nm-user:#2a7bd8}
 html[data-theme=dark],#log.navy,#log.dark{--nm-admin:#ff7a33;--nm-staff:#4cc24f;--nm-mentor:#f2394a;--nm-headmentor:#e8c23c;--nm-merchant:#b45cff;--nm-vip:#2ec4bf;--nm-user:#6db3ff}
