@@ -1222,7 +1222,20 @@ html.vvon body.inchat{overflow:hidden!important;overscroll-behavior:none}
 #log{overscroll-behavior:contain}
 html body.kbd #bnav#bnav,html[data-skin] body.kbd #bnav#bnav{display:none!important}html[data-skin] body.kbd.inchat #view#view#view{padding-bottom:0!important}html[data-skin] body.kbd.inchat #chatbox#chatbox #f#f#f#f{margin-bottom:0!important}html[data-skin] body.kbd.inchat #chatbox#chatbox{margin-bottom:0!important;padding-bottom:2px!important}
 
-.cform label{display:block;margin:10px 0 4px;font-weight:700}.cform input,.cform select,.cform textarea{width:100%;box-sizing:border-box}.ctg{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px}.cform,.cform *{min-width:0;max-width:100%;box-sizing:border-box}.cform input[type=datetime-local]{font-size:12px;padding-left:6px;padding-right:4px}.cform [hidden]{display:none!important}
+#ctm{position:fixed;inset:0;z-index:30;background:#000b;display:flex;align-items:center;justify-content:center;padding:12px;box-sizing:border-box}
+#ctm .ctbox{width:100%;max-width:560px;max-height:92vh;overflow:auto;background:var(--sf,#fff);color:var(--tx,#222);border:1px solid var(--ln,#ccc);border-radius:16px;padding:18px;box-sizing:border-box;display:block}
+#ctm .ctbox *{min-width:0;box-sizing:border-box}#ctm h2{margin:0 0 6px}#ctm label{display:block;margin:12px 0 4px;font-weight:700}
+#ctm input,#ctm select,#ctm textarea{width:100%;max-width:100%}#ctm [hidden]{display:none!important}
+#ctm .ctg{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px}#ctm .ctf{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+#ctm .ctf input{flex:1 1 auto;width:auto}#ctm .ctw{width:100%;min-height:42px;text-align:center}#ctm .ctp{margin:14px 0;padding:12px;border:1px solid var(--ln,#ccc);border-radius:12px}
+#ctm .ctsm{width:auto;min-width:36px;padding:6px 10px}#ctm .ctf>button:not(.ctsm){flex:1 1 0}
+#ctm .ctred,#ctm .ctred:hover{color:#ff4d4d!important;border:1px solid #ff4d4d!important;background:transparent!important}
+#ctm #ccx,#ctm #ccg{flex:0 1 150px!important;min-height:44px}
+html #ctm#ctm#ctm#ctm#ctm#ctm#ctm#ctm#ctm#ctm#ctm#ctm#ctm#ctm .ctred,html[data-skin] #ctm#ctm#ctm#ctm#ctm#ctm#ctm#ctm#ctm#ctm#ctm#ctm#ctm#ctm .ctred{color:#ff4d4d!important;border:1px solid #ff4d4d!important;background:rgba(255,77,77,.08)!important;box-shadow:none!important}
+#cal{margin-top:10px;padding:10px;border:1px solid var(--ln,#ccc);border-radius:12px}
+#cal .cwk,#cal .cgr{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;text-align:center;margin:6px 0}#cal .cwk span{font-size:12px;opacity:.7}
+#cal .cdy{padding:8px 0;min-height:0;border-radius:8px;width:100%}#cal .cdy.on{background:var(--ac,#f7931e)!important;color:#fff!important;border-color:var(--ac,#f7931e)!important}#cal .cdy:disabled{opacity:.3}
+#cal select{width:auto}
 </style>
 <script>try{if(localStorage.tk||sessionStorage.tk)document.documentElement.dataset.boot=1;var k=localStorage.skin==='dark'?'dark':'day';document.documentElement.dataset.skin=k==='dark'?'dark':'navy';document.documentElement.dataset.theme='dark'}catch(e){document.documentElement.dataset.skin='navy';document.documentElement.dataset.theme='dark'}</script>
 <style>/* Name effects from the colour shop: each one animates the glow around the username */
@@ -2501,47 +2514,64 @@ async function ctDetail(id){
   $('view').onclick=e=>{const u=e.target.closest('[data-u]');if(u)go('profile',u.dataset.u)}}
 async function ctCreate(){
   const o=await api('GET','/contests/options');let banner='';const pr=[''];
-  const loc=t=>{const d=new Date(t-new Date(t).getTimezoneOffset()*6e4);return d.toISOString().slice(0,16)};
-  const t0=Date.now()+5*60e3;
-  sheetOpen(`<div class="cform"><h2>Create a room contest</h2><p class="mu">The full prize pool is reserved now. Any unawarded positions are returned automatically when the contest ends. Staff or admin must approve it before it starts.</p>
-   <label>Contest name</label><input id="cn" maxlength="60" placeholder="Weekend room challenge">
-   <label>Description (optional)</label><textarea id="cd" maxlength="500" rows="3"></textarea>
-   <label>Banner (optional)</label><button type="button" id="cbb" style="width:100%;min-height:90px">🖼️ Add banner</button><input type="file" id="cbf" accept="image/png,image/jpeg,image/webp" hidden>
-   <div class="ctg"><div><label>Chatroom</label><select id="cr">${o.rooms.map(r=>`<option>${esc(r)}</option>`).join('')}</select></div>
-   <div><label>Contest type</label><select id="ctt"><option value="gift">Gift contest</option><option value="game">Game contest</option></select></div></div>
-   <div class="ctg" id="cgf"><div><label>Ranking</label><select id="crk1"><option value="spent">Coins spent on gifts</option><option value="count">Gifts sent</option></select></div>
-   <div><label>Gift</label><select id="cgs"><option value="">All gifts</option>${o.gifts.map(g=>`<option value="${esc(g.k)}">${esc(g.n)}</option>`).join('')}</select></div></div>
-   <div id="cgm" hidden><div class="ctg"><div><label>Ranking</label><select id="crk2"><option value="won">Games won</option><option value="earned">Coins won</option></select></div>
-   <div><label>Game</label><select id="cgg"><option value="">All chatroom games</option>${Object.entries(o.games).map(([k,n])=>`<option value="${k}">${esc(n)}</option>`).join('')}</select></div></div>
-   <div class="ctg"><div><label>Minimum wager (optional)</label><input id="cmn" type="number" min="0" inputmode="numeric" placeholder="Any"></div><div><label>Maximum wager (optional)</label><input id="cmx" type="number" min="0" inputmode="numeric" placeholder="Any"></div></div></div>
-   <label>Who can take part</label><div class="row" style="gap:8px"><button type="button" class="o" id="csa">Everyone</button><button type="button" id="csc">Specific countries</button></div>
-   <select id="cco" multiple size="6" hidden>${o.countries.map(c=>`<option>${esc(c)}</option>`).join('')}</select>
-   <div class="ctg"><div><label>Starts</label><input id="cs" type="datetime-local" value="${loc(t0)}"></div><div><label>Ends</label><input id="ce" type="datetime-local" value="${loc(t0+86400e3)}"></div></div>
-   <div class="card" style="margin:12px 0"><b>Coin prizes</b><div class="mu">Award between 1 and ${o.maxPlaces} places. The full pool is reserved now; unawarded places are returned when the contest ends.</div><div id="cpl"></div><button type="button" id="cpa"></button>
-   <div class="row"><span class="mu">Reserved prize pool</span><b id="cpt" style="margin-left:auto">0</b></div><div class="neg" id="cpm"></div></div>
-   <div class="row" style="gap:8px;justify-content:flex-end"><button type="button" id="ccx">Cancel</button><button type="button" class="o" id="ccg">Reserve &amp; create</button></div></div>`);
-  let scope='all';
-  const fmt=n=>(+n||0).toLocaleString();
-  const calc=()=>{const s=new Date($('cs').value).getTime(),e=new Date($('ce').value).getTime(),pool=pr.reduce((a,x)=>a+(Math.floor(+x)||0),0);
-    $('cpt').textContent=fmt(pool)+' coins';const days=(e>s)?Math.max(1,Math.ceil((e-Math.max(s,Date.now()))/86400e3)):1,min=o.minPerDay*days;
-    $('cpm').textContent=pool<min?`Minimum for this contest's length: ${fmt(min)} coins.`:'';return{pool,min}};
-  const drawP=()=>{$('cpl').innerHTML=pr.map((v,i)=>`<label>${ORD(i+1)}</label><div class="row" style="gap:6px"><input data-p="${i}" type="number" min="1" inputmode="numeric" placeholder="0" value="${esc(v)}" style="flex:1">${pr.length>1?`<button type="button" data-px="${i}">✕</button>`:''}</div>`).join('');
+  const T={s:Math.ceil((Date.now()+5*60e3)/3e5)*3e5};T.e=T.s+86400e3;
+  document.getElementById('ctm')?.remove();
+  $('view').insertAdjacentHTML('beforeend',`<div id="ctm"><form class="ctbox" autocomplete="off" onsubmit="return false"><h2>Create a room contest</h2><p class="mu">The full prize pool is reserved now. Any unawarded positions are returned automatically when the contest ends. Staff or admin must approve it before it starts.</p>
+   <label>Contest name</label><input id="cn" name="ct_title" maxlength="60" placeholder="Weekend room challenge" autocomplete="off" value="">
+   <label>Description (optional)</label><textarea id="cd" name="ct_about" maxlength="500" rows="3" autocomplete="off"></textarea>
+   <label>Banner (optional)</label><button type="button" id="cbb" class="ctw">🖼️ Add banner</button><input type="file" id="cbf" accept="image/png,image/jpeg,image/webp" hidden>
+   <div class="ctg"><div><label>Chatroom</label><select id="cr" name="ct_room" autocomplete="off">${o.rooms.map(r=>`<option>${esc(r)}</option>`).join('')}</select></div>
+   <div><label>Contest type</label><select id="ctt" name="ct_kind" autocomplete="off"><option value="gift">Gift contest</option><option value="game">Game contest</option></select></div></div>
+   <div class="ctg" id="cgf"><div><label>Ranking</label><select id="crk1" name="ct_rank1" autocomplete="off"><option value="spent">Coins spent on gifts</option><option value="count">Gifts sent</option></select></div>
+   <div><label>Gift</label><select id="cgs" name="ct_gift" autocomplete="off"><option value="">All gifts</option>${o.gifts.map(g=>`<option value="${esc(g.k)}">${esc(g.n)}</option>`).join('')}</select></div></div>
+   <div id="cgm" hidden><div class="ctg"><div><label>Ranking</label><select id="crk2" name="ct_rank2" autocomplete="off"><option value="won">Games won</option><option value="earned">Coins won</option></select></div>
+   <div><label>Game</label><select id="cgg" name="ct_game" autocomplete="off"><option value="">All chatroom games</option>${Object.entries(o.games).map(([k,n])=>`<option value="${k}">${esc(n)}</option>`).join('')}</select></div></div>
+   <div class="ctg"><div><label>Minimum wager (optional)</label><input id="cmn" name="ct_minw" type="number" min="0" inputmode="numeric" placeholder="Any" autocomplete="off"></div><div><label>Maximum wager (optional)</label><input id="cmx" name="ct_maxw" type="number" min="0" inputmode="numeric" placeholder="Any" autocomplete="off"></div></div></div>
+   <label>Who can take part</label><div class="ctf"><button type="button" class="o" id="csa">Everyone</button><button type="button" id="csc">Specific countries</button></div>
+   <select id="cco" name="ct_countries" multiple size="6" hidden autocomplete="off">${o.countries.map(c=>`<option>${esc(c)}</option>`).join('')}</select>
+   <div class="ctg"><div><label>Starts</label><button type="button" class="ctw" id="cbs"></button></div><div><label>Ends</label><button type="button" class="ctw" id="cbe"></button></div></div>
+   <div id="cal" hidden></div>
+   <div class="ctp"><b>Coin prizes</b><div class="mu">Award between 1 and ${o.maxPlaces} places. The full pool is reserved now; unawarded places are returned when the contest ends.</div><div id="cpl"></div><button type="button" id="cpa" class="ctw"></button>
+   <div class="ctf" style="justify-content:space-between"><span class="mu">Reserved prize pool</span><b id="cpt">0</b></div><div class="neg" id="cpm"></div></div>
+   <div class="ctf" style="justify-content:center;gap:14px;margin-top:14px"><button type="button" id="ccx" class="ctred">Cancel</button><button type="button" class="o" id="ccg">Reserve &amp; create</button></div></form></div>`);
+  const fmt=n=>(+n||0).toLocaleString(),fdt=t=>new Date(t).toLocaleString([], {weekday:'short',day:'numeric',month:'short',year:'numeric',hour:'numeric',minute:'2-digit'});
+  const labels=()=>{$('cbs').textContent='📅 '+fdt(T.s);$('cbe').textContent='📅 '+fdt(T.e)};
+  const calc=()=>{const pool=pr.reduce((a,x)=>a+(Math.floor(+x)||0),0);$('cpt').textContent=fmt(pool)+' coins';
+    const days=T.e>T.s?Math.max(1,Math.ceil((T.e-Math.max(T.s,Date.now()))/86400e3)):1,min=o.minPerDay*days;$('cpm').textContent=pool<min?`Minimum for this contest's length: ${fmt(min)} coins.`:'';return{pool,min}};
+  const drawP=()=>{$('cpl').innerHTML=pr.map((v,i)=>`<label>${ORD(i+1)}</label><div class="ctf"><input data-p="${i}" name="ct_prize${i}" type="number" min="1" inputmode="numeric" placeholder="0" autocomplete="off" value="${esc(v)}" style="flex:1">${pr.length>1?`<button type="button" data-px="${i}" class="ctsm">✕</button>`:''}</div>`).join('');
     $('cpa').style.display=pr.length>=o.maxPlaces?'none':'';$('cpa').textContent='+ Add '+ORD(pr.length+1)+' place';calc()};
-  drawP();
+  /* calendar picker for Starts / Ends */
+  let calKey=null,vy=0,vm=0;
+  const drawCal=()=>{const d=new Date(T[calKey]),h=d.getHours(),h12=h%12||12,first=new Date(vy,vm,1).getDay(),dim=new Date(vy,vm+1,0).getDate(),today=new Date();today.setHours(0,0,0,0);
+    let cells='';for(let i=0;i<first;i++)cells+='<span></span>';
+    for(let n=1;n<=dim;n++){const dd=new Date(vy,vm,n),past=dd<today,on=dd.getFullYear()===d.getFullYear()&&dd.getMonth()===d.getMonth()&&dd.getDate()===d.getDate();cells+=`<button type="button" class="cdy${on?' on':''}" data-d="${n}"${past?' disabled':''}>${n}</button>`}
+    $('cal').innerHTML=`<div class="ctf" style="justify-content:space-between"><b>${calKey==='s'?'Starts':'Ends'}</b><span><button type="button" class="ctsm" data-m="-1">‹</button> <b>${new Date(vy,vm,1).toLocaleString([], {month:'long',year:'numeric'})}</b> <button type="button" class="ctsm" data-m="1">›</button></span></div>
+     <div class="cwk">${['S','M','T','W','T','F','S'].map(x=>`<span>${x}</span>`).join('')}</div><div class="cgr">${cells}</div>
+     <div class="ctf" style="justify-content:center"><select data-t="h" autocomplete="off">${[...Array(12)].map((_,i)=>`<option${i+1===h12?' selected':''}>${i+1}</option>`).join('')}</select><b>:</b><select data-t="m" autocomplete="off">${[...Array(12)].map((_,i)=>`<option value="${i*5}"${Math.floor(d.getMinutes()/5)===i?' selected':''}>${String(i*5).padStart(2,'0')}</option>`).join('')}</select><select data-t="a" autocomplete="off"><option${h<12?' selected':''}>AM</option><option${h>=12?' selected':''}>PM</option></select><button type="button" class="o ctsm" data-ok="1">Done</button></div>`};
+  const setT=f=>{const d=new Date(T[calKey]);f(d);T[calKey]=d.getTime();if(calKey==='s'&&T.e<=T.s+3600e3)T.e=T.s+86400e3;labels();calc()};
+  const openCal=k=>{if(calKey===k&&!$('cal').hidden){$('cal').hidden=true;calKey=null;return}calKey=k;const d=new Date(T[k]);vy=d.getFullYear();vm=d.getMonth();$('cal').hidden=false;drawCal()};
+  $('cbs').onclick=()=>openCal('s');$('cbe').onclick=()=>openCal('e');
+  $('cal').onclick=e=>{const b=e.target.closest('button');if(!b)return;
+    if(b.dataset.m){vm+=+b.dataset.m;if(vm<0){vm=11;vy--}if(vm>11){vm=0;vy++}drawCal()}
+    else if(b.dataset.d){setT(d=>{d.setFullYear(vy,vm,+b.dataset.d)});drawCal()}
+    else if(b.dataset.ok){$('cal').hidden=true;calKey=null}};
+  $('cal').onchange=e=>{const t=e.target.dataset.t;if(!t)return;const q=n=>$('cal').querySelector(`[data-t=${n}]`);const h=+q('h').value%12+(q('a').value==='PM'?12:0);setT(d=>{d.setHours(h,+q('m').value,0,0)});drawCal()};
+  labels();drawP();
   $('cpl').oninput=e=>{const i=e.target.dataset.p;if(i!==undefined){pr[+i]=e.target.value;calc()}};
   $('cpl').onclick=e=>{const x=e.target.dataset.px;if(x!==undefined){pr.splice(+x,1);drawP()}};
   $('cpa').onclick=()=>{pr.push('');drawP()};
-  $('cs').onchange=$('ce').onchange=calc;
+  let scope='all';
   $('ctt').onchange=()=>{const g=$('ctt').value==='game';$('cgf').hidden=g;$('cgm').hidden=!g};
   $('csa').onclick=()=>{scope='all';$('cco').hidden=true;$('csa').classList.add('o');$('csc').classList.remove('o')};
   $('csc').onclick=()=>{scope='countries';$('cco').hidden=false;$('csc').classList.add('o');$('csa').classList.remove('o')};
   $('cbb').onclick=()=>$('cbf').click();
   $('cbf').onchange=async e=>{const f=e.target.files[0];e.target.value='';if(!f)return;try{const b=await imgToBlob(f,1200,false);$('cbb').textContent='Uploading…';banner=await upload('image',b);$('cbb').innerHTML=`<img src="${esc(banner)}" alt="" style="width:100%;max-height:160px;object-fit:cover;border-radius:10px">`}catch(er){$('cbb').textContent='🖼️ Add banner';fail(er)}};
-  $('ccx').onclick=()=>$('sheet').classList.remove('open');
+  const close=()=>document.getElementById('ctm')?.remove();
+  $('ctm').onclick=e=>{if(e.target.id==='ctm')close()};$('ccx').onclick=close;
   $('ccg').onclick=async()=>{const t=$('ctt').value,{pool,min}=calc();if(pool<min)return fail(new Error(`The prize pool must be at least ${fmt(min)} coins.`));
     const b=$('ccg');b.disabled=true;try{await api('POST','/contests',{name:$('cn').value,descr:$('cd').value,banner,room:$('cr').value,ctype:t,ranking:t==='gift'?$('crk1').value:$('crk2').value,ref:t==='gift'?$('cgs').value:$('cgg').value,
-      minw:$('cmn').value,maxw:$('cmx').value,scope,countries:[...$('cco').selectedOptions].map(x=>x.value),starts:new Date($('cs').value).getTime(),ends:new Date($('ce').value).getTime(),prizes:pr.map(x=>Math.floor(+x)||0)});
-      $('sheet').classList.remove('open');toast('Contest sent for approval');window.CTAB='mine';V.contests();api('GET','/me').then(x=>{ST=x;$('coins').textContent=cn(x.coins)}).catch(()=>{})}catch(er){fail(er);b.disabled=false}}}
+      minw:$('cmn')?.value,maxw:$('cmx')?.value,scope,countries:[...$('cco').selectedOptions].map(x=>x.value),starts:T.s,ends:T.e,prizes:pr.map(x=>Math.floor(+x)||0)});
+      close();toast('Contest sent for approval');window.CTAB='mine';V.contests();api('GET','/me').then(x=>{ST=x;$('coins').textContent=cn(x.coins)}).catch(()=>{})}catch(er){fail(er);b.disabled=false}}}
 const CMDS=[['/balance','Show your coin balance (private)','Everyone'],['/packet coins people · /grab','Drop a Lucky Packet of coins in the room (2–30 people); others type /grab for a random share','Everyone'],['/gift username gift [-m message]','Send a gift (rose, heart, crown) with an optional private note','Everyone'],['/g all gift','Gift shower to everyone in the room','Everyone'],['/f username','Follow a user; mutual follows become friends','Everyone'],['/block username · /unblock username','Block or unblock: neither side sees the other in rooms','Everyone'],['/tag username','Check a merchant tag','Everyone'],['/whois username','Role, level and gender of a user (private)','Everyone'],['/me','Broadcast your username as a styled action','Everyone'],['/roll','Roll a number from 1 to 100','Everyone'],['/sing','Sing a random fun line','Everyone'],['/flames [username]','Random FLAMES relationship','Everyone'],['/findmymatch','Match with a random member','Everyone'],['/getmyluck','Daily love, money, health and success luck','Everyone'],['/kick','Football kick emote (with a username it is moderation)','Everyone'],['/ban username · /unban username','Ban or unban a user in the room','Room owner/mod, staff, admin'],['/kick username','Remove and suspend for 1 hour','Room owner/mod, staff, admin'],['/bump username','Remove and suspend for 5 minutes','Room owner/mod, staff, admin'],['/unkick username','Remove a suspension','Staff, admin'],['/mod username · /dmod username','Add or remove a room moderator','Room admin, super moderator, staff'],['/smod username · /dsmod username','Make or remove a Super Moderator (can do everything the room admin can, except change the admin)','Room admin, staff'],['/bot cricket · /bot lowcard · /bot dice','Turn a pot game bot on in this room, then type !start [amount], !j, !d','Room admin/moderators, staff, admin'],['/bot teenpatti [boot] · /bot royalebattle','Turn Teen Patti Gold or Royale Battle on in this room','Staff, admin'],['/bot stop','Turn the room\'s game bot off (not while a game is running)','Room admin/moderators (pot games), staff, admin'],['/silence [seconds]','Silence ordinary chat for the whole room','Room owner/mod, staff, admin'],['/silence username [seconds]','Silence one user','Room owner/mod, staff, admin'],['/unsilence [username]','Unsilence the room or a user','Room owner/mod, staff, admin'],['/lock · /unlock','Lock or unlock ordinary messages','Room owner/mod, staff, admin'],['/broadcast message','One-time highlighted message','Room owner/mod, staff, admin'],['/announcement message|off','Set or remove the room announcement','Room owner/mod, staff, admin']];
 V.cmds=async()=>{const d=await api('GET','/commands');const q=($('cq')?.value||'').toLowerCase();
   view(`<div class="cmp"><button id="cb">←</button><input id="cq" placeholder="Search commands" value="${esc(q)}"></div><div class="card">${CMDS.filter(c=>(c[0]+c[1]).toLowerCase().includes(q)).map(c=>`<div class="cmd"><code>${esc(c[0])}</code><div>${esc(c[1])}</div><div class="mu">${esc(c[2])}</div></div>`).join('')||'<div class="mu">No match</div>'}</div>
