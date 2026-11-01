@@ -1326,6 +1326,8 @@ const cast = (room, o) => {
   members.get(room)?.forEach(w => { if (o.user && w.user !== o.user && isBlocked(o.user, w.user)) return; send(w, o); });
   // people who have this room open as a tab but are looking at another room get the message too (shown as unread)
   if (o.t === 'msg' && ['msg', 'image', 'voice'].includes(o.kind)) wss.clients.forEach(w => { if (w.user && w.user !== o.user && w.room !== room && w.tabs && w.tabs.has(room) && !isBlocked(o.user, w.user)) send(w, { ...o, bg: 1 }); });
+  // also tell them when someone enters or leaves a room they keep as a tab
+  if (o.t === 'enter' || o.t === 'leave') wss.clients.forEach(w => { if (w.user && w.user !== o.user && w.room !== room && w.tabs && w.tabs.has(room) && !isBlocked(o.user, w.user)) send(w, { ...o, bg: 1 }); });
 };
 const online = () => {
   const l = [...new Set([...wss.clients].filter(w => w.user).map(w => w.user))]

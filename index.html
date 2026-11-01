@@ -1251,6 +1251,13 @@ html[data-skin=dark] body #hdr #top #rtabs .rt.on{color:#04222b!important}
 html[data-skin=navy][data-theme] body #hdr #top #rtabs .rt,html[data-skin=navy][data-theme] body #hdr #top #rtabs .rt.on,html[data-skin=navy][data-theme] body #hdr #top #rtabs .rt.mini{border-radius:99px!important}
 html[data-skin=dark] body #hdr #top{padding-right:8px!important}
 
+
+/* tiny emoticon pictures sit slightly smaller than the text; pickers keep their size */
+#log img.emt,.fbp img.emt,.cmt img.emt,.acts button[data-a=react] img.emt,.mbody img.emt{width:.9em!important;height:.9em!important;margin:0 1px!important;vertical-align:-.1em!important}
+.rpk img.emt,#emp img.emt,#empc img.emt,#rpick img.emt{width:32px!important;height:32px!important}
+#view .seemore{display:block;margin:8px auto 2px;text-align:center}
+/* Day/Night and coin buttons only in the room-info bar, never in the main header */
+html body #hdr #top>#tn,html body #hdr #top>#coins{display:none!important}
 /* Day/Night and coin buttons live in the room-info bar while chatting; the bar can be folded with its handle */
 #rbar #rbx{display:flex;align-items:center;gap:3px;flex:none;margin-left:2px}
 html body #hdr #rbar #tn{display:grid!important;place-items:center;width:36px!important;height:36px!important;min-width:0!important;padding:0!important;margin:0!important;border-radius:50%!important}
@@ -1272,7 +1279,7 @@ html body #hdr #top #rtabs .rt.mini .rfl{margin:0}
 html body #hdr #top #rtabs .rt .rfl{width:20px;height:14px}
 html body #hdr #top #rtabs .rt.on{display:inline-flex!important;align-items:center;justify-content:center;gap:0}
 </style>
-<link rel="stylesheet" href="theme-dark.css?v=2">
+<link rel="stylesheet" href="theme-dark.css?v=3">
 <style>/* role name colours: kept in their own block so they always load */
 :root{--nm-admin:#e8591f;--nm-staff:#2f9a3d;--nm-mentor:#b01020;--nm-headmentor:#8a6a14;--nm-merchant:#7e22ce;--nm-vip:#00706f;--nm-user:#2a7bd8}
 html[data-theme=dark],#log.navy,#log.dark{--nm-admin:#ff7a33;--nm-staff:#4cc24f;--nm-mentor:#f2394a;--nm-headmentor:#e8c23c;--nm-merchant:#b45cff;--nm-vip:#2ec4bf;--nm-user:#6db3ff}
@@ -1415,6 +1422,7 @@ async function on(m){
     const bg=cur==='account'&&document.querySelector('#view .big');if(bg&&!ST.unlimited)bg.textContent='¢ '+m.coins}
   if(m.t==='online'){ONL=m.list;m.list.forEach(u=>ROLES[u.name]=u.role)}
   if(m.t==='roominfo'&&m.room===room&&$('log'))roomIntro(m);
+  if((m.t==='enter'||m.t==='leave')&&m.bg&&m.room!==room&&OPEN.includes(m.room)){(BUF[m.room]=BUF[m.room]||[]).push(m);if(BUF[m.room].length>200)BUF[m.room].shift();UNR[m.room]=(UNR[m.room]||0)+1;drawTabs()}
   if(m.t==='leave'&&m.room===room&&$('log'))leaveLine(m);
   if(m.t==='enter'&&m.room===room&&$('log'))enterLine(m);
   if(m.t==='tp'&&m.room===room){TPV=m.view;if($('tp'))Panel.render(TPV)}
@@ -1897,10 +1905,9 @@ V.mailc=async a=>{MOPEN=true;const pre=a||{};let att=[],busy=0;
   if(pre.to)$('mbd').focus()}
 V.rooms=async()=>{const rs=await api('GET','/rooms');rs.forEach(x=>{RF[x.name]=x.flag||''});
   const q=($('rq')?.value||'').toLowerCase();
-  const RT=(()=>{try{return JSON.parse(localStorage.roomTime||'{}')}catch{return{}}})();rs.sort((a,b)=>(RT[b.name]||0)-(RT[a.name]||0)||b.count-a.count||a.name.localeCompare(b.name));const S=[['Favorite rooms','#f7931e',rs.filter(x=>x.fav||x.owner===me)],['Official rooms','#4aa8e8',rs.filter(x=>x.cat==='official')],['Game rooms','#9b59d0',rs.filter(x=>x.cat==='game')],['Your & community rooms','#2e9d4f',rs.filter(x=>x.cat==='user'&&x.owner!==me)]];
+  const RT=(()=>{try{return JSON.parse(localStorage.roomTime||'{}')}catch{return{}}})();rs.sort((a,b)=>b.count-a.count||(RT[b.name]||0)-(RT[a.name]||0)||a.name.localeCompare(b.name));const S=[['Favorite rooms','#f7931e',rs.filter(x=>x.fav||x.owner===me)],['Official rooms','#4aa8e8',rs.filter(x=>x.cat==='official')],['Game rooms','#9b59d0',rs.filter(x=>x.cat==='game')],['Your & community rooms','#2e9d4f',rs.filter(x=>x.cat==='user'&&x.owner!==me)]];
   const strip=[...rs].filter(x=>x.name.toLowerCase().includes(q)).sort((a,b)=>(b.fav?1:0)-(a.fav?1:0)).slice(0,14);
   view(`<div class="cmp"><input id="rq" placeholder="Search room" value="${esc(q)}"><button id="rr" aria-label="Refresh"><svg viewBox="0 0 24 24"><path d="M20 12a8 8 0 11-2.6-5.9"/><path d="M20 4v5h-5"/></svg></button><button id="rn" class="o" aria-label="Create a room"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></button></div>`+
-    `<div class="rstrip">${strip.map(x=>`<button type="button" class="rchip${x.fav?' fv':''}" data-r="${esc(x.name)}" title="${esc(x.name)}">${RF[x.name]?rfl(x.name):'<svg viewBox="0 0 24 24"><path d="M4 5h16v11H9l-5 4z"/></svg>'}<span>${esc(x.name)}</span>${x.count?`<i>${x.count}</i>`:''}</button>`).join('')}</div>`+
     S.map(([t,c,l],i)=>`<div class="dk${(window.RCOL||{})[i]?' cl':''}" style="--c:${c}" data-s="${i}"><div>${t}<span class="n">${l.length}</span></div><svg class="chv" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg></div><div id="rs${i}" data-sec="${i}" style="${l.length&&!(window.RCOL||{})[i]?'':'display:none'}">${l.filter(x=>x.name.toLowerCase().includes(q)).map(x=>`<div class="rm" data-r="${x.name}"><span><span class="rn">${rfl(x.name)}${x.name}</span> <span class="mu">· ${x.count}${x.cap?'/'+x.cap:''} online</span></span><button data-f="${x.name}" class="fv${x.fav?' on':''}" aria-label="Favorite"><svg viewBox="0 0 24 24"><path d="M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1L3.2 9.5l6.1-.9z"/></svg></button></div>`).join('')}${l.filter(x=>x.name.toLowerCase().includes(q)).length>5?`<button type="button" class="seemore">See more</button>`:''}</div>`).join(''));
   $('rq').oninput=()=>V.rooms();$('rr').onclick=()=>V.rooms();
   $('rn').onclick=()=>{if(lv(ST.xp||0)<20&&!['staff','admin'].includes(ST.role))return toast('Creating a room unlocks at Level 20',1);
@@ -1948,7 +1955,7 @@ V.chat=async(r)=>{room=r;if(!r.startsWith('dm:'))lastRoom=r;target='';pend=null;
   $('phb').onclick=()=>$('pfile').click();$('emb').onclick=()=>emChat($('emb'));$('pfile').onchange=e=>{const f=e.target.files[0];e.target.value='';sendPhoto(f)};
   $('mic').onclick=micStart;$('rcx').onclick=()=>micStop(false);$('rcs').onclick=()=>micStop(true);
   if(!dm&&LOGC[r]){$('log').innerHTML=LOGC[r];skipIntro=true}
-  if(BUF[r]){const q=BUF[r];delete BUF[r];q.forEach(add)}
+  if(BUF[r]){const q=BUF[r];delete BUF[r];q.forEach(x=>x.t==='enter'?enterLine(x):x.t==='leave'?leaveLine(x):add(x))}
   UNR[r]=0;drawTabs();
   fitChat();setTimeout(fitChat,120);setTimeout(fitChat,600);
   if(window.SWD){const c=$('chatbox'),d=window.SWD;window.SWD=0;try{c.animate([{transform:`translateX(${d*48}px)`,opacity:0},{transform:'none',opacity:1}],{duration:300,easing:'cubic-bezier(.16,1,.3,1)'})}catch{}}
