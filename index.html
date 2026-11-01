@@ -1279,7 +1279,7 @@ html body #hdr #top #rtabs .rt.mini .rfl{margin:0}
 html body #hdr #top #rtabs .rt .rfl{width:20px;height:14px}
 html body #hdr #top #rtabs .rt.on{display:inline-flex!important;align-items:center;justify-content:center;gap:0}
 </style>
-<link rel="stylesheet" href="theme-dark.css?v=3">
+<link rel="stylesheet" href="theme-dark.css?v=4">
 <style>/* role name colours: kept in their own block so they always load */
 :root{--nm-admin:#e8591f;--nm-staff:#2f9a3d;--nm-mentor:#b01020;--nm-headmentor:#8a6a14;--nm-merchant:#7e22ce;--nm-vip:#00706f;--nm-user:#2a7bd8}
 html[data-theme=dark],#log.navy,#log.dark{--nm-admin:#ff7a33;--nm-staff:#4cc24f;--nm-mentor:#f2394a;--nm-headmentor:#e8c23c;--nm-merchant:#b45cff;--nm-vip:#2ec4bf;--nm-user:#6db3ff}
@@ -1967,7 +1967,7 @@ function drawTabs(){const t=$('rtabs');if(!t)return;if(!RFL){RFL=1;setTimeout(lo
   t.innerHTML=OPEN.map(x=>x===room?`<button class="rt on" data-r="${esc(x)}">${rfl(x)}${esc(rtitle(x))}</button>`:`<button class="rt mini${UNR[x]?' has':''}" data-r="${esc(x)}" title="${esc(rtitle(x))}" aria-label="${esc(rtitle(x))}${UNR[x]?' — '+UNR[x]+' new':''}">${RF[x]?rfl(x).replace('class="flg rfl"','class="flg rfl rfm"').replace('<img','<span class="rf"><img')+'</span>':''}${RF[x]?'':(()=>{const f=rtitle(x).match(/[\u{1F1E6}-\u{1F1FF}]{2}/u);return f?`<span class="rf">${f[0]}</span>`:'<svg viewBox="0 0 24 24" width="18" height="18"><path d="M4 5h16v11H9l-5 4z" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"/></svg>'})()}${UNR[x]?`<b class="ub">${UNR[x]>9?'9+':UNR[x]}</b>`:''}</button>`).join('');
   t.onclick=e=>{const c=e.target.closest('[data-x]');if(c){e.stopPropagation();return closeTab(c.dataset.x)}
     if(e.target.closest('[data-add]'))return go('rooms');const b=e.target.closest('[data-r]');if(b&&b.dataset.r!==room)go('chat',b.dataset.r)};
-  t.querySelector('.on')?.scrollIntoView({inline:'center',block:'nearest'})}
+  {const on=t.querySelector('.on');if(on)t.scrollLeft=Math.max(0,on.offsetLeft-(t.clientWidth-on.offsetWidth)/2)}}
 function closeTab(x){const i=OPEN.indexOf(x);OPEN.splice(i,1);dropRoom(x);saveOpen();try{tx({t:'leave',room:x})}catch{}if(x!==room)return drawTabs();
   if(OPEN.length)go('chat',OPEN[Math.min(i,OPEN.length-1)]);else go('rooms')}
 function stepRoom(d){const i=OPEN.indexOf(room);if(i<0||OPEN.length<2)return;const n=OPEN[(i+d+OPEN.length)%OPEN.length];
