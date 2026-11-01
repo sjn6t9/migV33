@@ -1277,6 +1277,7 @@ html[data-skin] #view#view#view#view #gp .gh{display:flex!important;flex-wrap:no
 html[data-skin] #view#view#view#view #gp .gh .gtl{display:flex!important;gap:6px!important;flex:none!important;margin-left:auto!important}
 html[data-skin] #view#view#view#view #gp .gh b{flex:1 1 0!important;min-width:0!important}
 html[data-skin] body.inchat.hdrmin #hdr#hdr #top#top#top #th,html[data-skin] body.inchat.hdrmin #hdr#hdr #top#top#top #tf,html[data-skin] body.inchat.hdrmin #hdr#hdr #top#top#top #tr,html[data-skin=dark] body.inchat.hdrmin #hdr#hdr #top#top#top #th,html[data-skin=dark] body.inchat.hdrmin #hdr#hdr #top#top#top #tf,html[data-skin=dark] body.inchat.hdrmin #hdr#hdr #top#top#top #tr,html[data-skin] body.inchat.hdrmin #top#top #th,html[data-skin] body.inchat.hdrmin #top#top #tf,html[data-skin] body.inchat.hdrmin #top#top #tr,body.inchat.hdrmin #top #th,body.inchat.hdrmin #top #tf,body.inchat.hdrmin #top #tr{display:none!important}
+html[data-skin] #view#view#view#view#view #tp .tph>.tpmin,html[data-skin] #view#view#view#view#view #gp .gh .gmin{width:52px!important;height:52px!important;min-width:52px!important;min-height:52px!important;max-width:52px!important;font-size:26px!important;border-radius:12px!important}
 </style>
 <script>try{if(localStorage.tk||sessionStorage.tk)document.documentElement.dataset.boot=1;var k=localStorage.skin==='dark'?'dark':'day';document.documentElement.dataset.skin=k==='dark'?'dark':'navy';document.documentElement.dataset.theme='dark'}catch(e){document.documentElement.dataset.skin='navy';document.documentElement.dataset.theme='dark'}</script>
 <style>/* Name effects from the colour shop: each one animates the glow around the username */
@@ -1384,7 +1385,7 @@ html body #hdr #top #rtabs .rt.mini .rfl{margin:0}
 html body #hdr #top #rtabs .rt .rfl{width:20px;height:14px}
 html body #hdr #top #rtabs .rt.on{display:inline-flex!important;align-items:center;justify-content:center;gap:0}
 </style>
-<link rel="stylesheet" href="theme-dark.css?v=22">
+<link rel="stylesheet" href="theme-dark.css?v=23">
 <style>/* role name colours: kept in their own block so they always load */
 :root{--nm-admin:#e8591f;--nm-staff:#2f9a3d;--nm-mentor:#b01020;--nm-headmentor:#8a6a14;--nm-merchant:#7e22ce;--nm-vip:#00706f;--nm-user:#2a7bd8}
 html[data-theme=dark],#log.navy,#log.dark{--nm-admin:#ff7a33;--nm-staff:#4cc24f;--nm-mentor:#f2394a;--nm-headmentor:#e8c23c;--nm-merchant:#b45cff;--nm-vip:#2ec4bf;--nm-user:#6db3ff}
@@ -2833,6 +2834,13 @@ setInterval(()=>{const ic=b.classList.contains('inchat')&&innerWidth<1000;if(ic&
 document.addEventListener('click',e=>{if(!b.classList.contains('inchat')||innerWidth>=1000)return;const mb=e.target.closest&&e.target.closest('#mb');
  if(mb&&b.classList.contains('hdrmin')){e.stopImmediatePropagation();e.preventDefault();arm();return}
  if(e.target.closest&&e.target.closest('#top'))exp=Date.now()+20000},true)})();
+
+/* game boards: fold automatically if nobody starts the game within 60s */
+(()=>{const st={};setInterval(()=>{for(const id of ['tp','gp']){const el=document.getElementById(id),o=st[id]||(st[id]={t:0,done:0});
+ const idle=el&&el.offsetParent&&el.querySelector('[data-c*="!start"]');
+ if(!idle){o.t=0;o.done=0;continue}
+ if(!o.t)o.t=Date.now();
+ if(!o.done&&Date.now()-o.t>=60000){o.done=1;const b=el.querySelector('[data-min]');if(b&&/▾/.test(b.textContent))b.click()}}},1000)})();
 </script>
 </body>
 </html>
