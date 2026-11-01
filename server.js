@@ -159,12 +159,19 @@ for (const a of ['alter table room_mods add column super int default 0', 'alter 
 db.exec(`create table if not exists room_game(room text primary key, game text);
 create table if not exists kv(k text primary key, v text)`);
 const gameOf = room => db.prepare('select game from room_game where room=?').get(room)?.game || '';
-for (const [n, c] of [['lobby', 'official'], ['adda', 'official'], ['music', 'official'], ['games', 'game'], ['legendary', 'game'], ['cricket', 'game'], ['lowcard', 'game'], ['royale', 'game']])
-  db.prepare('insert or ignore into rooms(name,cat,owner) values(?,?,?)').run(n, c, null);
-if (!db.prepare("select 1 from kv where k='games_seeded'").get()) {   // first start only: the four game rooms get their game
-  for (const [r, g] of [['legendary', 'tp'], ['cricket', 'cricket'], ['lowcard', 'lowcard'], ['royale', 'royale']]) db.prepare('insert or ignore into room_game values(?,?)').run(r, g);
-  db.prepare("insert into kv values('games_seeded','1')").run();
+try { db.exec("alter table rooms add column flag text default ''"); } catch {}
+// Rooms: every Asian country (with its flag) in Chat Rooms, and one room per game bot in Game Rooms.
+const ASIA = [['Afghanistan','af'],['Armenia','am'],['Azerbaijan','az'],['Bahrain','bh'],['Bangladesh','bd'],['Bhutan','bt'],['Brunei','bn'],['Cambodia','kh'],['China','cn'],['Cyprus','cy'],['Georgia','ge'],['Hong Kong','hk'],['India','in'],['Indonesia','id'],['Iran','ir'],['Iraq','iq'],['Israel','il'],['Japan','jp'],['Jordan','jo'],['Kazakhstan','kz'],['Kuwait','kw'],['Kyrgyzstan','kg'],['Laos','la'],['Lebanon','lb'],['Malaysia','my'],['Maldives','mv'],['Mongolia','mn'],['Myanmar','mm'],['Nepal','np'],['North Korea','kp'],['Oman','om'],['Pakistan','pk'],['Palestine','ps'],['Philippines','ph'],['Qatar','qa'],['Saudi Arabia','sa'],['Singapore','sg'],['South Korea','kr'],['Sri Lanka','lk'],['Syria','sy'],['Taiwan','tw'],['Tajikistan','tj'],['Thailand','th'],['Timor Leste','tl'],['Turkey','tr'],['Turkmenistan','tm'],['United Arab Emirates','ae'],['Uzbekistan','uz'],['Vietnam','vn'],['Yemen','ye']];
+const GAME_ROOMS = [['LowCard', 'lowcard'], ['Cricket', 'cricket'], ['Dice', 'dice'], ['TeenPatti', 'tp'], ['Royale Battle', 'royale']];
+if (!db.prepare("select 1 from kv where k='rooms_asia_v1'").get()) {   // first start with this version only: remove all old rooms
+  db.transaction(() => {
+    for (const t of ['rooms', 'favs', 'bans', 'room_mods', 'room_cfg', 'mutes', 'msgs', 'room_game', 'tp_pending', 'rb_pending', 'lc_pending']) { try { db.exec(`delete from ${t}`); } catch {} }
+    try { db.exec('delete from room_seen'); } catch {}
+    db.prepare("insert into kv values('rooms_asia_v1','1')").run();
+  })();
 }
+for (const [n, f] of ASIA) { db.prepare('insert or ignore into rooms(name,cat,owner,flag) values(?,?,?,?)').run(n, 'official', null, f); db.prepare("update rooms set flag=? where name=? and coalesce(flag,'')=''").run(f, n); }
+for (const [n, g] of GAME_ROOMS) { db.prepare('insert or ignore into rooms(name,cat,owner) values(?,?,?)').run(n, 'game', null); db.prepare('insert or ignore into room_game values(?,?)').run(n, g); }
 const roomOk = n => /^dm:/.test(n) || !!db.prepare('select 1 from rooms where name=?').get(n);
 const auth = (q, r, next) => {
   let u;
@@ -368,9 +375,9 @@ app.delete('/api/stories/:id', auth, ok((q, r) => {
 app.get('/api/rooms', auth, ok((q, r) => {
   const fav = new Set(db.prepare('select room from favs where user=?').all(q.user).map(x => x.room));
   const own = new Map(), isStaffOwner = o => { if (!o) return false; if (!own.has(o)) own.set(o, ['staff', 'admin'].includes(roleOf(o))); return own.get(o); };
-  r.json(db.prepare('select name,cat,cap,owner from rooms').all().map(x => {
+  r.json(db.prepare('select name,cat,cap,owner,flag from rooms').all().map(x => {
     const cat = (gameOf(x.name) || x.cat === 'game') ? 'game' : (x.cat === 'official' || isStaffOwner(x.owner)) ? 'official' : 'user';
-    return { name: x.name, cat, cap: x.cap, count: roomNames(x.name).size, fav: fav.has(x.name) };
+    return { name: x.name, cat, cap: x.cap, flag: x.flag || '', count: roomNames(x.name).size, fav: fav.has(x.name) };
   }).sort((a, b) => b.count - a.count || a.name.localeCompare(b.name)));
 }));
 app.post('/api/rooms', auth, ok((q, r) => {
@@ -379,7 +386,16 @@ app.post('/api/rooms', auth, ok((q, r) => {
   if (!/^[A-Za-z0-9 ]{5,20}$/.test(name)) return bad(r, 'Room name: 5–20 characters, English letters, numbers and spaces only');
   if (db.prepare('select 1 from rooms where lower(name)=lower(?)').get(name)) return bad(r, 'That room already exists', 409);
   const descr = String(q.body?.descr || '').trim().slice(0, 200), minlv = Math.max(0, Math.min(MAXLV, parseInt(q.body?.minlv, 10) || 0));
-  db.prepare('insert into rooms(name,cat,owner,descr,minlv) values(?,?,?,?,?)').run(name, 'user', q.user, descr, minlv); r.json({ ok: true });
+  let flag = '';
+  const fd = String(q.body?.flag || '');
+  if (fd) {   // flag picture: the page shrinks it to 64x44; stored as a small PNG
+    const m = /^data:image\/(png|jpeg|webp);base64,([A-Za-z0-9+/=]+)$/.exec(fd);
+    if (!m || fd.length > 150000) return bad(r, 'Flag picture is not valid or too large.');
+    const buf = Buffer.from(m[2], 'base64'), t = sniff(buf);
+    if (!t || t[0] !== 'image' || buf.length > 100000) return bad(r, 'Flag picture is not valid or too large.');
+    const fn = crypto.randomBytes(16).toString('hex') + '.' + t[1]; fs.writeFileSync('uploads/' + fn, buf); flag = '/uploads/' + fn;
+  }
+  db.prepare('insert into rooms(name,cat,owner,descr,minlv,flag) values(?,?,?,?,?,?)').run(name, 'user', q.user, descr, minlv, flag); r.json({ ok: true });
 }));
 app.post('/api/rooms/:n/fav', auth, ok((q, r) => {
   const d = db.prepare('delete from favs where user=? and room=?').run(q.user, q.params.n);
