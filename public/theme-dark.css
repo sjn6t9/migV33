@@ -817,3 +817,4 @@ html[data-skin=dark] body.inchat #hdr #rbw#rbw#rbw .rbi{width:100%!important;min
 html[data-skin=dark] body #hdr #top#top#top>#tn,html[data-skin=dark] body #hdr #top#top#top>#coins{display:none!important}
 @media (min-width:1000px){html[data-skin=dark] body #hdr #top#top#top>#mb#mb,html[data-skin=dark] body.inchat #hdr #top#top#top>#mb#mb{display:none!important}}
 html[data-skin=dark] body #feed .fbp img.pimg,html[data-skin=dark] body .fbp img.pimg,html[data-skin=dark] body img.pimg{width:auto!important;max-width:100%!important;height:auto!important;max-height:75vh!important;object-fit:contain!important;margin:0 auto!important;display:block!important}
+html[data-skin=dark] body #view#view#view #whw,html[data-skin=dark] body #view#view#view #wh{background:none!important;background-color:transparent!important;border:0!important;box-shadow:none!important;backdrop-filter:none!important;outline:0!important;padding:0!important;border-radius:0!important}

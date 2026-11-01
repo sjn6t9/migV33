@@ -1268,6 +1268,10 @@ html[data-skin=navy] body #hdr #top{min-height:54px!important;height:54px!import
 html body #hdr #rbar#rbar{min-height:50px!important}
 html body #hdr #rbar#rbar .ib,html body #hdr #rbar#rbar #tn{width:38px!important;height:38px!important}
 html body #hdr #rbar#rbar #coins{height:38px!important}
+
+/* Daily Spin: only the wheel turns, never its box */
+html body #view#view #whw,html body #view#view #wh{background:none!important;background-color:transparent!important;border:0!important;box-shadow:none!important;backdrop-filter:none!important;-webkit-backdrop-filter:none!important;outline:0!important;padding:0!important;border-radius:0!important}
+html body #view#view #wh>svg,html body #view#view #whw>svg{background:none!important;border:0!important;box-shadow:none!important}
 /* Day/Night and coin buttons live in the room-info bar while chatting; the bar can be folded with its handle */
 #rbar #rbx{display:flex;align-items:center;gap:3px;flex:none;margin-left:2px}
 html body #hdr #rbar #tn{display:grid!important;place-items:center;width:36px!important;height:36px!important;min-width:0!important;padding:0!important;margin:0!important;border-radius:50%!important}
@@ -1289,7 +1293,7 @@ html body #hdr #top #rtabs .rt.mini .rfl{margin:0}
 html body #hdr #top #rtabs .rt .rfl{width:20px;height:14px}
 html body #hdr #top #rtabs .rt.on{display:inline-flex!important;align-items:center;justify-content:center;gap:0}
 </style>
-<link rel="stylesheet" href="theme-dark.css?v=5">
+<link rel="stylesheet" href="theme-dark.css?v=6">
 <style>/* role name colours: kept in their own block so they always load */
 :root{--nm-admin:#e8591f;--nm-staff:#2f9a3d;--nm-mentor:#b01020;--nm-headmentor:#8a6a14;--nm-merchant:#7e22ce;--nm-vip:#00706f;--nm-user:#2a7bd8}
 html[data-theme=dark],#log.navy,#log.dark{--nm-admin:#ff7a33;--nm-staff:#4cc24f;--nm-mentor:#f2394a;--nm-headmentor:#e8c23c;--nm-merchant:#b45cff;--nm-vip:#2ec4bf;--nm-user:#6db3ff}
@@ -1455,8 +1459,9 @@ const saveOpen=()=>{try{sessionStorage.open=JSON.stringify(OPEN);localStorage.op
 /* ---------- navigation ---------- */
 const cn=c=>ST.unlimited?'∞ coins':c+' coins';
 const V={};const TT={panel:'Panel',admin:'Admin Panel',home:'Home',rooms:'Chat Rooms',chat:'Chat',profile:'Profile',account:'My Account',friends:'Friends',explore:'Explore',spin:'Daily Spin',cmds:'Command List',settings:'Settings',mail:'Mail',mailc:'New Mail'};
+let PREV=null,CURA;const goBack=d=>{const p=PREV;if(p&&p.v&&p.v!=='spin')go(p.v,p.a);else go(d||'home')};
 let TNE=null,CNE=null;function placeHdr(on){TNE=TNE||$('tn');CNE=CNE||$('coins');if(!TNE||!CNE)return;const host=on&&$('rbx'),top=$('top');if(host){if(TNE.parentNode!==host){host.append(TNE,CNE)}}else if(top&&TNE.parentNode!==top){top.append(TNE,CNE)}}
-async function go(v,a){document.body.classList.toggle('inchat',v==='chat');try{drawTabs()}catch{}try{TNE=TNE||$('tn');CNE=CNE||$('coins');if(v!=='chat'){placeHdr(false);document.querySelectorAll('#hdr #rbw,#hdr #rbt').forEach(n=>n.remove())}}catch{}document.body.style.overflow='';document.documentElement.style.overflow='';$('view')&&($('view').style.overflowY='');if(cur==='chat'&&$('log')&&room&&OPEN.includes(room)&&!room.startsWith('dm:'))LOGC[room]=$('log').innerHTML;cur=v;try{if(v!=='chat')sessionStorage.lastv=JSON.stringify([v,a===undefined?null:a])}catch{}$('drawer').classList.remove('open');bnSet(v,a);
+async function go(v,a){document.body.classList.toggle('inchat',v==='chat');try{drawTabs()}catch{}try{TNE=TNE||$('tn');CNE=CNE||$('coins');if(v!=='chat'){placeHdr(false);document.querySelectorAll('#hdr #rbw,#hdr #rbt').forEach(n=>n.remove())}}catch{}document.body.style.overflow='';document.documentElement.style.overflow='';$('view')&&($('view').style.overflowY='');if(cur==='chat'&&$('log')&&room&&OPEN.includes(room)&&!room.startsWith('dm:'))LOGC[room]=$('log').innerHTML;if(cur&&cur!==v)PREV={v:cur,a:CURA};cur=v;CURA=a;try{if(v!=='chat')sessionStorage.lastv=JSON.stringify([v,a===undefined?null:a])}catch{}$('drawer').classList.remove('open');bnSet(v,a);
   $('th').classList.toggle('on',v==='home');$('tf').classList.toggle('on',v==='friends');$('tr').classList.toggle('on',v==='rooms'||v==='chat');
   if(innerWidth>=1000)drawNav();$('view').scrollTop=0;$('stt').textContent=TT[v]||'';$('strip').style.display='none';$('view').onclick=null;document.body.classList.remove('hb');try{await refreshVer();await V[v](a)}catch(e){fail(e)}}
 addEventListener('resize',()=>{if(me&&innerWidth>=1000)drawNav()});$('th').onclick=()=>go('home');$('tf').onclick=()=>go('friends');$('tr').onclick=()=>go('rooms');$('mb').onclick=()=>{drawNav();$('drawer').classList.add('open');navAnim()};
@@ -2505,7 +2510,7 @@ V.spin=async()=>{const d=await api('GET','/spin');const n=d.prizes.length;
    <div style="display:inline-grid;place-items:center;width:44px;height:44px;border-radius:12px;background:#f59e0b;color:#fff;font-size:24px">🎲</div>
    <h2 style="margin:10px 0 4px">Daily Lucky Draw</h2>
    <p class="mu" id="sinfo" style="margin:0 0 6px"></p>
-   <div style="position:relative;width:min(290px,100%);aspect-ratio:1;margin:10px auto 6px">
+   <div id="whw" style="position:relative;width:min(290px,100%);aspect-ratio:1;margin:10px auto 6px">
     <div id="wh" style="position:absolute;inset:0;transition:transform 4s cubic-bezier(.12,.7,.15,1)"><svg viewBox="0 0 320 320" width="100%" height="100%"><circle cx="${C}" cy="${C}" r="${R+8}" fill="#fde68a"/><circle cx="${C}" cy="${C}" r="${R+8}" fill="none" stroke="#f5c542" stroke-width="2"/>${slices}</svg></div>
     <svg viewBox="0 0 320 320" width="100%" height="100%" style="position:absolute;inset:0;pointer-events:none"><path d="M148 6h24l-12 20z" fill="#3b2417" stroke="#fde68a" stroke-width="2" stroke-linejoin="round"/><circle cx="${C}" cy="${C}" r="25" fill="#3b2417" stroke="#e5e7eb" stroke-width="4"/><path d="M160 146l4 10 10 4-10 4-4 10-4-10-10-4 10-4z" fill="#fcd34d"/><path d="M173 148l1.6 3.8 3.8 1.6-3.8 1.6-1.6 3.8-1.6-3.8-3.8-1.6 3.8-1.6z" fill="#fff"/></svg>
    </div>
@@ -2513,7 +2518,7 @@ V.spin=async()=>{const d=await api('GET','/spin');const n=d.prizes.length;
    <button class="o" id="go" style="padding:12px 40px;font-size:18px">🎲 Spin wheel</button>
    <p class="mu" style="margin:12px 0 0;font-size:12px">Two draws every day — at 12:00 PM and 12:00 AM. Each draw gives one spin and a missed draw cannot be reclaimed. Level-up spins can be used any time.</p>
   </div>`);
-  $('sb').onclick=()=>go('explore');let rot=0,D=d;
+  $('sb').onclick=()=>goBack('explore');let rot=0,D=d;
   const two=x=>String(x).padStart(2,'0');
   const paint=()=>{if(!$('go'))return clearInterval(tm);const ms=D.next-Date.now();if(ms<=0&&!D.free){api('GET','/spin').then(x=>{D=x;paint()}).catch(()=>{});return}
     const can=D.free||D.spins>0,t=Math.max(0,Math.floor(ms/1000)),cd=`${two(Math.floor(t/3600))}:${two(Math.floor(t%3600/60))}:${two(t%60)}`;
