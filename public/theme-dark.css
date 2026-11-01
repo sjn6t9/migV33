@@ -874,3 +874,17 @@ html[data-skin=navy] body #hdr #top#top#top>button:not(#tn).on svg{stroke:#2a160
 html[data-skin] body #drawer#drawer #dn :is(.mi,.dh,.dst,.dsr,.dsr input,.dsr button,.lgo){border-radius:4px!important}
 html[data-skin] body #hdr #top#top#top>button:not(#tn){margin:0!important}
 html[data-skin] body #hdr #top#top#top,html[data-skin] body #hdr #rbar#rbar#rbar{border-radius:16px!important}
+
+/* ===== v16: header alignment, room-tab colours, 5-room limit, compact room rows ===== */
+html[data-skin] body #hdr #top#top#top{display:flex!important;align-items:center!important;height:58px!important;min-height:58px!important;max-height:58px!important;padding:0 8px!important;box-sizing:border-box!important}
+html[data-skin] body #hdr #top#top#top>*{align-self:center!important}
+html[data-skin=navy] body #hdr #top#top#top #rtabs .rt:not(.on){background:rgba(74,168,232,.10)!important;border:1px solid #4aa8e8!important}
+html[data-skin=navy] body #hdr #top#top#top>#rtabs{border-left-color:#4aa8e8!important}
+html[data-skin=dark] body #hdr #top#top#top #rtabs .rt:not(.on){background:rgba(52,211,153,.10)!important;border:1px solid #34d399!important}
+html[data-skin=dark] body #hdr #top#top#top>#rtabs{border-left-color:#34d399!important}
+html[data-skin] body #view div[id^="rs"] > .rm:nth-child(n+6){display:none!important}
+html[data-skin] body #view div[id^="rs"].more > .rm:nth-child(n+6){display:flex!important}
+html[data-skin] #view#view#view#view#view#view#view#view#view#view#view#view#view#view .rm{padding:5px 10px!important;min-height:0!important;margin:3px 0!important;border-radius:10px!important;border-width:1px!important}
+html[data-skin] #view#view#view#view#view#view#view#view#view#view#view#view#view#view .rm .rn{font-size:16px!important}
+html[data-skin] #view#view#view#view#view#view#view#view#view#view#view#view#view#view .rm button.fv,html[data-skin] #view#view#view#view#view#view#view#view#view#view#view#view#view#view .rm button[data-f]{width:24px!important;height:24px!important;min-width:0!important;min-height:0!important;max-height:24px!important;padding:0!important;border-radius:6px!important;border-width:1px!important;display:grid!important;place-items:center!important}
+html[data-skin] #view#view#view#view#view#view#view#view#view#view#view#view#view#view .rm button.fv svg,html[data-skin] #view#view#view#view#view#view#view#view#view#view#view#view#view#view .rm button[data-f] svg{width:14px!important;height:14px!important}
