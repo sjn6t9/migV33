@@ -907,6 +907,15 @@ body.inchat #sub{display:none!important}
 .swb i{position:absolute;top:3px;left:3px;width:20px;height:20px;border-radius:50%;background:#fff;box-shadow:0 1px 4px #0006;transition:.2s}
 .swb.on{background:#f7931e!important}
 .swb.on i{left:23px}
+/* friends section toggle: small round chevron */
+html #view#view#view#view#view#view#view#view#view#view#view#view#view#view#view#view .swb{width:24px!important;height:24px!important;min-width:0!important;min-height:0!important;max-height:24px!important;padding:0!important;border-radius:50%!important;display:inline-grid!important;place-items:center!important;margin-left:auto!important;background:rgba(255,255,255,.08)!important;background-image:none!important;border:1px solid rgba(255,255,255,.35)!important;box-shadow:none!important;color:#cfe3ff!important}
+html[data-skin=dark] #view#view#view#view#view#view#view#view#view#view#view#view#view#view#view#view .swb{border-color:rgba(34,211,238,.5)!important;background:rgba(34,211,238,.1)!important}
+html #view#view#view#view#view#view#view#view#view#view#view#view#view#view#view#view .swb.on{background:rgba(247,147,30,.18)!important;border-color:#f7931e!important}
+html[data-skin=dark] #view#view#view#view#view#view#view#view#view#view#view#view#view#view#view#view .swb.on{background:rgba(34,211,238,.2)!important;border-color:#22d3ee!important}
+html #view#view#view#view#view#view#view#view#view#view#view#view#view#view#view#view .swb i{display:none!important}
+html #view#view#view#view#view#view#view#view#view#view#view#view#view#view#view#view .swb svg{width:14px!important;height:14px!important;fill:none!important;stroke:currentColor!important;stroke-width:3!important;stroke-linecap:round;stroke-linejoin:round;transition:transform .2s}
+html #view#view#view#view#view#view#view#view#view#view#view#view#view#view#view#view .swb:not(.on) svg{transform:rotate(-90deg)}
+
 .mi{font-size:15px!important;padding:9px 12px!important;gap:10px!important}
 .mi i{width:30px!important;height:30px!important;font-size:16px!important;border-radius:10px!important}
 .dh{font-size:11.5px!important;padding:5px 12px!important}
@@ -2392,7 +2401,7 @@ V.panel=async()=>{
 V.friends=async()=>{const d=await api('GET','/friends');['friends','requests','discover'].forEach(k=>d[k].forEach(u=>ROLES[u.name]=u.role));const t=window.FT||'friends';
   const row=u=>`<div class="fr" data-u="${esc(u.name)}" style="cursor:pointer;padding:10px 12px;gap:10px;align-items:center;border-left:10px solid ${RC[u.role]||'#4aa8e8'}">${av(u.name,48)}<div class="g"><b style="color:${nc(u.name)}">${esc(u.name)}</b>${rt(u.role,u.name)} <span class="lv">${lvi(lv(u.xp),16)}Lv ${lv(u.xp)}</span><div class="mu"><span class="dot ${u.presence}"></span><span class="${u.status_text?'':'nost'}">${esc(u.status_text||'No status')}</span></div></div>${t==='requests'?`<button class="o" data-x="accept" data-n="${esc(u.name)}">Accept</button>`:t==='discover'?`<button data-x="request" data-n="${esc(u.name)}">Add</button>`:''}</div>`;
   const shown=k=>{try{return localStorage['fsh_'+k]!=='0'}catch{return true}};
-  const sec=(title,l,c,k)=>`<h2 style="margin:14px 12px 6px;display:flex;align-items:center;gap:8px"><span class="dot ${c}"></span>${title} <span class="lv">${l.length}</span><button type="button" class="swb${shown(k)?' on':''}" data-sw="${k}" role="switch" aria-checked="${shown(k)}" aria-label="Show or hide ${title}"><i></i></button></h2>`+(!shown(k)?'':l.length?l.map(row).join(''):`<div class="card mu" style="text-align:center">No ${title.toLowerCase()}.</div>`);
+  const sec=(title,l,c,k)=>`<h2 style="margin:14px 12px 6px;display:flex;align-items:center;gap:8px"><span class="dot ${c}"></span>${title} <span class="lv">${l.length}</span><button type="button" class="swb${shown(k)?' on':''}" data-sw="${k}" role="switch" aria-checked="${shown(k)}" aria-label="Show or hide ${title}"><svg viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg></button></h2>`+(!shown(k)?'':l.length?l.map(row).join(''):`<div class="card mu" style="text-align:center">No ${title.toLowerCase()}.</div>`);
   const list=t==='friends'?(d.friends.length?sec('Online Friends',d.friends.filter(u=>u.presence!=='offline'),'online','on')+sec('Offline Friends',d.friends.filter(u=>u.presence==='offline'),'offline','off'):''):d[t].map(row).join('');
   view(`<div class="tabbar">${['friends','requests','discover'].map(k=>`<button class="${t===k?'on':''}" data-t="${k}">${k[0].toUpperCase()+k.slice(1)} (${d[k].length})</button>`).join('')}</div><div>${list||`<div class="card mu" style="text-align:center">Nothing here yet.</div>`}</div>`);
   $('view').onclick=async e=>{const sw=e.target.closest('[data-sw]');if(sw){try{localStorage['fsh_'+sw.dataset.sw]=sw.classList.contains('on')?'0':'1'}catch{}return V.friends()}const tb=e.target.closest('[data-t]');if(tb){window.FT=tb.dataset.t;return V.friends()}
