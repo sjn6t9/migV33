@@ -1486,12 +1486,14 @@ const leaveRoom = (ws, quiet = false) => {
   const r0 = ws.room; if (!r0) return; members.get(r0)?.delete(ws); ws.room = null;
   if (!quiet && !r0.startsWith('dm:') && ws.user && ![...(members.get(r0) || [])].some(w => w.user === ws.user)) { try { db.prepare('delete from room_seen where user=? and room=?').run(ws.user, r0); } catch {} } 
   if (!quiet && !r0.startsWith('dm:') && ws.user && ![...(members.get(r0) || [])].some(w => w.user === ws.user)) cast(r0, { t: 'leave', room: r0, user: ws.user, role: roleOf(ws.user), xp: xpOf(ws.user), ts: Date.now() });
+  if (!quiet) { try { ws.tabs && ws.tabs.delete(r0); } catch {} }   // really leaving (or timed out): the room is no longer an open tab either
   castRoster(r0);
   if (!quiet) purgeRoomMsgs(r0);
 };
 // Chat rooms keep no history: when the last person leaves, every text / photo / voice note of that room is deleted
 const purgeRoomMsgs = room => {
   if (!room || room.startsWith('dm:') || (members.get(room)?.size || 0) > 0) return;
+  try { if (roomNames(room).size > 0) return; } catch {}   // someone who still has the room open as a tab is still in it
   const rows = db.prepare('select text,kind from msgs where room=?').all(room);
   if (!rows.length) return;
   db.prepare('delete from msgs where room=?').run(room);
@@ -2118,12 +2120,14 @@ function onWsMessage(ws, raw) {
       const old = ws.tabs || new Set();
       ws.tabs = new Set((Array.isArray(m.rooms) ? m.rooms : []).slice(0, 30).map(x => String(x).slice(0, 60)));
       for (const r1 of new Set([...old, ...ws.tabs])) if (old.has(r1) !== ws.tabs.has(r1) && r1 !== ws.room) castRoster(r1);
+      for (const r1 of old) if (!ws.tabs.has(r1) && r1 !== ws.room) purgeRoomMsgs(r1);
       return;
     }
     if (m.t === 'leave') {   // the user closed a room tab on purpose
       const r1 = String(m.room || '');
       if (r1 && ws.room === r1) leaveRoom(ws);
       else if (r1 && ws.user) { try { db.prepare('delete from room_seen where user=? and room=?').run(ws.user, r1); } catch {} }
+      if (r1 && ws.room !== r1) { try { ws.tabs && ws.tabs.delete(r1); } catch {} purgeRoomMsgs(r1); }
       return;
     }
     if (m.t === 'join') {
