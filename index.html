@@ -2079,12 +2079,12 @@ V.chat=async(r)=>{room=r;if(!r.startsWith('dm:'))lastRoom=r;target='';pend=null;
   swipe($('chatbox'));TPV=null;GP.reset();
   $('phb').onclick=()=>$('pfile').click();$('emb').onclick=()=>emChat($('emb'));$('pfile').onchange=e=>{const f=e.target.files[0];e.target.value='';sendPhoto(f)};
   $('mic').onclick=micStart;$('rcx').onclick=()=>micStop(false);$('rcs').onclick=()=>micStop(true);
-  if(!dm&&LOGC[r]){$('log').innerHTML=LOGC[r];skipIntro=true}
+  let hadLog=false;if(!dm&&LOGC[r]){$('log').innerHTML=LOGC[r];skipIntro=true;hadLog=true}
   if(BUF[r]){const q=BUF[r];delete BUF[r];q.forEach(x=>x.t==='enter'?enterLine(x):x.t==='leave'?leaveLine(x):add(x))}
   UNR[r]=0;drawTabs();
   fitChat();setTimeout(fitChat,120);setTimeout(fitChat,600);
   if(window.SWD){const c=$('chatbox'),d=window.SWD;window.SWD=0;try{c.animate([{transform:`translateX(${d*48}px)`,opacity:0},{transform:'none',opacity:1}],{duration:300,easing:'cubic-bezier(.16,1,.3,1)'})}catch{}}
-  drawOnline();if(AL.has(r)){showAL(r);return}tx({t:'join',room:r});
+  drawOnline();if(AL.has(r)){showAL(r);return}tx({t:'join',room:r,have:hadLog});
   if(r==='games'){$('uno').style.display='block';$('uno').innerHTML='<button class="o" id="jn">Join UNO</button>';$('jn').onclick=()=>uno({a:'join'})}};
 /* room tabs: tap to switch, swipe left/right to move between open rooms */
 function drawTabs(){const t=$('rtabs');if(!t)return;if(!RFL){RFL=1;setTimeout(loadRF,0)}

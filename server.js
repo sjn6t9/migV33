@@ -171,7 +171,7 @@ if (!db.prepare("select 1 from kv where k='vip_flag_v1'").get()) {   // the old 
 if (!db.prepare("select 1 from kv where k='rooms_asia_v1'").get()) {   // first start with this version only: remove all old rooms
   db.transaction(() => {
     for (const t of ['rooms', 'favs', 'bans', 'room_mods', 'room_cfg', 'mutes', 'msgs', 'room_game', 'tp_pending', 'rb_pending', 'lc_pending']) { try { db.exec(`delete from ${t}`); } catch {} }
-    try { db.exec('delete from room_seen'); } catch {}
+    try { db.exec('delete from room_seen'); db.exec('delete from room_since'); } catch {}
     db.prepare("insert into kv values('rooms_asia_v1','1')").run();
   })();
 }
@@ -1484,7 +1484,7 @@ const roster = room => [...roomNames(room)].map(n => ({ name: n, ...db.prepare('
 const castRoster = room => { if (room && !/^dm:/.test(room)) cast(room, { t: 'members', room, list: roster(room) }); };
 const leaveRoom = (ws, quiet = false) => {
   const r0 = ws.room; if (!r0) return; members.get(r0)?.delete(ws); ws.room = null;
-  if (!quiet && !r0.startsWith('dm:') && ws.user && ![...(members.get(r0) || [])].some(w => w.user === ws.user)) { try { db.prepare('delete from room_seen where user=? and room=?').run(ws.user, r0); } catch {} } 
+  if (!quiet && !r0.startsWith('dm:') && ws.user && ![...(members.get(r0) || [])].some(w => w.user === ws.user)) { try { db.prepare('delete from room_seen where user=? and room=?').run(ws.user, r0); db.prepare('delete from room_since where user=? and room=?').run(ws.user, r0); } catch {} } 
   if (!quiet && !r0.startsWith('dm:') && ws.user && ![...(members.get(r0) || [])].some(w => w.user === ws.user)) cast(r0, { t: 'leave', room: r0, user: ws.user, role: roleOf(ws.user), xp: xpOf(ws.user), ts: Date.now() });
   if (!quiet) { try { ws.tabs && ws.tabs.delete(r0); } catch {} }   // really leaving (or timed out): the room is no longer an open tab either
   castRoster(r0);
@@ -2091,10 +2091,11 @@ function command(ws, line) {
 // ---------- WebSocket ----------
 // Keepalive: phones drop sockets silently; ping often so dead sockets are noticed quickly and live ones are never mistaken for dead
 db.exec('create table if not exists room_seen(user text, room text, ts int, primary key(user,room))');
+db.exec('create table if not exists room_since(user text, room text, ts int, primary key(user,room))');   // when this person walked into the room: a reload shows everything said since then
 // remember who is in which room (survives a server restart), so a quick reconnect is not announced as a new entry
 const seenUp = db.transaction(() => { const st = db.prepare('insert into room_seen(user,room,ts) values(?,?,?) on conflict(user,room) do update set ts=excluded.ts'); for (const w of wss.clients) if (w.user && w.room && !w.room.startsWith('dm:')) st.run(w.user, w.room, Date.now()); });
 setInterval(() => { try { seenUp(); } catch {} }, 1e3).unref();
-setInterval(() => { try { db.prepare('delete from room_seen where ts<?').run(Date.now() - 3600e3); } catch {} }, 60e3).unref();
+setInterval(() => { try { db.prepare('delete from room_seen where ts<?').run(Date.now() - 3600e3); db.exec('delete from room_since where not exists(select 1 from room_seen s where s.user=room_since.user and s.room=room_since.room)'); } catch {} }, 60e3).unref();
 const recentlyIn = (u, room) => db.prepare('select 1 from room_seen where user=? and room=? and ts>?').get(u, room, Date.now() - 1800e3);
 setInterval(() => { for (const w of wss.clients) { if (w._alive === false) { try { w.terminate(); } catch {} continue; } w._alive = false; try { w.ping(); } catch {} } }, 30e3).unref();
 wss.on('connection', ws => {
@@ -2126,7 +2127,7 @@ function onWsMessage(ws, raw) {
     if (m.t === 'leave') {   // the user closed a room tab on purpose
       const r1 = String(m.room || '');
       if (r1 && ws.room === r1) leaveRoom(ws);
-      else if (r1 && ws.user) { try { db.prepare('delete from room_seen where user=? and room=?').run(ws.user, r1); } catch {} }
+      else if (r1 && ws.user) { try { db.prepare('delete from room_seen where user=? and room=?').run(ws.user, r1); db.prepare('delete from room_since where user=? and room=?').run(ws.user, r1); } catch {} }
       if (r1 && ws.room !== r1) { try { ws.tabs && ws.tabs.delete(r1); } catch {} purgeRoomMsgs(r1); }
       return;
     }
@@ -2150,9 +2151,12 @@ function onWsMessage(ws, raw) {
       const wasHere = sameRoom || [...members.get(m.room)].some(w => w.user === ws.user && w !== ws) || !!recentlyIn(ws.user, m.room);
       members.get(m.room).add(ws);
       const isDm = /^dm:/.test(m.room);
+      let sinceTs = 0;
+      if (!isDm) { try { const row = db.prepare('select ts from room_since where user=? and room=?').get(ws.user, m.room); if (wasHere && row) sinceTs = row.ts; else db.prepare('insert or replace into room_since(user,room,ts) values(?,?,?)').run(ws.user, m.room, Date.now()); } catch {} }
       if (!isDm) send(ws, { t: 'roominfo', room: m.room, owner: ownerOf(m.room) || STAFF_USER, mods: db.prepare('select user from room_mods where room=?').all(m.room).map(x => x.user), supers: db.prepare('select user from room_mods where room=? and super=1').all(m.room).map(x => x.user), cap: db.prepare('select cap from rooms where name=?').get(m.room)?.cap || 0, descr: db.prepare('select descr from rooms where name=?').get(m.room)?.descr || '', minlv: db.prepare('select minlv from rooms where name=?').get(m.room)?.minlv || 0, announce: cfg(m.room).announce || '', users: roster(m.room), fav: !!db.prepare('select 1 from favs where user=? and room=?').get(ws.user, m.room) });
       const hist = db.prepare('select user,text,kind,ts,(select role from users where name=msgs.user) role,(select xp from users where name=msgs.user) xp from msgs where room=? and not exists(select 1 from blocks where (a=? and b=msgs.user) or (b=? and a=msgs.user)) order by id desc limit 50').all(m.room, ws.user, ws.user).reverse();
-      send(ws, { t: 'history', room: m.room, items: isDm ? hist : [] });   // rooms: you only see what is said while you are inside
+      const roomHist = (!isDm && sinceTs && !m.have) ? db.prepare('select user,text,kind,ts,(select role from users where name=msgs.user) role,(select xp from users where name=msgs.user) xp from msgs where room=? and ts>=? and not exists(select 1 from blocks where (a=? and b=msgs.user) or (b=? and a=msgs.user)) order by id desc limit 100').all(m.room, sinceTs, ws.user, ws.user).reverse() : [];
+      send(ws, { t: 'history', room: m.room, items: isDm ? hist : roomHist });   // rooms: you only see what is said while you are inside
       if (!isDm) { if (!wasHere) cast(m.room, { t: 'enter', room: m.room, user: ws.user, role: roleOf(ws.user), xp: xpOf(ws.user), ts: Date.now() }); castRoster(m.room); }
       if (tp && isTpRoom(m.room)) { ensureTp(m.room); setTimeout(() => send(ws, { t: 'tp', room: m.room, view: tp.getView(m.room, ws.user) }), 50); }
       if (!isDm && gameOf(m.room) && gameOf(m.room) !== 'tp') { ws._gp = null; gpSend(m.room, ws); }
