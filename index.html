@@ -1215,6 +1215,12 @@ body.hb #bnav{transform:translateY(170%)!important}
 #view#view#view#view#view#view#view#view#view#view #rbt{width:48px!important;min-width:0!important;height:18px!important;min-height:0!important;padding:0!important;margin:0 auto!important;border-radius:0 0 14px 14px!important;display:grid!important;place-items:center}
 #view#view#view#view#view#view#view#view#view#view #rbt svg{width:14px!important;height:14px!important}
 #chatbox{will-change:transform}
+
+/* chat on phones: the page itself never scrolls; it follows the visible area (keyboard) */
+html.vvon body.inchat{overflow:hidden!important;overscroll-behavior:none}
+@media (max-width:999px){html.vvon body.inchat{position:fixed!important;left:0;width:100%;top:var(--vvt,0px)!important;height:var(--vvh,100dvh)!important}html.vvon body.inchat #app{height:100%!important}}
+#log{overscroll-behavior:contain}
+html body.kbd #bnav#bnav,html[data-skin] body.kbd #bnav#bnav{display:none!important}html[data-skin] body.kbd.inchat #view#view#view{padding-bottom:0!important}html[data-skin] body.kbd.inchat #chatbox#chatbox #f#f#f#f{margin-bottom:0!important}html[data-skin] body.kbd.inchat #chatbox#chatbox{margin-bottom:0!important;padding-bottom:2px!important}
 </style>
 <script>try{if(localStorage.tk||sessionStorage.tk)document.documentElement.dataset.boot=1;var k=localStorage.skin==='dark'?'dark':'day';document.documentElement.dataset.skin=k==='dark'?'dark':'navy';document.documentElement.dataset.theme='dark'}catch(e){document.documentElement.dataset.skin='navy';document.documentElement.dataset.theme='dark'}</script>
 <style>/* Name effects from the colour shop: each one animates the glow around the username */
@@ -1986,8 +1992,9 @@ const rfl=n=>RF[n]?`<img class="flg rfl" src="${esc(fu(RF[n]))}" alt="">`:'';
 async function loadRF(){try{const rs=await api('GET','/rooms');rs.forEach(x=>{RF[x.name]=x.flag||''});const ok=new Set(rs.map(x=>x.name));const n=OPEN.length;for(let i=OPEN.length-1;i>=0;i--)if(!OPEN[i].startsWith('dm:')&&!ok.has(OPEN[i]))OPEN.splice(i,1);if(OPEN.length!==n){saveOpen();if(cur==='chat'&&room&&!OPEN.includes(room)&&!room.startsWith('dm:'))return go(OPEN.length?'chat':'rooms',OPEN[0])}drawTabs()}catch{}}
 const rtitle=r=>r.startsWith('dm:')?r.slice(3).split(':').find(x=>x!==me)||'DM':r;
 const lvtag=(n,xp)=>` <span class="lvt">[${lv(xp||0)}]</span>`;
-function fitChat(){const c=$('chatbox');if(!c)return;c.style.height='';const t=c.getBoundingClientRect().top+(window.pageYOffset||0),vh=window.visualViewport?visualViewport.height:innerHeight;c.style.height=Math.max(260,Math.floor(vh-t-4))+'px'}
-addEventListener('resize',()=>fitChat());addEventListener('orientationchange',()=>setTimeout(fitChat,300));if(window.visualViewport)visualViewport.addEventListener('resize',()=>fitChat());
+function fitChat(){const c=$('chatbox');if(!c)return;c.style.height='';const vv=window.visualViewport,t=c.getBoundingClientRect().top,bottom=vv?vv.offsetTop+vv.height:innerHeight;c.style.height=Math.max(160,Math.floor(bottom-t-4))+'px'}
+function vvSync(){const vv=window.visualViewport,r=document.documentElement.style;if(vv)document.documentElement.classList.add('vvon');window.KBH=Math.max(window.KBH||0,innerHeight,vv?vv.height:0);document.body.classList.toggle('kbd',!!vv&&innerWidth<1000&&vv.height<window.KBH*.78);if(vv){r.setProperty('--vvh',vv.height+'px');r.setProperty('--vvt',vv.offsetTop+'px')}if(document.body.classList.contains('inchat')&&innerWidth<1000&&(window.pageYOffset||document.documentElement.scrollTop))window.scrollTo(0,0);if($('chatbox'))fitChat()}
+addEventListener('resize',()=>fitChat());addEventListener('orientationchange',()=>setTimeout(fitChat,300));if(window.visualViewport){visualViewport.addEventListener('resize',vvSync);visualViewport.addEventListener('scroll',vvSync)}addEventListener('scroll',()=>{if(document.body.classList.contains('inchat')&&innerWidth<1000)vvSync()},{passive:true});vvSync();
 function emChat(anchor){const old=$('empc');if(old){old.remove();return}
   const p=document.createElement('div');p.id='empc';
   p.innerHTML=CE.length?CE.map(c=>`<button type="button" data-e="${esc(c.code||':'+c.name+':')}" title="${esc(c.name)}${c.code?'  '+esc(c.code):''}">${ceImg(c,32)}</button>`).join(''):'<div class="mu" style="padding:10px">No emoticons yet. Staff can add them in Admin Panel → Manage emoticons.</div>';
