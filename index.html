@@ -1258,6 +1258,16 @@ html[data-skin=dark] body #hdr #top{padding-right:8px!important}
 #view .seemore{display:block;margin:8px auto 2px;text-align:center}
 /* Day/Night and coin buttons only in the room-info bar, never in the main header */
 html body #hdr #top>#tn,html body #hdr #top>#coins{display:none!important}
+
+/* post pictures keep their own shape */
+html body .fbp img.pimg,html body img.pimg{width:auto!important;max-width:100%!important;height:auto!important;max-height:75vh!important;object-fit:contain!important;margin:0 auto!important;display:block!important}
+/* same icon sizes in both designs */
+html body #hdr #top#top>button:not(#tn){width:38px!important;height:38px!important;min-width:0!important}
+html body #hdr #top#top>button:not(#tn) svg{width:20px!important;height:20px!important;max-width:20px!important;max-height:20px!important}
+html[data-skin=navy] body #hdr #top{min-height:54px!important;height:54px!important}
+html body #hdr #rbar#rbar{min-height:50px!important}
+html body #hdr #rbar#rbar .ib,html body #hdr #rbar#rbar #tn{width:38px!important;height:38px!important}
+html body #hdr #rbar#rbar #coins{height:38px!important}
 /* Day/Night and coin buttons live in the room-info bar while chatting; the bar can be folded with its handle */
 #rbar #rbx{display:flex;align-items:center;gap:3px;flex:none;margin-left:2px}
 html body #hdr #rbar #tn{display:grid!important;place-items:center;width:36px!important;height:36px!important;min-width:0!important;padding:0!important;margin:0!important;border-radius:50%!important}
@@ -1279,7 +1289,7 @@ html body #hdr #top #rtabs .rt.mini .rfl{margin:0}
 html body #hdr #top #rtabs .rt .rfl{width:20px;height:14px}
 html body #hdr #top #rtabs .rt.on{display:inline-flex!important;align-items:center;justify-content:center;gap:0}
 </style>
-<link rel="stylesheet" href="theme-dark.css?v=4">
+<link rel="stylesheet" href="theme-dark.css?v=5">
 <style>/* role name colours: kept in their own block so they always load */
 :root{--nm-admin:#e8591f;--nm-staff:#2f9a3d;--nm-mentor:#b01020;--nm-headmentor:#8a6a14;--nm-merchant:#7e22ce;--nm-vip:#00706f;--nm-user:#2a7bd8}
 html[data-theme=dark],#log.navy,#log.dark{--nm-admin:#ff7a33;--nm-staff:#4cc24f;--nm-mentor:#f2394a;--nm-headmentor:#e8c23c;--nm-merchant:#b45cff;--nm-vip:#2ec4bf;--nm-user:#6db3ff}
@@ -1435,18 +1445,18 @@ async function on(m){
   if(m.t==='kicked'){OPEN=OPEN.filter(x=>x!==m.room);dropRoom(m.room);saveOpen();if(m.auto)toast(`You left ${m.room} after 30 minutes without chatting. Join again any time.`);else if(m.renamed)toast(`${m.room} was renamed to ${m.renamed}.`);else toast(m.text||`You were removed from ${m.room} by ${m.by}.`,true);go('rooms')}
   if(m.t==='denied'){OPEN=OPEN.filter(x=>x!==m.room);dropRoom(m.room);saveOpen();toast(m.error,true);go('rooms')}
 }
-let G={},RM=[],RI=null,OPEN=[];try{OPEN=JSON.parse(sessionStorage.open||'[]')}catch{}
+let G={},RM=[],RI=null,OPEN=[];try{OPEN=JSON.parse(sessionStorage.open||localStorage.open||'[]')}catch{}
 const AL=new Set();   // rooms the server removed me from after 30 minutes
 function showAL(r){const lg=$('log');if(!lg)return;lg.innerHTML=`<div class="alnote"><div>⏱ You left <b>${esc(r)}</b> automatically after 30 minutes without chatting.</div><div class="mu">Earlier chat is not shown after you come back.</div><button class="o" id="alj">Rejoin</button></div>`;
   ['t','phb','emb','mic'].forEach(i=>{const e=$(i);if(e)e.disabled=true});const t=$('t');if(t)t.placeholder='You left this room';
   $('alj').onclick=()=>{AL.delete(r);dropRoom(r);V.chat(r)};drawTabs()}
 const UNR={},LOGC={},BUF={};let skipIntro=false;const dropRoom=x=>{delete LOGC[x];delete BUF[x];delete UNR[x]};
-const saveOpen=()=>{try{sessionStorage.open=JSON.stringify(OPEN)}catch{}try{if(ws&&ws.readyState===1)ws.send(JSON.stringify({t:'tabs',rooms:OPEN}))}catch{}};
+const saveOpen=()=>{try{sessionStorage.open=JSON.stringify(OPEN);localStorage.open=sessionStorage.open}catch{}try{if(ws&&ws.readyState===1)ws.send(JSON.stringify({t:'tabs',rooms:OPEN}))}catch{}};
 /* ---------- navigation ---------- */
 const cn=c=>ST.unlimited?'∞ coins':c+' coins';
 const V={};const TT={panel:'Panel',admin:'Admin Panel',home:'Home',rooms:'Chat Rooms',chat:'Chat',profile:'Profile',account:'My Account',friends:'Friends',explore:'Explore',spin:'Daily Spin',cmds:'Command List',settings:'Settings',mail:'Mail',mailc:'New Mail'};
 let TNE=null,CNE=null;function placeHdr(on){TNE=TNE||$('tn');CNE=CNE||$('coins');if(!TNE||!CNE)return;const host=on&&$('rbx'),top=$('top');if(host){if(TNE.parentNode!==host){host.append(TNE,CNE)}}else if(top&&TNE.parentNode!==top){top.append(TNE,CNE)}}
-async function go(v,a){document.body.classList.toggle('inchat',v==='chat');try{TNE=TNE||$('tn');CNE=CNE||$('coins');if(v!=='chat'){placeHdr(false);document.querySelectorAll('#hdr #rbw,#hdr #rbt').forEach(n=>n.remove())}}catch{}document.body.style.overflow='';document.documentElement.style.overflow='';$('view')&&($('view').style.overflowY='');if(cur==='chat'&&$('log')&&room&&OPEN.includes(room)&&!room.startsWith('dm:'))LOGC[room]=$('log').innerHTML;cur=v;try{if(v!=='chat')sessionStorage.lastv=JSON.stringify([v,a===undefined?null:a])}catch{}$('drawer').classList.remove('open');bnSet(v,a);
+async function go(v,a){document.body.classList.toggle('inchat',v==='chat');try{drawTabs()}catch{}try{TNE=TNE||$('tn');CNE=CNE||$('coins');if(v!=='chat'){placeHdr(false);document.querySelectorAll('#hdr #rbw,#hdr #rbt').forEach(n=>n.remove())}}catch{}document.body.style.overflow='';document.documentElement.style.overflow='';$('view')&&($('view').style.overflowY='');if(cur==='chat'&&$('log')&&room&&OPEN.includes(room)&&!room.startsWith('dm:'))LOGC[room]=$('log').innerHTML;cur=v;try{if(v!=='chat')sessionStorage.lastv=JSON.stringify([v,a===undefined?null:a])}catch{}$('drawer').classList.remove('open');bnSet(v,a);
   $('th').classList.toggle('on',v==='home');$('tf').classList.toggle('on',v==='friends');$('tr').classList.toggle('on',v==='rooms'||v==='chat');
   if(innerWidth>=1000)drawNav();$('view').scrollTop=0;$('stt').textContent=TT[v]||'';$('strip').style.display='none';$('view').onclick=null;document.body.classList.remove('hb');try{await refreshVer();await V[v](a)}catch(e){fail(e)}}
 addEventListener('resize',()=>{if(me&&innerWidth>=1000)drawNav()});$('th').onclick=()=>go('home');$('tf').onclick=()=>go('friends');$('tr').onclick=()=>go('rooms');$('mb').onclick=()=>{drawNav();$('drawer').classList.add('open');navAnim()};
@@ -1964,10 +1974,10 @@ V.chat=async(r)=>{room=r;if(!r.startsWith('dm:'))lastRoom=r;target='';pend=null;
 /* room tabs: tap to switch, swipe left/right to move between open rooms */
 function drawTabs(){const t=$('rtabs');if(!t)return;if(!RFL){RFL=1;setTimeout(loadRF,0)}
   UNR[room]=0;
-  t.innerHTML=OPEN.map(x=>x===room?`<button class="rt on" data-r="${esc(x)}">${rfl(x)}${esc(rtitle(x))}</button>`:`<button class="rt mini${UNR[x]?' has':''}" data-r="${esc(x)}" title="${esc(rtitle(x))}" aria-label="${esc(rtitle(x))}${UNR[x]?' — '+UNR[x]+' new':''}">${RF[x]?rfl(x).replace('class="flg rfl"','class="flg rfl rfm"').replace('<img','<span class="rf"><img')+'</span>':''}${RF[x]?'':(()=>{const f=rtitle(x).match(/[\u{1F1E6}-\u{1F1FF}]{2}/u);return f?`<span class="rf">${f[0]}</span>`:'<svg viewBox="0 0 24 24" width="18" height="18"><path d="M4 5h16v11H9l-5 4z" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"/></svg>'})()}${UNR[x]?`<b class="ub">${UNR[x]>9?'9+':UNR[x]}</b>`:''}</button>`).join('');
+  const inch=document.body.classList.contains('inchat');t.innerHTML=OPEN.map(x=>(x===room&&inch)?`<button class="rt on" data-r="${esc(x)}">${rfl(x)}${esc(rtitle(x))}</button>`:`<button class="rt mini${UNR[x]?' has':''}" data-r="${esc(x)}" title="${esc(rtitle(x))}" aria-label="${esc(rtitle(x))}${UNR[x]?' — '+UNR[x]+' new':''}">${RF[x]?rfl(x).replace('class="flg rfl"','class="flg rfl rfm"').replace('<img','<span class="rf"><img')+'</span>':''}${RF[x]?'':(()=>{const f=rtitle(x).match(/[\u{1F1E6}-\u{1F1FF}]{2}/u);return f?`<span class="rf">${f[0]}</span>`:'<svg viewBox="0 0 24 24" width="18" height="18"><path d="M4 5h16v11H9l-5 4z" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"/></svg>'})()}${UNR[x]?`<b class="ub">${UNR[x]>9?'9+':UNR[x]}</b>`:''}</button>`).join('');
   t.onclick=e=>{const c=e.target.closest('[data-x]');if(c){e.stopPropagation();return closeTab(c.dataset.x)}
     if(e.target.closest('[data-add]'))return go('rooms');const b=e.target.closest('[data-r]');if(b&&b.dataset.r!==room)go('chat',b.dataset.r)};
-  {const on=t.querySelector('.on');if(on)t.scrollLeft=Math.max(0,on.offsetLeft-(t.clientWidth-on.offsetWidth)/2)}}
+  {const on=t.querySelector('.on');if(on){const l=on.offsetLeft-t.offsetLeft,w=on.offsetWidth;if(l<t.scrollLeft)t.scrollLeft=Math.max(0,l-6);else if(l+w>t.scrollLeft+t.clientWidth)t.scrollLeft=l+w-t.clientWidth+6}}}
 function closeTab(x){const i=OPEN.indexOf(x);OPEN.splice(i,1);dropRoom(x);saveOpen();try{tx({t:'leave',room:x})}catch{}if(x!==room)return drawTabs();
   if(OPEN.length)go('chat',OPEN[Math.min(i,OPEN.length-1)]);else go('rooms')}
 function stepRoom(d){const i=OPEN.indexOf(room);if(i<0||OPEN.length<2)return;const n=OPEN[(i+d+OPEN.length)%OPEN.length];
