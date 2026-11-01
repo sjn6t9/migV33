@@ -731,6 +731,10 @@ html[data-theme=dark] .fbp .pimg{background:#101830}
 .spv img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
 .spv textarea{position:relative;width:86%;min-height:90px;background:none!important;border:0!important;box-shadow:none!important;color:#fff;text-align:center;font:800 24px/1.3 Fredoka,"Open Sans",sans-serif;resize:none;text-shadow:0 2px 6px #0007}
 .spv textarea::placeholder{color:#ffffffbb}
+.spv.ph{height:min(56vh,480px);aspect-ratio:9/16;min-height:0;margin:8px auto;display:block;cursor:grab;touch-action:none;user-select:none}
+.spv.ph textarea{position:absolute;left:7%;bottom:8px;width:86%;min-height:46px;font-size:18px;z-index:2}
+.szm{display:flex;align-items:center;gap:8px;margin-top:8px;flex-wrap:wrap}.szm span{font-size:12px;opacity:.7;flex:1 0 100%;text-align:center}.szm input{flex:1}.szm button{padding:6px 12px;font-size:13px}
+
 .sws{display:flex;gap:10px;justify-content:center}
 .sws button{width:34px;height:34px;border-radius:50%;padding:0;border:3px solid #fff;box-shadow:0 2px 6px #0004}
 .sws button.on{outline:3px solid #f7931e}
@@ -1318,7 +1322,7 @@ html body #hdr #top #rtabs .rt.mini .rfl{margin:0}
 html body #hdr #top #rtabs .rt .rfl{width:20px;height:14px}
 html body #hdr #top #rtabs .rt.on{display:inline-flex!important;align-items:center;justify-content:center;gap:0}
 </style>
-<link rel="stylesheet" href="theme-dark.css?v=11">
+<link rel="stylesheet" href="theme-dark.css?v=15">
 <style>/* role name colours: kept in their own block so they always load */
 :root{--nm-admin:#e8591f;--nm-staff:#2f9a3d;--nm-mentor:#b01020;--nm-headmentor:#8a6a14;--nm-merchant:#7e22ce;--nm-vip:#00706f;--nm-user:#2a7bd8}
 html[data-theme=dark],#log.navy,#log.dark{--nm-admin:#ff7a33;--nm-staff:#4cc24f;--nm-mentor:#f2394a;--nm-headmentor:#e8c23c;--nm-merchant:#b45cff;--nm-vip:#2ec4bf;--nm-user:#6db3ff}
@@ -1586,17 +1590,32 @@ async function loadStories(){let g;try{g=await api('GET','/stories')}catch{retur
   el.innerHTML=`<button class="sc mk" data-sc="new"><div class="top">${av(me,64)}</div><span class="pl">+</span><b>Create story</b></button>`+g.map((x,i)=>{const f=x.items[x.items.length-1];const bgs=f.image?`background-image:url('${esc(f.image)}')`:`background:${SBG[f.bg]||SBG[0]}`;
     return `<button class="sc${x.unseen?'':' seen'}" data-sc="${i}" style="${bgs}"><span class="rg">${av(x.user,34)}</span><b>${x.user===me?'Your story':esc(x.user)}</b></button>`}).join('')}
 function openCreateStory(){let bg=0,img=null,mode='text';
-  const draw=()=>{$('sh').innerHTML=`<h2>Create story</h2><nav class="chips"><button data-md="text" class="${mode==='text'?'on':''}">Aa Text</button><button data-md="photo" class="${mode==='photo'?'on':''}">📷 Photo</button></nav>
-   <section class="spv" style="background:${img?'#000':SBG[bg]}">${img?`<img src="${img.url}" alt="">`:''}<textarea id="stx" maxlength="200" placeholder="${mode==='photo'?'Add a caption (optional)':'Start typing…'}">${esc($('stx')?.value||'')}</textarea></section>
-   ${mode==='text'?`<nav class="sws">${SBG.map((b,i)=>`<button data-bg="${i}" class="${i===bg?'on':''}" style="background:${b}" aria-label="Colour ${i+1}"></button>`).join('')}</nav>`:`<button id="spk" style="width:100%;margin-top:8px">${img?'Change photo':'Choose a photo'}</button><input type="file" id="sfi" accept="image/*" hidden>`}
+  let draw=()=>{$('sh').innerHTML=`<h2>Create story</h2><nav class="chips"><button data-md="text" class="${mode==='text'?'on':''}">Aa Text</button><button data-md="photo" class="${mode==='photo'?'on':''}">📷 Photo</button></nav>
+   <section class="spv${img?' ph':''}" style="background:${img?'#000':SBG[bg]}">${img?`<img id="spi" src="${img.url}" alt="" draggable="false">`:''}<textarea id="stx" maxlength="200" placeholder="${mode==='photo'?'Add a caption (optional)':'Start typing…'}">${esc($('stx')?.value||'')}</textarea></section>
+   ${mode==='text'?`<nav class="sws">${SBG.map((b,i)=>`<button data-bg="${i}" class="${i===bg?'on':''}" style="background:${b}" aria-label="Colour ${i+1}"></button>`).join('')}</nav>`:`<button id="spk" style="width:100%;margin-top:8px">${img?'Change photo':'Choose a photo'}</button><input type="file" id="sfi" accept="image/*" hidden>${img?`<div class="szm"><span>Drag the photo to move it</span><input type="range" id="szr" min="50" max="400" value="${Math.round(img.z*100)}" aria-label="Zoom"><button type="button" id="srs">Reset</button></div>`:''}`}
    <button class="o" id="ssh" style="width:100%;margin-top:10px">Share to story</button><small class="mu" style="display:block;text-align:center;margin-top:6px;font-size:12px">Stories disappear after 24 hours.</small>`};
+  const draw0=draw;
+  const fit=()=>{const f=document.querySelector('.spv.ph'),im=$('spi');if(!f||!im||!img)return;const W=f.clientWidth,H=f.clientHeight,s0=Math.max(W/img.w,H/img.h)*img.z,w=img.w*s0,h=img.h*s0;
+    img.x=Math.max(-.5-(w/W-1)/2,Math.min(.5+(w/W-1)/2,img.x));img.y=Math.max(-.5-(h/H-1)/2,Math.min(.5+(h/H-1)/2,img.y));
+    if(w<W)img.x=0;if(h<H)img.y=0;
+    im.style.cssText=`position:absolute;left:50%;top:50%;width:${w}px;height:${h}px;max-width:none;object-fit:fill;transform:translate(calc(-50% + ${img.x*W}px),calc(-50% + ${img.y*H}px));touch-action:none`};
+  const bindPos=()=>{const f=document.querySelector('.spv.ph');if(!f||!img)return;fit();const P=new Map();let last=null,d0=0,z0=1;
+    f.onpointerdown=e=>{if(e.target.id==='stx')return;f.setPointerCapture(e.pointerId);P.set(e.pointerId,[e.clientX,e.clientY]);last=[e.clientX,e.clientY];if(P.size===2){const v=[...P.values()];d0=Math.hypot(v[0][0]-v[1][0],v[0][1]-v[1][1]);z0=img.z}};
+    f.onpointermove=e=>{if(!P.has(e.pointerId))return;P.set(e.pointerId,[e.clientX,e.clientY]);
+      if(P.size===2){const v=[...P.values()],d=Math.hypot(v[0][0]-v[1][0],v[0][1]-v[1][1]);if(d0){img.z=Math.max(.5,Math.min(4,z0*d/d0));const r=$('szr');if(r)r.value=Math.round(img.z*100)}}
+      else if(last){img.x+=(e.clientX-last[0])/f.clientWidth;img.y+=(e.clientY-last[1])/f.clientHeight}
+      last=[e.clientX,e.clientY];fit()};
+    f.onpointerup=f.onpointercancel=e=>{P.delete(e.pointerId);last=P.size?[...P.values()][0]:null;d0=0};
+    f.onwheel=e=>{e.preventDefault();img.z=Math.max(.5,Math.min(4,img.z*(e.deltaY<0?1.08:.93)));const r=$('szr');if(r)r.value=Math.round(img.z*100);fit()};
+    const r=$('szr');if(r)r.oninput=()=>{img.z=r.value/100;fit()};const rs=$('srs');if(rs)rs.onclick=()=>{img.x=img.y=0;img.z=1;if(r)r.value=100;fit()}};
+  draw=()=>{draw0();bindPos()};
   sheetOpen('');draw();
   $('sh').onclick=async e=>{const m=e.target.closest('[data-md]'),c=e.target.closest('[data-bg]');
     if(m){const t=$('stx')?.value;mode=m.dataset.md;draw();$('stx').value=t||'';return}
     if(c){const t=$('stx').value;bg=+c.dataset.bg;draw();$('stx').value=t;return}
-    if(e.target.id==='spk'){$('sfi').onchange=async ev=>{const f=ev.target.files[0];if(!f)return;try{const b=await imgToBlob(f,1080,false);const t=$('stx').value;img={blob:b,url:URL.createObjectURL(b)};draw();$('stx').value=t}catch(er){fail(er)}};$('sfi').click();return}
+    if(e.target.id==='spk'){$('sfi').onchange=async ev=>{const f=ev.target.files[0];if(!f)return;try{const b=await imgToBlob(f,1080,false);const t=$('stx').value;const url=URL.createObjectURL(b);const im=await new Promise((ok,no)=>{const q=new Image();q.onload=()=>ok(q);q.onerror=no;q.src=url});img={blob:b,url,w:im.naturalWidth,h:im.naturalHeight,x:0,y:0,z:1,el:im};draw();$('stx').value=t}catch(er){fail(er)}};$('sfi').click();return}
     if(e.target.id==='ssh'){const text=$('stx').value.trim();if(mode==='photo'&&!img)return fail(new Error('Choose a photo first.'));if(mode==='text'&&!text)return fail(new Error('Type something first.'));
-      e.target.disabled=true;try{let image='';if(mode==='photo')image=await upload('image',img.blob);await api('POST','/stories',{text,image,bg:mode==='text'?bg:0});$('sheet').classList.remove('open');toast('Story shared');loadStories()}catch(er){fail(er);e.target.disabled=false}}}}
+      e.target.disabled=true;try{let image='';if(mode==='photo'){const f=document.querySelector('.spv.ph');const W=f?f.clientWidth:270,H=f?f.clientHeight:480,k=1080/W,cv=document.createElement('canvas');cv.width=1080;cv.height=Math.round(H*k);const cx=cv.getContext('2d');cx.fillStyle='#000';cx.fillRect(0,0,cv.width,cv.height);const s0=Math.max(W/img.w,H/img.h)*img.z*k,w=img.w*s0,h=img.h*s0;cx.drawImage(img.el,cv.width/2-w/2+img.x*cv.width,cv.height/2-h/2+img.y*cv.height,w,h);const out=await new Promise(ok=>cv.toBlob(ok,'image/jpeg',.88));image=await upload('image',out)}await api('POST','/stories',{text,image,bg:mode==='text'?bg:0});$('sheet').classList.remove('open');toast('Story shared');loadStories()}catch(er){fail(er);e.target.disabled=false}}}}
 function svClose(){clearTimeout(svT);const d=$('sv');if(d)d.remove();SV=null;document.removeEventListener('keydown',svKey);loadStories()}
 function svKey(e){if(e.key==='Escape')svClose();else if(e.key==='ArrowRight')svNext();else if(e.key==='ArrowLeft')svPrev()}
 function svNext(){if(!SV)return;const g=STG[SV.gi];if(SV.ii<g.items.length-1){SV.ii++;svShow()}else if(SV.gi<STG.length-1){SV.gi++;SV.ii=0;svShow()}else svClose()}

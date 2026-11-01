@@ -830,3 +830,47 @@ html[data-skin=dark] #view#view#view#view#view#view#view#view#view#view#view#vie
 @media (min-width:1000px){html[data-skin=dark] body #hdr #top#top#top>#mb#mb{display:grid!important}}
 /* rooms keep join order: active tab is never moved */
 html[data-skin=dark] body #hdr #rtabs .rt.on,html[data-skin=dark] body #hdr #rtabs .rt.mini{order:0!important}
+
+/* ===== Unified design for Stonic + Navy Blue Glass: menu icons, header icons, room tabs ===== */
+html[data-skin] .rstrip{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0 12px}
+html[data-skin] #dn{display:flex!important;flex-direction:column!important;overflow:hidden!important}
+html[data-skin] #dn > *{flex:none}
+html[data-skin] #dn > .dmenu{flex:1 1 auto!important;min-height:0!important;overflow-y:auto!important;overflow-x:hidden!important}
+html[data-skin] #dn > .lgo{flex:none!important}
+html[data-skin] #dn .dmenu{padding:2px 0!important;gap:0!important}
+html[data-skin] #dn .dmenu .mi{height:auto!important;min-height:0!important;padding:7px 10px!important;margin:0 0 3px!important;font-size:17px!important;font-weight:600!important;line-height:1.2!important;letter-spacing:.2px!important}
+html[data-skin] #dn .dsr{height:34px!important;min-height:0!important;margin:6px 8px!important;padding:0 3px!important;gap:4px!important;align-items:center!important}
+html[data-skin] #dn .dsr input{height:28px!important;min-height:0!important;font-size:13px!important;padding:0 8px!important;line-height:1.2!important}
+html[data-skin] #dn .dsr button{height:28px!important;width:28px!important;min-width:28px!important;min-height:0!important;padding:0!important}
+html[data-skin] #dn .dh{height:auto!important;min-height:0!important;padding:3px 8px!important;margin:4px 0 2px!important;font-size:14px!important;line-height:1.2!important}
+html[data-skin] #dn .dst{display:flex!important;align-items:center!important;gap:6px!important;box-sizing:border-box!important;width:auto!important;margin:4px 8px 6px!important;padding:6px 10px!important;border:1px solid rgba(255,255,255,.22)!important;border-radius:12px!important;background:rgba(15,26,43,.55)!important;font-size:13px!important;line-height:1.2!important;cursor:pointer!important;min-height:0!important}
+html[data-skin] #dn .dst svg{width:16px!important;height:16px!important;flex:none!important;margin:0!important;stroke:#9fb0c8!important;fill:none!important}
+html[data-skin] #dn .dst .dtx{flex:1 1 auto!important;min-width:0!important;overflow:hidden!important;text-overflow:ellipsis!important;white-space:nowrap!important;color:#e6f1f5!important}
+html[data-skin] #dn .dst .dtx.none{opacity:.75!important}
+html[data-skin] .rstrip{gap:6px!important;padding:4px 0!important}
+html[data-skin] .rstrip .rchip{height:28px!important;min-height:0!important;padding:2px 9px!important;margin:0!important;border:1px solid rgba(255,255,255,.3)!important;border-radius:8px!important;box-shadow:none!important;font-size:13px!important;font-weight:600!important;line-height:1.2!important;gap:4px!important;background:#ffffff12!important}
+html[data-skin] .rstrip .rchip.fv{border-color:#f7931e!important}
+html[data-skin] body #drawer#drawer #dn .dmenu .mi i{width:30px!important;height:30px!important;min-width:30px!important;font-size:16px!important;border-radius:8px!important;display:grid!important;place-items:center!important;filter:none!important;background:linear-gradient(145deg,rgba(255,255,255,.16),rgba(255,255,255,.03))!important;border:1px solid color-mix(in srgb,var(--ac) 60%,transparent)!important;box-shadow:inset 0 1px 0 rgba(255,255,255,.2),0 0 8px color-mix(in srgb,var(--ac) 28%,transparent)!important;transform:none!important}
+html[data-skin] body #drawer#drawer #dn .dmenu .mi.on i{background:linear-gradient(145deg,color-mix(in srgb,var(--ac) 55%,transparent),color-mix(in srgb,var(--ac) 18%,transparent))!important}
+/* header buttons: one fixed size, rounded square, no size change on click */
+html[data-skin] body #hdr #top#top#top>button:not(#tn){width:42px!important;height:42px!important;min-width:42px!important;max-width:42px!important;min-height:42px!important;max-height:42px!important;border-radius:8px!important;padding:0!important;transform:none!important;scale:1!important;display:grid!important;place-items:center!important;box-sizing:border-box!important;transition:background .15s,border-color .15s!important}
+html[data-skin] body #hdr #top#top#top>button:not(#tn).on,html[data-skin] body #hdr #top#top#top>button:not(#tn):active,html[data-skin] body #hdr #top#top#top>button:not(#tn):hover{width:42px!important;height:42px!important;min-width:42px!important;max-width:42px!important;min-height:42px!important;max-height:42px!important;transform:none!important;scale:1!important}
+html[data-skin] body #hdr #top#top#top>button:not(#tn) svg{width:24px!important;height:24px!important;max-width:24px!important;max-height:24px!important}
+html[data-skin] body #hdr #top#top#top{gap:6px!important}
+html[data-skin] body #hdr #rbar#rbar#rbar .ib,html[data-skin] body #hdr #rbar#rbar#rbar #tn,html[data-skin] body #hdr #rbar#rbar#rbar #coins{border-radius:8px!important}
+/* room tabs: flag-wide, button-high; divider after Chatrooms */
+html[data-skin] body #hdr #top#top#top>#rtabs{display:flex!important;align-items:center!important;gap:6px!important;margin:0 0 0 4px!important;padding:0 0 0 10px!important;border:0!important;border-left:1px solid color-mix(in srgb,var(--ac) 70%,transparent)!important;border-radius:0!important;height:42px!important;min-height:0!important}
+html[data-skin] body #hdr #top#top#top>#rtabs:empty{display:none!important}
+html[data-skin] body #hdr #top#top#top #rtabs .rt{height:42px!important;min-height:42px!important;max-height:42px!important;border-radius:8px!important;box-sizing:border-box!important;line-height:1!important;display:inline-flex!important;align-items:center!important;justify-content:center!important;transform:none!important;margin:0!important}
+html[data-skin] body #hdr #top#top#top #rtabs .rt.mini{width:34px!important;min-width:34px!important;max-width:34px!important;padding:0!important}
+html[data-skin] body #hdr #top#top#top #rtabs .rt.on{width:auto!important;min-width:34px!important;max-width:46vw!important;padding:0 12px!important}
+html[data-skin] body #hdr #top#top#top #rtabs .rt .flg,html[data-skin] body #hdr #top#top#top #rtabs .rt.mini .flg{width:24px!important;height:17px!important;border-radius:3px!important;margin:0!important;object-fit:cover}
+html[data-skin] body #hdr #top#top#top #rtabs .rt.on .flg{margin-right:6px!important}
+/* navy: header buttons get the same square tile as Stonic; drawer corners match */
+html[data-skin=navy] body #hdr #top#top#top>button:not(#tn),html[data-skin=navy] body #hdr #top#top#top #rtabs .rt:not(.on){background:rgba(247,147,30,.08)!important;background-image:none!important;border:1px solid rgba(247,147,30,.5)!important;box-shadow:none!important}
+html[data-skin=navy] body #hdr #top#top#top>button:not(#tn) svg{stroke:#ffd9a8!important}
+html[data-skin=navy] body #hdr #top#top#top>button:not(#tn).on,html[data-skin=navy] body #hdr #top#top#top #rtabs .rt.on{background:linear-gradient(180deg,#ffb15c,#f7931e)!important;border-color:#ffd09a!important;box-shadow:0 0 14px rgba(247,147,30,.45)!important;color:#2a1600!important}
+html[data-skin=navy] body #hdr #top#top#top>button:not(#tn).on svg{stroke:#2a1600!important}
+html[data-skin] body #drawer#drawer #dn :is(.mi,.dh,.dst,.dsr,.dsr input,.dsr button,.lgo){border-radius:4px!important}
+html[data-skin] body #hdr #top#top#top>button:not(#tn){margin:0!important}
+html[data-skin] body #hdr #top#top#top,html[data-skin] body #hdr #rbar#rbar#rbar{border-radius:16px!important}
