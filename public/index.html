@@ -1262,6 +1262,12 @@ html #view#view#view#view#view#view#view#view#view#view#view#view#view#view .ctd
 #view .ggrid .gi{height:56px;display:grid;place-items:center;font-size:40px}#view .ggrid .gi img{height:56px;width:56px;object-fit:contain}
 #view .ggrid .gt b{font-size:13px;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}#view .ggrid .gp{font-weight:800;font-size:13px}#view .ggrid .mu{font-size:11px}
 html[data-skin] #view .xpc .top{font-size:13px!important}html[data-skin] #view .xpc .top span{font-size:11px!important}html[data-skin] #view .xpc .lvs{font-size:11px!important}
+
+html body.inchat #bnav#bnav,html[data-skin] body.inchat #bnav#bnav{display:none!important}
+html[data-skin] body.inchat #view#view#view{padding-bottom:0!important}
+html[data-skin] body.inchat #chatbox#chatbox #f#f#f#f{margin-bottom:0!important}html[data-skin] body.inchat #chatbox#chatbox{margin-bottom:0!important;padding-bottom:6px!important}
+html body.inchat #hdr #coins#coins{display:none!important}
+html[data-skin] body.inchat #rbar #rbx{margin-left:auto;display:flex}
 </style>
 <script>try{if(localStorage.tk||sessionStorage.tk)document.documentElement.dataset.boot=1;var k=localStorage.skin==='dark'?'dark':'day';document.documentElement.dataset.skin=k==='dark'?'dark':'navy';document.documentElement.dataset.theme='dark'}catch(e){document.documentElement.dataset.skin='navy';document.documentElement.dataset.theme='dark'}</script>
 <style>/* Name effects from the colour shop: each one animates the glow around the username */
@@ -1369,7 +1375,7 @@ html body #hdr #top #rtabs .rt.mini .rfl{margin:0}
 html body #hdr #top #rtabs .rt .rfl{width:20px;height:14px}
 html body #hdr #top #rtabs .rt.on{display:inline-flex!important;align-items:center;justify-content:center;gap:0}
 </style>
-<link rel="stylesheet" href="theme-dark.css?v=19">
+<link rel="stylesheet" href="theme-dark.css?v=20">
 <style>/* role name colours: kept in their own block so they always load */
 :root{--nm-admin:#e8591f;--nm-staff:#2f9a3d;--nm-mentor:#b01020;--nm-headmentor:#8a6a14;--nm-merchant:#7e22ce;--nm-vip:#00706f;--nm-user:#2a7bd8}
 html[data-theme=dark],#log.navy,#log.dark{--nm-admin:#ff7a33;--nm-staff:#4cc24f;--nm-mentor:#f2394a;--nm-headmentor:#e8c23c;--nm-merchant:#b45cff;--nm-vip:#2ec4bf;--nm-user:#6db3ff}
@@ -1536,7 +1542,7 @@ const saveOpen=()=>{try{sessionStorage.open=JSON.stringify(OPEN);localStorage.op
 const cn=c=>ST.unlimited?'∞ coins':c+' coins';
 const V={};const TT={panel:'Panel',admin:'Admin Panel',home:'Home',rooms:'Chat Rooms',chat:'Chat',profile:'Profile',account:'My Account',friends:'Friends',explore:'Explore',store:'Store',contests:'Contests',peoples:'Peoples',spin:'Daily Spin',cmds:'Command List',settings:'Settings',mail:'Mail',mailc:'New Mail'};
 let PREV=null,CURA;const goBack=d=>{const p=PREV;if(p&&p.v&&p.v!=='spin')go(p.v,p.a);else go(d||'home')};
-let TNE=null,CNE=null;function placeHdr(on){TNE=TNE||$('tn');CNE=CNE||$('coins');if(!TNE||!CNE)return;const host=on&&$('rbx'),top=$('top');if(host){if(TNE.parentNode!==host){host.append(TNE,CNE)}}else if(top&&TNE.parentNode!==top){top.append(TNE,CNE)}}
+let TNE=null,CNE=null;function placeHdr(on){TNE=TNE||$('tn');CNE=CNE||$('coins');if(!TNE||!CNE)return;const host=on&&$('rbx'),top=$('top');if(host){if(TNE.parentNode!==host){host.append(TNE)}if(top&&CNE.parentNode!==top)top.append(CNE)}else if(top&&(TNE.parentNode!==top||CNE.parentNode!==top)){top.append(TNE,CNE)}}
 async function go(v,a){document.body.classList.toggle('inchat',v==='chat');try{drawTabs()}catch{}try{TNE=TNE||$('tn');CNE=CNE||$('coins');if(v!=='chat'){placeHdr(false);document.querySelectorAll('#hdr #rbw,#hdr #rbt').forEach(n=>n.remove())}}catch{}document.body.style.overflow='';document.documentElement.style.overflow='';$('view')&&($('view').style.overflowY='');if(cur==='chat'&&$('log')&&room&&OPEN.includes(room)&&!room.startsWith('dm:'))LOGC[room]=$('log').innerHTML;if(cur&&cur!==v)PREV={v:cur,a:CURA};cur=v;CURA=a;try{if(v!=='chat')sessionStorage.lastv=JSON.stringify([v,a===undefined?null:a])}catch{}$('drawer').classList.remove('open');bnSet(v,a);
   $('th').classList.toggle('on',v==='home');$('tf').classList.toggle('on',v==='friends');$('tr').classList.toggle('on',v==='rooms'||v==='chat');
   if(innerWidth>=1000)drawNav();$('view').scrollTop=0;$('stt').textContent=TT[v]||'';$('strip').style.display='none';$('view').onclick=null;document.body.classList.remove('hb');try{await refreshVer();await V[v](a)}catch(e){fail(e)}}
@@ -2048,14 +2054,14 @@ function emChat(anchor){const old=$('empc');if(old){old.remove();return}
 V.chat=async(r)=>{room=r;if(!r.startsWith('dm:'))lastRoom=r;target='';pend=null;RM=[];RI=null;const dm=r.startsWith('dm:');const title=rtitle(r);
   if(!OPEN.includes(r)){OPEN.push(r);saveOpen()}
   $('stt').innerHTML=rfl(r)+esc(title);
-  view(`<div id="chatbox">${dm?'':'<div id="rbw" class="'+(localStorage.rbarHide==='1'?'hid':'')+'"><div class="rbi"><div id="rbar"></div></div></div><button type="button" id="rbt" aria-label="Hide or show the room bar"><svg viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg></button>'}
+  view(`<div id="chatbox">${dm?'':'<div id="rbw" class="hid"><div class="rbi"><div id="rbar"></div></div></div><button type="button" id="rbt" aria-label="Hide or show the room bar"><svg viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg></button>'}
    <div id="log" class="${localStorage.cbg||'light'}"></div>${dm?'':'<div id="tp" aria-label="Teen Patti Gold table"></div><div id="gp" aria-label="Game table"></div>'}<div id="uno" class="card" style="display:none"></div>
    <div class="row mu" id="tools" style="flex-wrap:wrap"><span id="to"></span></div>
    <form id="f" class="row"><button type="button" id="phb" aria-label="Send a photo"><svg viewBox="0 0 24 24"><path d="M4 8h3l1.6-2.2h6.8L17 8h3v11H4z"/><circle cx="12" cy="13.2" r="3.4"/></svg></button><button type="button" id="emb" aria-label="Emoticons"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M8 14.2c1 1.4 2.4 2.1 4 2.1s3-.7 4-2.1"/><circle cx="9" cy="9.8" r=".6"/><circle cx="15" cy="9.8" r=".6"/></svg></button><input id="t" placeholder="Message…" autocomplete="off" maxlength="500"><button type="button" id="mic" aria-label="Record a voice note"><svg viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5.5 11.5a6.5 6.5 0 0013 0M12 18v3"/></svg></button><button class="o">Send</button></form>
    <div id="recbar" class="row" hidden><button type="button" id="rcx" aria-label="Cancel recording">✕</button><span class="rdot"></span><b id="rect">0:00</b><span class="mu g">Recording…</span><button type="button" class="o" id="rcs">Send ➤</button></div><input type="file" id="pfile" accept="image/*" hidden></div>`);
   try{placeHdr(false)}catch{}
   document.querySelectorAll('#hdr #rbw,#hdr #rbt').forEach(n=>n.remove());
-  if(!dm){const h=$('hdr'),w=$('rbw');w.classList.toggle('hid',localStorage.rbarHide==='1');w.classList.remove('show');h.appendChild(w);h.appendChild($('rbt'))}
+  if(!dm){const h=$('hdr'),w=$('rbw');w.classList.add('hid');w.classList.remove('show');h.appendChild(w);h.appendChild($('rbt'))}
   drawTabs();
   $('f').onsubmit=e=>{e.preventDefault();const t=$('t').value.trim();if(t){if(t[0]==='/'&&!/^\/bot(\s|$)/i.test(t))add({user:me,text:t,kind:'msg',ts:Date.now(),role:ROLES[me]||ST.role||'user',xp:ST.xp});tx({t:'msg',text:t})}$('t').value=''};
   $('log').onclick=e=>{if(e.target.dataset.big)return lightbox(e.target.dataset.big);const u=e.target.dataset.u;if(u&&u!==me)setTarget(u)};
@@ -2095,9 +2101,9 @@ const IC={ppl:'<svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.5"/><path d="
 function drawOnline(){const b=$('rbar');if(!b)return;
   const nm=RM.map(u=>`<span style="color:${nc(u.name)}">${esc(u.name)}</span>`).join(', ');
   b.innerHTML=`<button class="on1" data-b="ppl"><span class="dot online" style="width:14px;height:14px;flex:none"></span><span class="o1t"><b>${RM.length} online</b><span class="o1n">${nm}</span></span></button>
-   <button class="ib" data-b="ppl" aria-label="Members">${IC.ppl}</button><button class="ib star ${RI?.fav?'on':''}" data-b="fav" aria-label="Favorite">${IC.star}</button><button class="ib" data-b="mods" aria-label="Room info">${IC.shield}</button><button class="ib" data-b="more" aria-label="Room options">${IC.more}</button><span id="rbx"></span>`;try{placeHdr(true)}catch{}
+   <button class="ib star ${RI?.fav?'on':''}" data-b="fav" aria-label="Favorite">${IC.star}</button><span id="rbx"></span><button class="ib" data-b="more" aria-label="Room options">${IC.more}</button>`;try{placeHdr(true)}catch{}
   if(!window._ro&&$('hdr')&&window.ResizeObserver){window._ro=new ResizeObserver(()=>{if($('chatbox'))fitChat()});window._ro.observe($('hdr'))}
-  const bt=$('rbt');if(bt&&!bt._b){bt._b=1;bt.onclick=()=>{const w=$('rbw');const h=w.classList.toggle('hid');try{localStorage.rbarHide=h?'1':'0'}catch{}}}
+  const bt=$('rbt');if(bt&&!bt._b){bt._b=1;bt.onclick=()=>{const w=$('rbw');const h=w.classList.toggle('hid');clearTimeout(window._rbT);if(!h)window._rbT=setTimeout(()=>{const x=$('rbw');if(x)x.classList.add('hid')},10000)}}
   b.onclick=async e=>{const el=e.target.closest('[data-b]'),k=el?.dataset.b;if(!k)return;
     if(k==='ppl')return memPop(el);
     if(k==='fav'){try{await api('POST',`/rooms/${encodeURIComponent(room)}/fav`);if(RI)RI.fav=!RI.fav;drawOnline()}catch(er){fail(er)}return}
@@ -2147,7 +2153,7 @@ function chatMenu(anchor){
   if($('rpop'))return $('rpop').remove();
   const dm=room.startsWith('dm:');
   const p=document.createElement('nav');p.id='rpop';
-  p.innerHTML=`${dm?'':'<button data-c="ppl">👥 Participants</button>'}<button data-c="bal">🪙 Check Balance</button><button data-c="gift">🎁 Send Gift</button>${dm?'':'<button data-c="pkt">🧧 Lucky Packet</button>'}${canEditRoom()?'<button data-c="edit">✏️ Room Edit</button>':''}<button data-c="clr">🧹 Clear Chat</button><button data-c="cmds">⌨️ Command List</button><button data-c="rooms">💬 All rooms</button>${dm?'':'<button data-c="leave" class="dg">🚪 Leave Room</button>'}`;
+  p.innerHTML=`${dm?'':'<button data-c="ppl">👥 Participants</button>'}<button data-c="bal">🪙 Check Balance</button><button data-c="gift">🎁 Send Gift</button>${dm?'':'<button data-c="pkt">🧧 Lucky Packet</button>'}${dm?'':'<button data-c="info">ℹ️ Room info</button>'}${canEditRoom()?'<button data-c="edit">✏️ Room Edit</button>':''}<button data-c="clr">🧹 Clear Chat</button><button data-c="cmds">⌨️ Command List</button><button data-c="rooms">💬 All rooms</button>${dm?'':'<button data-c="leave" class="dg">🚪 Leave Room</button>'}`;
   const a=(anchor||$('rbar')).getBoundingClientRect();
   document.body.appendChild(p);
   const h=p.offsetHeight,w=p.offsetWidth;
@@ -2159,6 +2165,7 @@ function chatMenu(anchor){
   setTimeout(()=>document.addEventListener('pointerdown',off,true),0);
   p.onclick=e=>{const k=e.target.closest('[data-c]')?.dataset.c;if(!k)return;p.remove();document.removeEventListener('pointerdown',off,true);
     if(k==='ppl')return memPop(anchor||$('rbar'));
+    if(k==='info')return modPop(anchor||$('rbar'));
     if(k==='bal')return tx({t:'msg',text:'/balance'});
     if(k==='clr'){$('log').innerHTML='';return toast('Chat cleared on this device')}
     if(k==='leave')return closeTab(room);
