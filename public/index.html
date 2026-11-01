@@ -1276,6 +1276,7 @@ html[data-skin] #view#view#view#view #tp .tph>.ib,html[data-skin] #view#view#vie
 html[data-skin] #view#view#view#view #gp .gh{display:flex!important;flex-wrap:nowrap!important;gap:6px!important;max-width:100%!important;box-sizing:border-box!important}
 html[data-skin] #view#view#view#view #gp .gh .gtl{display:flex!important;gap:6px!important;flex:none!important;margin-left:auto!important}
 html[data-skin] #view#view#view#view #gp .gh b{flex:1 1 0!important;min-width:0!important}
+html[data-skin] body.inchat.hdrmin #hdr#hdr #top#top#top #th,html[data-skin] body.inchat.hdrmin #hdr#hdr #top#top#top #tf,html[data-skin] body.inchat.hdrmin #hdr#hdr #top#top#top #tr,html[data-skin=dark] body.inchat.hdrmin #hdr#hdr #top#top#top #th,html[data-skin=dark] body.inchat.hdrmin #hdr#hdr #top#top#top #tf,html[data-skin=dark] body.inchat.hdrmin #hdr#hdr #top#top#top #tr,html[data-skin] body.inchat.hdrmin #top#top #th,html[data-skin] body.inchat.hdrmin #top#top #tf,html[data-skin] body.inchat.hdrmin #top#top #tr,body.inchat.hdrmin #top #th,body.inchat.hdrmin #top #tf,body.inchat.hdrmin #top #tr{display:none!important}
 </style>
 <script>try{if(localStorage.tk||sessionStorage.tk)document.documentElement.dataset.boot=1;var k=localStorage.skin==='dark'?'dark':'day';document.documentElement.dataset.skin=k==='dark'?'dark':'navy';document.documentElement.dataset.theme='dark'}catch(e){document.documentElement.dataset.skin='navy';document.documentElement.dataset.theme='dark'}</script>
 <style>/* Name effects from the colour shop: each one animates the glow around the username */
@@ -1383,7 +1384,7 @@ html body #hdr #top #rtabs .rt.mini .rfl{margin:0}
 html body #hdr #top #rtabs .rt .rfl{width:20px;height:14px}
 html body #hdr #top #rtabs .rt.on{display:inline-flex!important;align-items:center;justify-content:center;gap:0}
 </style>
-<link rel="stylesheet" href="theme-dark.css?v=21">
+<link rel="stylesheet" href="theme-dark.css?v=22">
 <style>/* role name colours: kept in their own block so they always load */
 :root{--nm-admin:#e8591f;--nm-staff:#2f9a3d;--nm-mentor:#b01020;--nm-headmentor:#8a6a14;--nm-merchant:#7e22ce;--nm-vip:#00706f;--nm-user:#2a7bd8}
 html[data-theme=dark],#log.navy,#log.dark{--nm-admin:#ff7a33;--nm-staff:#4cc24f;--nm-mentor:#f2394a;--nm-headmentor:#e8c23c;--nm-merchant:#b45cff;--nm-vip:#2ec4bf;--nm-user:#6db3ff}
@@ -2825,6 +2826,13 @@ new MutationObserver(()=>flagIcons(document.body)).observe(document.body,{childL
 /* tag icon-only buttons so all share one size */
 new MutationObserver(()=>{document.querySelectorAll('#view button:not(.ibn)').forEach(b=>{if(b.id==='rbt'||b.closest('.cb,.tabbar,.chips,.acts,.swb,.mtabs,.rpk,#bnav,#rbar,#f,#tools,#recbar,#rtabs,#sug,#emp,#gp,#tp,.pc,#pop,.lgo,.mi,.sc,.dk,.tpmin,.stor,.fbp'))return;
   const t=(b.textContent||'').trim();if((t.length<=2&&!/^\w{2}$/.test(t)&&t.length>0)||(!t&&b.querySelector('svg')&&!b.querySelector('span,b,i,img')))b.classList.add('ibn')})}).observe(document.getElementById('view')||document.body,{childList:true,subtree:true});
+
+/* chat room: Home/Friends/Rooms icons fold into the menu button after 20s */
+(()=>{let was=false,exp=0;const b=document.body,arm=()=>{exp=Date.now()+20000;b.classList.remove('hdrmin')};
+setInterval(()=>{const ic=b.classList.contains('inchat')&&innerWidth<1000;if(ic&&!was)arm();if(!ic)b.classList.remove('hdrmin');was=ic;if(ic&&Date.now()>exp)b.classList.add('hdrmin')},500);
+document.addEventListener('click',e=>{if(!b.classList.contains('inchat')||innerWidth>=1000)return;const mb=e.target.closest&&e.target.closest('#mb');
+ if(mb&&b.classList.contains('hdrmin')){e.stopImmediatePropagation();e.preventDefault();arm();return}
+ if(e.target.closest&&e.target.closest('#top'))exp=Date.now()+20000},true)})();
 </script>
 </body>
 </html>
