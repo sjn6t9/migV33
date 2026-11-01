@@ -815,7 +815,7 @@ html[data-skin=dark] body #hdr #top#top#top,html[data-skin=dark] body #hdr #rbar
 html[data-skin=dark] body.inchat #hdr #rbw#rbw#rbw{width:100%!important;max-width:100%!important;box-sizing:border-box!important;flex:none!important}
 html[data-skin=dark] body.inchat #hdr #rbw#rbw#rbw .rbi{width:100%!important;min-width:0!important}
 html[data-skin=dark] body #hdr #top#top#top>#tn,html[data-skin=dark] body #hdr #top#top#top>#coins{display:none!important}
-@media (min-width:1000px){html[data-skin=dark] body #hdr #top#top#top>#mb#mb,html[data-skin=dark] body.inchat #hdr #top#top#top>#mb#mb{display:none!important}}
+
 html[data-skin=dark] body #feed .fbp img.pimg,html[data-skin=dark] body .fbp img.pimg,html[data-skin=dark] body img.pimg{width:auto!important;max-width:100%!important;height:auto!important;max-height:75vh!important;object-fit:contain!important;margin:0 auto!important;display:block!important}
 html[data-skin=dark] body #view#view#view #whw,html[data-skin=dark] body #view#view#view #wh{background:none!important;background-color:transparent!important;border:0!important;box-shadow:none!important;backdrop-filter:none!important;outline:0!important;padding:0!important;border-radius:0!important}
 
@@ -826,3 +826,6 @@ html[data-skin=dark] #view#view#view#view#view#view#view#view#view#view#view#vie
   background:linear-gradient(90deg,rgba(255,60,60,.30),rgba(34,211,238,.28))!important;background-image:linear-gradient(90deg,rgba(255,60,60,.30),rgba(34,211,238,.28))!important;
   border:1px solid rgba(255,90,90,.55)!important;box-shadow:0 0 12px rgba(34,211,238,.25)!important;
   color:#ff4d4d!important;font-size:19px!important;font-weight:800!important;text-align:center!important}
+
+/* hamburger shown on desktop too (toggles the side menu) */
+@media (min-width:1000px){html[data-skin=dark] body #hdr #top#top#top>#mb#mb{display:grid!important}}
