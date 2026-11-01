@@ -185,7 +185,8 @@ const roleOf = n => db.prepare('select role from users where name=?').get(n)?.ro
 // ---- Levels: STEPS[L-1] = XP needed to go from level L to L+1. Past level 27 the cost grows by 392.5 per level. ----
 const MAXLV = 1000;
 const STEPS = [20, 98, 176, 253, 331, 409, 487, 564, 640, 641, 760, 878, 996, 1113, 1231, 1349, 1467, 1584, 1702, 1820, 1938, 2056, 2172, 2290, 2291, 2684, 3076];
-const lvStep = L => STEPS[L - 1] ?? Math.round(3076 + 392.5 * (L - 27));
+const lvStep0 = L => STEPS[L - 1] ?? Math.round(3076 + 392.5 * (L - 27));
+const lvStep = L => lvStep0(L) * (L >= 20 ? 2 : 1); // from level 20 onward every level costs double XP
 const CUM = [0, 0]; for (let L = 1; L < MAXLV; L++) CUM[L + 1] = CUM[L] + lvStep(L);
 const level = xp => { let lo = 1, hi = MAXLV; while (lo < hi) { const m = (lo + hi + 1) >> 1; if (CUM[m] <= xp) lo = m; else hi = m - 1; } return lo; };
 const REWARDS = { 1: 500, 5: 500, 10: 1000, 15: 3000, 20: 5000, 25: 10000, 30: 15000, 35: 20000, 40: 25000, 45: 30000, 50: 35000, 55: 40000, 60: 45000, 65: 50000, 70: 60000, 75: 70000, 80: 80000 };

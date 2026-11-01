@@ -818,3 +818,11 @@ html[data-skin=dark] body #hdr #top#top#top>#tn,html[data-skin=dark] body #hdr #
 @media (min-width:1000px){html[data-skin=dark] body #hdr #top#top#top>#mb#mb,html[data-skin=dark] body.inchat #hdr #top#top#top>#mb#mb{display:none!important}}
 html[data-skin=dark] body #feed .fbp img.pimg,html[data-skin=dark] body .fbp img.pimg,html[data-skin=dark] body img.pimg{width:auto!important;max-width:100%!important;height:auto!important;max-height:75vh!important;object-fit:contain!important;margin:0 auto!important;display:block!important}
 html[data-skin=dark] body #view#view#view #whw,html[data-skin=dark] body #view#view#view #wh{background:none!important;background-color:transparent!important;border:0!important;box-shadow:none!important;backdrop-filter:none!important;outline:0!important;padding:0!important;border-radius:0!important}
+
+/* Logout: bigger text in drawer; red+cyan mixed bar in Settings (Stonic cyan skin) */
+html[data-skin=dark] body #drawer#drawer #dn > .lgo,html[data-skin=dark] body #drawer#drawer .lgo{font-size:22px!important;font-weight:800!important;letter-spacing:.04em!important;color:#ff4d4d!important}
+html[data-skin=dark] body #drawer#drawer .lgo span{font-size:22px!important;font-weight:800!important;color:#ff4d4d!important}
+html[data-skin=dark] #view#view#view#view#view#view#view#view#view#view#view#view #lo#lo{
+  background:linear-gradient(90deg,rgba(255,60,60,.30),rgba(34,211,238,.28))!important;background-image:linear-gradient(90deg,rgba(255,60,60,.30),rgba(34,211,238,.28))!important;
+  border:1px solid rgba(255,90,90,.55)!important;box-shadow:0 0 12px rgba(34,211,238,.25)!important;
+  color:#ff4d4d!important;font-size:19px!important;font-weight:800!important;text-align:center!important}
