@@ -431,7 +431,21 @@ app.get('/api/headline', auth, ok((q, r) => {
   const live = db.prepare("select name,ends from contests where status='approved' and settled=0 and starts<=? and ends>? order by ends limit 4").all(now, now);
   const upcoming = db.prepare("select name,starts from contests where status='approved' and settled=0 and starts>? order by starts limit 4").all(now);
   const top = db.prepare("select name,xp from users where banned=0 and role not in ('staff','admin') order by xp desc, name limit 3").all().map(u => ({ name: u.name, level: level(u.xp) }));
-  r.json({ rooms: rooms.length, chatting, online: onlineN, live, upcoming, top, now });
+  r.json({ rooms: rooms.length, chatting, online: onlineN, live, upcoming, top, now, ...headlineCfg() });
+}));
+const HL_DEF = { show: { rooms: true, online: true, live: true, upcoming: true, top: true }, custom: [] };
+function headlineCfg() {
+  try { const c = JSON.parse(db.prepare("select v from kv where k='headline_cfg'").get()?.v || 'null'); if (c) return { show: { ...HL_DEF.show, ...(c.show || {}) }, custom: Array.isArray(c.custom) ? c.custom : [] }; } catch {}
+  return HL_DEF;
+}
+app.get('/api/admin/headline', auth, ok((q, r) => { if (roleOf(q.user) !== 'staff') return bad(r, 'Only staff can do this', 403); r.json(headlineCfg()); }));
+app.post('/api/admin/headline', auth, ok((q, r) => {
+  if (roleOf(q.user) !== 'staff') return bad(r, 'Only staff can do this', 403);
+  const b = q.body || {}, show = {};
+  for (const k of Object.keys(HL_DEF.show)) show[k] = b.show?.[k] !== false;
+  const custom = (Array.isArray(b.custom) ? b.custom : []).map(x => String(x || '').trim().slice(0, 200)).filter(Boolean).slice(0, 10);
+  db.prepare("insert or replace into kv(k,v) values('headline_cfg',?)").run(JSON.stringify({ show, custom }));
+  alog(q.user, '-', 'headline', `${custom.length} custom`); r.json({ ok: true });
 }));
 app.get('/api/rooms', auth, ok((q, r) => {
   const fav = new Set(db.prepare('select room from favs where user=?').all(q.user).map(x => x.room));

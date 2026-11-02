@@ -1331,6 +1331,14 @@ html body #dcbar#dcbar button.o{background:linear-gradient(#e0434b,#b3202a)!impo
 html body #rtabs#rtabs .rt.dcd{position:relative;box-shadow:0 0 0 2px #e53935!important}
 html body #rtabs#rtabs .rt.dcd::after{content:'!';position:absolute;top:-5px;right:-4px;min-width:16px;height:16px;border-radius:8px;background:#e53935;color:#fff;font-size:11px;font-weight:800;line-height:16px;text-align:center}
 html body.onhome #sub#sub#sub{display:none!important}
+/* custom headline colours */
+html[data-skin=navy] body #strip#strip#strip#strip .h6{color:#ffe08a!important}
+html[data-skin=navy] body #strip#strip#strip#strip .h7{color:#9ee6c0!important}
+html[data-skin=navy] body #strip#strip#strip#strip .h8{color:#ffa8d0!important}
+html[data-skin=dark] body #strip#strip#strip#strip .h6{color:#a5f3fc!important}
+html[data-skin=dark] body #strip#strip#strip#strip .h7{color:#bbf7d0!important}
+html[data-skin=dark] body #strip#strip#strip#strip .h8{color:#f5d0fe!important}
+#strip .tk{padding-right:0}
 </style>
 <script>try{if(localStorage.tk||sessionStorage.tk)document.documentElement.dataset.boot=1;var k=localStorage.skin==='dark'?'dark':'day';document.documentElement.dataset.skin=k==='dark'?'dark':'navy';document.documentElement.dataset.theme='dark'}catch(e){document.documentElement.dataset.skin='navy';document.documentElement.dataset.theme='dark'}</script>
 <style>/* Name effects from the colour shop: each one animates the glow around the username */
@@ -1718,13 +1726,21 @@ function postHTML(p,i){const mod=['staff','admin'].includes(ST.role),own=p.user=
 /* ---------- Stories ---------- */
 const SBG=['linear-gradient(135deg,#2f95e0,#1d56b8)','linear-gradient(135deg,#ffb15c,#e8431a)','linear-gradient(135deg,#a569d6,#5b2d91)','linear-gradient(135deg,#3fbf6a,#1b6b34)','linear-gradient(135deg,#f06aa8,#b01f6a)','linear-gradient(135deg,#27325a,#0b1230)'];
 let STG=[],SV=null,svT=0;
-async function loadHeadline(){try{const h=await api('GET','/headline');if(cur!=='home')return;const sk=h.now-Date.now(),dt=ts=>new Date(ts).toLocaleString([],{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'});
-  const part=[`<span class="h1">📊 <b>${h.rooms}</b> rooms · <b>${h.chatting}</b> chatting now</span>`,`<span class="h2">Online Users: <b>${h.online}</b></span>`];
-  if(h.live.length)part.push('<span class="h3">🔴 Live Contest: '+h.live.map(c=>`<b>${esc(c.name)}</b> – ends ${dt(c.ends-sk)}`).join(', ')+'</span>');
-  if(h.upcoming.length)part.push('<span class="h4">⏳ Upcoming Contest: '+h.upcoming.map(c=>`<b>${esc(c.name)}</b> – starts ${dt(c.starts-sk)}`).join(', ')+'</span>');
-  if(h.top.length)part.push('<span class="h5">🏆 Top 3 User: '+h.top.map(u=>`<b>${esc(u.name)}</b> Lv ${u.level}`).join(', ')+'</span>');
-  const one=part.join('<span class="tkd"> | </span>'),el=$('strip');el.style.display='flex';el.innerHTML=`<div class="tk"><span>${one}</span><span class="tkd"> | </span><span>${one}</span><span class="tkd"> | </span></div>`;
-  const w=el.querySelector('.tk span').offsetWidth;el.querySelector('.tk').style.animationDuration=Math.max(20,Math.round(w/55))+'s'}catch{}}
+async function loadHeadline(){try{const h=await api('GET','/headline');if(cur!=='home')return;const sk=h.now-Date.now(),dt=ts=>new Date(ts).toLocaleString([],{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'}),sh=h.show||{};
+  const part=[];
+  (h.custom||[]).forEach((t,i)=>part.push(`<span class="h${6+i%3}">📰 ${esc(t)}</span>`));
+  if(sh.rooms!==false)part.push(`<span class="h1">📊 <b>${h.rooms}</b> rooms · <b>${h.chatting}</b> chatting now</span>`);
+  if(sh.online!==false)part.push(`<span class="h2">Online Users: <b>${h.online}</b></span>`);
+  if(sh.live!==false&&h.live.length)part.push('<span class="h3">🔴 Live Contest: '+h.live.map(c=>`<b>${esc(c.name)}</b> – ends ${dt(c.ends-sk)}`).join(', ')+'</span>');
+  if(sh.upcoming!==false&&h.upcoming.length)part.push('<span class="h4">⏳ Upcoming Contest: '+h.upcoming.map(c=>`<b>${esc(c.name)}</b> – starts ${dt(c.starts-sk)}`).join(', ')+'</span>');
+  if(sh.top!==false&&h.top.length)part.push('<span class="h5">🏆 Top 3 User: '+h.top.map(u=>`<b>${esc(u.name)}</b> Lv ${u.level}`).join(', ')+'</span>');
+  const el=$('strip');if(!part.length){el.style.display='none';return}
+  const unit=part.join('<span class="tkd"> | </span>')+'<span class="tkd"> | </span>';
+  el.style.display='flex';el.innerHTML=`<div class="tk"><span>${unit}</span></div>`;
+  const w=el.querySelector('.tk span').offsetWidth||300,k=Math.max(1,Math.ceil((el.clientWidth+40)/w)),half=unit.repeat(k);
+  // two identical halves, each at least as wide as the bar: scrolling left by exactly one half loops with no gap and no jump
+  el.innerHTML=`<div class="tk"><span>${half}</span><span>${half}</span></div>`;
+  el.querySelector('.tk').style.animationDuration=Math.max(20,Math.round(w*k/55))+'s'}catch{}}
 async function loadStories(){let g;try{g=await api('GET','/stories')}catch{return}if(!Array.isArray(g))return;STG=g;g.forEach(x=>ROLES[x.user]=x.role);const el=$('stories');if(!el)return;
   const mine=g.find(x=>x.user===me);
   el.innerHTML=`<button class="sc mk" data-sc="new"><div class="top">${av(me,64)}</div><span class="pl">+</span><b>Create story</b></button>`+g.map((x,i)=>{const f=x.items[x.items.length-1];const bgs=f.image?`background-image:url('${esc(f.image)}');--sbg:url('${esc(f.image)}')`:`background:${SBG[f.bg]||SBG[0]};--sbg:${SBG[f.bg]||SBG[0]}`;
@@ -2407,6 +2423,7 @@ V.admin=async(name)=>{
   if(ST.role!=='staff'){view('<div class="card mu">Staff only.</div>');return}
   if(name==='@gifts')return adminGifts();
   if(name==='@announce')return adminAnnounce();
+  if(name==='@headline')return adminHeadline();
   if(name==='@support')return adminSupport();
   if(name==='@emo')return adminEmo();
   if(name==='@rooms')return adminRooms();
@@ -2416,6 +2433,7 @@ V.admin=async(name)=>{
   <div class="card row" data-u="@rooms" style="cursor:pointer"><div class="g"><b>🏠 Manage rooms</b><div class="mu">Rename rooms and set how many users fit</div></div><span class="mu">Open ›</span></div>
   <div class="card row" data-u="@emo" style="cursor:pointer"><div class="g"><b>😀 Manage emoticons</b><div class="mu">Upload emoticon pictures with a shortcode for chat, posts and reactions</div></div><span class="mu">Open ›</span></div>
   <div class="card row" data-u="@support" style="cursor:pointer"><div class="g"><b>📧 Support Mail</b><div class="mu">Send and receive support@migv33.com mail</div></div><span class="mu">Open ›</span></div>
+  <div class="card row" data-u="@headline" style="cursor:pointer"><div class="g"><b>📰 Headlines</b><div class="mu">Choose what the Home headline bar shows and add your own news</div></div><span class="mu">Open ›</span></div>
   <div class="card row" data-u="@announce" style="cursor:pointer"><div class="g"><b>📢 Announcements</b><div class="mu">Send a pop-up message that every user sees when they open the app</div></div><span class="mu">Open ›</span></div>
   <div class="card row" data-u="@gifts" style="cursor:pointer"><div class="g"><b>🎁 Manage gifts</b><div class="mu">Upload gift icons, set price and what the receiver gets</div></div><span class="mu">Open ›</span></div>
   <form id="aq" class="card row"><input id="aqi" placeholder="Search by ID, name, email or mobile" maxlength="40" value="${esc(q)}"><button class="o">Search</button></form>
@@ -2807,6 +2825,19 @@ async function adminEmo(){
     try{if(b.dataset.et){await api('POST','/admin/emoticons/'+b.dataset.et,{active:b.dataset.on==='1'});adminEmo()}
       else if(sure!==b.dataset.ed){sure=b.dataset.ed;b.textContent='Tap again';}
       else{await api('DELETE','/admin/emoticons/'+b.dataset.ed);adminEmo()}}catch(er){fail(er)}}}
+async function adminHeadline(){
+  const c=await api('GET','/admin/headline'),sh=c.show||{},cu=c.custom||[];
+  const T=[['rooms','📊 Rooms and chatting count'],['online','Online users'],['live','🔴 Live contests'],['upcoming','⏳ Upcoming contests'],['top','🏆 Top 3 users']];
+  view(`<div class="card row"><button class="o" id="abk">‹ Back</button><div class="g"><b>📰 Headlines</b><div class="mu">The bar on Home scrolls these one after another, forever.</div></div></div>
+  <form id="hf" class="card" style="display:grid;gap:8px"><b>Show on the bar</b>${T.map(([k,n])=>`<label class="row" style="gap:8px"><input type="checkbox" data-sh="${k}" ${sh[k]!==false?'checked':''} style="width:auto"> <span>${n}</span></label>`).join('')}
+  <b>Your own headlines <span class="mu">(up to 10)</span></b>
+  <div id="hc" style="display:grid;gap:6px">${cu.map(t=>`<div class="row"><input class="hci" maxlength="200" value="${esc(t)}"><button type="button" data-rm>✕</button></div>`).join('')}</div>
+  <button type="button" id="hadd">+ Add a headline</button><button class="o">Save</button></form>`);
+  $('abk').onclick=()=>go('admin');
+  $('hadd').onclick=()=>{if(document.querySelectorAll('.hci').length>=10)return toast('Up to 10 headlines',true);const d=document.createElement('div');d.className='row';d.innerHTML='<input class="hci" maxlength="200" placeholder="Write a headline…"><button type="button" data-rm>✕</button>';$('hc').append(d);d.querySelector('input').focus()};
+  $('hc').onclick=e=>{const b=e.target.closest('[data-rm]');if(b)b.parentElement.remove()};
+  $('hf').onsubmit=async e=>{e.preventDefault();const show={};document.querySelectorAll('[data-sh]').forEach(i=>show[i.dataset.sh]=i.checked);
+    try{await api('POST','/admin/headline',{show,custom:[...document.querySelectorAll('.hci')].map(i=>i.value)});toast('Headlines saved ✔');adminHeadline()}catch(er){fail(er)}}}
 async function adminAnnounce(){
   const L=await api('GET','/admin/announcements');
   view(`<div class="card row"><button class="o" id="abk">‹ Back</button><div class="g"><b>📢 Announcements</b><div class="mu">The newest announcement pops up for every user the next time they open the app, and right now for anyone online.</div></div></div>
