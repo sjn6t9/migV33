@@ -1808,7 +1808,10 @@ function wLayout(){const d=wDock();if(EMB||innerWidth<1000||!me){d.style.display
   const hid=WINS.filter(w=>!vis.has(w));
   $('wpills').innerHTML=hid.map(w=>`<button type="button" class="wp" data-wp="${esc(w.r)}"><span class="wi">${wIcon(w.r,22)}</span><b>${esc(rtitle(w.r))}</b>${w.n?`<em>${w.n>99?'99+':w.n}</em>`:''}<i data-wx="${esc(w.r)}" role="button" aria-label="Close">✕</i></button>`).join('');
   $('wpills').style.display=hid.length?'':'none';
-  try{drawRcol()}catch{}}
+  try{drawRcol()}catch{}wTabs()}
+function wTabs(){const t=$('rtabs');if(!t||EMB||innerWidth<1000)return;
+  t.innerHTML=WINS.map(w=>`<button class="rt${w.el&&w.el.classList.contains('vis')?' on':''}" data-wt="${esc(w.r)}" title="${esc(rtitle(w.r))}">${w.r.startsWith('dm:')?'':rfl(w.r)}${esc(rtitle(w.r))}${w.n?`<b class="ub">${w.n>9?'9+':w.n}</b>`:''}</button>`).join('');
+  t.onclick=e=>{const b=e.target.closest('[data-wt]');if(b)openWin(b.dataset.wt)}}
 addEventListener('resize',()=>{if(!EMB)wLayout()});
 if(!EMB){addEventListener('message',e=>{const d=e.data;if(!d||typeof d!=='object')return;const w=WINS.find(x=>x.el&&x.el.querySelector('iframe').contentWindow===e.source);if(!w)return;
   if(d.t==='ev'){if(!w.el.classList.contains('vis')){w.n=Math.min(99,w.n+1);wLayout()}}
@@ -2372,7 +2375,7 @@ V.chat=async(r)=>{room=r;if(!r.startsWith('dm:'))lastRoom=r;target='';pend=null;
   drawOnline();if(AL.has(r)){showAL(r);return}tx({t:'join',room:r,have:hadLog});
   if(r==='games'){$('uno').style.display='block';$('uno').innerHTML='<button class="o" id="jn">Join UNO</button>';$('jn').onclick=()=>uno({a:'join'})}};
 /* room tabs: tap to switch, swipe left/right to move between open rooms */
-function drawTabs(){const t=$('rtabs');if(!t)return;if(cur==='chat'&&DC.has(room)&&!$('dcbar'))mountDC(room,AL.has(room)?'Disconnected from <b>'+esc(rtitle(room))+'</b>':null);if(!RFL){RFL=1;setTimeout(loadRF,0)}
+function drawTabs(){const t=$('rtabs');if(!t)return;if(!EMB&&innerWidth>=1000)return wTabs();if(cur==='chat'&&DC.has(room)&&!$('dcbar'))mountDC(room,AL.has(room)?'Disconnected from <b>'+esc(rtitle(room))+'</b>':null);if(!RFL){RFL=1;setTimeout(loadRF,0)}
   UNR[room]=0;
   const inch=document.body.classList.contains('inchat');t.innerHTML=OPEN.map(x=>(x===room&&inch)?`<button class="rt on${DC.has(x)?' dcd':''}" data-r="${esc(x)}">${rfl(x)}${esc(rtitle(x))}</button>`:`<button class="rt mini${UNR[x]?' has':''}${DC.has(x)?' dcd':''}" data-r="${esc(x)}" title="${esc(rtitle(x))}" aria-label="${esc(rtitle(x))}${UNR[x]?' — '+UNR[x]+' new':''}">${RF[x]?rfl(x).replace('class="flg rfl"','class="flg rfl rfm"').replace('<img','<span class="rf"><img')+'</span>':''}${RF[x]?'':(()=>{const f=rtitle(x).match(/[\u{1F1E6}-\u{1F1FF}]{2}/u);return f?`<span class="rf">${f[0]}</span>`:'<svg viewBox="0 0 24 24" width="18" height="18"><path d="M4 5h16v11H9l-5 4z" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"/></svg>'})()}${UNR[x]?`<b class="ub">${UNR[x]>9?'9+':UNR[x]}</b>`:''}</button>`).join('');
   t.onclick=e=>{const c=e.target.closest('[data-x]');if(c){e.stopPropagation();return closeTab(c.dataset.x)}
