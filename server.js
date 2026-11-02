@@ -202,6 +202,7 @@ function addXp(name, n) {
   db.prepare('update users set xp=? where name=?').run(xp, name);
   let total = 0;
   for (let L = before + 1; L <= after; L++) { const rw = levelReward(L); if (rw) { total += rw; db.prepare('update users set coins=coins+? where name=?').run(rw, name); addTx(name, 'other', `Level ${L} reward`, rw); } }
+  if (after > before) setImmediate(() => notify(name, 'rewards', `Level up! You reached level ${after}${total ? ` (+${total.toLocaleString()} coins)` : ''}`));
   if (after > before) wss.clients.forEach(w => { if (w.user === name) { send(w, { t: 'levelup', level: after, reward: total }); send(w, { t: 'coins', coins: coins(name) }); } });
 }
 const profile = n => { const u = db.prepare('select name,full_name,gender,country,bio,status_text,presence,xp,coins,role,joined,avatar,avatar_art,avatar_mode from users where name=?').get(n); if (!u) return u; const { avatar, avatar_art, avatar_mode, ...rest } = u; return { ...rest, level: level(u.xp), hasPhoto: !!avatar, hasArt: !!avatar_art, avatarMode: avatar_mode === 'avatar' && avatar_art ? 'avatar' : 'photo' }; };
@@ -266,11 +267,54 @@ app.get('/api/users-suggest', auth, ok((q, r) => {
   const s = String(q.query.q || '').replace(/[^A-Za-z0-9._-]/g, '').slice(0, 16);
   r.json(db.prepare("select name, role from users where name like ? || '%' order by length(name) limit 6").all(s));
 }));
+// ---- Notifications: grp = social | rewards | mentions | system ----
+db.exec('create table if not exists notifs(id integer primary key, user text, grp text, text text, ref text default \'\', ts int, read int default 0)');
+db.exec('create index if not exists notifs_u on notifs(user,id)');
+function notify(user, grp, text, ref = '') {
+  try {
+    if (!user) return;
+    db.prepare('insert into notifs(user,grp,text,ref,ts) values(?,?,?,?,?)').run(user, grp, String(text).slice(0, 200), ref, Date.now());
+    db.prepare('delete from notifs where user=? and id not in (select id from notifs where user=? order by id desc limit 300)').run(user, user);
+    const n = db.prepare('select count(*) n from notifs where user=? and read=0').get(user).n;
+    wss.clients.forEach(w => { if (w.user === user) send(w, { t: 'notif', unread: n, grp, text }); });
+  } catch (e) { console.log('[notify]', e.message); }
+}
+const mentionsOf = (text, by) => [...new Set([...String(text || '').matchAll(/(^|\s)@([A-Za-z0-9_]{2,20})/g)].map(m => m[2]))].filter(n => n.toLowerCase() !== String(by).toLowerCase()).slice(0, 5);
+function notifyMentions(text, by, where, ref = '') {
+  for (const n of mentionsOf(text, by)) { const u = db.prepare('select name from users where lower(name)=lower(?)').get(n); if (u) notify(u.name, 'mentions', `${by} mentioned you ${where}`, ref); }
+}
+app.get('/api/notifs', auth, ok((q, r) => {
+  const g = String(q.query?.group || 'all').toLowerCase();
+  const rows = ['social', 'rewards', 'mentions', 'system'].includes(g)
+    ? db.prepare('select id,grp,text,ref,ts,read from notifs where user=? and grp=? order by id desc limit 100').all(q.user, g)
+    : db.prepare('select id,grp,text,ref,ts,read from notifs where user=? order by id desc limit 100').all(q.user);
+  const cnt = {}; for (const x of db.prepare('select grp,count(*) n from notifs where user=? and read=0 group by grp').all(q.user)) cnt[x.grp] = x.n;
+  r.json({ list: rows, unread: Object.values(cnt).reduce((a, b) => a + b, 0), counts: cnt });
+}));
+app.post('/api/notifs/read', auth, ok((q, r) => { db.prepare('update notifs set read=1 where user=?').run(q.user); r.json({ ok: true }); }));
+app.get('/api/notifs/count', auth, ok((q, r) => r.json({ unread: db.prepare('select count(*) n from notifs where user=? and read=0').get(q.user).n })));
+// ---- Help & Support, Feedback & Report: stored in the support mailbox list and e-mailed to support@ when mail is set up ----
+const supLimit = new Map();
+app.post('/api/support', auth, ok((q, r) => {
+  const kind = ['help', 'feedback', 'report'].includes(q.body?.kind) ? q.body.kind : 'help';
+  const subject = String(q.body?.subject || '').trim().slice(0, 120), msg = String(q.body?.message || '').trim().slice(0, 3000), target = String(q.body?.target || '').trim().slice(0, 40);
+  if (msg.length < 5) return bad(r, 'Please write a little more.');
+  const now = Date.now(), hist = (supLimit.get(q.user) || []).filter(t => now - t < 3600e3);
+  if (hist.length >= 5) return bad(r, 'You have sent a few messages already. Please try again later.', 429);
+  supLimit.set(q.user, [...hist, now]);
+  const label = { help: 'Help', feedback: 'Feedback', report: 'Report' }[kind];
+  const email = db.prepare('select email from users where name=?').get(q.user)?.email || '';
+  const subj = `[${label}] ${subject || (kind === 'report' ? 'Report' + (target ? ' about ' + target : '') : 'From ' + q.user)}`;
+  const body = `From: ${q.user}${email ? ' <' + email + '>' : ''}\n${target ? 'About user/room: ' + target + '\n' : ''}Type: ${label}\n\n${msg}`;
+  db.prepare('insert into support_mail(dir,from_addr,to_addr,subject,body,ts,read) values(?,?,?,?,?,?,0)').run('in', `${q.user}${email ? ' <' + email + '>' : ' (in-app)'}`, SUP.user, subj, body, now);
+  if (supMailer) supMailer.sendMail({ from: SUP.user, to: SUP.user, replyTo: email || undefined, subject: subj, text: body }).catch(e => console.log('[support mail]', e.message));
+  r.json({ ok: true });
+}));
 app.post('/api/posts', auth, ok((q, r) => {
   const text = String(q.body?.text || '').trim().slice(0, 500), image = imgUrl(q.body?.image) ? q.body.image : '';
   if (!text && !image) return bad(r, 'Write something or add a photo first');
   const pid = db.prepare('insert into posts(user,text,image,ts) values(?,?,?,?)').run(q.user, text, image, Date.now()).lastInsertRowid;
-  grantAct(q.user, 'post', pid); r.json({ ok: true });
+  grantAct(q.user, 'post', pid); notifyMentions(text, q.user, 'in a post', 'post:' + pid); r.json({ ok: true });
 }));
 app.put('/api/posts/:id', auth, ok((q, r) => {
   const p = getPost(q.params.id); if (!p) return bad(r, 'Post not found', 404);
@@ -307,7 +351,7 @@ app.post('/api/posts/:id/react', auth, ok((q, r) => {
   const kind = reactKind(q.body?.kind);
   const cur = db.prepare('select kind from reacts where post=? and user=?').get(q.params.id, q.user);
   if (cur && cur.kind === kind) db.prepare('delete from reacts where post=? and user=?').run(q.params.id, q.user);
-  else { db.prepare('insert or replace into reacts(post,user,kind) values(?,?,?)').run(q.params.id, q.user, kind); if (gp.user !== q.user) grantAct(q.user, 'react', gp.id); }
+  else { db.prepare('insert or replace into reacts(post,user,kind) values(?,?,?)').run(q.params.id, q.user, kind); if (gp.user !== q.user) { grantAct(q.user, 'react', gp.id); notify(gp.user, 'social', `${q.user} reacted to your post`, 'post:' + gp.id); } }
   r.json({ ok: true });
 }));
 app.get('/api/posts/:id/who', auth, ok((q, r) => {
@@ -323,11 +367,11 @@ app.post('/api/posts/:id/comments', auth, ok((q, r) => {
   const p = getPost(q.params.id); if (!p) return bad(r, 'Post not found', 404);
   if (p.locked && p.user !== q.user && !isMod(q.user)) return bad(r, 'Comments are locked on this post.', 403);
   const text = String(q.body?.text || '').trim().slice(0, 300); if (!text) return bad(r, 'Write a comment first');
-  db.prepare('insert into comments(post,user,text,ts) values(?,?,?,?)').run(q.params.id, q.user, text, Date.now()); if (p.user !== q.user) grantAct(q.user, 'comment', p.id); r.json({ ok: true });
+  db.prepare('insert into comments(post,user,text,ts) values(?,?,?,?)').run(q.params.id, q.user, text, Date.now()); if (p.user !== q.user) { grantAct(q.user, 'comment', p.id); notify(p.user, 'social', `${q.user} commented on your post`, 'post:' + p.id); } notifyMentions(text, q.user, 'in a comment', 'post:' + p.id); r.json({ ok: true });
 }));
 app.post('/api/posts/:id/share', auth, ok((q, r) => {
   const gp = getPost(q.params.id); if (!gp) return bad(r, 'Post not found', 404);
-  const ch = db.prepare('insert or ignore into post_shares values(?,?,?)').run(q.params.id, q.user, Date.now()).changes; if (ch && gp.user !== q.user) grantAct(q.user, 'share', gp.id); r.json({ ok: true });
+  const ch = db.prepare('insert or ignore into post_shares values(?,?,?)').run(q.params.id, q.user, Date.now()).changes; if (ch && gp.user !== q.user) { grantAct(q.user, 'share', gp.id); notify(gp.user, 'social', `${q.user} shared your post`, 'post:' + gp.id); } r.json({ ok: true });
 }));
 
 // ---------- Stories (disappear after 24 hours) ----------
@@ -378,6 +422,17 @@ app.delete('/api/stories/:id', auth, ok((q, r) => {
   db.prepare('delete from story_views where story=?').run(s.id); db.prepare('delete from stories where id=?').run(s.id); dropFile(s.image); r.json({ ok: true });
 }));
 
+app.get('/api/headline', auth, ok((q, r) => {
+  const now = Date.now();
+  const rooms = db.prepare('select name from rooms').all();
+  const chatting = rooms.reduce((n, x) => n + roomNames(x.name).size, 0);
+  const seen = new Set(); wss.clients.forEach(w => { if (w.user) seen.add(w.user); });
+  let onlineN = 0; for (const u of seen) if (db.prepare('select presence from users where name=?').get(u)?.presence !== 'offline') onlineN++;
+  const live = db.prepare("select name,ends from contests where status='approved' and settled=0 and starts<=? and ends>? order by ends limit 4").all(now, now);
+  const upcoming = db.prepare("select name,starts from contests where status='approved' and settled=0 and starts>? order by starts limit 4").all(now);
+  const top = db.prepare("select name,xp from users where banned=0 and role not in ('staff','admin') order by xp desc, name limit 3").all().map(u => ({ name: u.name, level: level(u.xp) }));
+  r.json({ rooms: rooms.length, chatting, online: onlineN, live, upcoming, top, now });
+}));
 app.get('/api/rooms', auth, ok((q, r) => {
   const fav = new Set(db.prepare('select room from favs where user=?').all(q.user).map(x => x.room));
   const own = new Map(), isStaffOwner = o => { if (!o) return false; if (!own.has(o)) own.set(o, ['staff', 'admin'].includes(roleOf(o))); return own.get(o); };
@@ -423,8 +478,8 @@ app.post('/api/friends/:act', auth, ok((q, r) => {
   const n = String(q.body?.name || ''), act = q.params.act;
   if (!n || n === q.user || !profile(n)) return bad(r, 'User not found', 404);
   const st = fstate(q.user, n);
-  if (act === 'request' && st === 'none') { db.prepare("insert into friends values(?,?,'pending')").run(q.user, n); if (db.prepare('select verified from users where name=?').get(n)?.verified) grantAct(q.user, 'follow', n); }
-  else if (act === 'accept' && st === 'incoming') db.prepare("update friends set status='accepted' where a=? and b=?").run(n, q.user);
+  if (act === 'request' && st === 'none') { db.prepare("insert into friends values(?,?,'pending')").run(q.user, n); notify(n, 'social', `${q.user} followed you`, 'user:' + q.user); if (db.prepare('select verified from users where name=?').get(n)?.verified) grantAct(q.user, 'follow', n); }
+  else if (act === 'accept' && st === 'incoming') { db.prepare("update friends set status='accepted' where a=? and b=?").run(n, q.user); notify(n, 'social', `${q.user} accepted your request — you are friends now`, 'user:' + q.user); }
   else if (act === 'remove') db.prepare('delete from friends where (a=? and b=?) or (a=? and b=?)').run(q.user, n, n, q.user);
   r.json({ ok: true });
 }));
@@ -500,13 +555,25 @@ const TASKS = [
   { k: 'gift_sent', t: 'Send gifts in chatrooms', target: 100000, pts: 100, unit: 'gifts' },
   { k: 'gift_recv', t: 'Receive gifts in chatrooms', target: 50000, pts: 100, unit: 'gifts' },
   { k: 'game', t: 'Play games in chatrooms', target: 1000, pts: 100, unit: 'games' },
-  { k: 'dm_gift', t: 'Send migmeet gifts', target: 20, pts: 200, unit: 'gifts' }];
+  { k: 'dm_gift', t: 'Send migmeet gifts', target: 5, pts: 200, unit: 'gifts' }];
 const mev = (user, k, n = 1) => { const x = db.prepare('insert into mevents(user,k,n,ts) values(?,?,?,?)').run(user, k, n, Date.now()); if (k === 'game') { try { grantAct(user, 'game', Date.now() + '.' + Math.random()); } catch {} } return x; };
+if (!db.prepare("select 1 from kv where k='migmeet_task_v1'").get()) {   // rebuild the migmeet-gift counts from the coin history
+  try {
+    db.transaction(() => {
+      db.prepare("delete from mevents where k='dm_gift'").run();
+      const rows = db.prepare("select user,ts from txs where kind='gift' and amount<0 and lower(title) like 'sent migmeet to %'").all();
+      const ins = db.prepare("insert into mevents(user,k,n,ts) values(?,?,?,?)");
+      for (const x of rows) ins.run(x.user, 'dm_gift', 1, x.ts);
+    })();
+  } catch (e) { console.log('[migmeet backfill]', e.message); }
+  db.prepare("insert into kv values('migmeet_task_v1','1')").run();
+}
 function setRole(name, role, by, reason) {
   const u = db.prepare('select role from users where name=?').get(name); if (!u || u.role === role) return;
   const now = Date.now();
   db.prepare('update users set role=?, role_started_at=?, cycle_start=? where name=?').run(role, now, role === 'merchant' ? now : 0, name);
   db.prepare('insert into role_history(user,from_role,to_role,reason,by,ts) values(?,?,?,?,?,?)').run(name, u.role, role, reason || '', by || 'system', now);
+  setImmediate(() => notify(name, 'system', `Your role is now ${role}`));
   // A tagger who loses merchant/mentor/head-mentor status loses all tag relationships.
   if (RANK[u.role] >= 1 && !(RANK[role] >= 1)) db.prepare('delete from tags where parent=?').run(name);
 }
@@ -1358,7 +1425,7 @@ function ctSettle(c) {
   let paid = 0; const names = [c.owner];
   db.transaction(() => {
     if (!db.prepare("update contests set status='ended', settled=1 where id=? and settled=0").run(c.id).changes) return;
-    top.forEach((t, i) => { db.prepare('update users set coins=coins+? where name=?').run(prizes[i], t.user); addTx(t.user, 'other', `Contest "${c.name}": place ${i + 1} prize`, prizes[i]); paid += prizes[i]; names.push(t.user); });
+    top.forEach((t, i) => { db.prepare('update users set coins=coins+? where name=?').run(prizes[i], t.user); addTx(t.user, 'other', `Contest "${c.name}": place ${i + 1} prize`, prizes[i]); paid += prizes[i]; names.push(t.user); setImmediate(() => notify(t.user, 'rewards', `You won ${prizes[i].toLocaleString()} coins in "${c.name}" (place ${i + 1})`, 'contest:' + c.id)); });
     if (c.pool - paid > 0) { db.prepare('update users set coins=coins+? where name=?').run(c.pool - paid, c.owner); addTx(c.owner, 'other', `Contest "${c.name}": unawarded prizes returned`, c.pool - paid); }
   })(); pushCoins(...names);
 }
@@ -1446,9 +1513,9 @@ app.post('/api/admin/contests/:id', auth, ok((q, r) => {
   const act = q.body?.action;
   if (act === 'approve') {
     if (c.ends <= Date.now()) { ctRefund(c, 'expired', q.user, 'Approved too late'); return bad(r, 'It already ended, so the prize pool was returned.'); }
-    db.prepare("update contests set status='approved', decided_by=? where id=?").run(q.user, c.id); alog(q.user, c.owner, 'contest', `approved #${c.id} ${c.name}`); return r.json({ ok: true });
+    db.prepare("update contests set status='approved', decided_by=? where id=?").run(q.user, c.id); alog(q.user, c.owner, 'contest', `approved #${c.id} ${c.name}`); notify(c.owner, 'system', `Your contest "${c.name}" was approved`, 'contest:' + c.id); return r.json({ ok: true });
   }
-  if (act === 'reject') { const why = String(q.body?.reason || '').trim().slice(0, 200) || 'Not approved'; ctRefund(c, 'rejected', q.user, why); alog(q.user, c.owner, 'contest', `rejected #${c.id} ${c.name}: ${why}`); return r.json({ ok: true }); }
+  if (act === 'reject') { const why = String(q.body?.reason || '').trim().slice(0, 200) || 'Not approved'; ctRefund(c, 'rejected', q.user, why); alog(q.user, c.owner, 'contest', `rejected #${c.id} ${c.name}: ${why}`); notify(c.owner, 'system', `Your contest "${c.name}" was rejected: ${why}`, 'contest:' + c.id); return r.json({ ok: true }); }
   bad(r, 'Unknown action');
 }));
 
@@ -1892,8 +1959,10 @@ const payGift0 = (from, to, gf, ctx = 'room') => db.transaction(() => {
   const rc = gf.r ?? Math.floor(gf.c / 2);
   db.prepare('update users set coins=coins+? where name=?').run(rc, to);
   db.prepare('insert into gift_inv(user,gift,n) values(?,?,1) on conflict(user,gift) do update set n=n+1').run(to, gf.key || gf.n.toLowerCase());
-  const tx = addTx(from, 'gift', `Sent ${gf.n} to ${to}`, -gf.c); addTx(to, 'gift', `${gf.n} from ${from}`, rc);
-  mev(from, ctx === 'dm' ? 'dm_gift' : 'gift_sent'); if (ctx !== 'dm') mev(to, 'gift_recv');
+  const tx = addTx(from, 'gift', `Sent ${gf.n} to ${to}`, -gf.c); addTx(to, 'gift', `${gf.n} from ${from}`, rc); setImmediate(() => notify(to, 'rewards', `${from} sent you ${gf.n} (+${rc.toLocaleString()} coins)`));
+  const isMig = String(gf.key || gf.n || '').toLowerCase() === 'migmeet' || String(gf.n || '').toLowerCase() === 'migmeet';
+  if (isMig) mev(from, 'dm_gift');   // the "Send migmeet gifts" task counts the migmeet gift wherever it is sent
+  if (ctx !== 'dm') { mev(from, 'gift_sent'); mev(to, 'gift_recv'); }
   commissionOn(from, gf.c, 'gift', tx.lastInsertRowid);
   return true;
 })();
@@ -2131,6 +2200,17 @@ function onWsMessage(ws, raw) {
       if (r1 && ws.room !== r1) { try { ws.tabs && ws.tabs.delete(r1); } catch {} purgeRoomMsgs(r1); }
       return;
     }
+    if (m.t === 'logout') {   // signed out: offline, out of every room
+      if (!ws.user) return;
+      const u0 = ws.user;
+      try { db.prepare("update users set presence='offline' where name=?").run(u0); } catch {}
+      for (const w of wss.clients) if (w.user === u0) { try { w.tabs = new Set(); } catch {} }
+      ghosts.delete(u0);
+      const rooms0 = new Set(); for (const w of wss.clients) if (w.user === u0 && w.room) rooms0.add(w.room);
+      for (const w of [...wss.clients]) if (w.user === u0 && w.room) leaveRoom(w);
+      for (const r0 of rooms0) { try { db.prepare('delete from room_seen where user=? and room=?').run(u0, r0); db.prepare('delete from room_since where user=? and room=?').run(u0, r0); } catch {} purgeRoomMsgs(r0); }
+      online(); return;
+    }
     if (m.t === 'join') {
       const ok = roomOk(m.room) && (!/^dm:/.test(m.room) || m.room.slice(3).split(':').includes(ws.user));
       if (!ok) return;
@@ -2172,6 +2252,7 @@ function onWsMessage(ws, raw) {
       if (!speakOk(ws)) return;
       const o = { user: ws.user, text, kind: 'msg', ts: Date.now(), role: roleOf(ws.user), xp: xpOf(ws.user) };
       db.prepare('insert into msgs(room,user,text,kind,ts) values(?,?,?,?,?)').run(ws.room, o.user, o.text, o.kind, o.ts);
+      if (!ws.room.startsWith('dm:')) notifyMentions(text, ws.user, `in ${ws.room}`, 'room:' + ws.room);
       addXp(ws.user, 1);
       cast(ws.room, { t: 'msg', room: ws.room, ...o });
     } else if (m.t === 'media') {
