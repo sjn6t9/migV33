@@ -1340,7 +1340,7 @@ html[data-skin=dark] body #strip#strip#strip#strip .h7{color:#bbf7d0!important}
 html[data-skin=dark] body #strip#strip#strip#strip .h8{color:#f5d0fe!important}
 #strip .tk{padding-right:0}
 </style>
-<script>try{if(localStorage.tk||sessionStorage.tk)document.documentElement.dataset.boot=1;var k=localStorage.skin==='dark'?'dark':'day';document.documentElement.dataset.skin=k==='dark'?'dark':'navy';document.documentElement.dataset.theme='dark'}catch(e){document.documentElement.dataset.skin='navy';document.documentElement.dataset.theme='dark'}</script>
+<script>try{if(localStorage.tk||sessionStorage.tk)document.documentElement.dataset.boot=1;var q=localStorage.skin,k=q==='dark'?'dark':q==='clear'?'clear':'navy';document.documentElement.dataset.skin=k;document.documentElement.dataset.theme=k==='clear'?'light':'dark'}catch(e){document.documentElement.dataset.skin='navy';document.documentElement.dataset.theme='dark'}</script>
 <style>/* Name effects from the colour shop: each one animates the glow around the username */
 @keyframes fxPulse{0%,100%{text-shadow:0 0 4px currentColor}50%{text-shadow:0 0 12px currentColor,0 0 22px currentColor}}
 @keyframes fxFlicker{0%,19%,21%,23%,25%,54%,56%,100%{text-shadow:0 0 6px currentColor,0 0 14px currentColor}20%,24%,55%{text-shadow:none}}
@@ -1447,6 +1447,7 @@ html body #hdr #top #rtabs .rt .rfl{width:20px;height:14px}
 html body #hdr #top #rtabs .rt.on{display:inline-flex!important;align-items:center;justify-content:center;gap:0}
 </style>
 <link rel="stylesheet" href="theme-dark.css?v=25">
+<link rel="stylesheet" href="theme-clear.css?v=2">
 <style>/* role name colours: kept in their own block so they always load */
 :root{--nm-admin:#e8591f;--nm-staff:#2f9a3d;--nm-mentor:#b01020;--nm-headmentor:#8a6a14;--nm-merchant:#7e22ce;--nm-vip:#00706f;--nm-user:#2a7bd8}
 html[data-theme=dark],#log.navy,#log.dark{--nm-admin:#ff7a33;--nm-staff:#4cc24f;--nm-mentor:#f2394a;--nm-headmentor:#e8c23c;--nm-merchant:#b45cff;--nm-vip:#2ec4bf;--nm-user:#6db3ff}
@@ -1563,7 +1564,7 @@ $('s2').onsubmit=async e=>{e.preventDefault();const[r,d]=await post('/api/signup
 let tries=0;
 const DC=new Set();
 function mountDC(r,msg){if($('dcbar')||!$('f'))return;const d=document.createElement('div');d.id='dcbar';d.innerHTML=`<span>⚠ ${msg||'Disconnected from <b>'+esc(rtitle(r))+'</b>'}</span><button class="o" data-dc="re">Rejoin</button><button data-dc="lv">Leave</button>`;
-  d.querySelectorAll('button').forEach(b=>{const o=b.classList.contains('o');[['height','26px'],['min-height','0'],['width','auto'],['padding','0 10px'],['border-radius','8px'],['font-size','12px'],['font-weight','800'],['border','1px solid '+(o?'#ff8a8f':'#ff6b68')],['background',o?'linear-gradient(#e0434b,#b3202a)':'#0f1a2b'],['color',o?'#fff':'#ff9a98'],['box-shadow','none']].forEach(([k,v])=>b.style.setProperty(k,v,'important'))});
+  d.querySelectorAll('button').forEach(b=>{const o=b.classList.contains('o');[['height','26px'],['min-height','0'],['width','auto'],['padding','0 10px'],['border-radius','8px'],['font-size','12px'],['font-weight','800'],['border','1px solid '+(o?'#ff8a8f':'#ff6b68')],['background',o?'linear-gradient(#e0434b,#b3202a)':'var(--dcbg,#0f1a2b)'],['color',o?'#fff':'var(--dcfg,#ff9a98)'],['box-shadow','none']].forEach(([k,v])=>b.style.setProperty(k,v,'important'))});
   $('f').before(d);['t','phb','emb','mic'].forEach(i=>{const e=$(i);if(e)e.disabled=true});
   d.onclick=e=>{const b=e.target.closest('[data-dc]');if(!b)return;if(b.dataset.dc==='lv'){DC.delete(r);AL.delete(r);d.remove();closeTab(r);return}
     if(AL.has(r)){DC.delete(r);AL.delete(r);dropRoom(r);d.remove();V.chat(r);return}
@@ -2876,9 +2877,10 @@ V.spin=async()=>{const d=await api('GET','/spin');const n=d.prizes.length;
     setTimeout(async()=>{ST.coins=r.coins;$('coins').textContent=cn(r.coins);D={...D,free:r.free,spins:r.spins,next:r.next};delete $('go')?.dataset.busy;if($('go'))paint();
       const pi=await popup({icon:'✨',title:'You won!',body:`You won ${r.amount.toLocaleString()} coins — added to your balance.`,html:`<div class="pw"><b>+${r.amount.toLocaleString()}</b><span>coins</span><div class="mu" style="margin-top:4px">Landed on ${esc(r.prize)}</div></div>`,buttons:[['Dismiss',''],[(r.free||r.spins>0)?'Next Spin':'Return Home','o']],sticky:1});if(pi===1){if(r.free||r.spins>0){setTimeout(()=>{const g=$('go');if(g&&!g.disabled)g.click()},250)}else go('home')}},4100)}
   catch(e){delete $('go').dataset.busy;fail(e);paint()}}};
-const setSkin=k=>{const r=document.documentElement;k=k==='dark'?'dark':'day';try{localStorage.skin=k}catch{}
-  r.dataset.skin=k==='dark'?'dark':'navy';r.dataset.theme='dark';
-  try{paintTn()}catch{}document.querySelector('meta[name=theme-color]')?.setAttribute('content',k==='dark'?'#05080c':'#0c1d44')};
+const SKN=k=>k==='dark'?'dark':k==='clear'?'clear':'navy',SKC={clear:'#e9eef6',navy:'#0c1d44',dark:'#05080c'};
+const setSkin=k=>{const r=document.documentElement;k=SKN(k);try{localStorage.skin=k}catch{}
+  r.dataset.skin=k;r.dataset.theme=k==='clear'?'light':'dark';
+  try{paintTn()}catch{}document.querySelector('meta[name=theme-color]')?.setAttribute('content',SKC[k])};
 
 /* ---------- notifications, help, feedback, legal ---------- */
 const NG=[['all','All'],['social','Social'],['rewards','Rewards'],['mentions','Mentions'],['system','System']],NGI={social:'👥',rewards:'🎁',mentions:'@',system:'🔔'};
@@ -2906,7 +2908,7 @@ V.settings=async()=>{const bg=localStorage.cbg||'light';
   view(`<h2 style="margin-top:12px">Settings</h2><div class="card row" id="spp" style="cursor:pointer">${av(me,48)}<div class="g"><b>Profile photo</b><div class="mu">${AV[me]?'Change or remove your photo':'Add a photo so friends recognise you'}</div></div>📷</div>
   <div class="card row" id="spc" style="cursor:pointer">${av(me)}<div class="g"><b>${esc(me)}</b><span class="lv">${lvi(lv(ST.xp||0),16)}Lv ${lv(ST.xp||0)}</span><div class="mu">Edit profile, status, avatar</div></div>›</div>
   <div class="card"><b>Chat background</b><div class="chips">${['light','navy','dark'].map(k=>`<button data-bg="${k}" class="${bg===k?'on':''}">${k[0].toUpperCase()+k.slice(1)}</button>`).join('')}</div></div>
-  <div class="card"><b>App colour</b><div class="chips">${[['dark','Stonic'],['day','Navy Blue Glass Mode']].map(([k,n])=>`<button data-skin="${k}" class="${(localStorage.skin==='dark'?'dark':'day')===k?'on':''}">${n}</button>`).join('')}</div><div class="mu" style="margin-top:6px">Navy Blue Glass Mode is the navy-blue glass look. Stonic is the cyan design.</div></div>
+  <div class="card"><b>App colour</b><div class="chips">${[['clear','Day Mode'],['navy','Night Mode'],['dark','Stonic']].map(([k,n])=>`<button data-skin="${k}" class="${SKN(localStorage.skin)===k?'on':''}">${n}</button>`).join('')}</div><div class="mu" style="margin-top:6px">Day Mode is the clear glass look, Night Mode is the navy-blue glass look, Stonic is the cyan design.</div></div>
   <div class="card"><b>Status</b><div class="chips"><button id="ss">${ST.presence||'online'} — change</button></div></div>
   <div class="card"><b>Font size</b><div class="chips">${[['s','Small'],['m','Normal'],['l','Large']].map(([k,n])=>`<button data-fs="${k}" class="${(localStorage.fs||'m')===k?'on':''}">${n}</button>`).join('')}</div></div>
   <form id="mpf" class="card" style="display:grid;gap:8px"><b>MPIN ${ST.hasPin?'(set)':'(not set)'}</b><small class="mu">4–6 digits. Needed for coin transfers.</small>${ST.hasPin?'<input id="mpo" type="password" inputmode="numeric" maxlength="6" placeholder="Current MPIN" autocomplete="off">':''}<input id="mpn" type="password" inputmode="numeric" maxlength="6" placeholder="New MPIN (4–6 digits)" autocomplete="off"><button class="o">${ST.hasPin?'Change MPIN':'Set MPIN'}</button></form>
@@ -2921,9 +2923,10 @@ V.settings=async()=>{const bg=localStorage.cbg||'light';
   $('mpf').onsubmit=async e=>{e.preventDefault();try{await api('POST','/security/pin',{pin:$('mpn').value,old:$('mpo')?.value||''});toast('MPIN saved');ST=await api('GET','/me');V.settings()}catch(er){fail(er)}};
   $('sqf').onsubmit=async e=>{e.preventDefault();try{await api('POST','/security/question',{question:$('sqq').value,answer:$('sqa').value,pass:$('sqp')?.value||''});toast('Security question saved');ST=await api('GET','/me');V.settings()}catch(er){fail(er)}};
   $('view').onclick=e=>{const g2=e.target.closest('[data-go2]');if(g2)return go(g2.dataset.go2);const fz=e.target.dataset.fs;if(fz){setFs(fz);V.settings()}const b=e.target.dataset.bg;if(b){localStorage.cbg=b;V.settings()}const s=e.target.closest('button[data-skin]');if(s){setSkin(s.dataset.skin);V.settings()}}};
-const MOON='<svg viewBox="0 0 24 24"><path d="M20 14.5A8.5 8.5 0 019.5 4 8.5 8.5 0 1020 14.5z"/></svg>',SUN='<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>';
-const paintTn=()=>{const d=document.documentElement.dataset.skin==='dark';$('tn').innerHTML=d?MOON:SUN;$('tn').title=d?'Switch to Navy Blue Glass Mode':'Switch to Stonic';document.querySelector('meta[name=theme-color]')?.setAttribute('content',d?'#05080c':'#0c1d44')};
-$('tn').onclick=()=>{setSkin(document.documentElement.dataset.skin==='dark'?'day':'dark');if(cur==='settings')V.settings()};
+const CUBE='<svg viewBox="0 0 24 24"><path d="M12 3l8 4.5v9L12 21l-8-4.5v-9z"/><path d="M12 12l8-4.5M12 12v9M12 12L4 7.5"/></svg>',MOON='<svg viewBox="0 0 24 24"><path d="M20 14.5A8.5 8.5 0 019.5 4 8.5 8.5 0 1020 14.5z"/></svg>',SUN='<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>';
+const SKO=['clear','navy','dark'],SKN2={clear:'Day Mode',navy:'Night Mode',dark:'Stonic'};
+const paintTn=()=>{const k=document.documentElement.dataset.skin,nx=SKO[(SKO.indexOf(k)+1)%3];$('tn').innerHTML=k==='clear'?SUN:k==='dark'?CUBE:MOON;$('tn').title='Switch to '+SKN2[nx];document.querySelector('meta[name=theme-color]')?.setAttribute('content',SKC[k]||'#0c1d44')};
+$('tn').onclick=()=>{const k=document.documentElement.dataset.skin;setSkin(SKO[(SKO.indexOf(k)+1)%3]);if(cur==='settings')V.settings()};
 paintTn();
 {let ct;$('coins').onclick=()=>{const c=$('coins');c.classList.add('show');clearTimeout(ct);ct=setTimeout(()=>c.classList.remove('show'),3000)}}
 if(tok())connect();

@@ -1,0 +1,82 @@
+/* ===== Day Mode: Clear Glass (html[data-skin=clear], data-theme=light) =====
+   Blue/orange wallpaper, frosted white glass, dark text everywhere. */
+html[data-skin=clear]{--bg:#cfe2f8;--sf:rgba(255,255,255,.72);--sf2:rgba(255,255,255,.5);--ln:rgba(255,255,255,.85);--tx:#16233a;--mu:#4d5f7c;--ac:#f7931e;--bad:#c62828;--ok:#1f8a3b;--bl:#1e66c8;
+ --lg:linear-gradient(135deg,rgba(255,255,255,.78),rgba(255,255,255,.46));--lg2:linear-gradient(135deg,rgba(255,255,255,.9),rgba(236,244,255,.82));
+ --glass:rgba(255,255,255,.62);--glassb:blur(22px) saturate(180%);
+ --rim:inset 1.5px 1.5px 1px rgba(255,255,255,.95),inset -1px -1px 1px rgba(255,255,255,.4),inset 0 0 22px rgba(255,255,255,.28);--drop:0 12px 30px rgba(12,44,110,.2),0 2px 6px rgba(12,44,110,.12);
+ --nm-admin:#d4470f;--nm-staff:#1f8a3b;--nm-mentor:#c4122a;--nm-headmentor:#8a6a14;--nm-merchant:#5a3fb0;--nm-vip:#00706f;--nm-user:#1e66c8}
+html[data-skin=clear] body{color:#16233a;background-color:#2a6fd0;background-image:radial-gradient(70vmax 70vmax at 6% 4%,#7fd0ff 0,#7fd0ff00 60%),radial-gradient(60vmax 60vmax at 98% 14%,#ffb15e 0,#ffb15e00 58%),radial-gradient(75vmax 75vmax at 14% 108%,#2a5ad0 0,#2a5ad000 62%),radial-gradient(50vmax 50vmax at 92% 98%,#ff8a3d99 0,#ff8a3d00 60%),linear-gradient(165deg,#58b4f7,#3a78dc 58%,#4d7be6)!important;background-attachment:fixed!important}
+/* glass surfaces */
+html[data-skin=clear] body :is(.card,.fr,.cmp,.cmpx,.rm,#rbar,#tools,.ph,.dme,.tiles div,.box,.xpc,.tagbar,.fbp,.mtabs,.dk,#sug,.rpk,.tabbar,#log,#f,#recbar,#dcbar){background:var(--lg)!important;border:1px solid rgba(255,255,255,.7)!important;box-shadow:var(--rim),var(--drop)!important;-webkit-backdrop-filter:var(--glassb)!important;backdrop-filter:var(--glassb)!important;color:#16233a!important}
+html[data-skin=clear] body #log{background:rgba(255,255,255,.34)!important}
+/* header + nav */
+html[data-skin=clear] body #hdr #top#top#top,html[data-skin=clear] body #top{background:linear-gradient(135deg,rgba(255,255,255,.82),rgba(255,255,255,.5))!important;border:1px solid rgba(255,255,255,.8)!important;box-shadow:var(--rim),var(--drop)!important;-webkit-backdrop-filter:var(--glassb)!important;backdrop-filter:var(--glassb)!important}
+html[data-skin=clear] body #hdr #top#top#top>button:not(#tn),html[data-skin=clear] body #hdr #top#top#top button#tn{background:rgba(255,255,255,.7)!important;border:1px solid rgba(255,255,255,.95)!important;color:#16233a!important;box-shadow:0 2px 8px rgba(20,60,130,.18),inset 0 1px 0 #fff!important}
+html[data-skin=clear] body #hdr #top#top#top>button.on:not(#tn):not(#x){background:linear-gradient(#ffc46e,#f7931e)!important;color:#2a1600!important}
+html[data-skin=clear] body #top svg{stroke:currentColor!important}
+html[data-skin=clear] body #hdr #top#top#top #rtabs .rt{background:rgba(255,255,255,.7)!important;color:#16233a!important;border:1px solid rgba(30,102,200,.35)!important}
+html[data-skin=clear] body #hdr #top#top#top #rtabs .rt.on{background:linear-gradient(#ffc46e,#f7931e)!important;color:#2a1600!important}
+html[data-skin=clear] body #coins{background:rgba(255,255,255,.7)!important;color:#16233a!important;text-shadow:none!important}
+html[data-skin=clear] body #sub,html[data-skin=clear] body #stt{color:#10203a!important;text-shadow:none!important;background:none!important}
+html[data-skin=clear] body #strip{background:rgba(255,255,255,.7)!important;border:1px solid rgba(255,255,255,.85)!important;color:#16233a!important}
+html[data-skin=clear] body #strip#strip#strip#strip .tkd{color:#16233a!important}
+html[data-skin=clear] body #bnav .bg{background:linear-gradient(160deg,rgba(255,255,255,.92),rgba(226,238,255,.8))!important;border:1px solid rgba(255,255,255,.95)!important;-webkit-backdrop-filter:blur(22px) saturate(180%)!important;backdrop-filter:blur(22px) saturate(180%)!important}
+html[data-skin=clear] body #bnav button{color:#34476a!important}html[data-skin=clear] body #bnav button.on{color:#e0730a!important}
+html[data-skin=clear] body #bnav .fab,html[data-skin=clear] body #bnav .fab svg{color:#fff!important}
+/* side menu */
+html[data-skin=clear] body #drawer nav{background:var(--lg2)!important;border:1px solid rgba(255,255,255,.85)!important;-webkit-backdrop-filter:blur(28px) saturate(190%)!important;backdrop-filter:blur(28px) saturate(190%)!important;color:#16233a!important}
+html[data-skin=clear] body #drawer#drawer #dn .mi,html[data-skin=clear] body #drawer#drawer #dn button.mi{background:rgba(255,255,255,.55)!important;color:#16233a!important;border:1px solid rgba(255,255,255,.9)!important;box-shadow:none!important}
+html[data-skin=clear] body #drawer#drawer #dn .mi.on{background:linear-gradient(135deg,#ffc46e,#f7931e)!important;color:#2a1600!important}
+html[data-skin=clear] body #drawer#drawer #dn :is(.dh,.dst,.dsr,.dsr input,.dsr button,.dbell){background:rgba(255,255,255,.6)!important;color:#16233a!important;border:1px solid rgba(255,255,255,.9)!important}
+html[data-skin=clear] body #drawer#drawer #dn .dh{color:#1e66c8!important}
+html[data-skin=clear] body #drawer#drawer #dn .dsr .dbell{color:#e0730a!important}
+html[data-skin=clear] body #drawer#drawer #dn .dst .dtx{color:#16233a!important}
+html[data-skin=clear] body #drawer#drawer #dn .dst svg{stroke:#4d5f7c!important}
+html[data-skin=clear] body #drawer#drawer #dn .mi i{background:rgba(255,255,255,.85)!important;box-shadow:inset 0 1px 0 #fff,0 2px 6px rgba(20,60,130,.2)!important}
+html[data-skin=clear] body #drawer#drawer #dn .lgo{background:rgba(255,255,255,.7)!important;color:#c62828!important;border-color:#e57373!important}
+/* buttons + fields */
+html[data-skin=clear] body :is(button:not(.sc):not(.o):not(.on):not(.mi):not(.fab):not(.disc)){background:linear-gradient(rgba(255,255,255,.95),rgba(255,255,255,.55));border:1px solid rgba(255,255,255,.95);color:#1d2b44;box-shadow:var(--rim),0 4px 12px rgba(20,60,140,.16)}
+html[data-skin=clear] body button.o,html[data-skin=clear] body :is(.chips,.tabbar,.mtabs) button.on{background:linear-gradient(#ffc46e,#f7931e)!important;color:#2a1600!important;border:1px solid rgba(255,225,180,.95)!important;text-shadow:none!important;box-shadow:0 4px 14px rgba(240,100,30,.35),inset 0 1px 0 rgba(255,255,255,.7)!important}
+html[data-skin=clear] body :is(input,select,textarea){background:rgba(255,255,255,.8)!important;color:#16233a!important;border:1px solid rgba(255,255,255,.95)!important;box-shadow:inset 0 2px 6px rgba(20,60,140,.14)!important}
+html[data-skin=clear] body input::placeholder,html[data-skin=clear] body textarea::placeholder{color:#6b7c98!important}
+html[data-skin=clear] body select option{background:#fff;color:#16233a}
+/* text */
+html[data-skin=clear] body :is(h1,h2,h3,#view>h2,.card h2,.big){color:#10203a!important;text-shadow:none!important}
+html[data-skin=clear] body .mu,html[data-skin=clear] body small.mu,html[data-skin=clear] body .tm,html[data-skin=clear] body .lvt{color:#4d5f7c!important}
+html[data-skin=clear] body :is(.lv,.chips button){color:#1d2b44!important}
+html[data-skin=clear] body .chips button.on{color:#2a1600!important}
+/* chat */
+html[data-skin=clear] body .b{background:linear-gradient(135deg,rgba(255,255,255,.95),rgba(255,247,226,.85))!important;color:#16233a!important;border:1px solid rgba(255,255,255,.95)!important}
+html[data-skin=clear] body .b.mine{background:linear-gradient(135deg,rgba(190,240,200,.95),rgba(160,225,175,.85))!important}
+html[data-skin=clear] body #log :is(.rl,.rl.ent,.rl.ann,.bts,.emo){color:#16233a!important}
+html[data-skin=clear] body #log .rl .rn2{color:#c4540a!important}
+html[data-skin=clear] body #rbar svg,html[data-skin=clear] body #rbar .ib{color:#16233a!important;stroke:#16233a}
+html[data-skin=clear] body #f input{background:rgba(255,255,255,.85)!important}
+html[data-skin=clear] body #dcbar{background:rgba(255,235,235,.9)!important;border:1px solid #e53935!important;color:#b71c1c!important}
+html[data-skin=clear] body #dcbar b{color:#7f0000!important}
+/* posts */
+html[data-skin=clear] body .fbp{color:#16233a!important}
+html[data-skin=clear] body .fbp .bub{background:rgba(232,240,252,.95)!important;color:#16233a!important}
+html[data-skin=clear] body .acts button{color:#34476a!important;background:none!important;box-shadow:none!important;border:0!important}
+/* sheets and popups */
+html[data-skin=clear] body #sheet div,html[data-skin=clear] body #pop .pc{background:var(--lg2)!important;color:#16233a!important;border:1px solid rgba(255,255,255,.9)!important;-webkit-backdrop-filter:blur(28px) saturate(190%)!important;backdrop-filter:blur(28px) saturate(190%)!important}
+html[data-skin=clear] body .tst{background:rgba(255,255,255,.95)!important;color:#16233a!important}
+html[data-skin=clear] body #spb{background:rgba(255,255,255,.96)!important;color:#16233a!important}
+html[data-skin=clear] body .nt .nti{background:rgba(30,102,200,.15)!important}
+html[data-skin=clear] body #bnav button.on{background:none!important;box-shadow:none!important;border:0!important}
+html[data-skin=clear] body #bnav button{background:none!important;border:0!important;box-shadow:none!important}
+html[data-skin=clear] body :is(.av,.avt,[class*=av]) {color:inherit}
+html[data-skin=clear] body :is(#f,#recbar,.dsr,#rbar,#rbt,.cmpx,.acts,.fbp,#top:not(.x),.dbell,.mtabs) svg{stroke:#1d2b44!important}
+html[data-skin=clear] body #bnav .fab svg,html[data-skin=clear] body button.o svg,html[data-skin=clear] body #top button.on svg{stroke:#2a1600!important}
+html[data-skin=clear] body #bnav .fab svg{stroke:#fff!important}
+html[data-skin=clear] body #rbt{background:rgba(255,255,255,.8)!important;color:#1d2b44!important}
+html[data-skin=clear] body .av{color:#fff!important}
+html[data-skin=clear] body #f :is(#phb,#emb,#mic,#rmn){background:rgba(255,255,255,.8)!important;border:1px solid #fff!important}
+html[data-skin=clear] body #view#view#view#view#view#view#view#view#view#view#view#view#view#view#view#view#view#view#view#view#view #spp,html[data-skin=clear] body #view#view#view#view#view#view#view#view#view#view#view#view#view#view#view#view#view#view#view#view#view #spc,html[data-skin=clear] body #view#view#view#view#view#view#view#view#view#view#view#view#view#view#view#view#view#view#view#view#view .card:has([data-go2]){background:linear-gradient(135deg,rgba(255,235,205,.95),rgba(255,255,255,.75))!important;border-left:4px solid #f7931e!important;color:#16233a!important}
+html[data-skin=clear] body #view#view#view#view#view#view#view#view#view#view#view#view#view#view#view#view#view#view#view#view#view :is(#spp,#spc) :is(b,.mu,.g){color:#16233a!important}
+html[data-skin=clear] body #view#view#view#view#view#view#view#view#view#view#view#view#view#view#view#view#view#view#view#view#view .card:has([data-go2]) button{background:rgba(255,255,255,.85)!important;color:#16233a!important}
+html[data-skin=clear] body :is(.lv,.fr .lv,.dh .lv){background:rgba(255,255,255,.9)!important;color:#1e66c8!important;box-shadow:inset 0 0 0 1px rgba(30,102,200,.25)!important}
+html[data-skin=clear]{--dcbg:#fff;--dcfg:#b71c1c}
+html[data-skin=clear] body #drawer#drawer#drawer#drawer#drawer #dn#dn#dn .dsr .dbell{background:rgba(255,255,255,.85)!important;color:#e0730a!important;border:1px solid #fff!important}
+html[data-skin=clear] body #dtg#dtg#dtg{background:rgba(255,255,255,.9)!important;color:#1d2b44!important;border:1px solid #fff!important}
+html[data-skin=clear] body #dtg svg{stroke:#1d2b44!important}
