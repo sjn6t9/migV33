@@ -2929,17 +2929,18 @@ V.spin=async()=>{const d=await api('GET','/spin');const n=d.prizes.length;
   view(`<div class="cmp"><button id="sb">←</button><b>Daily Spin</b></div>
   <div class="card" style="text-align:center;padding:18px 14px">
    <div style="display:inline-grid;place-items:center;width:44px;height:44px;border-radius:12px;background:#f59e0b;color:#fff;font-size:24px">🎲</div>
-   <h2 style="margin:10px 0 4px">Daily Lucky Draw</h2>
+   <h2 style="margin:8px 0 2px;font-size:18px">Daily Lucky Draw</h2>
    <p class="mu" id="sinfo" style="margin:0 0 6px"></p>
-   <div id="whw" style="position:relative;width:min(290px,100%);aspect-ratio:1;margin:10px auto 6px">
-    <div id="wh" style="position:absolute;inset:0;transition:transform 4s cubic-bezier(.12,.7,.15,1)"><svg viewBox="0 0 320 320" width="100%" height="100%"><circle cx="${C}" cy="${C}" r="${R+8}" fill="#fde68a"/><circle cx="${C}" cy="${C}" r="${R+8}" fill="none" stroke="#f5c542" stroke-width="2"/>${slices}</svg></div>
+   <div id="whw" style="position:relative;width:min(220px,100%);aspect-ratio:1;margin:6px auto 4px;background:none!important;border:0!important;box-shadow:none!important;padding:0!important">
+    <div id="wh" style="position:absolute;inset:0;background:none!important;border:0!important;box-shadow:none!important;outline:0!important;padding:0!important;transition:transform 4s cubic-bezier(.12,.7,.15,1)"><svg viewBox="0 0 320 320" width="100%" height="100%"><circle cx="${C}" cy="${C}" r="${R+8}" fill="#fde68a"/><circle cx="${C}" cy="${C}" r="${R+8}" fill="none" stroke="#f5c542" stroke-width="2"/>${slices}</svg></div>
     <svg viewBox="0 0 320 320" width="100%" height="100%" style="position:absolute;inset:0;pointer-events:none"><path d="M148 6h24l-12 20z" fill="#3b2417" stroke="#fde68a" stroke-width="2" stroke-linejoin="round"/><circle cx="${C}" cy="${C}" r="25" fill="#3b2417" stroke="#e5e7eb" stroke-width="4"/><path d="M160 146l4 10 10 4-10 4-4 10-4-10-10-4 10-4z" fill="#fcd34d"/><path d="M173 148l1.6 3.8 3.8 1.6-3.8 1.6-1.6 3.8-1.6-3.8-3.8-1.6 3.8-1.6z" fill="#fff"/></svg>
    </div>
    <div id="res" class="big" style="font-size:22px;min-height:30px;margin:4px 0 8px"></div>
-   <button class="o" id="go" style="padding:12px 40px;font-size:18px">🎲 Spin wheel</button>
+   <button class="o" id="go" style="padding:10px 32px;font-size:16px">🎲 Spin wheel</button>
+   <button class="o" id="dism" style="display:block;margin:8px auto 0;padding:8px 26px;font-size:14px">✕ Dismiss</button>
    <p class="mu" style="margin:12px 0 0;font-size:12px">Two draws every day — at 12:00 PM and 12:00 AM. Each draw gives one spin and a missed draw cannot be reclaimed. Level-up spins can be used any time.</p>
   </div>`);
-  $('sb').onclick=()=>goBack('explore');let rot=0,D=d;
+  $('sb').onclick=()=>goBack('explore');$('dism').onclick=()=>{spinHide=Date.now()+30*60e3;const b=$('spb');if(b)b.remove();if($('sheet').classList.contains('open'))$('sheet').classList.remove('open');else if(cur==='spin')goBack('explore')};let rot=0,D=d;
   const two=x=>String(x).padStart(2,'0');
   const paint=()=>{if(!$('go'))return clearInterval(tm);const ms=D.next-Date.now();if(ms<=0&&!D.free){api('GET','/spin').then(x=>{D=x;paint()}).catch(()=>{});return}
     const can=D.free||D.spins>0,t=Math.max(0,Math.floor(ms/1000)),cd=`${two(Math.floor(t/3600))}:${two(Math.floor(t%3600/60))}:${two(t%60)}`;
