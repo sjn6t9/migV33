@@ -1323,12 +1323,13 @@ html[data-skin=navy] body #view#view#view#view#view#view#view#view#view#view#vie
 #log#log#log img.emt{width:1.3em!important;height:1.3em!important;margin:0 1px!important;vertical-align:middle!important;position:relative;top:-.05em}
 #log#log#log .rl,#log#log#log .bubble{line-height:1.4}
 
-/* disconnect notice (red) */
-.dcn#log .dcn,#log .dcn{align-self:stretch;margin:6px 4px;padding:10px 12px;border-radius:14px;background:rgba(229,57,53,.14);border:1px solid #e53935;color:#ff6b68;font-weight:700;font-size:14px;display:grid;gap:8px}
-#log .dcn b{color:#ff9a98}
-#log .dcn .dca{display:flex;gap:8px}
-html[data-skin] body #log#log#log#log#log .dcn .dca button{flex:1;height:36px!important;border-radius:10px!important;font-weight:800!important;border:1px solid #ff6b68!important;background:#0f1a2b!important;color:#ff9a98!important}
-html[data-skin] body #log#log#log#log#log .dcn .dca button.o{background:linear-gradient(#e0434b,#b3202a)!important;color:#fff!important;border-color:#ff8a8f!important}
+/* disconnect notice (red, compact, above the input) */
+#dcbar{display:flex;align-items:center;gap:6px;margin:0 8px 4px;padding:4px 8px;border-radius:10px;background:rgba(229,57,53,.16);border:1px solid #e53935;color:#ff7b78;font-size:12px;font-weight:700;line-height:1.2}
+#dcbar span{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}#dcbar b{color:#ffa9a7}
+html body #dcbar#dcbar button{height:26px!important;min-height:0!important;width:auto!important;padding:0 10px!important;border-radius:8px!important;font-size:12px!important;font-weight:800!important;border:1px solid #ff6b68!important;background:#0f1a2b!important;color:#ff9a98!important;box-shadow:none!important}
+html body #dcbar#dcbar button.o{background:linear-gradient(#e0434b,#b3202a)!important;color:#fff!important;border-color:#ff8a8f!important}
+html body #rtabs#rtabs .rt.dcd{position:relative;box-shadow:0 0 0 2px #e53935!important}
+html body #rtabs#rtabs .rt.dcd::after{content:'!';position:absolute;top:-5px;right:-4px;min-width:16px;height:16px;border-radius:8px;background:#e53935;color:#fff;font-size:11px;font-weight:800;line-height:16px;text-align:center}
 </style>
 <script>try{if(localStorage.tk||sessionStorage.tk)document.documentElement.dataset.boot=1;var k=localStorage.skin==='dark'?'dark':'day';document.documentElement.dataset.skin=k==='dark'?'dark':'navy';document.documentElement.dataset.theme='dark'}catch(e){document.documentElement.dataset.skin='navy';document.documentElement.dataset.theme='dark'}</script>
 <style>/* Name effects from the colour shop: each one animates the glow around the username */
@@ -1552,13 +1553,13 @@ $('s2').onsubmit=async e=>{e.preventDefault();const[r,d]=await post('/api/signup
 /* ---------- socket ---------- */
 let tries=0;
 const DC=new Set();
-function showDC(){const r=room;if(!r||cur!=='chat'||r.startsWith('dm:')||DC.has(r)||!OPEN.includes(r)||!$('log'))return;DC.add(r);
-  const d=document.createElement('div');d.className='dcn';d.innerHTML=`<div>⚠ You were disconnected from <b>${esc(r)}</b>.</div><div class="dca"><button class="o" data-dc="re">Rejoin</button><button data-dc="lv">Leave</button></div>`;
-  d.querySelectorAll('button').forEach(b=>{const o=b.classList.contains('o');[['height','36px'],['border-radius','10px'],['font-weight','800'],['border','1px solid '+(o?'#ff8a8f':'#ff6b68')],['background',o?'linear-gradient(#e0434b,#b3202a)':'#0f1a2b'],['color',o?'#fff':'#ff9a98'],['box-shadow','none']].forEach(([k,v])=>b.style.setProperty(k,v,'important'))});
-  $('log').append(d);$('log').scrollTop=1e9;['t','phb','emb','mic'].forEach(i=>{const e=$(i);if(e)e.disabled=true});
-  d.onclick=e=>{const b=e.target.closest('[data-dc]');if(!b)return;if(b.dataset.dc==='lv'){DC.delete(r);closeTab(r);return}
+function mountDC(r){if($('dcbar')||!$('f'))return;const d=document.createElement('div');d.id='dcbar';d.innerHTML=`<span>⚠ Disconnected from <b>${esc(rtitle(r))}</b></span><button class="o" data-dc="re">Rejoin</button><button data-dc="lv">Leave</button>`;
+  d.querySelectorAll('button').forEach(b=>{const o=b.classList.contains('o');[['height','26px'],['min-height','0'],['width','auto'],['padding','0 10px'],['border-radius','8px'],['font-size','12px'],['font-weight','800'],['border','1px solid '+(o?'#ff8a8f':'#ff6b68')],['background',o?'linear-gradient(#e0434b,#b3202a)':'#0f1a2b'],['color',o?'#fff':'#ff9a98'],['box-shadow','none']].forEach(([k,v])=>b.style.setProperty(k,v,'important'))});
+  $('f').before(d);['t','phb','emb','mic'].forEach(i=>{const e=$(i);if(e)e.disabled=true});
+  d.onclick=e=>{const b=e.target.closest('[data-dc]');if(!b)return;if(b.dataset.dc==='lv'){DC.delete(r);d.remove();closeTab(r);return}
     if(!ws||ws.readyState!==1){toast('Reconnecting… try again in a moment');return}
-    DC.delete(r);d.remove();['t','phb','emb','mic'].forEach(i=>{const e=$(i);if(e)e.disabled=false});skipIntro=true;tx({t:'join',room:r,have:true})}}
+    DC.delete(r);d.remove();['t','phb','emb','mic'].forEach(i=>{const e=$(i);if(e)e.disabled=false});skipIntro=true;tx({t:'join',room:r,have:true});drawTabs()}}
+function showDC(){const r=room;if(!r||cur!=='chat'||r.startsWith('dm:')||DC.has(r)||!OPEN.includes(r)||!$('log'))return;DC.add(r);toast('⚠ Disconnected from '+rtitle(r),true);drawTabs();mountDC(r)}
 function connect(){
   ws=new WebSocket((location.protocol==='https:'?'wss':'ws')+'://'+location.host+'/ws');
   ws.onopen=()=>ws.send(JSON.stringify({t:'auth',token:tok(),offline:isOff()}));
@@ -2162,9 +2163,9 @@ V.chat=async(r)=>{room=r;if(!r.startsWith('dm:'))lastRoom=r;target='';pend=null;
   drawOnline();if(AL.has(r)){showAL(r);return}tx({t:'join',room:r,have:hadLog});
   if(r==='games'){$('uno').style.display='block';$('uno').innerHTML='<button class="o" id="jn">Join UNO</button>';$('jn').onclick=()=>uno({a:'join'})}};
 /* room tabs: tap to switch, swipe left/right to move between open rooms */
-function drawTabs(){const t=$('rtabs');if(!t)return;if(!RFL){RFL=1;setTimeout(loadRF,0)}
+function drawTabs(){const t=$('rtabs');if(!t)return;if(cur==='chat'&&DC.has(room)&&!$('dcbar'))mountDC(room);if(!RFL){RFL=1;setTimeout(loadRF,0)}
   UNR[room]=0;
-  const inch=document.body.classList.contains('inchat');t.innerHTML=OPEN.map(x=>(x===room&&inch)?`<button class="rt on" data-r="${esc(x)}">${rfl(x)}${esc(rtitle(x))}</button>`:`<button class="rt mini${UNR[x]?' has':''}" data-r="${esc(x)}" title="${esc(rtitle(x))}" aria-label="${esc(rtitle(x))}${UNR[x]?' — '+UNR[x]+' new':''}">${RF[x]?rfl(x).replace('class="flg rfl"','class="flg rfl rfm"').replace('<img','<span class="rf"><img')+'</span>':''}${RF[x]?'':(()=>{const f=rtitle(x).match(/[\u{1F1E6}-\u{1F1FF}]{2}/u);return f?`<span class="rf">${f[0]}</span>`:'<svg viewBox="0 0 24 24" width="18" height="18"><path d="M4 5h16v11H9l-5 4z" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"/></svg>'})()}${UNR[x]?`<b class="ub">${UNR[x]>9?'9+':UNR[x]}</b>`:''}</button>`).join('');
+  const inch=document.body.classList.contains('inchat');t.innerHTML=OPEN.map(x=>(x===room&&inch)?`<button class="rt on${DC.has(x)?' dcd':''}" data-r="${esc(x)}">${rfl(x)}${esc(rtitle(x))}</button>`:`<button class="rt mini${UNR[x]?' has':''}${DC.has(x)?' dcd':''}" data-r="${esc(x)}" title="${esc(rtitle(x))}" aria-label="${esc(rtitle(x))}${UNR[x]?' — '+UNR[x]+' new':''}">${RF[x]?rfl(x).replace('class="flg rfl"','class="flg rfl rfm"').replace('<img','<span class="rf"><img')+'</span>':''}${RF[x]?'':(()=>{const f=rtitle(x).match(/[\u{1F1E6}-\u{1F1FF}]{2}/u);return f?`<span class="rf">${f[0]}</span>`:'<svg viewBox="0 0 24 24" width="18" height="18"><path d="M4 5h16v11H9l-5 4z" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"/></svg>'})()}${UNR[x]?`<b class="ub">${UNR[x]>9?'9+':UNR[x]}</b>`:''}</button>`).join('');
   t.onclick=e=>{const c=e.target.closest('[data-x]');if(c){e.stopPropagation();return closeTab(c.dataset.x)}
     if(e.target.closest('[data-add]'))return go('rooms');const b=e.target.closest('[data-r]');if(b&&(b.dataset.r!==room||cur!=='chat'))go('chat',b.dataset.r)};
   {const on=t.querySelector('.on');if(on){const l=on.offsetLeft-t.offsetLeft,w=on.offsetWidth;if(l<t.scrollLeft)t.scrollLeft=Math.max(0,l-6);else if(l+w>t.scrollLeft+t.clientWidth)t.scrollLeft=l+w-t.clientWidth+6}}}
