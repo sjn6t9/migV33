@@ -797,7 +797,7 @@ html[data-theme=dark] #emp button:hover{background:#0f1a2b}
 #top #coins::before{content:'';flex:none;width:28px;height:28px;background:url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><circle cx='16' cy='16' r='14' fill='%23f7b733' stroke='%23b97a00' stroke-width='2'/><circle cx='16' cy='16' r='9.5' fill='none' stroke='%23b97a00' stroke-width='1.6'/><path d='M16 10v12M19 12.5h-4.2a2.2 2.2 0 000 4.4h2.4a2.2 2.2 0 010 4.4H13' fill='none' stroke='%23b97a00' stroke-width='1.8' stroke-linecap='round'/></svg>") center/contain no-repeat}
 #top #coins.show{font-size:13px}
 #bnav{transition:transform .42s cubic-bezier(.22,.8,.25,1),opacity .3s ease}
-body.hb #bnav{transform:translate(-50%,170%)!important;opacity:0;pointer-events:none}
+body.hb #bnav{transform:translate(0,170%)!important;opacity:0;pointer-events:none}
 @media (max-width:999px){#app{position:relative}
 #hdr{position:absolute;top:0;left:0;right:0;z-index:4;transition:transform .42s cubic-bezier(.22,.8,.25,1),opacity .3s ease;will-change:transform,opacity}
 body.hb #hdr{transform:translateY(-115%);opacity:0;pointer-events:none}
@@ -1185,7 +1185,7 @@ html[data-skin=navy][data-theme] #f#f#f#f#f#f#f#f#f#f #phb,html[data-skin=navy][
 .fr .mu .nost{opacity:.55}
 html,body{max-width:100%;overflow-x:hidden;overscroll-behavior-x:none}
 #bnav{left:0!important;right:0!important;margin:0 auto!important;transform:none!important;-webkit-transform:none!important;will-change:auto}
-body.hb #bnav{transform:translate(-50%,170%)!important}
+body.hb #bnav{transform:translate(0,170%)!important}
 .tabbar{box-sizing:border-box;min-width:0;width:calc(100% - 20px)!important;max-width:none;margin:10px auto!important}
 .tabbar button{min-width:0;padding:11px 2px!important;font-size:13px!important;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 @media (max-width:999px){input,textarea,select,#view input,#dn input{font-size:16px!important}}
@@ -1331,6 +1331,19 @@ html body #dcbar#dcbar button.o{background:linear-gradient(#e0434b,#b3202a)!impo
 html body #rtabs#rtabs .rt.dcd{position:relative;box-shadow:0 0 0 2px #e53935,0 0 12px rgba(229,57,53,.75)!important;animation:dcp 1.2s ease-in-out infinite}
 html body #rtabs#rtabs .rt.dcd::after{content:'!';position:absolute;top:2px;right:2px;min-width:18px;height:18px;border-radius:9px;background:#e53935;color:#fff;font-size:13px;font-weight:900;line-height:18px;text-align:center;box-shadow:0 0 0 2px #fff;z-index:3}
 @keyframes dcp{0%,100%{box-shadow:0 0 0 2px #e53935,0 0 6px rgba(229,57,53,.5)}50%{box-shadow:0 0 0 3px #ff1744,0 0 18px rgba(255,23,68,.95)}}
+@keyframes dOut{to{transform:translateX(-30%);opacity:0}}@keyframes bgOut{to{background:#0000}}
+@media (max-width:999px){#drawer.closing{animation:bgOut .26s ease forwards}#drawer.closing nav{animation:dOut .26s cubic-bezier(.4,0,.8,.6) forwards!important}#drawer{transition:none}}
+html body.onhome #sub#sub#sub{display:none!important}
+/* custom headline colours */
+html[data-skin=navy] body #strip#strip#strip#strip .h6{color:#ffe08a!important}
+html[data-skin=navy] body #strip#strip#strip#strip .h7{color:#9ee6c0!important}
+html[data-skin=navy] body #strip#strip#strip#strip .h8{color:#ffa8d0!important}
+html[data-skin=dark] body #strip#strip#strip#strip .h6{color:#a5f3fc!important}
+html[data-skin=dark] body #strip#strip#strip#strip .h7{color:#bbf7d0!important}
+html[data-skin=dark] body #strip#strip#strip#strip .h8{color:#f5d0fe!important}
+#strip .tk{padding-right:0}
+/* bottom bar hides straight down from the centre (it is centred with left/right:0, so no -50% shift) */
+html body.hb #bnav#bnav{transform:translate(0,170%)!important;opacity:0!important;pointer-events:none!important}
 </style>
 <script>try{if(localStorage.tk||sessionStorage.tk)document.documentElement.dataset.boot=1;var q=localStorage.skin,k=q==='dark'?'dark':q==='clear'?'clear':q==='navy'?'navy':(matchMedia('(prefers-color-scheme: dark)').matches?'navy':'clear');document.documentElement.dataset.skin=k;document.documentElement.dataset.theme=k==='clear'?'light':'dark'}catch(e){document.documentElement.dataset.skin='navy';document.documentElement.dataset.theme='dark'}</script>
 <style>/* Name effects from the colour shop: each one animates the glow around the username */
@@ -1438,8 +1451,8 @@ html body #hdr #top #rtabs .rt.mini .rfl{margin:0}
 html body #hdr #top #rtabs .rt .rfl{width:20px;height:14px}
 html body #hdr #top #rtabs .rt.on{display:inline-flex!important;align-items:center;justify-content:center;gap:0}
 </style>
-<link rel="stylesheet" href="theme-dark.css?v=25">
-<link rel="stylesheet" href="theme-clear.css?v=5">
+<link rel="stylesheet" href="theme-dark.css?v=26">
+<link rel="stylesheet" href="theme-clear.css?v=6">
 <style>/* role name colours: kept in their own block so they always load */
 :root{--nm-admin:#e8591f;--nm-staff:#2f9a3d;--nm-mentor:#b01020;--nm-headmentor:#8a6a14;--nm-merchant:#7e22ce;--nm-vip:#00706f;--nm-user:#2a7bd8}
 html[data-theme=dark],#log.navy,#log.dark{--nm-admin:#ff7a33;--nm-staff:#4cc24f;--nm-mentor:#f2394a;--nm-headmentor:#e8c23c;--nm-merchant:#b45cff;--nm-vip:#2ec4bf;--nm-user:#6db3ff}
@@ -1559,9 +1572,8 @@ function mountDC(r,msg,why){if($('dcbar')||!$('f'))return;why=why||DCW[r]||'';co
   d.querySelectorAll('button').forEach(b=>{const o=b.classList.contains('o');[['height','26px'],['min-height','0'],['width','auto'],['padding','0 10px'],['border-radius','8px'],['font-size','12px'],['font-weight','800'],['border','1px solid '+(o?'#ff8a8f':'#ff6b68')],['background',o?'linear-gradient(#e0434b,#b3202a)':'var(--dcbg,#0f1a2b)'],['color',o?'#fff':'var(--dcfg,#ff9a98)'],['box-shadow','none']].forEach(([k,v])=>b.style.setProperty(k,v,'important'))});
   $('f').before(d);['t','phb','emb','mic'].forEach(i=>{const e=$(i);if(e)e.disabled=true});
   d.onclick=e=>{const b=e.target.closest('[data-dc]');if(!b)return;if(b.dataset.dc==='lv'){DC.delete(r);AL.delete(r);d.remove();closeTab(r);return}
-    if(AL.has(r)){DC.delete(r);AL.delete(r);dropRoom(r);d.remove();V.chat(r);return}
     if(!ws||ws.readyState!==1){toast('Reconnecting… try again in a moment');return}
-    DC.delete(r);d.remove();['t','phb','emb','mic'].forEach(i=>{const e=$(i);if(e)e.disabled=false});skipIntro=true;tx({t:'join',room:r,have:true});drawTabs()}}
+    DC.delete(r);AL.delete(r);dropRoom(r);d.remove();V.chat(r)}}
 const dcWhy=e=>{const c=e&&e.code;
   if(!navigator.onLine)return 'Your internet connection was lost. Check your Wi-Fi or mobile data, then tap Rejoin.';
   if(c===1008||c===4001)return 'The server closed your session. Please log in again if this keeps happening.';
@@ -1625,14 +1637,16 @@ const cn=c=>ST.unlimited?'∞ coins':c+' coins';
 const V={};const TT={notifs:'Notifications',help:'Help & Support',feedback:'Feedback & Report',privacy:'Privacy Policy',terms:'Terms & Community Rules',panel:'Panel',admin:'Admin Panel',home:'Home',rooms:'Chat Rooms',chat:'Chat',profile:'Profile',account:'My Account',friends:'Friends',explore:'Explore',store:'Store',contests:'Contests',peoples:'Peoples',spin:'Daily Spin',cmds:'Command List',settings:'Settings',mail:'Mail',mailc:'New Mail'};
 let PREV=null,CURA;const goBack=d=>{const p=PREV;if(p&&p.v&&p.v!=='spin')go(p.v,p.a);else go(d||'home')};
 let TNE=null,CNE=null;function placeHdr(on){TNE=TNE||$('tn');CNE=CNE||$('coins');if(!TNE||!CNE)return;const host=on&&$('rbx'),top=$('top');if(host){if(TNE.parentNode!==host){host.append(TNE)}if(top&&CNE.parentNode!==top)top.append(CNE)}else if(top&&(TNE.parentNode!==top||CNE.parentNode!==top)){top.append(TNE,CNE)}}
-async function go(v,a){document.body.classList.toggle('inchat',v==='chat');try{drawTabs()}catch{}try{TNE=TNE||$('tn');CNE=CNE||$('coins');if(v!=='chat'){placeHdr(false);document.querySelectorAll('#hdr #rbw,#hdr #rbt').forEach(n=>n.remove())}}catch{}document.body.style.overflow='';document.documentElement.style.overflow='';$('view')&&($('view').style.overflowY='');if(cur==='chat'&&$('log')&&room&&OPEN.includes(room)&&!room.startsWith('dm:'))LOGC[room]=$('log').innerHTML;if(cur&&cur!==v)PREV={v:cur,a:CURA};cur=v;CURA=a;try{if(v!=='chat')sessionStorage.lastv=JSON.stringify([v,a===undefined?null:a])}catch{}$('drawer').classList.remove('open');bnSet(v,a);
+function closeDrawer(){const d=document.getElementById('drawer');if(!d||!d.classList.contains('open'))return;if(innerWidth>=1000){d.classList.remove('open');return}
+  d.classList.add('closing');clearTimeout(closeDrawer.t);closeDrawer.t=setTimeout(()=>{d.classList.remove('open','closing')},260)}
+async function go(v,a){document.body.classList.toggle('inchat',v==='chat');try{drawTabs()}catch{}try{TNE=TNE||$('tn');CNE=CNE||$('coins');if(v!=='chat'){placeHdr(false);document.querySelectorAll('#hdr #rbw,#hdr #rbt').forEach(n=>n.remove())}}catch{}document.body.style.overflow='';document.documentElement.style.overflow='';$('view')&&($('view').style.overflowY='');if(cur==='chat'&&$('log')&&room&&OPEN.includes(room)&&!room.startsWith('dm:'))LOGC[room]=$('log').innerHTML;if(cur&&cur!==v)PREV={v:cur,a:CURA};cur=v;CURA=a;try{if(v!=='chat')sessionStorage.lastv=JSON.stringify([v,a===undefined?null:a])}catch{}closeDrawer();bnSet(v,a);
   $('th').classList.toggle('on',v==='home');$('tf').classList.toggle('on',v==='friends');$('tr').classList.toggle('on',v==='rooms'||v==='chat');
   if(innerWidth>=1000)drawNav();$('view').scrollTop=0;$('stt').textContent=TT[v]||'';document.body.classList.toggle('onhome',v==='home');$('strip').style.display='none';$('view').onclick=null;document.body.classList.remove('hb');try{await refreshVer();await V[v](a)}catch(e){fail(e)}}
 addEventListener('resize',()=>{if(me&&innerWidth>=1000)drawNav()});$('th').onclick=()=>go('home');$('tf').onclick=()=>go('friends');$('tr').onclick=()=>go('rooms');$('mb').onclick=()=>{if(innerWidth>=1000){const off=document.body.classList.toggle('nav-off');try{localStorage.navoff=off?1:''}catch(e){}if(!off){drawNav();setTimeout(navAnim,120)}return}drawNav();$('drawer').classList.add('open');navAnim()};
-$('drawer').onclick=e=>{if(e.target.id==='drawer')$('drawer').classList.remove('open')};
+$('drawer').onclick=e=>{if(e.target.id==='drawer')closeDrawer()};
 function navAnim(){const d=$('dn');d.classList.remove('anim');void d.offsetWidth;d.classList.add('anim');setTimeout(()=>d.classList.remove('anim'),1200)}
 try{if(localStorage.navoff)document.body.classList.add('nav-off')}catch(e){}
-$('dtg').onclick=e=>{e.stopPropagation();if(innerWidth>=1000){const off=document.body.classList.toggle('nav-off');try{localStorage.navoff=off?1:''}catch(e){}if(!off)setTimeout(navAnim,120)}else $('drawer').classList.remove('open')};
+$('dtg').onclick=e=>{e.stopPropagation();if(innerWidth>=1000){const off=document.body.classList.toggle('nav-off');try{localStorage.navoff=off?1:''}catch(e){}if(!off)setTimeout(navAnim,120)}else closeDrawer()};
 let NUN=null;const paintBell=()=>{document.querySelectorAll('#dbell .bbd').forEach(b=>{b.hidden=!NUN;b.textContent=NUN>99?'99+':NUN})};
 function drawNav(){const items=[['🪪','My Profile','profile'],['🏠','Home','home'],['✉️','Mail','mail'],['💬','Chat Rooms','rooms'],['👥','Friends','friends'],['💰','My Account','account'],['🧭','Explore','explore'],['🛍️','Store','store'],['🏆','Contests','contests'],['🧑‍🤝‍🧑','Peoples','peoples'],['🎡','Daily Spin','spin'],['⌨️','Command List','cmds'],['🛟','Help & Support','help'],['💬','Feedback & Report','feedback'],['⚙️','Settings','settings']];if(ST.role==='staff')items.splice(items.length-1,0,['🛡️','Admin Panel','admin']);
   else if(ST.role!=='admin')items.splice(items.length-1,0,['🏪',{user:'Become a Merchant',merchant:'Merchant Panel',mentor:'Mentor Panel',headmentor:'Head Mentor Panel'}[ST.role]||'Panel','panel']);

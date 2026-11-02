@@ -89,3 +89,12 @@ html[data-skin=clear] body #log#log#log :is(.b){background:#fff!important;box-sh
 html[data-skin=clear] body #log#log#log .b.mine{background:#dff5e3!important}
 html[data-skin=clear] body #view button.o{font-weight:600!important}html[data-skin=clear] body #view #pb{font-weight:800!important}
 html[data-skin=clear] body #dcbar span,html[data-skin=clear] body #dcbar span em{color:#b71c1c!important}
+/* headline colours on light glass */
+html[data-skin=clear] body #strip#strip#strip#strip .h1,html[data-skin=clear] body #strip#strip#strip#strip .h1 b{color:#9a5b00!important}
+html[data-skin=clear] body #strip#strip#strip#strip .h2,html[data-skin=clear] body #strip#strip#strip#strip .h2 b{color:#1f7a3d!important}
+html[data-skin=clear] body #strip#strip#strip#strip .h3,html[data-skin=clear] body #strip#strip#strip#strip .h3 b{color:#c62828!important}
+html[data-skin=clear] body #strip#strip#strip#strip .h4,html[data-skin=clear] body #strip#strip#strip#strip .h4 b{color:#1e66c8!important}
+html[data-skin=clear] body #strip#strip#strip#strip .h5,html[data-skin=clear] body #strip#strip#strip#strip .h5 b{color:#c4540a!important}
+html[data-skin=clear] body #strip#strip#strip#strip .h6,html[data-skin=clear] body #strip#strip#strip#strip .h6 b{color:#8a5a00!important}
+html[data-skin=clear] body #strip#strip#strip#strip .h7,html[data-skin=clear] body #strip#strip#strip#strip .h7 b{color:#1f7a3d!important}
+html[data-skin=clear] body #strip#strip#strip#strip .h8,html[data-skin=clear] body #strip#strip#strip#strip .h8 b{color:#a02a78!important}
