@@ -1731,7 +1731,7 @@ async function on(m){
   if(EMB){if(['notif','mail','announce','levelup','xp'].includes(m.t))return;if(m.t==='msg'&&m.room===EMBR&&m.user!==me&&m.kind!=='err'){try{parent.postMessage({t:'ev'},'*')}catch{}}}
   if(m.t==='error'){if(m.error==='auth'||m.error==='banned'){if(m.error==='banned')alert('Your account has been banned.');logout()}else alert(m.error)}
   if(m.t==='ready'){const first=!me;me=m.user;api('GET','/emoticons').then(setCE).catch(()=>{});G=m.gifts;UCOL=m.ucols||{};UFX=m.ufx||{};$('auth').style.display='none';$('app').style.display='flex';document.body.classList.add('in');
-    ST=await api('GET','/me').catch(()=>({}));ROLES[me]=ST.role;api('GET','/mail/unread').then(x=>setMailN(x.n)).catch(()=>{});await refreshVer();$('coins').textContent=cn(ST.coins);drawNav();document.documentElement.removeAttribute('data-boot');saveOpen();if(!first&&room&&OPEN.includes(room)&&!room.startsWith('dm:')&&!AL.has(room)&&!DC.has(room)){skipIntro=true;tx({t:'join',room})}if(first&&EMB){go('chat',EMBR);return}if(first)api('GET','/announcement').then(showAnn).catch(()=>{});if(first){let r=null;try{r=JSON.parse(sessionStorage.lastv||'null')}catch{}if(r&&V[r[0]]&&r[0]!=='admin')go(r[0],r[1]===null?undefined:r[1]);else go('home');try{JSON.parse(sessionStorage.wins||'[]').forEach(x=>openWin(x.r,x.m))}catch{}}}
+    ST=await api('GET','/me').catch(()=>({}));ROLES[me]=ST.role;api('GET','/mail/unread').then(x=>setMailN(x.n)).catch(()=>{});await refreshVer();$('coins').textContent=cn(ST.coins);drawNav();document.documentElement.removeAttribute('data-boot');saveOpen();if(!first&&room&&OPEN.includes(room)&&!room.startsWith('dm:')&&!AL.has(room)&&!DC.has(room)){skipIntro=true;tx({t:'join',room})}if(first&&EMB){go('chat',EMBR);return}if(first)api('GET','/announcement').then(showAnn).catch(()=>{});if(first){let r=null;try{r=JSON.parse(sessionStorage.lastv||'null')}catch{}if(r&&V[r[0]]&&r[0]!=='admin')go(r[0],r[1]===null?undefined:r[1]);else go('home');try{const ws0=JSON.parse(sessionStorage.wins||'[]');if(innerWidth>=1000)ws0.forEach(x=>openWin(x.r,x.m));else if(!OPEN.length){ws0.forEach(x=>{if(!OPEN.includes(x.r))OPEN.push(x.r)});if(OPEN.length)saveOpen()}}catch{}}}
   if(m.t==='announce')showAnn(m.a);
   if(m.t==='mail'){setMailN(m.n);toast(`📧 New mail from ${m.from}: ${m.subject}`);if(cur==='mail'&&!MOPEN)V.mail()}
   if(m.t==='roomcfg'&&m.room===room&&RI){const ch=(RI.descr||'')!==m.descr;Object.assign(RI,{descr:m.descr,minlv:m.minlv,mods:m.mods,supers:m.supers});if(ch&&m.descr&&$('log'))L(m.room[0].toUpperCase()+m.room.slice(1),`📝 ${esc(m.descr)}`)}
@@ -1791,7 +1791,7 @@ function wDock(){let d=$('wdock');if(!d){d=document.createElement('div');d.id='w
     const p=e.target.closest('[data-wp]');if(p)openWin(p.dataset.wp)}}return d}
 function wIcon(r,sz){const dm=r.startsWith('dm:'),f=!dm&&RF[r]?fu(RF[r]):'';return dm?av(rtitle(r),sz):f?`<img class="wf" src="${esc(f)}" alt="">`:'<span class="wf">💬</span>'}
 function wFlags(){api('GET','/rooms').then(rs=>{rs.forEach(x=>{RF[x.name]=x.flag||''});WINS.forEach(w=>{const i=w.el&&w.el.querySelector('.wi');if(i)i.innerHTML=wIcon(w.r,26)});wLayout()}).catch(()=>{})}
-function openWin(r){if(EMB||!r)return;if(!r.startsWith('dm:')&&!(r in RF)&&!window._wfl){window._wfl=1;setTimeout(()=>{window._wfl=0},3000);wFlags()}
+function openWin(r){if(EMB||!r||innerWidth<1000)return;if(!r.startsWith('dm:')&&!(r in RF)&&!window._wfl){window._wfl=1;setTimeout(()=>{window._wfl=0},3000);wFlags()}
   let w=WINS.find(x=>x.r===r);
   if(!w){const el=document.createElement('section');el.className='cw';el.innerHTML=`<header><span class="wi">${wIcon(r,26)}</span><b>${esc(rtitle(r))}</b><button type="button" data-wm="${esc(r)}" aria-label="Minimize"><svg viewBox="0 0 24 24"><path d="M6 17h12"/></svg></button><button type="button" data-wx="${esc(r)}" aria-label="Close"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button></header><iframe title="${esc(rtitle(r))}" allow="microphone; autoplay; clipboard-write" src="${esc(location.pathname)}?w=${encodeURIComponent(r)}"></iframe>`;
     w={r,min:false,n:0,ts:0,el};WINS.push(w);wDock().querySelector('#wrow').append(el)}
@@ -1813,7 +1813,15 @@ function wTabs(){const t=$('rtabs');if(!t||EMB||innerWidth<1000)return;
   t.innerHTML=WINS.map(w=>{const x=w.r,vis=w.el&&w.el.classList.contains('vis');if(vis)return `<button class="rt on" data-wt="${esc(x)}" title="${esc(rtitle(x))}">${x.startsWith('dm:')?'':rfl(x)}${esc(rtitle(x))}</button>`;
     return `<button class="rt mini${w.n?' has':''}" data-wt="${esc(x)}" title="${esc(rtitle(x))}" aria-label="${esc(rtitle(x))}${w.n?' — '+w.n+' new':''}">${RF[x]?rfl(x).replace('class="flg rfl"','class="flg rfl rfm"').replace('<img','<span class="rf"><img')+'</span>':(x.startsWith('dm:')?'<span class="rf">'+av(rtitle(x),20)+'</span>':'<svg viewBox="0 0 24 24" width="18" height="18"><path d="M4 5h16v11H9l-5 4z" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"/></svg>')}${w.n?`<b class="ub">${w.n>9?'9+':w.n}</b>`:''}</button>`}).join('');
   t.onclick=e=>{const b=e.target.closest('[data-wt]');if(b)openWin(b.dataset.wt)}}
-addEventListener('resize',()=>{if(!EMB)wLayout()});
+let WMODE=innerWidth>=1000?'d':'m';
+function wSwitch(){if(EMB||!me)return;const m=innerWidth>=1000?'d':'m';if(m===WMODE)return;WMODE=m;
+  if(m==='m'){const rs=WINS.slice().sort((a,b)=>a.ts-b.ts),last=rs.length?rs[rs.length-1].r:null;
+    WINS.forEach(w=>{if(!OPEN.includes(w.r))OPEN.push(w.r)});[...WINS].forEach(w=>closeWin(w));saveOpen();
+    const t=last||OPEN[0];if(t)setTimeout(()=>{if(innerWidth<1000)go('chat',t)},450);else try{drawTabs()}catch{}}
+  else{const rs=OPEN.slice(),cr=cur==='chat'?room:null;if(cr)try{tx({t:'leave',room:cr})}catch{}
+    rs.forEach(r=>dropRoom(r));OPEN=[];saveOpen();if(cur==='chat')go('home');
+    rs.filter(r=>r!==cr).forEach(r=>openWin(r));if(cr)openWin(cr);else if(rs.length)openWin(rs[rs.length-1]);wLayout()}}
+addEventListener('resize',()=>{if(!EMB){wSwitch();wLayout()}});
 if(!EMB){addEventListener('message',e=>{const d=e.data;if(!d||typeof d!=='object')return;const w=WINS.find(x=>x.el&&x.el.querySelector('iframe').contentWindow===e.source);if(!w)return;
   if(d.t==='ev'){if(!w.el.classList.contains('vis')){w.n=Math.min(99,w.n+1);wLayout()}}
   else if(d.t==='closeme')closeWin(w);
