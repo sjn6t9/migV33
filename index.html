@@ -1553,10 +1553,11 @@ $('s2').onsubmit=async e=>{e.preventDefault();const[r,d]=await post('/api/signup
 /* ---------- socket ---------- */
 let tries=0;
 const DC=new Set();
-function mountDC(r){if($('dcbar')||!$('f'))return;const d=document.createElement('div');d.id='dcbar';d.innerHTML=`<span>⚠ Disconnected from <b>${esc(rtitle(r))}</b></span><button class="o" data-dc="re">Rejoin</button><button data-dc="lv">Leave</button>`;
+function mountDC(r,msg){if($('dcbar')||!$('f'))return;const d=document.createElement('div');d.id='dcbar';d.innerHTML=`<span>⚠ ${msg||'Disconnected from <b>'+esc(rtitle(r))+'</b>'}</span><button class="o" data-dc="re">Rejoin</button><button data-dc="lv">Leave</button>`;
   d.querySelectorAll('button').forEach(b=>{const o=b.classList.contains('o');[['height','26px'],['min-height','0'],['width','auto'],['padding','0 10px'],['border-radius','8px'],['font-size','12px'],['font-weight','800'],['border','1px solid '+(o?'#ff8a8f':'#ff6b68')],['background',o?'linear-gradient(#e0434b,#b3202a)':'#0f1a2b'],['color',o?'#fff':'#ff9a98'],['box-shadow','none']].forEach(([k,v])=>b.style.setProperty(k,v,'important'))});
   $('f').before(d);['t','phb','emb','mic'].forEach(i=>{const e=$(i);if(e)e.disabled=true});
-  d.onclick=e=>{const b=e.target.closest('[data-dc]');if(!b)return;if(b.dataset.dc==='lv'){DC.delete(r);d.remove();closeTab(r);return}
+  d.onclick=e=>{const b=e.target.closest('[data-dc]');if(!b)return;if(b.dataset.dc==='lv'){DC.delete(r);AL.delete(r);d.remove();closeTab(r);return}
+    if(AL.has(r)){DC.delete(r);AL.delete(r);dropRoom(r);d.remove();V.chat(r);return}
     if(!ws||ws.readyState!==1){toast('Reconnecting… try again in a moment');return}
     DC.delete(r);d.remove();['t','phb','emb','mic'].forEach(i=>{const e=$(i);if(e)e.disabled=false});skipIntro=true;tx({t:'join',room:r,have:true});drawTabs()}}
 function showDC(){const r=room;if(!r||cur!=='chat'||r.startsWith('dm:')||DC.has(r)||!OPEN.includes(r)||!$('log'))return;DC.add(r);toast('⚠ Disconnected from '+rtitle(r),true);drawTabs();mountDC(r)}
@@ -1603,15 +1604,13 @@ async function on(m){
   if(m.t==='history'&&$('log')&&(!m.room||m.room===room))m.items.forEach(add)
   if(m.t==='msg'){if(m.room===room&&$('log'))add(m);else if(m.room&&!m.room.startsWith('dm:')&&(m.room===room||OPEN.includes(m.room))){(BUF[m.room]=BUF[m.room]||[]).push(m);if(BUF[m.room].length>200)BUF[m.room].shift();if(m.bg&&m.room!==room){UNR[m.room]=(UNR[m.room]||0)+1;drawTabs()}}}
   if(m.t==='uno')renderUno(m);
-  if(m.t==='kicked'&&m.auto){AL.add(m.room);dropRoom(m.room);if(cur==='chat'&&room===m.room)showAL(m.room);else drawTabs();return}
+  if(m.t==='kicked'&&m.auto){AL.add(m.room);dropRoom(m.room);DC.add(m.room);if(cur==='chat'&&room===m.room)showAL(m.room);else{toast('⚠ Disconnected from '+rtitle(m.room),true);drawTabs()}return}
   if(m.t==='kicked'){OPEN=OPEN.filter(x=>x!==m.room);dropRoom(m.room);saveOpen();if(m.auto)toast(`You left ${m.room} after 30 minutes without chatting. Join again any time.`);else if(m.renamed)toast(`${m.room} was renamed to ${m.renamed}.`);else toast(m.text||`You were removed from ${m.room} by ${m.by}.`,true);go('rooms')}
   if(m.t==='denied'){OPEN=OPEN.filter(x=>x!==m.room);dropRoom(m.room);saveOpen();toast(m.error,true);go('rooms')}
 }
 let G={},RM=[],RI=null,OPEN=[];try{OPEN=JSON.parse(sessionStorage.open||localStorage.open||'[]')}catch{}
 const AL=new Set();   // rooms the server removed me from after 30 minutes
-function showAL(r){const lg=$('log');if(!lg)return;lg.innerHTML=`<div class="alnote"><div>⏱ You left <b>${esc(r)}</b> automatically after 30 minutes without chatting.</div><div class="mu">Earlier chat is not shown after you come back.</div><button class="o" id="alj">Rejoin</button></div>`;
-  ['t','phb','emb','mic'].forEach(i=>{const e=$(i);if(e)e.disabled=true});const t=$('t');if(t)t.placeholder='You left this room';
-  $('alj').onclick=()=>{AL.delete(r);dropRoom(r);V.chat(r)};drawTabs()}
+function showAL(r){const lg=$('log');if(!lg)return;lg.innerHTML='';DC.add(r);drawTabs();mountDC(r,'Disconnected from <b>'+esc(rtitle(r))+'</b> · 30 min inactive');const t=$('t');if(t)t.placeholder='You are disconnected from this room'}
 const UNR={},LOGC={},BUF={};let skipIntro=false;const dropRoom=x=>{delete LOGC[x];delete BUF[x];delete UNR[x]};
 const saveOpen=()=>{try{sessionStorage.open=JSON.stringify(OPEN);localStorage.open=sessionStorage.open}catch{}try{if(ws&&ws.readyState===1)ws.send(JSON.stringify({t:'tabs',rooms:OPEN}))}catch{}};
 /* ---------- navigation ---------- */
