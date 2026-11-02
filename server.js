@@ -689,6 +689,48 @@ app.get('/api/admin/requests', auth, ok((q, r) => {
   if (!['staff', 'admin'].includes(roleOf(q.user))) return bad(r, 'Not allowed', 403);
   r.json(db.prepare("select id,from_user,kind,ts from role_requests where status='pending' and kind='head' order by id").all().map(x => ({ ...x, level: lvOf(x.from_user) })));
 }));
+// ---------- Delete account: the user asks, staff accepts, the account is removed ----------
+db.exec('create table if not exists del_requests(id integer primary key, user text, status text default \'pending\', ts int, decided_by text, decided_ts int)');
+app.get('/api/account/delete-request', auth, ok((q, r) => r.json({ pending: !!db.prepare("select 1 from del_requests where user=? and status='pending'").get(q.user) })));
+app.post('/api/account/delete-request', auth, ok((q, r) => {
+  const u = db.prepare('select pass from users where name=?').get(q.user);
+  if (isMain(q.user)) return bad(r, 'The main staff account cannot be deleted.', 403);
+  if (!bcrypt.compareSync(String(q.body?.pass || ''), u.pass)) return bad(r, 'Wrong password', 403);
+  if (db.prepare("select 1 from del_requests where user=? and status='pending'").get(q.user)) return bad(r, 'You already have a pending request.', 409);
+  db.prepare('insert into del_requests(user,ts) values(?,?)').run(q.user, Date.now());
+  for (const s of db.prepare("select name from users where role='staff'").all()) notify(s.name, 'system', `${q.user} asked to delete their account`, 'delreq');
+  r.json({ ok: true });
+}));
+app.delete('/api/account/delete-request', auth, ok((q, r) => { db.prepare("update del_requests set status='cancelled',decided_ts=? where user=? and status='pending'").run(Date.now(), q.user); r.json({ ok: true }); }));
+app.get('/api/admin/delete-requests', auth, ok((q, r) => {
+  if (roleOf(q.user) !== 'staff') return bad(r, 'Only staff can do this', 403);
+  r.json(db.prepare("select id,user,ts from del_requests where status='pending' order by id").all().map(x => ({ ...x, level: lvOf(x.user) })));
+}));
+function wipeUser(name) {
+  const T = [['favs', 'user'], ['blocks', 'a'], ['blocks', 'b'], ['friends', 'a'], ['friends', 'b'], ['txs', 'user'], ['gift_inv', 'user'], ['footprints', 'owner'], ['footprints', 'visitor'], ['notifs', 'user'],
+    ['user_photos', 'user'], ['story_views', 'user'], ['reacts', 'user'], ['comments', 'user'], ['post_shares', 'user'], ['post_hidden', 'user'], ['tags', 'user'], ['mevents', 'user'], ['xp_log', 'user'],
+    ['user_colors', 'user'], ['user_color_active', 'user'], ['user_fx_active', 'user'], ['room_mods', 'user'], ['room_seen', 'user'], ['room_since', 'user'], ['mutes', 'user'], ['bans', 'user'],
+    ['role_requests', 'from_user'], ['role_requests', 'to_user'], ['contest_scores', 'user'], ['gift_xp', 'user'], ['mails', 'to_user'], ['payouts', 'user'], ['role_history', 'user']];
+  db.transaction(() => {
+    for (const [t, c] of T) { try { db.prepare(`delete from ${t} where ${c}=?`).run(name); } catch {} }
+    try { const ps = db.prepare('select id from posts where user=?').all(name); for (const p of ps) { db.prepare('delete from reacts where post=?').run(p.id); db.prepare('delete from comments where post=?').run(p.id); db.prepare('delete from post_shares where post=?').run(p.id); } db.prepare('delete from posts where user=?').run(name); } catch {}
+    try { const ss = db.prepare('select id from stories where user=?').all(name); for (const x of ss) db.prepare('delete from story_views where story=?').run(x.id); db.prepare('delete from stories where user=?').run(name); } catch {}
+    try { db.prepare("update msgs set user='Deleted user' where user=?").run(name); } catch {}
+    try { db.prepare("update mails set from_user='Deleted user' where from_user=?").run(name); } catch {}
+    db.prepare('delete from users where name=?').run(name);
+  })();
+}
+app.post('/api/admin/delete-requests/:id', auth, ok((q, r) => {
+  if (roleOf(q.user) !== 'staff') return bad(r, 'Only staff can do this', 403);
+  const x = db.prepare("select * from del_requests where id=? and status='pending'").get(+q.params.id);
+  if (!x) return bad(r, 'Request not found', 404);
+  const acc = !!q.body?.accept, now = Date.now();
+  if (acc && isMain(x.user)) return bad(r, 'The main staff account cannot be deleted.', 403);
+  db.prepare('update del_requests set status=?,decided_by=?,decided_ts=? where id=?').run(acc ? 'accepted' : 'rejected', q.user, now, x.id);
+  if (acc) { kickUser(x.user, 'Your account has been deleted.'); wipeUser(x.user); alog(q.user, x.user, 'delete_account', 'accepted'); online(); }
+  else notify(x.user, 'system', 'Your account deletion request was declined.', '');
+  r.json({ ok: true });
+}));
 app.post('/api/tag', auth, ok((q, r) => {
   const me = q.user, to = String(q.body?.to || '').trim();
   if (!(RANK[roleOf(me)] >= 1)) return bad(r, 'Only Merchants and Mentors can tag users.', 403);
