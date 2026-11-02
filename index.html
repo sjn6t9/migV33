@@ -1420,6 +1420,13 @@ body.in #rcol{display:flex;flex-direction:column;gap:8px;grid-column:3;grid-row:
 #rcol .rc .t small{color:var(--mu);font-size:12px}
 #rcol .rc em{font-style:normal;min-width:22px;height:22px;padding:0 6px;border-radius:11px;background:#e5484d;color:#fff;font-size:12px;font-weight:800;display:grid;place-items:center;box-sizing:border-box}
 #rcol .mu2{color:var(--mu);font-size:13px;padding:6px}
+#rcol #rfl{display:grid;grid-template-columns:repeat(auto-fill,minmax(60px,1fr));gap:10px 4px;justify-items:center;align-items:start}
+#rcol .rf{display:flex;flex-direction:column;align-items:center;width:60px}
+#rcol .rf .p{display:block;position:relative;width:52px;height:52px;margin:0 auto}
+#rcol .rf .p .av{display:block!important;width:52px!important;height:52px!important}
+#rcol .rf span.n{width:100%;text-align:center;line-height:1.2;margin-top:4px}
+#rcol #rfl .mu2{grid-column:1/-1}
+html[data-skin] body #rcol#rcol#rcol button.rf{border:0!important;background:none!important;box-shadow:none!important;padding:0!important;margin:0!important;min-height:0!important;height:auto!important;width:60px!important;border-radius:0!important}
 }
 
 /* ===== floating chat windows (desktop) ===== */
@@ -1463,6 +1470,7 @@ html.emb body{display:block!important;padding:0!important}
 html.emb[data-skin] body #hdr #top#top#top,html.emb[data-skin] body #hdr #sub#sub#sub,html.emb[data-skin] body #hdr #rtabs#rtabs{display:none!important}
 html.emb[data-skin] body #hdr{padding-top:4px!important}
 html.emb #rbx,html.emb #rbx *,html.emb #tn,html.emb #coins{display:none!important}
+html[data-skin] body #drawer#drawer#drawer#drawer#drawer#drawer #dn#dn#dn .dsr .dbell{border:0!important;border-color:transparent!important;box-shadow:none!important}
 html body.onhome #sub#sub#sub{display:none!important}
 /* custom headline colours */
 html[data-skin=navy] body #strip#strip#strip#strip .h6{color:#ffe08a!important}
