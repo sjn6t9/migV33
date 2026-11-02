@@ -1324,21 +1324,13 @@ html[data-skin=navy] body #view#view#view#view#view#view#view#view#view#view#vie
 #log#log#log .rl,#log#log#log .bubble{line-height:1.4}
 
 /* disconnect notice (red, compact, above the input) */
-#dcbar{display:flex;align-items:center;gap:6px;margin:0 8px 4px;padding:4px 8px;border-radius:10px;background:rgba(229,57,53,.16);border:1px solid #e53935;color:#ff7b78;font-size:12px;font-weight:700;line-height:1.2}
-#dcbar span{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}#dcbar b{color:#ffa9a7}
+#dcbar{display:flex;align-items:center;gap:8px;margin:0 8px 4px;padding:6px 8px 6px 10px;border-radius:12px;background:rgba(229,57,53,.16);border:1px solid #e53935;color:#ff7b78;font-size:12px;font-weight:700;line-height:1.3}
+#dcbar span{flex:1;min-width:0;white-space:normal}#dcbar span em{display:block;font-style:normal;font-weight:500;font-size:11.5px;opacity:.9;margin-top:2px}#dcbar b{color:#ffa9a7}
 html body #dcbar#dcbar button{height:26px!important;min-height:0!important;width:auto!important;padding:0 10px!important;border-radius:8px!important;font-size:12px!important;font-weight:800!important;border:1px solid #ff6b68!important;background:#0f1a2b!important;color:#ff9a98!important;box-shadow:none!important}
 html body #dcbar#dcbar button.o{background:linear-gradient(#e0434b,#b3202a)!important;color:#fff!important;border-color:#ff8a8f!important}
-html body #rtabs#rtabs .rt.dcd{position:relative;box-shadow:0 0 0 2px #e53935!important}
-html body #rtabs#rtabs .rt.dcd::after{content:'!';position:absolute;top:-5px;right:-4px;min-width:16px;height:16px;border-radius:8px;background:#e53935;color:#fff;font-size:11px;font-weight:800;line-height:16px;text-align:center}
-html body.onhome #sub#sub#sub{display:none!important}
-/* custom headline colours */
-html[data-skin=navy] body #strip#strip#strip#strip .h6{color:#ffe08a!important}
-html[data-skin=navy] body #strip#strip#strip#strip .h7{color:#9ee6c0!important}
-html[data-skin=navy] body #strip#strip#strip#strip .h8{color:#ffa8d0!important}
-html[data-skin=dark] body #strip#strip#strip#strip .h6{color:#a5f3fc!important}
-html[data-skin=dark] body #strip#strip#strip#strip .h7{color:#bbf7d0!important}
-html[data-skin=dark] body #strip#strip#strip#strip .h8{color:#f5d0fe!important}
-#strip .tk{padding-right:0}
+html body #rtabs#rtabs .rt.dcd{position:relative;box-shadow:0 0 0 2px #e53935,0 0 12px rgba(229,57,53,.75)!important;animation:dcp 1.2s ease-in-out infinite}
+html body #rtabs#rtabs .rt.dcd::after{content:'!';position:absolute;top:2px;right:2px;min-width:18px;height:18px;border-radius:9px;background:#e53935;color:#fff;font-size:13px;font-weight:900;line-height:18px;text-align:center;box-shadow:0 0 0 2px #fff;z-index:3}
+@keyframes dcp{0%,100%{box-shadow:0 0 0 2px #e53935,0 0 6px rgba(229,57,53,.5)}50%{box-shadow:0 0 0 3px #ff1744,0 0 18px rgba(255,23,68,.95)}}
 </style>
 <script>try{if(localStorage.tk||sessionStorage.tk)document.documentElement.dataset.boot=1;var q=localStorage.skin,k=q==='dark'?'dark':q==='clear'?'clear':q==='navy'?'navy':(matchMedia('(prefers-color-scheme: dark)').matches?'navy':'clear');document.documentElement.dataset.skin=k;document.documentElement.dataset.theme=k==='clear'?'light':'dark'}catch(e){document.documentElement.dataset.skin='navy';document.documentElement.dataset.theme='dark'}</script>
 <style>/* Name effects from the colour shop: each one animates the glow around the username */
@@ -1447,7 +1439,7 @@ html body #hdr #top #rtabs .rt .rfl{width:20px;height:14px}
 html body #hdr #top #rtabs .rt.on{display:inline-flex!important;align-items:center;justify-content:center;gap:0}
 </style>
 <link rel="stylesheet" href="theme-dark.css?v=25">
-<link rel="stylesheet" href="theme-clear.css?v=4">
+<link rel="stylesheet" href="theme-clear.css?v=5">
 <style>/* role name colours: kept in their own block so they always load */
 :root{--nm-admin:#e8591f;--nm-staff:#2f9a3d;--nm-mentor:#b01020;--nm-headmentor:#8a6a14;--nm-merchant:#7e22ce;--nm-vip:#00706f;--nm-user:#2a7bd8}
 html[data-theme=dark],#log.navy,#log.dark{--nm-admin:#ff7a33;--nm-staff:#4cc24f;--nm-mentor:#f2394a;--nm-headmentor:#e8c23c;--nm-merchant:#b45cff;--nm-vip:#2ec4bf;--nm-user:#6db3ff}
@@ -1562,20 +1554,25 @@ $('s1').onsubmit=async e=>{e.preventDefault();if($('sp').value!==$('sp2').value)
 $('s2').onsubmit=async e=>{e.preventDefault();const[r,d]=await post('/api/signup/verify',{name:$('su').value.trim(),code:$('sc').value.trim()});if(!r.ok){$('err').textContent=d.error;const o=$('otp');o.classList.remove('bad');void o.offsetWidth;o.classList.add('bad');$('sc').value='';otpPaint();return}done(d)};
 /* ---------- socket ---------- */
 let tries=0;
-const DC=new Set();
-function mountDC(r,msg){if($('dcbar')||!$('f'))return;const d=document.createElement('div');d.id='dcbar';d.innerHTML=`<span>⚠ ${msg||'Disconnected from <b>'+esc(rtitle(r))+'</b>'}</span><button class="o" data-dc="re">Rejoin</button><button data-dc="lv">Leave</button>`;
+const DC=new Set(),DCW={};
+function mountDC(r,msg,why){if($('dcbar')||!$('f'))return;why=why||DCW[r]||'';const d=document.createElement('div');d.id='dcbar';d.innerHTML=`<span>⚠ ${msg||'Disconnected from <b>'+esc(rtitle(r))+'</b>'}${why?`<em>${esc(why)}</em>`:''}</span><button class="o" data-dc="re">Rejoin</button><button data-dc="lv">Leave</button>`;
   d.querySelectorAll('button').forEach(b=>{const o=b.classList.contains('o');[['height','26px'],['min-height','0'],['width','auto'],['padding','0 10px'],['border-radius','8px'],['font-size','12px'],['font-weight','800'],['border','1px solid '+(o?'#ff8a8f':'#ff6b68')],['background',o?'linear-gradient(#e0434b,#b3202a)':'var(--dcbg,#0f1a2b)'],['color',o?'#fff':'var(--dcfg,#ff9a98)'],['box-shadow','none']].forEach(([k,v])=>b.style.setProperty(k,v,'important'))});
   $('f').before(d);['t','phb','emb','mic'].forEach(i=>{const e=$(i);if(e)e.disabled=true});
   d.onclick=e=>{const b=e.target.closest('[data-dc]');if(!b)return;if(b.dataset.dc==='lv'){DC.delete(r);AL.delete(r);d.remove();closeTab(r);return}
     if(AL.has(r)){DC.delete(r);AL.delete(r);dropRoom(r);d.remove();V.chat(r);return}
     if(!ws||ws.readyState!==1){toast('Reconnecting… try again in a moment');return}
     DC.delete(r);d.remove();['t','phb','emb','mic'].forEach(i=>{const e=$(i);if(e)e.disabled=false});skipIntro=true;tx({t:'join',room:r,have:true});drawTabs()}}
-function showDC(){const r=room;if(!r||cur!=='chat'||r.startsWith('dm:')||DC.has(r)||!OPEN.includes(r)||!$('log'))return;DC.add(r);toast('⚠ Disconnected from '+rtitle(r),true);drawTabs();mountDC(r)}
+const dcWhy=e=>{const c=e&&e.code;
+  if(!navigator.onLine)return 'Your internet connection was lost. Check your Wi-Fi or mobile data, then tap Rejoin.';
+  if(c===1008||c===4001)return 'The server closed your session. Please log in again if this keeps happening.';
+  if(c===1001||c===1012||c===1013)return 'The server is restarting or was updated. Wait a few seconds, then tap Rejoin.';
+  return 'The connection to the server was interrupted (weak network, the app was in the background, or the server restarted). Tap Rejoin to continue.'};
+function showDC(why){const r=room;if(!r||cur!=='chat'||r.startsWith('dm:')||DC.has(r)||!OPEN.includes(r)||!$('log'))return;DC.add(r);DCW[r]=why;toast('⚠ Disconnected from '+rtitle(r),true);drawTabs();mountDC(r,null,why)}
 function connect(){
   ws=new WebSocket((location.protocol==='https:'?'wss':'ws')+'://'+location.host+'/ws');
   ws.onopen=()=>ws.send(JSON.stringify({t:'auth',token:tok(),offline:isOff()}));
   ws.onmessage=e=>on(JSON.parse(e.data));
-  ws.onclose=()=>{if(me){showDC();setTimeout(connect,2000)}else if(tok()){if(++tries<4)setTimeout(connect,1500);else{delete document.documentElement.dataset.boot}}};
+  ws.onclose=e=>{if(me){showDC(dcWhy(e));setTimeout(connect,2000)}else if(tok()){if(++tries<4)setTimeout(connect,1500);else{delete document.documentElement.dataset.boot}}};
 }
 const tx=o=>ws.readyState===1&&ws.send(JSON.stringify(o));
 const resume=()=>{if(!tok()||document.hidden)return;if(!ws||ws.readyState>1){tries=0;connect()}};
@@ -1620,7 +1617,7 @@ async function on(m){
 }
 let G={},RM=[],RI=null,OPEN=[];try{OPEN=JSON.parse(sessionStorage.open||localStorage.open||'[]')}catch{}
 const AL=new Set();   // rooms the server removed me from after 30 minutes
-function showAL(r){const lg=$('log');if(!lg)return;lg.innerHTML='';DC.add(r);drawTabs();mountDC(r,'Disconnected from <b>'+esc(rtitle(r))+'</b> · 30 min inactive');const t=$('t');if(t)t.placeholder='You are disconnected from this room'}
+function showAL(r){const lg=$('log');if(!lg)return;lg.innerHTML='';DC.add(r);drawTabs();mountDC(r,'Disconnected from <b>'+esc(rtitle(r))+'</b>',"You were removed because you didn't send a message for 30 minutes. Tap Rejoin to enter again; earlier chat is not shown after you return.");const t=$('t');if(t)t.placeholder='You are disconnected from this room'}
 const UNR={},LOGC={},BUF={};let skipIntro=false;const dropRoom=x=>{delete LOGC[x];delete BUF[x];delete UNR[x]};
 const saveOpen=()=>{try{sessionStorage.open=JSON.stringify(OPEN);localStorage.open=sessionStorage.open}catch{}try{if(ws&&ws.readyState===1)ws.send(JSON.stringify({t:'tabs',rooms:OPEN}))}catch{}};
 /* ---------- navigation ---------- */
@@ -2180,7 +2177,7 @@ V.chat=async(r)=>{room=r;if(!r.startsWith('dm:'))lastRoom=r;target='';pend=null;
   drawOnline();if(AL.has(r)){showAL(r);return}tx({t:'join',room:r,have:hadLog});
   if(r==='games'){$('uno').style.display='block';$('uno').innerHTML='<button class="o" id="jn">Join UNO</button>';$('jn').onclick=()=>uno({a:'join'})}};
 /* room tabs: tap to switch, swipe left/right to move between open rooms */
-function drawTabs(){const t=$('rtabs');if(!t)return;if(cur==='chat'&&DC.has(room)&&!$('dcbar'))mountDC(room);if(!RFL){RFL=1;setTimeout(loadRF,0)}
+function drawTabs(){const t=$('rtabs');if(!t)return;if(cur==='chat'&&DC.has(room)&&!$('dcbar'))mountDC(room,AL.has(room)?'Disconnected from <b>'+esc(rtitle(room))+'</b>':null);if(!RFL){RFL=1;setTimeout(loadRF,0)}
   UNR[room]=0;
   const inch=document.body.classList.contains('inchat');t.innerHTML=OPEN.map(x=>(x===room&&inch)?`<button class="rt on${DC.has(x)?' dcd':''}" data-r="${esc(x)}">${rfl(x)}${esc(rtitle(x))}</button>`:`<button class="rt mini${UNR[x]?' has':''}${DC.has(x)?' dcd':''}" data-r="${esc(x)}" title="${esc(rtitle(x))}" aria-label="${esc(rtitle(x))}${UNR[x]?' — '+UNR[x]+' new':''}">${RF[x]?rfl(x).replace('class="flg rfl"','class="flg rfl rfm"').replace('<img','<span class="rf"><img')+'</span>':''}${RF[x]?'':(()=>{const f=rtitle(x).match(/[\u{1F1E6}-\u{1F1FF}]{2}/u);return f?`<span class="rf">${f[0]}</span>`:'<svg viewBox="0 0 24 24" width="18" height="18"><path d="M4 5h16v11H9l-5 4z" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"/></svg>'})()}${UNR[x]?`<b class="ub">${UNR[x]>9?'9+':UNR[x]}</b>`:''}</button>`).join('');
   t.onclick=e=>{const c=e.target.closest('[data-x]');if(c){e.stopPropagation();return closeTab(c.dataset.x)}

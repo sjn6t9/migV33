@@ -88,3 +88,4 @@ html[data-skin=clear] body #chatbox #log#log,html[data-skin=clear] body #log#log
 html[data-skin=clear] body #log#log#log :is(.b){background:#fff!important;box-shadow:0 2px 8px rgba(20,60,130,.14)!important}
 html[data-skin=clear] body #log#log#log .b.mine{background:#dff5e3!important}
 html[data-skin=clear] body #view button.o{font-weight:600!important}html[data-skin=clear] body #view #pb{font-weight:800!important}
+html[data-skin=clear] body #dcbar span,html[data-skin=clear] body #dcbar span em{color:#b71c1c!important}
