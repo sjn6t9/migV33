@@ -1340,7 +1340,7 @@ html[data-skin=dark] body #strip#strip#strip#strip .h7{color:#bbf7d0!important}
 html[data-skin=dark] body #strip#strip#strip#strip .h8{color:#f5d0fe!important}
 #strip .tk{padding-right:0}
 </style>
-<script>try{if(localStorage.tk||sessionStorage.tk)document.documentElement.dataset.boot=1;var q=localStorage.skin,k=q==='dark'?'dark':q==='clear'?'clear':'navy';document.documentElement.dataset.skin=k;document.documentElement.dataset.theme=k==='clear'?'light':'dark'}catch(e){document.documentElement.dataset.skin='navy';document.documentElement.dataset.theme='dark'}</script>
+<script>try{if(localStorage.tk||sessionStorage.tk)document.documentElement.dataset.boot=1;var q=localStorage.skin,k=q==='dark'?'dark':q==='clear'?'clear':q==='navy'?'navy':(matchMedia('(prefers-color-scheme: dark)').matches?'navy':'clear');document.documentElement.dataset.skin=k;document.documentElement.dataset.theme=k==='clear'?'light':'dark'}catch(e){document.documentElement.dataset.skin='navy';document.documentElement.dataset.theme='dark'}</script>
 <style>/* Name effects from the colour shop: each one animates the glow around the username */
 @keyframes fxPulse{0%,100%{text-shadow:0 0 4px currentColor}50%{text-shadow:0 0 12px currentColor,0 0 22px currentColor}}
 @keyframes fxFlicker{0%,19%,21%,23%,25%,54%,56%,100%{text-shadow:0 0 6px currentColor,0 0 14px currentColor}20%,24%,55%{text-shadow:none}}
@@ -2877,10 +2877,11 @@ V.spin=async()=>{const d=await api('GET','/spin');const n=d.prizes.length;
     setTimeout(async()=>{ST.coins=r.coins;$('coins').textContent=cn(r.coins);D={...D,free:r.free,spins:r.spins,next:r.next};delete $('go')?.dataset.busy;if($('go'))paint();
       const pi=await popup({icon:'✨',title:'You won!',body:`You won ${r.amount.toLocaleString()} coins — added to your balance.`,html:`<div class="pw"><b>+${r.amount.toLocaleString()}</b><span>coins</span><div class="mu" style="margin-top:4px">Landed on ${esc(r.prize)}</div></div>`,buttons:[['Dismiss',''],[(r.free||r.spins>0)?'Next Spin':'Return Home','o']],sticky:1});if(pi===1){if(r.free||r.spins>0){setTimeout(()=>{const g=$('go');if(g&&!g.disabled)g.click()},250)}else go('home')}},4100)}
   catch(e){delete $('go').dataset.busy;fail(e);paint()}}};
-const SKN=k=>k==='dark'?'dark':k==='clear'?'clear':'navy',SKC={clear:'#e9eef6',navy:'#0c1d44',dark:'#05080c'};
-const setSkin=k=>{const r=document.documentElement;k=SKN(k);try{localStorage.skin=k}catch{}
+const SKS=()=>{let q='auto';try{q=localStorage.skin||'auto'}catch{}return['clear','navy','dark'].includes(q)?q:'auto'},SKN=k=>k==='dark'?'dark':k==='clear'?'clear':k==='navy'?'navy':(matchMedia('(prefers-color-scheme: dark)').matches?'navy':'clear'),SKC={clear:'#e9eef6',navy:'#0c1d44',dark:'#05080c'};
+const setSkin=k=>{const r=document.documentElement,st=['clear','navy','dark'].includes(k)?k:'auto';k=SKN(st);try{if(st==='auto')localStorage.removeItem('skin');else localStorage.skin=st}catch{}
   r.dataset.skin=k;r.dataset.theme=k==='clear'?'light':'dark';
   try{paintTn()}catch{}document.querySelector('meta[name=theme-color]')?.setAttribute('content',SKC[k])};
+try{matchMedia('(prefers-color-scheme: dark)').addEventListener('change',()=>{if(SKS()==='auto'){setSkin('auto');if(cur==='settings')V.settings()}})}catch{}
 
 /* ---------- notifications, help, feedback, legal ---------- */
 const NG=[['all','All'],['social','Social'],['rewards','Rewards'],['mentions','Mentions'],['system','System']],NGI={social:'👥',rewards:'🎁',mentions:'@',system:'🔔'};
@@ -2908,7 +2909,7 @@ V.settings=async()=>{const bg=localStorage.cbg||'light';
   view(`<h2 style="margin-top:12px">Settings</h2><div class="card row" id="spp" style="cursor:pointer">${av(me,48)}<div class="g"><b>Profile photo</b><div class="mu">${AV[me]?'Change or remove your photo':'Add a photo so friends recognise you'}</div></div>📷</div>
   <div class="card row" id="spc" style="cursor:pointer">${av(me)}<div class="g"><b>${esc(me)}</b><span class="lv">${lvi(lv(ST.xp||0),16)}Lv ${lv(ST.xp||0)}</span><div class="mu">Edit profile, status, avatar</div></div>›</div>
   <div class="card"><b>Chat background</b><div class="chips">${['light','navy','dark'].map(k=>`<button data-bg="${k}" class="${bg===k?'on':''}">${k[0].toUpperCase()+k.slice(1)}</button>`).join('')}</div></div>
-  <div class="card"><b>App colour</b><div class="chips">${[['clear','Day Mode'],['navy','Night Mode'],['dark','Stonic']].map(([k,n])=>`<button data-skin="${k}" class="${SKN(localStorage.skin)===k?'on':''}">${n}</button>`).join('')}</div><div class="mu" style="margin-top:6px">Day Mode is the clear glass look, Night Mode is the navy-blue glass look, Stonic is the cyan design.</div></div>
+  <div class="card"><b>App colour</b><div class="chips">${[['auto','Auto (follow device)'],['clear','Day Mode'],['navy','Night Mode'],['dark','Stonic']].map(([k,n])=>`<button data-skin="${k}" class="${SKS()===k?'on':''}">${n}</button>`).join('')}</div><div class="mu" style="margin-top:6px">Auto switches between Day Mode and Night Mode with your device's light/dark setting. Pick one to lock it. Stonic is the cyan design.</div></div>
   <div class="card"><b>Status</b><div class="chips"><button id="ss">${ST.presence||'online'} — change</button></div></div>
   <div class="card"><b>Font size</b><div class="chips">${[['s','Small'],['m','Normal'],['l','Large']].map(([k,n])=>`<button data-fs="${k}" class="${(localStorage.fs||'m')===k?'on':''}">${n}</button>`).join('')}</div></div>
   <form id="mpf" class="card" style="display:grid;gap:8px"><b>MPIN ${ST.hasPin?'(set)':'(not set)'}</b><small class="mu">4–6 digits. Needed for coin transfers.</small>${ST.hasPin?'<input id="mpo" type="password" inputmode="numeric" maxlength="6" placeholder="Current MPIN" autocomplete="off">':''}<input id="mpn" type="password" inputmode="numeric" maxlength="6" placeholder="New MPIN (4–6 digits)" autocomplete="off"><button class="o">${ST.hasPin?'Change MPIN':'Set MPIN'}</button></form>
