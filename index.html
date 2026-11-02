@@ -1333,6 +1333,68 @@ html body #rtabs#rtabs .rt.dcd::after{content:'!';position:absolute;top:2px;righ
 @keyframes dcp{0%,100%{box-shadow:0 0 0 2px #e53935,0 0 6px rgba(229,57,53,.5)}50%{box-shadow:0 0 0 3px #ff1744,0 0 18px rgba(255,23,68,.95)}}
 @keyframes dOut{to{transform:translateX(-30%);opacity:0}}@keyframes bgOut{to{background:#0000}}
 @media (max-width:999px){#drawer.closing{animation:bgOut .26s ease forwards}#drawer.closing nav{animation:dOut .26s cubic-bezier(.4,0,.8,.6) forwards!important}#drawer{transition:none}}
+#dn.anim .mi:nth-of-type(11){animation-delay:0.64s}
+#dn.anim .mi:nth-of-type(12){animation-delay:0.69s}
+#dn.anim .mi:nth-of-type(13){animation-delay:0.74s}
+#dn.anim .mi:nth-of-type(14){animation-delay:0.79s}
+#dn.anim .mi:nth-of-type(15){animation-delay:0.84s}
+#dn.anim .mi:nth-of-type(16){animation-delay:0.89s}
+#dn.anim .mi:nth-of-type(17){animation-delay:0.94s}
+#dn.anim .mi:nth-of-type(18){animation-delay:0.99s}
+#dn.anim .mi:nth-of-type(19){animation-delay:1.04s}
+#dn.anim .mi:nth-of-type(20){animation-delay:1.09s}
+#dn.anim .mi:nth-of-type(21){animation-delay:1.14s}
+#dn.anim .mi:nth-of-type(22){animation-delay:1.19s}
+#dn.anim .mi:nth-of-type(23){animation-delay:1.24s}
+#dn.anim .mi:nth-of-type(24){animation-delay:1.29s}
+#dn.anim .mi:nth-of-type(25){animation-delay:1.34s}
+#dn.anim .mi:nth-of-type(26){animation-delay:1.39s}
+html[data-skin] body #view#view#view#view#view#view#view#view#view#view#view#view#view#view .fbp .acts button,html[data-skin] body #view#view#view#view#view#view#view#view#view#view#view#view#view#view .fbp .acts > .ac > button:first-child{font-size:14px!important;font-weight:700!important;letter-spacing:0!important}
+html[data-skin] body #view#view#view#view#view#view#view#view#view#view#view#view#view#view .fbp .acts button.cnt,html[data-skin] body #view#view#view#view#view#view#view#view#view#view#view#view#view#view .fbp .acts > .ac > button.cnt{font-size:12.5px!important;padding:2px 7px!important;min-width:22px!important}
+html[data-skin] body #view#view#view#view#view#view#view#view#view#view#view#view#view#view .fbp .acts button svg,html[data-skin] body #view#view#view#view#view#view#view#view#view#view#view#view#view#view .fbp .acts > .ac > button:first-child svg{width:16px!important;height:16px!important}
+
+/* ===== login page: animated background per theme ===== */
+#auth{position:relative;overflow:hidden}
+#auth .fx{position:absolute;inset:0;overflow:hidden;pointer-events:none;z-index:0}
+#auth .box{position:relative;z-index:1;animation:abIn .75s cubic-bezier(.2,.9,.3,1.08) both}
+#auth .box .lg{animation:abLg 4.5s ease-in-out infinite}
+#auth .box h1{animation:abUp .6s .15s both}
+#auth .box input,#auth .box button,#auth .box label,#auth .box .ck{animation:abUp .55s both}
+#auth .box input:nth-of-type(1){animation-delay:.25s}#auth .box input:nth-of-type(2){animation-delay:.32s}#auth .box button{animation-delay:.4s}#auth .box label,#auth .box .ck{animation-delay:.48s}
+@keyframes abIn{from{opacity:0;transform:translateY(26px) scale(.96)}}
+@keyframes abUp{from{opacity:0;transform:translateY(12px)}}
+@keyframes abLg{0%,100%{transform:translateY(0) rotate(-1deg)}50%{transform:translateY(-7px) rotate(1.2deg)}}
+/* Day: drifting glass orbs */
+html[data-skin=clear] #auth .fx i{position:absolute;border-radius:50%;filter:blur(2px);opacity:.75;animation:abOrb 14s ease-in-out infinite}
+html[data-skin=clear] #auth .fx i:nth-child(1){width:200px;height:200px;left:-50px;top:8%;background:radial-gradient(circle at 30% 30%,#fff,#7fd0ff 55%,#7fd0ff00 72%)}
+html[data-skin=clear] #auth .fx i:nth-child(2){width:150px;height:150px;right:-30px;top:20%;background:radial-gradient(circle at 30% 30%,#fff,#ffb15e 55%,#ffb15e00 72%);animation-delay:-4s;animation-duration:17s}
+html[data-skin=clear] #auth .fx i:nth-child(3){width:260px;height:260px;left:10%;bottom:-70px;background:radial-gradient(circle at 30% 30%,#fff,#6aa2ff 55%,#6aa2ff00 72%);animation-delay:-7s;animation-duration:19s}
+html[data-skin=clear] #auth .fx i:nth-child(4){width:110px;height:110px;right:12%;bottom:14%;background:radial-gradient(circle at 30% 30%,#fff,#ff8a3d 55%,#ff8a3d00 72%);animation-delay:-2s}
+html[data-skin=clear] #auth .fx i:nth-child(5){width:70px;height:70px;left:46%;top:4%;background:radial-gradient(circle at 30% 30%,#fff,#a5e1ff 60%,#a5e1ff00 74%);animation-delay:-9s;animation-duration:12s}
+html[data-skin=clear] #auth .fx i:nth-child(6){width:54px;height:54px;left:6%;top:56%;background:radial-gradient(circle at 30% 30%,#fff,#ffd29a 60%,#ffd29a00 74%);animation-delay:-5s;animation-duration:13s}
+@keyframes abOrb{0%,100%{transform:translate(0,0) scale(1)}33%{transform:translate(26px,-34px) scale(1.08)}66%{transform:translate(-22px,24px) scale(.94)}}
+/* Night: twinkling stars + soft moon glow */
+html[data-skin=navy] #auth .fx i:nth-child(1){position:absolute;left:0;top:0;width:2px;height:2px;border-radius:50%;background:transparent;box-shadow:41vw 19vh 0 0 rgba(255,255,255,.5),6vw 9vh 0 1px rgba(255,255,255,.9),46vw 74vh 0 0 rgba(255,255,255,.5),27vw 4vh 0 0 rgba(255,255,255,.7),53vw 8vh 0 0 rgba(255,255,255,.9),70vw 54vh 0 0 rgba(255,255,255,.5),15vw 28vh 0 1px rgba(255,255,255,.5),74vw 7vh 0 1px rgba(255,255,255,.5),50vw 6vh 0 0 rgba(255,255,255,.9),71vw 17vh 0 0 rgba(255,255,255,.7),18vw 69vh 0 0 rgba(255,255,255,.5),39vw 71vh 0 1px rgba(255,255,255,.9),13vw 74vh 0 1px rgba(255,255,255,.5),24vw 47vh 0 0 rgba(255,255,255,.5),91vw 8vh 0 1px rgba(255,255,255,.9),79vw 26vh 0 0 rgba(255,255,255,.5),68vw 54vh 0 0 rgba(255,255,255,.7),74vw 58vh 0 0 rgba(255,255,255,.7),31vw 23vh 0 1px rgba(255,255,255,.9),10vw 73vh 0 0 rgba(255,255,255,.5),63vw 43vh 0 1px rgba(255,255,255,.7),36vw 77vh 0 0 rgba(255,255,255,.9),65vw 53vh 0 0 rgba(255,255,255,.7),19vw 62vh 0 0 rgba(255,255,255,.9),85vw 9vh 0 1px rgba(255,255,255,.5),40vw 43vh 0 1px rgba(255,255,255,.7),76vw 63vh 0 1px rgba(255,255,255,.7),8vw 11vh 0 0 rgba(255,255,255,.7),89vw 85vh 0 0 rgba(255,255,255,.9),93vw 89vh 0 0 rgba(255,255,255,.5),73vw 87vh 0 0 rgba(255,255,255,.7),91vw 49vh 0 1px rgba(255,255,255,.7),2vw 59vh 0 0 rgba(255,255,255,.9),78vw 14vh 0 0 rgba(255,255,255,.9),27vw 98vh 0 0 rgba(255,255,255,.9),94vw 31vh 0 0 rgba(255,255,255,.7),63vw 10vh 0 0 rgba(255,255,255,.7),51vw 70vh 0 0 rgba(255,255,255,.9),55vw 70vh 0 0 rgba(255,255,255,.5),53vw 45vh 0 1px rgba(255,255,255,.7),29vw 19vh 0 0 rgba(255,255,255,.9),19vw 29vh 0 1px rgba(255,255,255,.9),1vw 62vh 0 1px rgba(255,255,255,.9),33vw 36vh 0 0 rgba(255,255,255,.9),53vw 68vh 0 0 rgba(255,255,255,.5),72vw 40vh 0 0 rgba(255,255,255,.5),65vw 79vh 0 1px rgba(255,255,255,.5),94vw 6vh 0 0 rgba(255,255,255,.5),71vw 50vh 0 0 rgba(255,255,255,.7),50vw 13vh 0 0 rgba(255,255,255,.5),51vw 7vh 0 0 rgba(255,255,255,.9),26vw 56vh 0 0 rgba(255,255,255,.9),43vw 76vh 0 0 rgba(255,255,255,.9),0vw 72vh 0 0 rgba(255,255,255,.5),12vw 46vh 0 1px rgba(255,255,255,.9),9vw 26vh 0 1px rgba(255,255,255,.7),19vw 81vh 0 0 rgba(255,255,255,.7),77vw 46vh 0 0 rgba(255,255,255,.9),14vw 62vh 0 0 rgba(255,255,255,.7),61vw 39vh 0 0 rgba(255,255,255,.9);animation:abTw 3.2s ease-in-out infinite}
+html[data-skin=navy] #auth .fx i:nth-child(2){position:absolute;left:0;top:0;width:2px;height:2px;border-radius:50%;background:transparent;box-shadow:13vw 95vh 0 0 rgba(255,200,130,.8),43vw 94vh 0 0 rgba(255,200,130,.8),33vw 61vh 0 0 rgba(255,200,130,.8),88vw 20vh 0 0 rgba(255,200,130,.8),66vw 2vh 0 0 rgba(255,200,130,.8),26vw 67vh 0 0 rgba(255,200,130,.8),46vw 18vh 0 0 rgba(255,200,130,.8),88vw 69vh 0 0 rgba(255,200,130,.8),3vw 97vh 0 0 rgba(255,200,130,.8),67vw 38vh 0 0 rgba(255,200,130,.8),82vw 11vh 0 0 rgba(255,200,130,.8),89vw 33vh 0 0 rgba(255,200,130,.8),66vw 46vh 0 0 rgba(255,200,130,.8),21vw 45vh 0 0 rgba(255,200,130,.8),98vw 28vh 0 0 rgba(255,200,130,.8),68vw 69vh 0 0 rgba(255,200,130,.8),99vw 64vh 0 0 rgba(255,200,130,.8),42vw 81vh 0 0 rgba(255,200,130,.8),28vw 78vh 0 0 rgba(255,200,130,.8),100vw 97vh 0 0 rgba(255,200,130,.8),24vw 30vh 0 0 rgba(255,200,130,.8),51vw 94vh 0 0 rgba(255,200,130,.8),29vw 25vh 0 0 rgba(255,200,130,.8),66vw 63vh 0 0 rgba(255,200,130,.8),45vw 93vh 0 0 rgba(255,200,130,.8);animation:abTw 4.6s -1.5s ease-in-out infinite}
+html[data-skin=navy] #auth .fx i:nth-child(3){position:absolute;width:320px;height:320px;right:-110px;top:-110px;border-radius:50%;background:radial-gradient(circle,rgba(247,147,30,.28),rgba(247,147,30,0) 68%);animation:abGl 7s ease-in-out infinite}
+html[data-skin=navy] #auth .fx i:nth-child(4){position:absolute;width:380px;height:380px;left:-140px;bottom:-140px;border-radius:50%;background:radial-gradient(circle,rgba(70,120,255,.3),rgba(70,120,255,0) 68%);animation:abGl 9s -3s ease-in-out infinite}
+html[data-skin=navy] #auth .fx i:nth-child(5){position:absolute;left:-10%;top:30%;width:60px;height:2px;background:linear-gradient(90deg,#fff0,#fff,#fff0);transform:rotate(-25deg);opacity:0;animation:abSh 7s 2s linear infinite}
+html[data-skin=navy] #auth .fx i:nth-child(6){display:none}
+@keyframes abTw{0%,100%{opacity:.35}50%{opacity:1}}
+@keyframes abGl{0%,100%{transform:scale(1);opacity:.7}50%{transform:scale(1.18);opacity:1}}
+@keyframes abSh{0%{opacity:0;transform:translate(0,0) rotate(-25deg)}6%{opacity:1}20%{opacity:0;transform:translate(120vw,56vw) rotate(-25deg)}100%{opacity:0}}
+/* Stonic: cyan grid, scan line, neon pulse */
+html[data-skin=dark] #auth .fx i:nth-child(1){position:absolute;inset:-40px;background-image:linear-gradient(rgba(34,211,238,.10) 1px,transparent 1px),linear-gradient(90deg,rgba(34,211,238,.10) 1px,transparent 1px);background-size:38px 38px;animation:abGrid 6s linear infinite}
+html[data-skin=dark] #auth .fx i:nth-child(2){position:absolute;left:0;right:0;height:120px;top:-120px;background:linear-gradient(180deg,rgba(34,211,238,0),rgba(34,211,238,.16),rgba(34,211,238,0));animation:abScan 5.5s linear infinite}
+html[data-skin=dark] #auth .fx i:nth-child(3){position:absolute;width:300px;height:300px;left:50%;top:6%;margin-left:-150px;border-radius:50%;background:radial-gradient(circle,rgba(34,211,238,.22),rgba(34,211,238,0) 66%);animation:abGl 5s ease-in-out infinite}
+html[data-skin=dark] #auth .fx i:nth-child(4),html[data-skin=dark] #auth .fx i:nth-child(5),html[data-skin=dark] #auth .fx i:nth-child(6){position:absolute;width:6px;height:6px;border-radius:50%;background:#67e8f9;box-shadow:0 0 12px #22d3ee;animation:abPt 7s linear infinite}
+html[data-skin=dark] #auth .fx i:nth-child(4){left:12%;bottom:-10px}html[data-skin=dark] #auth .fx i:nth-child(5){left:58%;bottom:-10px;animation-delay:-3s;animation-duration:9s}html[data-skin=dark] #auth .fx i:nth-child(6){left:84%;bottom:-10px;animation-delay:-5s;animation-duration:8s}
+html[data-skin=dark] #auth .box{animation:abIn .75s cubic-bezier(.2,.9,.3,1.08) both,abNeon 3.2s 1s ease-in-out infinite}
+@keyframes abGrid{to{transform:translateY(38px)}}
+@keyframes abScan{to{transform:translateY(calc(100vh + 240px))}}
+@keyframes abPt{0%{transform:translateY(0);opacity:0}10%{opacity:1}100%{transform:translateY(-105vh);opacity:0}}
+@keyframes abNeon{0%,100%{box-shadow:0 0 0 1px rgba(34,211,238,.25),0 0 14px rgba(34,211,238,.12)}50%{box-shadow:0 0 0 1px rgba(34,211,238,.6),0 0 30px rgba(34,211,238,.35)}}
+@media (prefers-reduced-motion:reduce){#auth .fx i,#auth .box,#auth .box *{animation:none!important}}
 html body.onhome #sub#sub#sub{display:none!important}
 /* custom headline colours */
 html[data-skin=navy] body #strip#strip#strip#strip .h6{color:#ffe08a!important}
@@ -1466,7 +1528,7 @@ html body b[style*="--nm-user"]{color:var(--nm-user)!important}
 </style>
 </head>
 <body>
-<div id="auth"><div class="box">
+<div id="auth"><div class="fx" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i></div><div class="box">
   <div class="lg" role="img" aria-label="MigV33"></div>
   <h1>Join the Fun!</h1>
   <form id="lf">
