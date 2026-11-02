@@ -80,3 +80,11 @@ html[data-skin=clear]{--dcbg:#fff;--dcfg:#b71c1c}
 html[data-skin=clear] body #drawer#drawer#drawer#drawer#drawer #dn#dn#dn .dsr .dbell{background:rgba(255,255,255,.85)!important;color:#e0730a!important;border:1px solid #fff!important}
 html[data-skin=clear] body #dtg#dtg#dtg{background:rgba(255,255,255,.9)!important;color:#1d2b44!important;border:1px solid #fff!important}
 html[data-skin=clear] body #dtg svg{stroke:#1d2b44!important}
+/* same text sizes as Night / Stonic */
+html[data-skin=clear] body #view button.o,html[data-skin=clear] body #f button.o,html[data-skin=clear] body #sheet button.o,html[data-skin=clear] body .pc button.o{font-size:13px!important;font-weight:800!important}
+html[data-skin=clear] body button.pm{font-size:13px!important;font-weight:600!important}
+/* chat panel: plain frosted white glass, clearly separate from the wallpaper */
+html[data-skin=clear] body #chatbox #log#log,html[data-skin=clear] body #log#log#log{background:rgba(255,255,255,.82)!important;-webkit-backdrop-filter:blur(36px) saturate(120%)!important;backdrop-filter:blur(36px) saturate(120%)!important;border:1px solid #fff!important;box-shadow:0 14px 34px rgba(12,44,110,.28),inset 0 1px 0 #fff!important}
+html[data-skin=clear] body #log#log#log :is(.b){background:#fff!important;box-shadow:0 2px 8px rgba(20,60,130,.14)!important}
+html[data-skin=clear] body #log#log#log .b.mine{background:#dff5e3!important}
+html[data-skin=clear] body #view button.o{font-weight:600!important}html[data-skin=clear] body #view #pb{font-weight:800!important}
