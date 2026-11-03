@@ -1482,6 +1482,36 @@ html[data-skin] body #sheet.spn #sh div:not([style*="#f59e0b"]){background:none!
 #sheet.spn #sh #whw{width:min(200px,100%)!important}
 #sheet.spn #sh #go{padding:8px 24px!important;font-size:15px!important}
 #sheet.spn #sh p.mu{font-size:11px!important;margin-top:8px!important}
+/* ===== call screen ===== */
+#callui{position:fixed;inset:0;z-index:9000;display:grid;place-items:center;background:rgba(4,9,20,.72);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);animation:cuIn .25s ease both}
+@keyframes cuIn{from{opacity:0}}
+#callui .cc{position:relative;width:min(340px,92vw);border-radius:28px;padding:26px 18px 20px;text-align:center;color:#eaf0ff;background:linear-gradient(180deg,#14233f,#0b1426);border:1px solid rgba(140,170,255,.28);box-shadow:0 20px 60px rgba(0,0,0,.55);overflow:hidden}
+#callui .cvw{display:none}
+#callui .cwho{display:flex;flex-direction:column;align-items:center;gap:6px;position:relative;z-index:2}
+#callui .cav .av{border-radius:50%!important;box-shadow:0 0 0 0 rgba(120,170,255,.5);animation:cuPulse 1.6s ease-out infinite}
+#callui.live .cav .av{animation:none}
+@keyframes cuPulse{to{box-shadow:0 0 0 26px rgba(120,170,255,0)}}
+#callui .cwho b{font-size:20px}
+#callui .cwho small{font-size:14px;opacity:.8;min-height:18px}
+#callui .cbt{display:flex;justify-content:center;gap:18px;margin-top:22px;position:relative;z-index:2}
+#callui button.cx{all:unset;box-sizing:border-box;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:6px;font-size:12px;color:#cfe0ff}
+#callui button.cx svg{width:54px;height:54px;padding:15px;box-sizing:border-box;border-radius:50%;background:rgba(255,255,255,.14);fill:none;stroke:#fff;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+#callui button.cx:hover svg{background:rgba(255,255,255,.24)}
+#callui button.cx.off svg{background:#fff;stroke:#111}
+#callui button.cx.acc svg{background:#22b455;fill:#fff;stroke:none}
+#callui button.cx.rej svg{background:#e5484d;fill:#fff;stroke:none}
+#callui button.cx.acc svg,#callui button.cx.rej svg{padding:14px}
+html[data-skin] body #callui#callui#callui button.cx{border:0!important;background:none!important;box-shadow:none!important;padding:0!important;min-height:0!important;min-width:0!important;width:auto!important;height:auto!important;border-radius:0!important;color:#cfe0ff!important;text-shadow:none!important;animation:none!important}
+html[data-skin] body #callui#callui#callui button.cx svg{width:54px!important;height:54px!important}
+#callui.vid .cc{width:min(640px,94vw);padding:0;height:min(86vh,520px);display:flex;flex-direction:column;justify-content:flex-end;background:#000}
+#callui.vid .cvw{display:block;position:absolute;inset:0}
+#callui.vid #cvr{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;background:#000}
+#callui.vid #cvl{position:absolute;right:12px;top:12px;width:28%;max-width:150px;aspect-ratio:3/4;object-fit:cover;border-radius:14px;border:2px solid rgba(255,255,255,.5);background:#111;transform:scaleX(-1);z-index:3}
+#callui.vid .cwho{position:absolute;left:12px;top:12px;flex-direction:row;gap:8px;background:rgba(0,0,0,.45);padding:6px 12px 6px 6px;border-radius:30px;align-items:center}
+#callui.vid .cwho small{margin-left:4px}
+#callui.vid .cbt{margin:0 0 16px}
+#callui:not(.vid) .cvw{display:block;position:absolute;width:1px;height:1px;opacity:0;overflow:hidden}
+#callui:not(.vid) #cvr,#callui:not(.vid) #cvl{width:1px;height:1px}
 html body.onhome #sub#sub#sub{display:none!important}
 /* custom headline colours */
 html[data-skin=navy] body #strip#strip#strip#strip .h6{color:#ffe08a!important}
@@ -1732,7 +1762,7 @@ const dcWhy=e=>{const c=e&&e.code;
 function showDC(why){const r=room;if(!r||cur!=='chat'||r.startsWith('dm:')||DC.has(r)||!OPEN.includes(r)||!$('log'))return;DC.add(r);DCW[r]=why;toast('⚠ Disconnected from '+rtitle(r),true);drawTabs();mountDC(r,null,why)}
 function connect(){
   ws=new WebSocket((location.protocol==='https:'?'wss':'ws')+'://'+location.host+'/ws');
-  ws.onopen=()=>ws.send(JSON.stringify({t:'auth',token:tok(),offline:isOff()}));
+  ws.onopen=()=>ws.send(JSON.stringify({t:'auth',token:tok(),offline:isOff(),emb:EMB?1:0}));
   ws.onmessage=e=>on(JSON.parse(e.data));
   ws.onclose=e=>{if(me){showDC(dcWhy(e));setTimeout(connect,2000)}else if(tok()){if(++tries<4)setTimeout(connect,1500);else{delete document.documentElement.dataset.boot}}};
 }
@@ -1747,6 +1777,7 @@ function coinDelta(d){const c=$('coins');if(!c||!d)return;const r=c.getBoundingC
   e.className='cdl '+(d>0?'up':'dn');e.textContent=(d>0?'+':'−')+Math.abs(d).toLocaleString();e.style.left=(r.left+r.width/2)+'px';e.style.top=(r.bottom+2)+'px';
   document.body.append(e);setTimeout(()=>e.remove(),2200);c.classList.remove('cpop');void c.offsetWidth;c.classList.add('cpop')}
 async function on(m){
+  if(typeof m.t==='string'&&m.t.startsWith('call_')){if(!EMB)callOn(m);return}
   if(EMB){if(['notif','mail','announce','levelup','xp'].includes(m.t))return;if(m.t==='msg'&&m.room===EMBR&&m.user!==me&&m.kind!=='err'){try{parent.postMessage({t:'ev'},'*')}catch{}}}
   if(m.t==='error'){if(m.error==='auth'||m.error==='banned'){if(m.error==='banned')alert('Your account has been banned.');logout()}else alert(m.error)}
   if(m.t==='ready'){const first=!me;me=m.user;api('GET','/emoticons').then(setCE).catch(()=>{});G=m.gifts;UCOL=m.ucols||{};UFX=m.ufx||{};$('auth').style.display='none';$('app').style.display='flex';document.body.classList.add('in');
@@ -1806,13 +1837,14 @@ const WINS=[],WW=340,WG=10,PW=190;let WZ=0;
 const wSave=()=>{try{sessionStorage.wins=JSON.stringify(WINS.map(w=>({r:w.r,m:w.min})))}catch{}};
 function wDock(){let d=$('wdock');if(!d){d=document.createElement('div');d.id='wdock';d.innerHTML='<div id="wpills"></div><div id="wrow"></div>';document.body.append(d);
   d.onclick=e=>{const x=e.target.closest('[data-wx]');if(x){e.stopPropagation();const w=WINS.find(v=>v.r===x.dataset.wx);if(w)closeWin(w);return}
+    const cc=e.target.closest('[data-wc]');if(cc){callStart(cc.dataset.wu,cc.dataset.wc);return}
     const m=e.target.closest('[data-wm]');if(m){const w=WINS.find(v=>v.r===m.dataset.wm);if(w){w.min=true;wLayout();wSave()}return}
     const p=e.target.closest('[data-wp]');if(p)openWin(p.dataset.wp)}}return d}
 function wIcon(r,sz){const dm=r.startsWith('dm:'),f=!dm&&RF[r]?fu(RF[r]):'';return dm?av(rtitle(r),sz):f?`<img class="wf" src="${esc(f)}" alt="">`:'<span class="wf">💬</span>'}
 function wFlags(){api('GET','/rooms').then(rs=>{rs.forEach(x=>{RF[x.name]=x.flag||''});WINS.forEach(w=>{const i=w.el&&w.el.querySelector('.wi');if(i)i.innerHTML=wIcon(w.r,26)});wLayout()}).catch(()=>{})}
 function openWin(r){if(EMB||!r||innerWidth<1000)return;if(!r.startsWith('dm:')&&!(r in RF)&&!window._wfl){window._wfl=1;setTimeout(()=>{window._wfl=0},3000);wFlags()}
   let w=WINS.find(x=>x.r===r);
-  if(!w){const el=document.createElement('section');el.className='cw';el.innerHTML=`<header><span class="wi">${wIcon(r,26)}</span><b>${esc(rtitle(r))}</b><button type="button" data-wm="${esc(r)}" aria-label="Minimize"><svg viewBox="0 0 24 24"><path d="M6 17h12"/></svg></button><button type="button" data-wx="${esc(r)}" aria-label="Close"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button></header><iframe title="${esc(rtitle(r))}" allow="microphone; autoplay; clipboard-write" src="${esc(location.pathname)}?w=${encodeURIComponent(r)}"></iframe>`;
+  if(!w){const el=document.createElement('section');el.className='cw';el.innerHTML=`<header><span class="wi">${wIcon(r,26)}</span><b>${esc(rtitle(r))}</b>${r.startsWith('dm:')?`<button type="button" data-wc="audio" data-wu="${esc(rtitle(r))}" aria-label="Audio call"><svg viewBox="0 0 24 24"><path d="M5 4h4l2 5-2.5 1.5a11 11 0 005 5L15 13l5 2v4a2 2 0 01-2 2A16 16 0 013 6a2 2 0 012-2z"/></svg></button><button type="button" data-wc="video" data-wu="${esc(rtitle(r))}" aria-label="Video call"><svg viewBox="0 0 24 24"><rect x="3" y="6" width="12" height="12" rx="2"/><path d="M15 10l6-3v10l-6-3z"/></svg></button>`:''}<button type="button" data-wm="${esc(r)}" aria-label="Minimize"><svg viewBox="0 0 24 24"><path d="M6 17h12"/></svg></button><button type="button" data-wx="${esc(r)}" aria-label="Close"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button></header><iframe title="${esc(rtitle(r))}" allow="microphone; autoplay; clipboard-write" src="${esc(location.pathname)}?w=${encodeURIComponent(r)}"></iframe>`;
     w={r,min:false,n:0,ts:0,el};WINS.push(w);wDock().querySelector('#wrow').append(el)}
   w.min=false;w.n=0;w.ts=++WZ;wLayout();wSave()}
 function closeWin(w){try{w.el.querySelector('iframe').contentWindow.postMessage({t:'close'},'*')}catch{}
@@ -1844,11 +1876,71 @@ addEventListener('resize',()=>{if(!EMB){wSwitch();wLayout()}});
 if(!EMB){addEventListener('message',e=>{const d=e.data;if(!d||typeof d!=='object')return;const w=WINS.find(x=>x.el&&x.el.querySelector('iframe').contentWindow===e.source);if(!w)return;
   if(d.t==='ev'){if(!w.el.classList.contains('vis')){w.n=Math.min(99,w.n+1);wLayout()}}
   else if(d.t==='closeme')closeWin(w);
+  else if(d.t==='call'&&typeof d.to==='string')callStart(d.to,d.kind==='video'?'video':'audio');
   else if(d.t==='open'&&d.room)openWin(d.room);
   else if(d.t==='go'&&typeof d.v==='string'&&V[d.v])go(d.v,d.a)})}
 if(EMB){addEventListener('message',e=>{const d=e.data;if(!d||e.source!==parent)return;
   if(d.t==='close'){try{tx({t:'leave',room:EMBR})}catch{}me=null;setTimeout(()=>{try{ws.close()}catch{}},200)}});
   addEventListener('storage',e=>{if(e.key==='skin'||e.key===null)try{setSkin(SKS())}catch{}})}
+
+/* ===== audio / video calls (WebRTC, signalled through the chat socket) ===== */
+let CALL=null,ICE=null,RING=null;
+const cq=id=>document.getElementById(id);
+async function iceCfg(){if(ICE)return ICE;try{ICE=(await api('GET','/ice')).iceServers}catch{ICE=[{urls:'stun:stun.l.google.com:19302'}]}return ICE}
+const callMedia=k=>navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:true},video:k==='video'?{facingMode:'user',width:{ideal:640},height:{ideal:480}}:false});
+function callRing(mode){try{clearInterval(RING&&RING.t);if(RING&&RING.c)RING.c.close()}catch{}RING=null;if(!mode)return;
+  try{const c=new (window.AudioContext||window.webkitAudioContext)(),beep=(f,t0,d)=>{const o=c.createOscillator(),g=c.createGain();o.frequency.value=f;o.type='sine';g.gain.setValueAtTime(0,c.currentTime+t0);g.gain.linearRampToValueAtTime(mode==='in'?.25:.12,c.currentTime+t0+.03);g.gain.linearRampToValueAtTime(0,c.currentTime+t0+d);o.connect(g);g.connect(c.destination);o.start(c.currentTime+t0);o.stop(c.currentTime+t0+d+.05)};
+    const cyc=()=>{if(mode==='in'){beep(880,0,.18);beep(660,.22,.18);beep(880,.6,.18);beep(660,.82,.18)}else beep(440,0,.9)};cyc();RING={c,t:setInterval(cyc,mode==='in'?2200:3000)}}catch{}
+  if(mode==='in')try{navigator.vibrate&&navigator.vibrate([300,200,300])}catch{}}
+function callUI(){let d=cq('callui');if(!CALL){if(d)d.remove();return}
+  if(!d){d=document.createElement('div');d.id='callui';document.body.append(d)}
+  const C=CALL,vid=C.kind==='video',live=C.state==='live',incoming=C.dir==='in'&&!live;
+  const st=C.dir==='in'?(live?(C.t0?'':'Connecting…'):`Incoming ${vid?'video':'audio'} call`):(live?(C.t0?'':'Connecting…'):'Calling…');
+  d.className='cu'+(vid&&live?' vid':'')+(live?' live':'');
+  d.innerHTML=`<div class="cc"><div class="cvw"><video id="cvr" autoplay playsinline></video><video id="cvl" autoplay playsinline muted></video></div>
+   <div class="cwho"><span class="cav">${av(C.peer,vid&&live?44:96)}</span><b>${esc(C.peer)}</b><small id="cst">${st}</small></div>
+   <div class="cbt">${incoming?`<button class="cx rej" id="cdec" aria-label="Decline"><svg viewBox="0 0 24 24"><path d="M3 15c5-5 13-5 18 0l-3 3-3-2v-2a12 12 0 00-6 0v2l-3 2z"/></svg><span>Decline</span></button><button class="cx acc" id="cacc" aria-label="Accept"><svg viewBox="0 0 24 24"><path d="M5 4h4l2 5-2.5 1.5a11 11 0 005 5L15 13l5 2v4a2 2 0 01-2 2A16 16 0 013 6a2 2 0 012-2z"/></svg><span>Accept</span></button>`
+   :`${live?`<button class="cx" id="cmute" aria-label="Mute"><svg viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5.5 11.5a6.5 6.5 0 0013 0M12 18v3"/></svg><span>Mute</span></button>${vid?`<button class="cx" id="ccam" aria-label="Camera"><svg viewBox="0 0 24 24"><rect x="3" y="6" width="12" height="12" rx="2"/><path d="M15 10l6-3v10l-6-3z"/></svg><span>Camera</span></button>`:''}`:''}<button class="cx rej" id="cend" aria-label="${live?'End call':'Cancel'}"><svg viewBox="0 0 24 24"><path d="M3 15c5-5 13-5 18 0l-3 3-3-2v-2a12 12 0 00-6 0v2l-3 2z"/></svg><span>${live?'End':'Cancel'}</span></button>`}</div></div>`;
+  const rv=cq('cvr'),lv=cq('cvl');if(C.remote){rv.srcObject=C.remote;rv.play&&rv.play().catch(()=>{})}if(C.local&&vid)lv.srcObject=C.local;
+  if(cq('cdec'))cq('cdec').onclick=callReject;if(cq('cacc'))cq('cacc').onclick=callAccept;if(cq('cend'))cq('cend').onclick=()=>callFinish('ended',true);
+  if(cq('cmute'))cq('cmute').onclick=e=>{C.muted=!C.muted;C.local.getAudioTracks().forEach(t=>t.enabled=!C.muted);e.currentTarget.classList.toggle('off',C.muted);e.currentTarget.querySelector('span').textContent=C.muted?'Unmute':'Mute'};
+  if(cq('ccam'))cq('ccam').onclick=e=>{C.camOff=!C.camOff;C.local.getVideoTracks().forEach(t=>t.enabled=!C.camOff);e.currentTarget.classList.toggle('off',C.camOff);e.currentTarget.querySelector('span').textContent=C.camOff?'Camera on':'Camera'}}
+function callTick(){const e=cq('cst');if(!CALL||!e||!CALL.t0)return;const s=Math.floor((Date.now()-CALL.t0)/1000);e.textContent=String(Math.floor(s/60)).padStart(2,'0')+':'+String(s%60).padStart(2,'0')}
+async function callStart(name,kind){if(EMB){try{parent.postMessage({t:'call',to:name,kind},'*')}catch{}return}
+  if(CALL)return toast('You are already in a call.',true);
+  if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia||!window.RTCPeerConnection)return toast('Calls need a secure (https) connection and a browser that supports them.',true);
+  let st;try{st=await callMedia(kind)}catch(e){return toast(e&&e.name==='NotAllowedError'?'Allow microphone'+(kind==='video'?' and camera':'')+' access to make a call.':'Could not start your microphone'+(kind==='video'?' or camera':'')+'.',true)}
+  if(CALL){st.getTracks().forEach(t=>t.stop());return}
+  CALL={id:'',peer:name,kind,dir:'out',state:'ring',local:st};callUI();callRing('out');tx({t:'call_invite',to:name,kind})}
+async function callPC(){const C=CALL,pc=new RTCPeerConnection({iceServers:await iceCfg()});C.pc=pc;C.pend=[];C.local.getTracks().forEach(t=>pc.addTrack(t,C.local));
+  pc.onicecandidate=e=>{if(e.candidate&&CALL===C)tx({t:'call_sig',id:C.id,data:{ice:e.candidate}})};
+  pc.ontrack=e=>{C.remote=e.streams[0];const v=cq('cvr');if(v){v.srcObject=C.remote;v.play&&v.play().catch(()=>{})}};
+  pc.onconnectionstatechange=()=>{if(CALL!==C)return;const s=pc.connectionState;
+    if(s==='connected'){clearTimeout(C.dt);if(!C.t0){C.t0=Date.now();callRing(null);callUI();clearInterval(C.tk);C.tk=setInterval(callTick,500)}}
+    else if(s==='failed')callFinish('failed',true);
+    else if(s==='disconnected'){clearTimeout(C.dt);C.dt=setTimeout(()=>{if(CALL===C&&pc.connectionState!=='connected')callFinish('failed',true)},8000)}};
+  return pc}
+async function callAccept(){const C=CALL;if(!C||C.dir!=='in'||C.state!=='ring')return;callRing(null);
+  let st;try{st=await callMedia(C.kind)}catch(e){toast('Allow microphone'+(C.kind==='video'?' and camera':'')+' access to answer.',true);return callReject()}
+  if(CALL!==C){st.getTracks().forEach(t=>t.stop());return}
+  C.local=st;C.state='live';callUI();await callPC();tx({t:'call_accept',id:C.id})}
+function callReject(){const C=CALL;if(!C)return;tx({t:'call_reject',id:C.id});callFinish('local',false)}
+async function callSig(d){const C=CALL;if(!C||!C.pc)return;const pc=C.pc;
+  try{if(d.sdp){await pc.setRemoteDescription(d.sdp);while(C.pend.length)await pc.addIceCandidate(C.pend.shift());
+      if(d.sdp.type==='offer'){const a=await pc.createAnswer();await pc.setLocalDescription(a);tx({t:'call_sig',id:C.id,data:{sdp:pc.localDescription}})}}
+    else if(d.ice){if(pc.remoteDescription)await pc.addIceCandidate(d.ice);else C.pend.push(d.ice)}}catch(e){console.warn('[call]',e)}}
+const CALLMSG={declined:n=>`${n} declined the call.`,noanswer:n=>`${n} didn't answer.`,busy:n=>`${n} is on another call.`,offline:n=>`${n} is offline right now.`,blocked:()=>'You cannot call this user.',nouser:()=>'User not found.',inacall:()=>'You are already in a call.',wait:()=>'Please wait a moment before calling again.',dropped:()=>'The call was disconnected.',failed:()=>'The connection failed. Check your network and try again.',cancelled:n=>`Missed call from ${n}.`};
+function callFinish(reason,tellPeer){const C=CALL;if(!C)return;CALL=null;callRing(null);clearInterval(C.tk);clearTimeout(C.dt);
+  if(tellPeer&&C.id)tx({t:'call_end',id:C.id});
+  try{C.pc&&C.pc.close()}catch{}try{C.local&&C.local.getTracks().forEach(t=>t.stop())}catch{}
+  callUI();const m=CALLMSG[reason];if(m&&!(reason==='cancelled'&&C.dir==='out'))toast(m(C.peer),['busy','offline','blocked','nouser','inacall','wait','failed','dropped'].includes(reason))}
+function callOn(m){
+  if(m.t==='call_in'){if(CALL)return;CALL={id:m.id,peer:m.from,kind:m.kind,dir:'in',state:'ring'};callUI();callRing('in')}
+  else if(m.t==='call_ringing'){if(CALL&&CALL.dir==='out'&&!CALL.id)CALL.id=m.id}
+  else if(m.t==='call_accepted'){const C=CALL;if(!C||C.id!==m.id||C.dir!=='out')return;callRing(null);C.state='live';callUI();
+    callPC().then(async pc=>{const o=await pc.createOffer();await pc.setLocalDescription(o);tx({t:'call_sig',id:C.id,data:{sdp:pc.localDescription}})}).catch(()=>callFinish('failed',true))}
+  else if(m.t==='call_sig'){if(CALL&&CALL.id===m.id)callSig(m.data||{})}
+  else if(m.t==='call_end'){if(CALL&&(CALL.id===m.id||(!CALL.id&&CALL.dir==='out')))callFinish(m.reason==='taken'?'':m.reason,false)}}
 function closeDrawer(){const d=document.getElementById('drawer');if(!d||!d.classList.contains('open'))return;if(innerWidth>=1000){d.classList.remove('open');return}
   d.classList.add('closing');clearTimeout(closeDrawer.t);closeDrawer.t=setTimeout(()=>{d.classList.remove('open','closing')},260)}
 async function go(v,a){if(EMB&&!(v==='chat'&&a===EMBR)){try{parent.postMessage(v==='chat'?{t:'open',room:a}:v==='rooms'?{t:'closeme'}:{t:'go',v,a},'*')}catch{}return}if(!EMB&&v==='chat'&&innerWidth>=1000){if(a)openWin(a);return}document.body.classList.toggle('inchat',v==='chat');try{drawTabs()}catch{}try{TNE=TNE||$('tn');CNE=CNE||$('coins');if(v!=='chat'){placeHdr(false);document.querySelectorAll('#hdr #rbw,#hdr #rbt').forEach(n=>n.remove())}}catch{}document.body.style.overflow='';document.documentElement.style.overflow='';$('view')&&($('view').style.overflowY='');if(cur==='chat'&&$('log')&&room&&OPEN.includes(room)&&!room.startsWith('dm:'))LOGC[room]=$('log').innerHTML;if(cur&&cur!==v)PREV={v:cur,a:CURA};cur=v;CURA=a;try{if(v!=='chat')sessionStorage.lastv=JSON.stringify([v,a===undefined?null:a])}catch{}closeDrawer();bnSet(v,a);
@@ -2628,7 +2720,8 @@ V.profile=async(n)=>{n=n||me;const u=await api('GET','/users/'+n);ROLES[u.name]=
   const pa=$('pa');
   if(mine){pa.innerHTML='<button class="o" id="ed" style="flex:1">Edit Profile</button>';$('ed').onclick=()=>{pa.innerHTML=`<input id="es" placeholder="Status" maxlength="60" value="${esc(u.status_text||'')}"><input id="eb" placeholder="About you" maxlength="200" value="${esc(u.bio||'')}"><button class="o" id="sv">Save</button>`;
     $('sv').onclick=async()=>{try{await api('PUT','/me',{status_text:$('es').value,bio:$('eb').value});V.profile(me)}catch(e){fail(e)}}}}
-  else{const st=u.state;pa.innerHTML=(st==='none'?'<button class="o" data-x="request">Follow</button>':st==='sent'?'<button disabled>Request sent</button>':st==='incoming'?'<button class="o" data-x="accept">Accept request</button>':'<button data-x="remove">Unfriend</button>')+(ST.role==='staff'?`<select id="rs" style="width:auto">${[['user','Regular user'],['vip','VIP User'],['merchant','Merchant'],['mentor','Mentor'],['admin','Admin'],['staff','Staff']].map(([k,t])=>`<option value="${k}" ${u.role===k?'selected':''}>${t}</option>`).join('')}</select><button data-x="role">Set role</button><button data-x="verify">${VERS.has(u.name)?'Remove verified':'Verify'}</button><button data-x="vip">${VIPS.has(u.name)?'Remove VIP':'Make VIP'}</button>`:'')+(['staff','admin'].includes(ST.role)&&u.role!=='staff'&&lastRoom?'<button id="mdb">Moderate</button>':'')+'<button id="pm">Private chat</button>';
+  else{const st=u.state;pa.innerHTML=(st==='none'?'<button class="o" data-x="request">Follow</button>':st==='sent'?'<button disabled>Request sent</button>':st==='incoming'?'<button class="o" data-x="accept">Accept request</button>':'<button data-x="remove">Unfriend</button>')+(ST.role==='staff'?`<select id="rs" style="width:auto">${[['user','Regular user'],['vip','VIP User'],['merchant','Merchant'],['mentor','Mentor'],['admin','Admin'],['staff','Staff']].map(([k,t])=>`<option value="${k}" ${u.role===k?'selected':''}>${t}</option>`).join('')}</select><button data-x="role">Set role</button><button data-x="verify">${VERS.has(u.name)?'Remove verified':'Verify'}</button><button data-x="vip">${VIPS.has(u.name)?'Remove VIP':'Make VIP'}</button>`:'')+(['staff','admin'].includes(ST.role)&&u.role!=='staff'&&lastRoom?'<button id="mdb">Moderate</button>':'')+'<button id="cla">📞 Audio call</button><button id="clv">🎥 Video call</button><button id="pm">Private chat</button>';
+    $('cla').onclick=()=>callStart(u.name,'audio');$('clv').onclick=()=>callStart(u.name,'video');
     $('pm').onclick=()=>go('chat','dm:'+[me,u.name].sort().join(':'));if($('mdb'))$('mdb').onclick=()=>modSheet(u.name);
     pa.onclick=async e=>{const x=e.target.dataset.x;if(!x)return;try{if(x==='role')await api('POST','/admin/role',{name:u.name,role:$('rs').value});else if(x==='verify')await api('POST','/admin/verify',{name:u.name,on:!VERS.has(u.name)});else if(x==='vip')await api('POST','/admin/users/'+encodeURIComponent(u.name)+'/edit',{action:'vip',on:!VIPS.has(u.name)});else await api('POST','/friends/'+x,{name:u.name});V.profile(u.name)}catch(er){fail(er)}}}};
 /* ---------- account ---------- */

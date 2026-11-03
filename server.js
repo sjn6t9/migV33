@@ -1394,6 +1394,12 @@ try {
 const emoList = () => db.prepare('select name,code,icon from custom_emo where active=1 order by ts').all();
 const bcastEmo = () => wss.clients.forEach(w => w.user && send(w, { t: 'emos', list: emoList() }));
 app.get('/api/emoticons', auth, ok((q, r) => r.json(emoList())));
+// ICE servers for audio/video calls. STUN is always on; set TURN_URL (comma separated), TURN_USER and TURN_PASS to relay calls on networks that block direct connections.
+app.get('/api/ice', auth, ok((q, r) => {
+  const iceServers = [{ urls: ['stun:stun.l.google.com:19302', 'stun:stun1.l.google.com:19302'] }];
+  if (process.env.TURN_URL) iceServers.push({ urls: process.env.TURN_URL.split(',').map(x => x.trim()).filter(Boolean), username: process.env.TURN_USER || '', credential: process.env.TURN_PASS || '' });
+  r.json({ iceServers });
+}));
 app.get('/api/admin/emoticons', auth, ok((q, r) => { if (!staffOnly(q, r)) return; r.json(db.prepare('select name,code,icon,active from custom_emo order by ts').all()); }));
 app.post('/api/admin/emoticons', auth, ok((q, r) => {
   if (!staffOnly(q, r)) return;
@@ -2228,11 +2234,66 @@ wss.on('connection', ws => {
   ws.on('message', raw => { try { onWsMessage(ws, raw); } catch (e) { console.error('[ws]', e); try { send(ws, { t: 'msg', room: ws.room, user: '', text: 'Something went wrong with that command.', kind: 'err', ts: Date.now() }); } catch {} } });
   ws.on('close', () => closeWs(ws));
 });
+/* ---------- 1-to-1 audio / video calls (WebRTC; the server only passes signals between the two people) ---------- */
+const calls = new Map();   // id -> { id, from, to, kind, state: 'ring' | 'live', fromWs, toWs, timer, t0 }
+const callOf = u => { for (const c of calls.values()) if (c.from === u || c.to === u) return c; return null; };
+const mainSocks = u => [...wss.clients].filter(w => w.user === u && !w.emb && w.readyState === 1);
+const lastInvite = new Map();
+function callEnd(c, reason, by) {
+  if (!calls.has(c.id)) return;
+  clearTimeout(c.timer); calls.delete(c.id);
+  const o = { t: 'call_end', id: c.id, reason, by: by || '' };
+  mainSocks(c.from).forEach(w => send(w, o)); mainSocks(c.to).forEach(w => send(w, o));
+  if (c.state === 'ring' && (reason === 'noanswer' || reason === 'cancelled')) notify(c.to, 'social', `Missed ${c.kind} call from ${c.from}`, 'user:' + c.from);
+}
+function callMsg(ws, m) {
+  const me = ws.user, id = String(m.id || '');
+  if (m.t === 'call_invite') {
+    const to = String(m.to || '').slice(0, 40), kind = m.kind === 'video' ? 'video' : 'audio';
+    const fail = reason => send(ws, { t: 'call_end', id: '', reason, to });
+    if (Date.now() - (lastInvite.get(me) || 0) < 2500) return fail('wait');
+    lastInvite.set(me, Date.now());
+    const u = db.prepare('select name,banned from users where lower(name)=lower(?)').get(to);
+    if (!u || u.banned || u.name === me) return fail('nouser');
+    if (isBlocked(me, u.name)) return fail('blocked');
+    if (callOf(me)) return fail('inacall');
+    if (callOf(u.name)) return fail('busy');
+    const socks = mainSocks(u.name);
+    const pres = db.prepare('select presence from users where name=?').get(u.name)?.presence;
+    if (!socks.length || pres === 'offline') return fail('offline');
+    const c = { id: Math.random().toString(36).slice(2, 12), from: me, to: u.name, kind, state: 'ring', fromWs: ws, toWs: null, t0: Date.now() };
+    c.timer = setTimeout(() => callEnd(c, 'noanswer'), 45e3);
+    calls.set(c.id, c);
+    send(ws, { t: 'call_ringing', id: c.id, to: u.name, kind });
+    socks.forEach(w => send(w, { t: 'call_in', id: c.id, from: me, kind, role: roleOf(me), xp: xpOf(me) }));
+    return;
+  }
+  const c = calls.get(id);
+  if (!c) return;
+  if (m.t === 'call_accept') {
+    if (ws.user !== c.to || c.state !== 'ring') return;
+    clearTimeout(c.timer); c.state = 'live'; c.toWs = ws; c.t0 = Date.now();
+    mainSocks(c.to).forEach(w => { if (w !== ws) send(w, { t: 'call_end', id: c.id, reason: 'taken' }); });
+    send(c.fromWs, { t: 'call_accepted', id: c.id });
+  } else if (m.t === 'call_reject') {
+    if (ws.user !== c.to || c.state !== 'ring') return;
+    callEnd(c, 'declined', me);
+  } else if (m.t === 'call_end') {
+    if (ws.user !== c.from && ws.user !== c.to) return;
+    callEnd(c, c.state === 'ring' ? 'cancelled' : 'ended', me);
+  } else if (m.t === 'call_sig') {
+    if (c.state !== 'live') return;
+    const peer = ws === c.fromWs ? c.toWs : ws === c.toWs ? c.fromWs : null;
+    const data = m.data && typeof m.data === 'object' ? m.data : null;
+    if (!peer || !data || JSON.stringify(data).length > 24000) return;
+    send(peer, { t: 'call_sig', id: c.id, data });
+  }
+}
 function onWsMessage(ws, raw) {
   {
     let m; try { m = JSON.parse(raw); } catch { return; }
     if (m.t === 'auth') {
-      try { const t = jwt.verify(m.token, SECRET), u = db.prepare('select name,banned from users where id=?').get(t.id); if (!u || u.banned) throw 0; ws.user = u.name; } catch { return send(ws, { t: 'error', error: 'auth' }); }
+      try { const t = jwt.verify(m.token, SECRET), u = db.prepare('select name,banned from users where id=?').get(t.id); if (!u || u.banned) throw 0; ws.user = u.name; ws.emb = !!m.emb; } catch { return send(ws, { t: 'error', error: 'auth' }); }
       if (m.offline) db.prepare("update users set presence='offline' where name=?").run(ws.user);
       else db.prepare("update users set presence='online' where name=? and presence='offline'").run(ws.user);
       // The phone's connection dropped and came back (e.g. while the user was on Home/Friends): put them back in the room they were in, with the same 30-minute timer
@@ -2242,6 +2303,7 @@ function onWsMessage(ws, raw) {
       return online();
     }
     if (!ws.user) return;
+    if (typeof m.t === 'string' && m.t.startsWith('call_')) return callMsg(ws, m);
     if (m.t === 'tabs') {
       const old = ws.tabs || new Set();
       ws.tabs = new Set((Array.isArray(m.rooms) ? m.rooms : []).slice(0, 30).map(x => String(x).slice(0, 60)));
@@ -2326,7 +2388,9 @@ function onWsMessage(ws, raw) {
   }
 }
 const ghosts = new Map();
-function closeWs(ws) {   // keep a person in their room for a short while so a quick app switch / reconnect does not kick them out
+function closeWs(ws) {
+  try { for (const c of [...calls.values()]) if (c.fromWs === ws || c.toWs === ws) callEnd(c, c.state === 'ring' ? 'cancelled' : 'dropped', ws.user); } catch {}
+  // keep a person in their room for a short while so a quick app switch / reconnect does not kick them out
   const r0 = ws.room;
   if (ws.tabs && ws.user) { const tr = [...ws.tabs].filter(x => x !== r0); setTimeout(() => tr.forEach(castRoster), 90e3); }
   if (r0 && ws.user && !r0.startsWith('dm:')) {   // stays in the room until the 30-minute no-chat limit, so leaving the chat screen or a dropped connection never removes them early
