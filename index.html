@@ -2162,9 +2162,10 @@ const EML={like:'👍',love:'❤️',haha:'😂',wow:'😮',sad:'😢',angry:'�
 const ceImg=(c,sz)=>`<img class="emt" alt=":${esc(c.name)}:" draggable="false"${sz?` style="width:${sz}px;height:${sz}px"`:''} src="${esc(c.icon)}">`;
 let EMX=null,EMAP={};
 const emoBuild=()=>{EMAP={};const keys=[];
-  for(const c of CE)if(c.code){const k=esc(c.code);EMAP[k]=c;keys.push(k)}
+  for(const c of CE)if(c.code){const k=esc(c.code);if(EMAP[k])continue;EMAP[k]=c;keys.push(k)}
   const nm='|:([a-z0-9]{2,12}):';
   EMX=new RegExp((keys.length?'(^|[\\s(])('+keys.sort((x,y)=>y.length-x.length).map(k=>k.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')).join('|')+')(?=$|[\\s.,!?)])':'(^)()(?!)')+nm,'g')};
+const ceCode=c=>c.code&&CE.filter(x=>x.code===c.code).length===1?c.code:':'+c.name+':';
 const emoT=t=>{if(!EMX)emoBuild();return t.replace(EMX,(m,a,c,n)=>{if(c)return a+ceImg(EMAP[c]);const cu=n&&CE.find(x=>x.name===n);return cu?ceImg(cu):m})};
 const emo=h=>h.split(/(<[^>]*>)/).map((x,i)=>i%2?x:emoT(x)).join('');
 const EM={...EML};
@@ -2179,7 +2180,7 @@ function snack(msg,label,fn){const d=document.createElement('div');d.className='
 let homeTag='',PS={},postImg=null;
 V.home=async(tag)=>{homeTag=typeof tag==='string'?tag:'';postImg=null;
   view(`<div class="srw"><div class="srt" id="srt"><span role="tab" data-t="s" class="on">Stories</span><span role="tab" data-t="r">Reels</span></div><div id="stories" class="stor"></div><div id="rlstrip" class="rls" hidden></div></div><div class="cmpx"><div class="cr">${av(me,44)}<textarea id="pt" rows="2" maxlength="500" placeholder="What's on your mind, ${esc(me)}? Use @name and #tag"></textarea></div><div id="pprev"></div><div id="sug" hidden></div>
-  <div class="cb"><button id="pph" type="button" title="Add a photo">📷<span> Photo</span></button><button id="pmn" type="button" title="Mention someone">@<span> Mention</span></button><button id="pht" type="button" title="Add a hashtag">#<span> Tag</span></button><button id="pem" type="button" title="Add an emoji">😊</button><input type="file" id="pfi" accept="image/*" hidden><span class="mu" id="pcnt">0/500</span><button class="o" id="pb">Post</button></div><div id="emp" hidden>${CE.map(c=>`<button type="button" data-e="${esc(c.code||":"+c.name+":")}" title="${esc(c.name)}">${ceImg(c,32)}</button>`).join("")||'<span class="mu" style="padding:6px">No emoticons yet. Staff can add them in Admin Panel.</span>'}</div></div><div id="feed" class="mu pad">Loading…</div>`);
+  <div class="cb"><button id="pph" type="button" title="Add a photo">📷<span> Photo</span></button><button id="pmn" type="button" title="Mention someone">@<span> Mention</span></button><button id="pht" type="button" title="Add a hashtag">#<span> Tag</span></button><button id="pem" type="button" title="Add an emoji">😊</button><input type="file" id="pfi" accept="image/*" hidden><span class="mu" id="pcnt">0/500</span><button class="o" id="pb">Post</button></div><div id="emp" hidden>${CE.map(c=>`<button type="button" data-e="${esc(ceCode(c))}" title="${esc(c.name)}">${ceImg(c,32)}</button>`).join("")||'<span class="mu" style="padding:6px">No emoticons yet. Staff can add them in Admin Panel.</span>'}</div></div><div id="feed" class="mu pad">Loading…</div>`);
   const pt=$('pt');
   const ins=t=>{const a=pt.selectionStart??pt.value.length,b=pt.selectionEnd??a;if(pt.value.length-(b-a)+t.length>500)return;pt.value=pt.value.slice(0,a)+t+pt.value.slice(b);pt.focus();pt.selectionStart=pt.selectionEnd=a+t.length;pt.oninput()};
   $('pph').onclick=()=>$('pfi').click();
@@ -2744,7 +2745,7 @@ function vvSync(){const vv=window.visualViewport,r=document.documentElement.styl
 addEventListener('resize',()=>fitChat());addEventListener('orientationchange',()=>setTimeout(fitChat,300));if(window.visualViewport){visualViewport.addEventListener('resize',vvSync);visualViewport.addEventListener('scroll',vvSync)}addEventListener('scroll',()=>{if(document.body.classList.contains('inchat')&&innerWidth<1000)vvSync()},{passive:true});vvSync();
 function emChat(anchor){const old=$('empc');if(old){old.remove();return}
   const p=document.createElement('div');p.id='empc';
-  p.innerHTML=CE.length?CE.map(c=>`<button type="button" data-e="${esc(c.code||':'+c.name+':')}" title="${esc(c.name)}${c.code?'  '+esc(c.code):''}">${ceImg(c,32)}</button>`).join(''):'<div class="mu" style="padding:10px">No emoticons yet. Staff can add them in Admin Panel → Manage emoticons.</div>';
+  p.innerHTML=CE.length?CE.map(c=>`<button type="button" data-e="${esc(ceCode(c))}" title="${esc(c.name)}${c.code?'  '+esc(c.code):''}">${ceImg(c,32)}</button>`).join(''):'<div class="mu" style="padding:10px">No emoticons yet. Staff can add them in Admin Panel → Manage emoticons.</div>';
   document.body.appendChild(p);
   const a=$('f').getBoundingClientRect(),w=p.offsetWidth;p.style.bottom=(innerHeight-a.top+8)+'px';p.style.left=Math.max(8,Math.min(innerWidth-w-8,anchor.getBoundingClientRect().left))+'px';
   const off=e=>{if(!p.contains(e.target)&&!anchor.contains(e.target)){p.remove();document.removeEventListener('pointerdown',off,true)}};

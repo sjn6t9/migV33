@@ -1501,7 +1501,7 @@ try {
         if (db.prepare('select 1 from custom_emo where name=?').get(e.name)) continue;
         const buf = Buffer.from(e.gif, 'base64'), nm = crypto.randomBytes(16).toString('hex') + '.gif';
         fs.mkdirSync('uploads', { recursive: true }); fs.writeFileSync('uploads/' + nm, buf);
-        db.prepare('insert into custom_emo(name,code,icon,active,ts) values(?,?,?,1,?)').run(e.name, e.code || null, '/uploads/' + nm, Date.now());
+        db.prepare('insert into custom_emo(name,code,icon,active,ts) values(?,?,?,1,?)').run(e.name, e.code && !db.prepare('select 1 from custom_emo where code=?').get(e.code) ? e.code : null, '/uploads/' + nm, Date.now());
       }
       db.prepare('insert into emo_seeded(k) values(?)').run(key);
     }
