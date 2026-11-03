@@ -729,7 +729,8 @@ function wipeUser(name) {
     ['user_colors', 'user'], ['user_color_active', 'user'], ['user_fx_active', 'user'], ['room_mods', 'user'], ['room_seen', 'user'], ['room_since', 'user'], ['mutes', 'user'], ['bans', 'user'],
     ['role_requests', 'from_user'], ['role_requests', 'to_user'], ['contest_scores', 'user'], ['gift_xp', 'user'], ['mails', 'to_user'], ['payouts', 'user'], ['role_history', 'user']];
   db.transaction(() => {
-    for (const [t, c] of T) { try { db.prepare(`delete from ${t} where ${c}=?`).run(name); } catch {} }
+    try { for (const x of db.prepare('select id from reels where user=?').all(name)) reelDrop(x.id); } catch {}
+    for (const [t, c] of [...T, ['reel_likes', 'user'], ['reel_views', 'user'], ['reel_comments', 'user'], ['reel_files', 'user']]) { try { db.prepare(`delete from ${t} where ${c}=?`).run(name); } catch {} }
     try { const ps = db.prepare('select id from posts where user=?').all(name); for (const p of ps) { db.prepare('delete from reacts where post=?').run(p.id); db.prepare('delete from comments where post=?').run(p.id); db.prepare('delete from post_shares where post=?').run(p.id); } db.prepare('delete from posts where user=?').run(name); } catch {}
     try { const ss = db.prepare('select id from stories where user=?').all(name); for (const x of ss) db.prepare('delete from story_views where story=?').run(x.id); db.prepare('delete from stories where user=?').run(name); } catch {}
     try { db.prepare("update msgs set user='Deleted user' where user=?").run(name); } catch {}
@@ -934,7 +935,7 @@ app.delete('/api/admin/gifts/:k', auth, ok((q, r) => {
 // ---------- Staff admin panel ----------
 const COUNTRIES = ['Afghanistan','Albania','Algeria','Argentina','Armenia','Australia','Austria','Azerbaijan','Bahrain','Bangladesh','Belarus','Belgium','Bhutan','Bolivia','Bosnia and Herzegovina','Brazil','Brunei','Bulgaria','Cambodia','Cameroon','Canada','Chile','China','Colombia','Costa Rica','Croatia','Cuba','Cyprus','Czech Republic','Denmark','Dominican Republic','Ecuador','Egypt','El Salvador','Estonia','Ethiopia','Finland','France','Georgia','Germany','Ghana','Greece','Guatemala','Hong Kong','Hungary','Iceland','India','Indonesia','Iran','Iraq','Ireland','Israel','Italy','Ivory Coast','Jamaica','Japan','Jordan','Kazakhstan','Kenya','Kuwait','Kyrgyzstan','Laos','Latvia','Lebanon','Libya','Lithuania','Luxembourg','Malaysia','Maldives','Malta','Mexico','Moldova','Mongolia','Morocco','Myanmar','Nepal','Netherlands','New Zealand','Nigeria','North Macedonia','Norway','Oman','Pakistan','Palestine','Panama','Paraguay','Peru','Philippines','Poland','Portugal','Qatar','Romania','Russia','Saudi Arabia','Senegal','Serbia','Singapore','Slovakia','Slovenia','Somalia','South Africa','South Korea','Spain','Sri Lanka','Sudan','Sweden','Switzerland','Syria','Taiwan','Tajikistan','Tanzania','Thailand','Tunisia','Turkey','Turkmenistan','Uganda','Ukraine','United Arab Emirates','United Kingdom','United States','Uruguay','Uzbekistan','Venezuela','Vietnam','Yemen','Zambia','Zimbabwe'];
 const RENAME_COLS = [['msgs', 'user'], ['posts', 'user'], ['comments', 'user'], ['reacts', 'user'], ['txs', 'user'], ['favs', 'user'], ['bans', 'user'], ['bans', 'by'], ['room_mods', 'user'],
-  ['mutes', 'user'], ['tp_pending', 'user'], ['post_shares', 'user'], ['post_hidden', 'user'], ['stories', 'user'], ['story_views', 'user'], ['friends', 'a'], ['friends', 'b'], ['blocks', 'a'], ['blocks', 'b'], ['call_log', 'a'], ['call_log', 'b'], ['rooms', 'owner'], ['users', 'parent'], ['role_requests', 'from_user'], ['role_requests', 'to_user'], ['role_requests', 'decided_by'], ['tags', 'user'], ['tags', 'parent'], ['commissions', 'spender'], ['commissions', 'parent'], ['mevents', 'user'], ['payouts', 'user'], ['role_history', 'user'], ['role_history', 'by'], ['gift_inv', 'user'], ['lc_pending', 'user'], ['rb_pending', 'user']];   // room-name tables are handled by the room rename
+  ['mutes', 'user'], ['tp_pending', 'user'], ['post_shares', 'user'], ['post_hidden', 'user'], ['stories', 'user'], ['story_views', 'user'], ['friends', 'a'], ['friends', 'b'], ['blocks', 'a'], ['blocks', 'b'], ['call_log', 'a'], ['call_log', 'b'], ['reels', 'user'], ['reel_likes', 'user'], ['reel_views', 'user'], ['reel_comments', 'user'], ['reel_files', 'user'], ['rooms', 'owner'], ['users', 'parent'], ['role_requests', 'from_user'], ['role_requests', 'to_user'], ['role_requests', 'decided_by'], ['tags', 'user'], ['tags', 'parent'], ['commissions', 'spender'], ['commissions', 'parent'], ['mevents', 'user'], ['payouts', 'user'], ['role_history', 'user'], ['role_history', 'by'], ['gift_inv', 'user'], ['lc_pending', 'user'], ['rb_pending', 'user']];   // room-name tables are handled by the room rename
 const alog = (staff, target, action, detail = '') => db.prepare('insert into admin_log(staff,target,action,detail,ts) values(?,?,?,?,?)').run(staff, target, action, String(detail).slice(0, 200), Date.now());
 const kickUser = (name, why) => wss.clients.forEach(w => { if (w.user === name) { send(w, { t: 'error', error: why }); try { w.close(); } catch {} } });
 function staffTarget(q, r, name) {
@@ -1216,6 +1217,117 @@ app.post('/api/upload', auth, express.raw({ type: () => true, limit: '6mb' }), (
   }
   r.json({ url });
 });
+
+// ---------- Reels (short vertical videos) ----------
+db.exec(`create table if not exists reels(id integer primary key, user text, url text, poster text, caption text, dur int, ts int, views int default 0);
+create index if not exists reels_ts on reels(ts);create index if not exists reels_user on reels(user);
+create table if not exists reel_likes(reel int, user text, ts int, primary key(reel,user));
+create table if not exists reel_views(reel int, user text, primary key(reel,user));
+create table if not exists reel_comments(id integer primary key, reel int, user text, text text, ts int);
+create index if not exists reel_comments_r on reel_comments(reel);
+create table if not exists reel_files(url text primary key, user text, ts int)`);
+try { fs.mkdirSync('uploads/reels', { recursive: true }); } catch {}
+const REEL_VID = /^\/uploads\/reels\/[a-f0-9]{32}\.(mp4|webm)$/, REEL_POS = /^\/uploads\/reels\/[a-f0-9]{32}\.jpg$/;
+const reelHits = new Map(), reelCom = new Map();
+const sniffVideo = b => {
+  if (!Buffer.isBuffer(b) || b.length < 12) return null;
+  if (b[0] === 0x1A && b[1] === 0x45 && b[2] === 0xDF && b[3] === 0xA3) return 'webm';
+  if (b.slice(4, 8).toString() === 'ftyp' && !/^M4[ABP] /.test(b.slice(8, 12).toString())) return 'mp4';
+  return null;
+};
+function reelDrop(id) {
+  const x = db.prepare('select url,poster from reels where id=?').get(id);
+  if (!x) return;
+  db.prepare('delete from reel_likes where reel=?').run(id); db.prepare('delete from reel_views where reel=?').run(id);
+  db.prepare('delete from reel_comments where reel=?').run(id); db.prepare('delete from reels where id=?').run(id);
+  for (const u of [x.url, x.poster]) if (u && (REEL_VID.test(u) || REEL_POS.test(u))) { db.prepare('delete from reel_files where url=?').run(u); fs.unlink('.' + u, () => {}); }
+}
+app.post('/api/reels/media', auth, express.raw({ type: () => true, limit: '40mb' }), (q, r) => {
+  const kind = String(q.query.kind || ''), b = q.body, now = Date.now();
+  if (!Buffer.isBuffer(b) || !b.length) return bad(r, 'No file received.');
+  if (kind === 'video') {
+    const h = (reelHits.get(q.user) || []).filter(t => now - t < 3600e3);
+    if (h.length >= 6 && roleOf(q.user) !== 'staff') return bad(r, 'Upload limit reached: 6 videos per hour. Please wait a little.', 429);
+    const ext = sniffVideo(b);
+    if (!ext) return bad(r, 'Please choose an MP4 or WebM video.');
+    if (b.length > 40e6) return bad(r, 'Video is too large (40 MB max).', 413);
+    reelHits.set(q.user, [...h, now]);
+    const url = '/uploads/reels/' + crypto.randomBytes(16).toString('hex') + '.' + ext;
+    fs.writeFileSync('.' + url, b); db.prepare('insert into reel_files(url,user,ts) values(?,?,?)').run(url, q.user, now);
+    return r.json({ url });
+  }
+  if (kind === 'poster') {
+    if (!(b.length > 12 && b[0] === 0xFF && b[1] === 0xD8 && b[2] === 0xFF)) return bad(r, 'Poster must be a JPEG image.');
+    if (b.length > 800e3) return bad(r, 'Poster is too large.', 413);
+    const url = '/uploads/reels/' + crypto.randomBytes(16).toString('hex') + '.jpg';
+    fs.writeFileSync('.' + url, b); db.prepare('insert into reel_files(url,user,ts) values(?,?,?)').run(url, q.user, now);
+    return r.json({ url });
+  }
+  bad(r, 'Unknown upload kind.');
+});
+app.post('/api/reels', auth, ok((q, r) => {
+  const url = String(q.body?.url || ''), poster = String(q.body?.poster || ''), caption = String(q.body?.caption || '').replace(/\s+/g, ' ').trim().slice(0, 300);
+  const dur = Math.max(1, Math.min(90, Math.round(Number(q.body?.dur) || 0)));
+  if (!REEL_VID.test(url)) return bad(r, 'Invalid video.');
+  const f = db.prepare('select user from reel_files where url=?').get(url);
+  if (!f || f.user !== q.user) return bad(r, 'Upload the video first.');
+  if (db.prepare('select 1 from reels where url=?').get(url)) return bad(r, 'This video is already posted.');
+  let pos = '';
+  if (poster) { const pf = REEL_POS.test(poster) && db.prepare('select user from reel_files where url=?').get(poster); if (pf && pf.user === q.user) pos = poster; }
+  if (db.prepare('select count(*) c from reels where user=? and ts>?').get(q.user, Date.now() - 864e5).c >= 15) return bad(r, 'You can post up to 15 reels a day.', 429);
+  const id = db.prepare('insert into reels(user,url,poster,caption,dur,ts) values(?,?,?,?,?,?)').run(q.user, url, pos, caption, dur, Date.now()).lastInsertRowid;
+  addXp(q.user, 3); r.json({ id: Number(id) });
+}));
+app.get('/api/reels', auth, ok((q, r) => {
+  const lim = Math.max(1, Math.min(20, parseInt(q.query.limit, 10) || 8)), before = parseInt(q.query.before, 10) || 0, one = parseInt(q.query.id, 10) || 0, who = String(q.query.user || '').slice(0, 40);
+  const rows = db.prepare(`select r.id,r.user,r.url,r.poster,r.caption,r.dur,r.ts,r.views,
+      (select count(*) from reel_likes where reel=r.id) likes, (select count(*) from reel_comments where reel=r.id) comments,
+      exists(select 1 from reel_likes where reel=r.id and user=@me) liked
+    from reels r where (@before=0 or r.id<@before) and (@one=0 or r.id=@one) and (@who='' or r.user=@who)
+      and r.user not in (select case when a=@me then b else a end from blocks where a=@me or b=@me)
+    order by r.id desc limit @lim`).all({ me: q.user, before, one, who, lim });
+  r.json(rows.map(x => ({ ...x, liked: !!x.liked, role: roleOf(x.user), mine: x.user === q.user })));
+}));
+app.post('/api/reels/:id/view', auth, ok((q, r) => {
+  const id = parseInt(q.params.id, 10), x = db.prepare('select user from reels where id=?').get(id);
+  if (x && x.user !== q.user && db.prepare('insert or ignore into reel_views(reel,user) values(?,?)').run(id, q.user).changes) db.prepare('update reels set views=views+1 where id=?').run(id);
+  r.json({ ok: true });
+}));
+app.post('/api/reels/:id/like', auth, ok((q, r) => {
+  const id = parseInt(q.params.id, 10), x = db.prepare('select user from reels where id=?').get(id);
+  if (!x) return bad(r, 'Reel not found', 404);
+  let liked;
+  if (db.prepare('select 1 from reel_likes where reel=? and user=?').get(id, q.user)) { db.prepare('delete from reel_likes where reel=? and user=?').run(id, q.user); liked = false; }
+  else { db.prepare('insert into reel_likes(reel,user,ts) values(?,?,?)').run(id, q.user, Date.now()); liked = true; if (x.user !== q.user) notify(x.user, 'social', `${q.user} liked your reel`, 'reel:' + id); }
+  r.json({ liked, likes: db.prepare('select count(*) c from reel_likes where reel=?').get(id).c });
+}));
+app.get('/api/reels/:id/comments', auth, ok((q, r) => {
+  const id = parseInt(q.params.id, 10);
+  r.json(db.prepare('select id,user,text,ts from reel_comments where reel=? order by id desc limit 100').all(id).reverse().map(c => ({ ...c, role: roleOf(c.user) })));
+}));
+app.post('/api/reels/:id/comments', auth, ok((q, r) => {
+  const id = parseInt(q.params.id, 10), x = db.prepare('select user from reels where id=?').get(id), text = String(q.body?.text || '').replace(/\s+/g, ' ').trim().slice(0, 200);
+  if (!x) return bad(r, 'Reel not found', 404);
+  if (!text) return bad(r, 'Write a comment first');
+  if (isBlocked(q.user, x.user)) return bad(r, 'You cannot comment here.', 403);
+  if (Date.now() - (reelCom.get(q.user) || 0) < 2000) return bad(r, 'Please slow down a little.', 429);
+  reelCom.set(q.user, Date.now());
+  db.prepare('insert into reel_comments(reel,user,text,ts) values(?,?,?,?)').run(id, q.user, text, Date.now());
+  if (x.user !== q.user) notify(x.user, 'social', `${q.user} commented on your reel`, 'reel:' + id);
+  r.json({ ok: true, comments: db.prepare('select count(*) c from reel_comments where reel=?').get(id).c });
+}));
+app.delete('/api/reels/:id/comments/:cid', auth, ok((q, r) => {
+  const id = parseInt(q.params.id, 10), c = db.prepare('select user from reel_comments where id=? and reel=?').get(parseInt(q.params.cid, 10), id), x = db.prepare('select user from reels where id=?').get(id);
+  if (!c) return bad(r, 'Comment not found', 404);
+  if (c.user !== q.user && !(x && x.user === q.user) && !isMod(q.user)) return bad(r, 'You cannot delete this comment', 403);
+  db.prepare('delete from reel_comments where id=?').run(parseInt(q.params.cid, 10)); r.json({ ok: true });
+}));
+app.delete('/api/reels/:id', auth, ok((q, r) => {
+  const id = parseInt(q.params.id, 10), x = db.prepare('select user from reels where id=?').get(id);
+  if (!x) return bad(r, 'Reel not found', 404);
+  if (x.user !== q.user && !isMod(q.user)) return bad(r, 'You cannot delete this reel', 403);
+  reelDrop(id); r.json({ ok: true });
+}));
 
 // ---------- Mail (user to user, with JPG / PNG / PDF attachments) ----------
 db.exec(`create table if not exists mails(id integer primary key, from_user text, to_user text, subject text, body text, ts int, read int default 0, del_from int default 0, del_to int default 0);
