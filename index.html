@@ -1512,6 +1512,14 @@ html[data-skin] body #callui#callui#callui button.cx svg{width:54px!important;he
 #callui.vid .cbt{margin:0 0 16px}
 #callui:not(.vid) .cvw{display:block;position:absolute;width:1px;height:1px;opacity:0;overflow:hidden}
 #callui:not(.vid) #cvr,#callui:not(.vid) #cvl{width:1px;height:1px}
+/* friends: call buttons + call history */
+.clb{display:flex;gap:6px;flex:none}
+.clb button{width:38px;height:38px;padding:0;border-radius:50%;display:grid;place-items:center;min-width:0}
+.clb button svg{width:19px;height:19px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.clr .cst.miss{color:#e5484d!important;font-weight:700}
+.clr .cdir{font-weight:800}
+html[data-skin] body #view#view .clr .cst.miss{color:#ff5a5f!important}
+html[data-skin=dark] body #view#view#view .tabbar button{padding-left:4px!important;padding-right:4px!important;font-size:11px!important;letter-spacing:0!important;text-overflow:clip!important}
 html body.onhome #sub#sub#sub{display:none!important}
 /* custom headline colours */
 html[data-skin=navy] body #strip#strip#strip#strip .h6{color:#ffe08a!important}
@@ -2897,14 +2905,22 @@ V.panel=async()=>{
   if($('tg'))$('tg').onsubmit=async e=>{e.preventDefault();try{await api('POST','/tag',{to:$('tgu').value.trim(),mpin:$('tgp')?.value});toast('User tagged ✔');re()}catch(er){fail(er)}};
 };
 /* ---------- friends ---------- */
+const callBtns=n=>`<span class="clb"><button type="button" data-call="audio" data-n="${esc(n)}" aria-label="Audio call ${esc(n)}"><svg viewBox="0 0 24 24"><path d="M5 4h4l2 5-2.5 1.5a11 11 0 005 5L15 13l5 2v4a2 2 0 01-2 2A16 16 0 013 6a2 2 0 012-2z"/></svg></button><button type="button" data-call="video" data-n="${esc(n)}" aria-label="Video call ${esc(n)}"><svg viewBox="0 0 24 24"><rect x="3" y="6" width="12" height="12" rx="2"/><path d="M15 10l6-3v10l-6-3z"/></svg></button></span>`;
+const fmtCall=s=>s>=3600?Math.floor(s/3600)+'h '+Math.floor(s%3600/60)+'m':s>=60?Math.floor(s/60)+'m '+(s%60)+'s':s+'s';
+const fmtWhen=t=>{const d=new Date(t),n=new Date(),tm=d.toLocaleTimeString([],{hour:'numeric',minute:'2-digit'});if(d.toDateString()===n.toDateString())return 'Today '+tm;const y=new Date(n-864e5);if(d.toDateString()===y.toDateString())return 'Yesterday '+tm;return d.toLocaleDateString([],{day:'numeric',month:'short'})+' '+tm};
+async function callHistory(){const l=await api('GET','/calls');
+  const row=c=>{const miss=c.status==='missed'&&c.dir==='in',st=c.status==='answered'?fmtCall(c.dur):c.status==='declined'?(c.dir==='in'?'Declined':'Declined by '+c.peer):(c.dir==='in'?'Missed':'No answer');
+    return `<div class="fr clr" data-u="${esc(c.peer)}" style="cursor:pointer;padding:10px 12px;gap:10px;align-items:center">${av(c.peer,44)}<div class="g"><b style="color:${nc(c.peer)}">${esc(c.peer)}</b><div class="mu cst ${miss?'miss':''}"><span class="cdir">${c.dir==='in'?'↙':'↗'}</span> ${c.kind==='video'?'🎥 Video':'📞 Audio'} · ${esc(st)}</div><div class="mu" style="font-size:12px">${esc(fmtWhen(c.ts))}</div></div>${callBtns(c.peer)}</div>`};
+  return (l.length?`<div style="display:flex;justify-content:flex-end;margin:10px 12px 0"><button type="button" data-x="clearcalls" style="font-size:12px">Clear history</button></div>`+l.map(row).join(''):`<div class="card mu" style="text-align:center">No calls yet.</div>`)}
 V.friends=async()=>{const d=await api('GET','/friends');['friends','requests','discover'].forEach(k=>d[k].forEach(u=>ROLES[u.name]=u.role));const t=window.FT||'friends';
-  const row=u=>`<div class="fr" data-u="${esc(u.name)}" style="cursor:pointer;padding:10px 12px;gap:10px;align-items:center;border-left:10px solid ${RC[u.role]||'#4aa8e8'}">${av(u.name,48)}<div class="g"><b style="color:${nc(u.name)}">${esc(u.name)}</b>${rt(u.role,u.name)} <span class="lv">${lvi(lv(u.xp),16)}Lv ${lv(u.xp)}</span><div class="mu"><span class="dot ${u.presence}"></span><span class="${u.status_text?'':'nost'}">${esc(u.status_text||'No status')}</span></div></div>${t==='requests'?`<button class="o" data-x="accept" data-n="${esc(u.name)}">Accept</button>`:t==='discover'?`<button data-x="request" data-n="${esc(u.name)}">Add</button>`:''}</div>`;
+  const row=u=>`<div class="fr" data-u="${esc(u.name)}" style="cursor:pointer;padding:10px 12px;gap:10px;align-items:center;border-left:10px solid ${RC[u.role]||'#4aa8e8'}">${av(u.name,48)}<div class="g"><b style="color:${nc(u.name)}">${esc(u.name)}</b>${rt(u.role,u.name)} <span class="lv">${lvi(lv(u.xp),16)}Lv ${lv(u.xp)}</span><div class="mu"><span class="dot ${u.presence}"></span><span class="${u.status_text?'':'nost'}">${esc(u.status_text||'No status')}</span></div></div>${t==='requests'?`<button class="o" data-x="accept" data-n="${esc(u.name)}">Accept</button>`:t==='discover'?`<button data-x="request" data-n="${esc(u.name)}">Add</button>`:t==='friends'?callBtns(u.name):''}</div>`;
   const shown=k=>{try{return localStorage['fsh_'+k]!=='0'}catch{return true}};
   const sec=(title,l,c,k)=>`<h2 style="margin:14px 12px 6px;display:flex;align-items:center;gap:8px"><span class="dot ${c}"></span>${title} <span class="lv">${l.length}</span><button type="button" class="swb${shown(k)?' on':''}" data-sw="${k}" role="switch" aria-checked="${shown(k)}" aria-label="Show or hide ${title}"><svg viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg></button></h2>`+(!shown(k)?'':l.length?l.map(row).join(''):`<div class="card mu" style="text-align:center">No ${title.toLowerCase()}.</div>`);
-  const list=t==='friends'?(d.friends.length?sec('Online Friends',d.friends.filter(u=>u.presence!=='offline'),'online','on')+sec('Offline Friends',d.friends.filter(u=>u.presence==='offline'),'offline','off'):''):d[t].map(row).join('');
-  view(`<div class="tabbar">${['friends','requests','discover'].map(k=>`<button class="${t===k?'on':''}" data-t="${k}">${k[0].toUpperCase()+k.slice(1)} (${d[k].length})</button>`).join('')}</div><div>${list||`<div class="card mu" style="text-align:center">Nothing here yet.</div>`}</div>`);
+  const list=t==='calls'?await callHistory():t==='friends'?(d.friends.length?sec('Online Friends',d.friends.filter(u=>u.presence!=='offline'),'online','on')+sec('Offline Friends',d.friends.filter(u=>u.presence==='offline'),'offline','off'):''):d[t].map(row).join('');
+  view(`<div class="tabbar">${['friends','requests','discover'].map(k=>`<button class="${t===k?'on':''}" data-t="${k}">${k[0].toUpperCase()+k.slice(1)} (${d[k].length})</button>`).join('')}<button class="${t==='calls'?'on':''}" data-t="calls">📞 Calls</button></div><div>${list||`<div class="card mu" style="text-align:center">Nothing here yet.</div>`}</div>`);
   $('view').onclick=async e=>{const sw=e.target.closest('[data-sw]');if(sw){try{localStorage['fsh_'+sw.dataset.sw]=sw.classList.contains('on')?'0':'1'}catch{}return V.friends()}const tb=e.target.closest('[data-t]');if(tb){window.FT=tb.dataset.t;return V.friends()}
-    const x=e.target.closest('[data-x]');if(x){try{await api('POST','/friends/'+x.dataset.x,{name:x.dataset.n});V.friends()}catch(er){fail(er)}return}
+    const cb=e.target.closest('[data-call]');if(cb){e.stopPropagation();callStart(cb.dataset.n,cb.dataset.call);return}
+    const x=e.target.closest('[data-x]');if(x){try{if(x.dataset.x==='clearcalls'){await api('DELETE','/calls')}else await api('POST','/friends/'+x.dataset.x,{name:x.dataset.n});V.friends()}catch(er){fail(er)}return}
     const c=e.target.closest('[data-u]');if(c)go('profile',c.dataset.u)}};
 /* ---------- explore & settings ---------- */
 V.explore=async()=>{const lb=await api('GET','/leaderboard');lb.forEach(u=>ROLES[u.name]=u.role);const mem=await api('GET','/members');mem.forEach(u=>ROLES[u.name]=u.role);

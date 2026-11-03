@@ -150,6 +150,9 @@ create table if not exists bans(room text, user text, by text, ts int, until int
 create table if not exists room_mods(room text, user text, primary key(room,user));
 create table if not exists room_cfg(room text primary key, locked int default 0, silence_until int default 0, announce text default '');
 create table if not exists blocks(a text, b text, primary key(a,b));
+create table if not exists call_log(id integer primary key autoincrement, a text, b text, kind text, status text, dur integer default 0, ts integer);
+create index if not exists call_log_a on call_log(a);
+create index if not exists call_log_b on call_log(b);
 create table if not exists tp_pending(room text, hand text, user text, amount int);
 create table if not exists tp_hands(id integer primary key, ts int, info text);
 create table if not exists rb_pending(room text, round int, user text, option text, amount int);
@@ -721,7 +724,7 @@ app.get('/api/admin/delete-requests', auth, ok((q, r) => {
   r.json(db.prepare("select id,user,ts from del_requests where status='pending' order by id").all().map(x => ({ ...x, level: lvOf(x.user) })));
 }));
 function wipeUser(name) {
-  const T = [['favs', 'user'], ['blocks', 'a'], ['blocks', 'b'], ['friends', 'a'], ['friends', 'b'], ['txs', 'user'], ['gift_inv', 'user'], ['footprints', 'owner'], ['footprints', 'visitor'], ['notifs', 'user'],
+  const T = [['favs', 'user'], ['blocks', 'a'], ['blocks', 'b'], ['call_log', 'a'], ['call_log', 'b'], ['friends', 'a'], ['friends', 'b'], ['txs', 'user'], ['gift_inv', 'user'], ['footprints', 'owner'], ['footprints', 'visitor'], ['notifs', 'user'],
     ['user_photos', 'user'], ['story_views', 'user'], ['reacts', 'user'], ['comments', 'user'], ['post_shares', 'user'], ['post_hidden', 'user'], ['tags', 'user'], ['mevents', 'user'], ['xp_log', 'user'],
     ['user_colors', 'user'], ['user_color_active', 'user'], ['user_fx_active', 'user'], ['room_mods', 'user'], ['room_seen', 'user'], ['room_since', 'user'], ['mutes', 'user'], ['bans', 'user'],
     ['role_requests', 'from_user'], ['role_requests', 'to_user'], ['contest_scores', 'user'], ['gift_xp', 'user'], ['mails', 'to_user'], ['payouts', 'user'], ['role_history', 'user']];
@@ -931,7 +934,7 @@ app.delete('/api/admin/gifts/:k', auth, ok((q, r) => {
 // ---------- Staff admin panel ----------
 const COUNTRIES = ['Afghanistan','Albania','Algeria','Argentina','Armenia','Australia','Austria','Azerbaijan','Bahrain','Bangladesh','Belarus','Belgium','Bhutan','Bolivia','Bosnia and Herzegovina','Brazil','Brunei','Bulgaria','Cambodia','Cameroon','Canada','Chile','China','Colombia','Costa Rica','Croatia','Cuba','Cyprus','Czech Republic','Denmark','Dominican Republic','Ecuador','Egypt','El Salvador','Estonia','Ethiopia','Finland','France','Georgia','Germany','Ghana','Greece','Guatemala','Hong Kong','Hungary','Iceland','India','Indonesia','Iran','Iraq','Ireland','Israel','Italy','Ivory Coast','Jamaica','Japan','Jordan','Kazakhstan','Kenya','Kuwait','Kyrgyzstan','Laos','Latvia','Lebanon','Libya','Lithuania','Luxembourg','Malaysia','Maldives','Malta','Mexico','Moldova','Mongolia','Morocco','Myanmar','Nepal','Netherlands','New Zealand','Nigeria','North Macedonia','Norway','Oman','Pakistan','Palestine','Panama','Paraguay','Peru','Philippines','Poland','Portugal','Qatar','Romania','Russia','Saudi Arabia','Senegal','Serbia','Singapore','Slovakia','Slovenia','Somalia','South Africa','South Korea','Spain','Sri Lanka','Sudan','Sweden','Switzerland','Syria','Taiwan','Tajikistan','Tanzania','Thailand','Tunisia','Turkey','Turkmenistan','Uganda','Ukraine','United Arab Emirates','United Kingdom','United States','Uruguay','Uzbekistan','Venezuela','Vietnam','Yemen','Zambia','Zimbabwe'];
 const RENAME_COLS = [['msgs', 'user'], ['posts', 'user'], ['comments', 'user'], ['reacts', 'user'], ['txs', 'user'], ['favs', 'user'], ['bans', 'user'], ['bans', 'by'], ['room_mods', 'user'],
-  ['mutes', 'user'], ['tp_pending', 'user'], ['post_shares', 'user'], ['post_hidden', 'user'], ['stories', 'user'], ['story_views', 'user'], ['friends', 'a'], ['friends', 'b'], ['blocks', 'a'], ['blocks', 'b'], ['rooms', 'owner'], ['users', 'parent'], ['role_requests', 'from_user'], ['role_requests', 'to_user'], ['role_requests', 'decided_by'], ['tags', 'user'], ['tags', 'parent'], ['commissions', 'spender'], ['commissions', 'parent'], ['mevents', 'user'], ['payouts', 'user'], ['role_history', 'user'], ['role_history', 'by'], ['gift_inv', 'user'], ['lc_pending', 'user'], ['rb_pending', 'user']];   // room-name tables are handled by the room rename
+  ['mutes', 'user'], ['tp_pending', 'user'], ['post_shares', 'user'], ['post_hidden', 'user'], ['stories', 'user'], ['story_views', 'user'], ['friends', 'a'], ['friends', 'b'], ['blocks', 'a'], ['blocks', 'b'], ['call_log', 'a'], ['call_log', 'b'], ['rooms', 'owner'], ['users', 'parent'], ['role_requests', 'from_user'], ['role_requests', 'to_user'], ['role_requests', 'decided_by'], ['tags', 'user'], ['tags', 'parent'], ['commissions', 'spender'], ['commissions', 'parent'], ['mevents', 'user'], ['payouts', 'user'], ['role_history', 'user'], ['role_history', 'by'], ['gift_inv', 'user'], ['lc_pending', 'user'], ['rb_pending', 'user']];   // room-name tables are handled by the room rename
 const alog = (staff, target, action, detail = '') => db.prepare('insert into admin_log(staff,target,action,detail,ts) values(?,?,?,?,?)').run(staff, target, action, String(detail).slice(0, 200), Date.now());
 const kickUser = (name, why) => wss.clients.forEach(w => { if (w.user === name) { send(w, { t: 'error', error: why }); try { w.close(); } catch {} } });
 function staffTarget(q, r, name) {
@@ -1394,6 +1397,8 @@ try {
 const emoList = () => db.prepare('select name,code,icon from custom_emo where active=1 order by ts').all();
 const bcastEmo = () => wss.clients.forEach(w => w.user && send(w, { t: 'emos', list: emoList() }));
 app.get('/api/emoticons', auth, ok((q, r) => r.json(emoList())));
+app.get('/api/calls', auth, ok((q, r) => r.json(db.prepare('select id,a,b,kind,status,dur,ts from call_log where a=? or b=? order by id desc limit 60').all(q.user, q.user).map(x => ({ id: x.id, peer: x.a === q.user ? x.b : x.a, dir: x.a === q.user ? 'out' : 'in', kind: x.kind, status: x.status, dur: x.dur, ts: x.ts })))));
+app.delete('/api/calls', auth, ok((q, r) => { db.prepare('delete from call_log where a=? or b=?').run(q.user, q.user); r.json({ ok: true }); }));
 // ICE servers for audio/video calls. STUN is always on; set TURN_URL (comma separated), TURN_USER and TURN_PASS to relay calls on networks that block direct connections.
 app.get('/api/ice', auth, ok((q, r) => {
   const iceServers = [{ urls: ['stun:stun.l.google.com:19302', 'stun:stun1.l.google.com:19302'] }];
@@ -2244,6 +2249,11 @@ function callEnd(c, reason, by) {
   clearTimeout(c.timer); calls.delete(c.id);
   const o = { t: 'call_end', id: c.id, reason, by: by || '' };
   mainSocks(c.from).forEach(w => send(w, o)); mainSocks(c.to).forEach(w => send(w, o));
+  try {
+    const live = c.state === 'live', status = live ? 'answered' : reason === 'declined' ? 'declined' : 'missed';
+    db.prepare('insert into call_log(a,b,kind,status,dur,ts) values(?,?,?,?,?,?)').run(c.from, c.to, c.kind, status, live ? Math.round((Date.now() - c.t0) / 1000) : 0, Date.now());
+    for (const u of [c.from, c.to]) db.prepare('delete from call_log where (a=? or b=?) and id not in (select id from call_log where a=? or b=? order by id desc limit 100)').run(u, u, u, u);
+  } catch (e) { console.log('[call_log]', e.message); }
   if (c.state === 'ring' && (reason === 'noanswer' || reason === 'cancelled')) notify(c.to, 'social', `Missed ${c.kind} call from ${c.from}`, 'user:' + c.from);
 }
 function callMsg(ws, m) {
