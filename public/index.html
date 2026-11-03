@@ -1420,7 +1420,16 @@ body.in #rcol{display:flex;flex-direction:column;gap:8px;grid-column:3;grid-row:
 #rcol .rc .t small{color:var(--mu);font-size:12px}
 #rcol .rc em{font-style:normal;min-width:22px;height:22px;padding:0 6px;border-radius:11px;background:#e5484d;color:#fff;font-size:12px;font-weight:800;display:grid;place-items:center;box-sizing:border-box}
 #rcol .mu2{color:var(--mu);font-size:13px;padding:6px}
-#rcol #rfl{display:grid;grid-template-columns:repeat(auto-fill,minmax(60px,1fr));gap:10px 4px;justify-items:center;align-items:start}
+#rcol .rfr{display:flex;align-items:center;gap:10px;width:100%;padding:6px 8px;border-radius:12px;cursor:pointer;box-sizing:border-box}
+#rcol .rfr:hover{background:var(--sf2)}
+#rcol .rfr .p{position:relative;flex:none;width:38px;height:38px;display:block}
+#rcol .rfr .p .av{display:grid!important;place-items:center!important;width:38px!important;height:38px!important}
+#rcol .rfr .p i{position:absolute;right:-2px;bottom:-1px;width:11px;height:11px;border-radius:50%;border:2px solid var(--sf);background:#2e9d4f}
+#rcol .rfr .p i.away{background:#f5b301}#rcol .rfr .p i.busy{background:#e5484d}
+#rcol .rfr .t{flex:1;min-width:0}#rcol .rfr .t b{display:block;font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#rcol .rfr .t small{display:block;color:var(--mu);font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#rcol .clb button{width:30px;height:30px}#rcol .clb button svg{width:16px;height:16px}
+#rcol .clb{gap:4px}
 #rcol .rf{display:flex;flex-direction:column;align-items:center;width:60px}
 #rcol .rf .p{display:block;position:relative;width:52px;height:52px;margin:0 auto}
 #rcol .rf .p .av{display:block!important;width:52px!important;height:52px!important}
@@ -1513,7 +1522,7 @@ html[data-skin] body #callui#callui#callui button.cx svg{width:54px!important;he
 #callui:not(.vid) .cvw{display:block;position:absolute;width:1px;height:1px;opacity:0;overflow:hidden}
 #callui:not(.vid) #cvr,#callui:not(.vid) #cvl{width:1px;height:1px}
 /* friends: call buttons + call history */
-.clb{display:flex;gap:6px;flex:none}
+.clb{display:flex;gap:6px;flex:none;margin-left:auto}
 .clb button{width:38px;height:38px;padding:0;border-radius:50%;display:grid;place-items:center;min-width:0}
 .clb button svg{width:19px;height:19px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
 .clr .cst.miss{color:#e5484d!important;font-weight:700}
@@ -1789,7 +1798,7 @@ async function on(m){
   if(EMB){if(['notif','mail','announce','levelup','xp'].includes(m.t))return;if(m.t==='msg'&&m.room===EMBR&&m.user!==me&&m.kind!=='err'){try{parent.postMessage({t:'ev'},'*')}catch{}}}
   if(m.t==='error'){if(m.error==='auth'||m.error==='banned'){if(m.error==='banned')alert('Your account has been banned.');logout()}else alert(m.error)}
   if(m.t==='ready'){const first=!me;me=m.user;api('GET','/emoticons').then(setCE).catch(()=>{});G=m.gifts;UCOL=m.ucols||{};UFX=m.ufx||{};$('auth').style.display='none';$('app').style.display='flex';document.body.classList.add('in');
-    ST=await api('GET','/me').catch(()=>({}));ROLES[me]=ST.role;api('GET','/mail/unread').then(x=>setMailN(x.n)).catch(()=>{});await refreshVer();$('coins').textContent=cn(ST.coins);drawNav();document.documentElement.removeAttribute('data-boot');saveOpen();if(!first&&room&&OPEN.includes(room)&&!room.startsWith('dm:')&&!AL.has(room)&&!DC.has(room)){skipIntro=true;tx({t:'join',room})}if(first&&EMB){go('chat',EMBR);return}if(first)api('GET','/announcement').then(showAnn).catch(()=>{});if(first){let r=null;try{r=JSON.parse(sessionStorage.lastv||'null')}catch{}if(r&&V[r[0]]&&r[0]!=='admin')go(r[0],r[1]===null?undefined:r[1]);else go('home');try{const ws0=JSON.parse(sessionStorage.wins||'[]');if(innerWidth>=1000)ws0.forEach(x=>openWin(x.r,x.m));else if(!OPEN.length){ws0.forEach(x=>{if(!OPEN.includes(x.r))OPEN.push(x.r)});if(OPEN.length)saveOpen()}}catch{}}}
+    ST=await api('GET','/me').catch(()=>({}));ROLES[me]=ST.role;api('GET','/mail/unread').then(x=>setMailN(x.n)).catch(()=>{});await refreshVer();$('coins').textContent=cn(ST.coins);drawNav();document.documentElement.removeAttribute('data-boot');saveOpen();if(!first&&room&&OPEN.includes(room)&&!room.startsWith('dm:')&&!AL.has(room)&&!DC.has(room)){skipIntro=true;tx({t:'join',room})}if(first&&EMB){go('chat',EMBR);return}if(first){try{navigator.serviceWorker&&navigator.serviceWorker.register('/sw.js').catch(()=>{});if('Notification'in window&&Notification.permission==='default'&&!localStorage.notq)document.addEventListener('pointerdown',()=>{try{localStorage.notq=1;Notification.requestPermission()}catch{}},{once:true})}catch{}}if(first)api('GET','/announcement').then(showAnn).catch(()=>{});if(first){let r=null;try{r=JSON.parse(sessionStorage.lastv||'null')}catch{}if(r&&V[r[0]]&&r[0]!=='admin')go(r[0],r[1]===null?undefined:r[1]);else go('home');try{const ws0=JSON.parse(sessionStorage.wins||'[]');if(innerWidth>=1000)ws0.forEach(x=>openWin(x.r,x.m));else if(!OPEN.length){ws0.forEach(x=>{if(!OPEN.includes(x.r))OPEN.push(x.r)});if(OPEN.length)saveOpen()}}catch{}}}
   if(m.t==='announce')showAnn(m.a);
   if(m.t==='mail'){setMailN(m.n);toast(`📧 New mail from ${m.from}: ${m.subject}`);if(cur==='mail'&&!MOPEN)V.mail()}
   if(m.t==='roomcfg'&&m.room===room&&RI){const ch=(RI.descr||'')!==m.descr;Object.assign(RI,{descr:m.descr,minlv:m.minlv,mods:m.mods,supers:m.supers});if(ch&&m.descr&&$('log'))L(m.room[0].toUpperCase()+m.room.slice(1),`📝 ${esc(m.descr)}`)}
@@ -1833,10 +1842,10 @@ let RFR=[],RFT=0;
 function drawRcol(){const c=$('rcl');if(!c||!me||EMB||innerWidth<1100)return;
   c.className='rbox col';
   c.innerHTML=WINS.length?WINS.map(w=>{const r=w.r,dm=r.startsWith('dm:'),u=w.n,f=!dm&&RF[r]?fu(RF[r]):'';return `<button class="rc${w.el&&w.el.classList.contains('vis')?' on':''}" data-r="${esc(r)}"><span class="ic">${dm?av(rtitle(r),36):f?`<img src="${esc(f)}" alt="">`:'💬'}</span><span class="t"><b>${esc(rtitle(r))}</b><small>${dm?'Direct message':'Chatroom'}${w.min?' · minimized':' · open'}</small></span>${u?`<em>${u>99?'99+':u}</em>`:''}</button>`}).join(''):'<div class="mu2">No open chats. Join a room to start.</div>';
-  const f=$('rfl');f.innerHTML=RFR.length?RFR.map(u=>`<button class="rf" data-u="${esc(u.name)}">${'<span class="p">'+av(u.name,52)+`<i class="${u.presence||'online'}"></i></span>`}<span class="n">${esc(u.name)}</span></button>`).join(''):'<div class="mu2">No friends online right now.</div>';
+  const f=$('rfl');f.className='rbox col';f.innerHTML=RFR.length?RFR.map(u=>`<div class="rfr" data-u="${esc(u.name)}"><span class="p">${av(u.name,38)}<i class="${u.presence||'online'}"></i></span><span class="t"><b>${esc(u.name)}</b><small>${esc(u.status_text||(u.presence==='away'?'Away':u.presence==='busy'?'Busy':'Online'))}</small></span>${callBtns(u.name)}</div>`).join(''):'<div class="mu2">No friends online right now.</div>';
   $('rfn').textContent=RFR.length}
 async function loadRfr(){if(!me||innerWidth<1100)return;try{const d=await api('GET','/friends');RFR=d.friends.filter(u=>u.presence&&u.presence!=='offline'&&u.presence!=='invisible');RFR.forEach(u=>ROLES[u.name]=u.role)}catch{}drawRcol()}
-$('rcol').onclick=e=>{const r=e.target.closest('[data-r]');if(r)return go('chat',r.dataset.r);const u=e.target.closest('[data-u]');if(u)go('profile',u.dataset.u)};
+$('rcol').onclick=e=>{const cb=e.target.closest('[data-call]');if(cb){callStart(cb.dataset.n,cb.dataset.call);return}const r=e.target.closest('[data-r]');if(r)return go('chat',r.dataset.r);const u=e.target.closest('[data-u]');if(u)go('profile',u.dataset.u)};
 setInterval(()=>{if(!me||EMB)return;drawRcol();if(Date.now()-RFT>30000){RFT=Date.now();loadRfr()}},2000);
 addEventListener('resize',()=>{if(me)loadRfr()});
 
@@ -1897,13 +1906,19 @@ const cq=id=>document.getElementById(id);
 async function iceCfg(){if(ICE)return ICE;try{ICE=(await api('GET','/ice')).iceServers}catch{ICE=[{urls:'stun:stun.l.google.com:19302'}]}return ICE}
 const callMedia=k=>navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:true},video:k==='video'?{facingMode:'user',width:{ideal:640},height:{ideal:480}}:false});
 function callRing(mode){try{clearInterval(RING&&RING.t);if(RING&&RING.c)RING.c.close()}catch{}RING=null;if(!mode)return;
-  try{const c=new (window.AudioContext||window.webkitAudioContext)(),beep=(f,t0,d)=>{const o=c.createOscillator(),g=c.createGain();o.frequency.value=f;o.type='sine';g.gain.setValueAtTime(0,c.currentTime+t0);g.gain.linearRampToValueAtTime(mode==='in'?.25:.12,c.currentTime+t0+.03);g.gain.linearRampToValueAtTime(0,c.currentTime+t0+d);o.connect(g);g.connect(c.destination);o.start(c.currentTime+t0);o.stop(c.currentTime+t0+d+.05)};
-    const cyc=()=>{if(mode==='in'){beep(880,0,.18);beep(660,.22,.18);beep(880,.6,.18);beep(660,.82,.18)}else beep(440,0,.9)};cyc();RING={c,t:setInterval(cyc,mode==='in'?2200:3000)}}catch{}
-  if(mode==='in')try{navigator.vibrate&&navigator.vibrate([300,200,300])}catch{}}
+  /* A web page cannot read the phone's own ringtone, so this is a classic phone-style ring (and the system notification sound plays too when notifications are allowed). */
+  try{const c=new (window.AudioContext||window.webkitAudioContext)();if(c.state==='suspended')c.resume();
+    const burst=(t0,d)=>{[440,480].forEach(f=>{const o=c.createOscillator(),g=c.createGain();o.type='sine';o.frequency.value=f;const v=mode==='in'?.22:.1;g.gain.setValueAtTime(0,c.currentTime+t0);g.gain.linearRampToValueAtTime(v,c.currentTime+t0+.02);g.gain.setValueAtTime(v,c.currentTime+t0+d-.03);g.gain.linearRampToValueAtTime(0,c.currentTime+t0+d);o.connect(g);g.connect(c.destination);o.start(c.currentTime+t0);o.stop(c.currentTime+t0+d+.02)})};
+    const cyc=()=>{if(mode==='in'){burst(0,.4);burst(.6,.4)}else burst(0,1.6)};cyc();RING={c,t:setInterval(cyc,mode==='in'?3200:4000)}}catch{}
+  if(mode==='in'){try{navigator.vibrate&&navigator.vibrate([400,200,400,1200,400,200,400])}catch{}}}
+async function callNotify(from,kind){try{if(!('Notification'in window)||Notification.permission!=='granted'||!document.hidden)return;
+  const o={body:`Incoming ${kind==='video'?'video':'audio'} call`,tag:'migv33-call',renotify:true,requireInteraction:true,vibrate:[400,200,400,200,400],icon:'/Logo.PNG'};
+  const reg=navigator.serviceWorker&&await navigator.serviceWorker.getRegistration();if(reg)await reg.showNotification(from+' is calling',o);else new Notification(from+' is calling',o)}catch{}}
+async function callNotifyClear(){try{const reg=navigator.serviceWorker&&await navigator.serviceWorker.getRegistration();if(reg)(await reg.getNotifications({tag:'migv33-call'})).forEach(n=>n.close())}catch{}}
 function callUI(){let d=cq('callui');if(!CALL){if(d)d.remove();return}
   if(!d){d=document.createElement('div');d.id='callui';document.body.append(d)}
   const C=CALL,vid=C.kind==='video',live=C.state==='live',incoming=C.dir==='in'&&!live;
-  const st=C.dir==='in'?(live?(C.t0?'':'Connecting…'):`Incoming ${vid?'video':'audio'} call`):(live?(C.t0?'':'Connecting…'):'Calling…');
+  const st=C.dir==='in'?(live?(C.t0?'':'Connecting…'):`Incoming ${vid?'video':'audio'} call`):(live?(C.t0?'':'Connecting…'):(C.ringing?'Ringing…':'Calling…'));
   d.className='cu'+(vid&&live?' vid':'')+(live?' live':'');
   d.innerHTML=`<div class="cc"><div class="cvw"><video id="cvr" autoplay playsinline></video><video id="cvl" autoplay playsinline muted></video></div>
    <div class="cwho"><span class="cav">${av(C.peer,vid&&live?44:96)}</span><b>${esc(C.peer)}</b><small id="cst">${st}</small></div>
@@ -1921,10 +1936,11 @@ async function callStart(name,kind){if(EMB){try{parent.postMessage({t:'call',to:
   if(CALL){st.getTracks().forEach(t=>t.stop());return}
   CALL={id:'',peer:name,kind,dir:'out',state:'ring',local:st};callUI();callRing('out');tx({t:'call_invite',to:name,kind})}
 async function callPC(){const C=CALL,pc=new RTCPeerConnection({iceServers:await iceCfg()});C.pc=pc;C.pend=[];C.local.getTracks().forEach(t=>pc.addTrack(t,C.local));
+  C.ct=setTimeout(()=>{if(CALL===C&&!C.t0)callFinish('failed',true)},25000);
   pc.onicecandidate=e=>{if(e.candidate&&CALL===C)tx({t:'call_sig',id:C.id,data:{ice:e.candidate}})};
   pc.ontrack=e=>{C.remote=e.streams[0];const v=cq('cvr');if(v){v.srcObject=C.remote;v.play&&v.play().catch(()=>{})}};
   pc.onconnectionstatechange=()=>{if(CALL!==C)return;const s=pc.connectionState;
-    if(s==='connected'){clearTimeout(C.dt);if(!C.t0){C.t0=Date.now();callRing(null);callUI();clearInterval(C.tk);C.tk=setInterval(callTick,500)}}
+    if(s==='connected'){clearTimeout(C.dt);clearTimeout(C.ct);if(!C.t0){C.t0=Date.now();callRing(null);callUI();clearInterval(C.tk);C.tk=setInterval(callTick,500)}}
     else if(s==='failed')callFinish('failed',true);
     else if(s==='disconnected'){clearTimeout(C.dt);C.dt=setTimeout(()=>{if(CALL===C&&pc.connectionState!=='connected')callFinish('failed',true)},8000)}};
   return pc}
@@ -1937,14 +1953,14 @@ async function callSig(d){const C=CALL;if(!C||!C.pc)return;const pc=C.pc;
   try{if(d.sdp){await pc.setRemoteDescription(d.sdp);while(C.pend.length)await pc.addIceCandidate(C.pend.shift());
       if(d.sdp.type==='offer'){const a=await pc.createAnswer();await pc.setLocalDescription(a);tx({t:'call_sig',id:C.id,data:{sdp:pc.localDescription}})}}
     else if(d.ice){if(pc.remoteDescription)await pc.addIceCandidate(d.ice);else C.pend.push(d.ice)}}catch(e){console.warn('[call]',e)}}
-const CALLMSG={declined:n=>`${n} declined the call.`,noanswer:n=>`${n} didn't answer.`,busy:n=>`${n} is on another call.`,offline:n=>`${n} is offline right now.`,blocked:()=>'You cannot call this user.',nouser:()=>'User not found.',inacall:()=>'You are already in a call.',wait:()=>'Please wait a moment before calling again.',dropped:()=>'The call was disconnected.',failed:()=>'The connection failed. Check your network and try again.',cancelled:n=>`Missed call from ${n}.`};
-function callFinish(reason,tellPeer){const C=CALL;if(!C)return;CALL=null;callRing(null);clearInterval(C.tk);clearTimeout(C.dt);
+const CALLMSG={declined:n=>`${n} declined the call.`,noanswer:n=>`${n} didn't answer.`,busy:n=>`${n} is on another call.`,offline:n=>`${n} is offline right now.`,blocked:()=>'You cannot call this user.',nouser:()=>'User not found.',inacall:()=>'You are already in a call.',wait:()=>'Please wait a moment before calling again.',dropped:()=>'The call was disconnected.',failed:()=>'The call could not connect. The network may be blocking it. Try Wi-Fi or another network.',cancelled:n=>`Missed call from ${n}.`};
+function callFinish(reason,tellPeer){const C=CALL;if(!C)return;CALL=null;callRing(null);callNotifyClear();clearInterval(C.tk);clearTimeout(C.dt);clearTimeout(C.ct);
   if(tellPeer&&C.id)tx({t:'call_end',id:C.id});
   try{C.pc&&C.pc.close()}catch{}try{C.local&&C.local.getTracks().forEach(t=>t.stop())}catch{}
   callUI();const m=CALLMSG[reason];if(m&&!(reason==='cancelled'&&C.dir==='out'))toast(m(C.peer),['busy','offline','blocked','nouser','inacall','wait','failed','dropped'].includes(reason))}
 function callOn(m){
-  if(m.t==='call_in'){if(CALL)return;CALL={id:m.id,peer:m.from,kind:m.kind,dir:'in',state:'ring'};callUI();callRing('in')}
-  else if(m.t==='call_ringing'){if(CALL&&CALL.dir==='out'&&!CALL.id)CALL.id=m.id}
+  if(m.t==='call_in'){if(CALL)return;CALL={id:m.id,peer:m.from,kind:m.kind,dir:'in',state:'ring'};callUI();callRing('in');callNotify(m.from,m.kind)}
+  else if(m.t==='call_ringing'){if(CALL&&CALL.dir==='out'&&!CALL.id){CALL.id=m.id;CALL.ringing=true;callUI()}}
   else if(m.t==='call_accepted'){const C=CALL;if(!C||C.id!==m.id||C.dir!=='out')return;callRing(null);C.state='live';callUI();
     callPC().then(async pc=>{const o=await pc.createOffer();await pc.setLocalDescription(o);tx({t:'call_sig',id:C.id,data:{sdp:pc.localDescription}})}).catch(()=>callFinish('failed',true))}
   else if(m.t==='call_sig'){if(CALL&&CALL.id===m.id)callSig(m.data||{})}
