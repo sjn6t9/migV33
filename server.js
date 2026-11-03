@@ -1287,7 +1287,7 @@ app.get('/api/reels', auth, ok((q, r) => {
     from reels r where (@before=0 or r.id<@before) and (@one=0 or r.id=@one) and (@who='' or r.user=@who)
       and r.user not in (select case when a=@me then b else a end from blocks where a=@me or b=@me)
     order by r.id desc limit @lim`).all({ me: q.user, before, one, who, lim });
-  r.json(rows.map(x => ({ ...x, liked: !!x.liked, role: roleOf(x.user), mine: x.user === q.user })));
+  r.json(rows.map(x => ({ ...x, liked: !!x.liked, role: roleOf(x.user), mine: x.user === q.user, fs: x.user === q.user ? 'me' : fstate(q.user, x.user) })));
 }));
 app.post('/api/reels/:id/view', auth, ok((q, r) => {
   const id = parseInt(q.params.id, 10), x = db.prepare('select user from reels where id=?').get(id);

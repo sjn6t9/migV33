@@ -1679,6 +1679,13 @@ html[data-skin=dark] #rlw{--rbg:#03101a;--ra:rgba(34,211,238,.22);--rai:#67e8f9;
 .rlin{position:absolute;left:12px;right:74px;bottom:16px;color:#fff;text-shadow:0 1px 4px rgba(0,0,0,.7);pointer-events:none}
 .rlu{display:flex;align-items:center;gap:9px;pointer-events:auto;cursor:pointer;width:max-content;max-width:100%}
 .rlu b{font-size:15px}.rlu small{display:block;font-size:11px;color:rgba(255,255,255,.82);margin-top:1px}
+.rlfo{display:inline-block;pointer-events:auto;margin-left:6px;border:1px solid #fff!important;background:rgba(255,255,255,.15)!important;color:#fff!important;border-radius:99px!important;padding:5px 13px!important;height:auto!important;width:auto!important;min-width:0!important;font:700 13px/1 inherit;cursor:pointer;backdrop-filter:blur(4px);box-shadow:none!important}
+.rlfo.sent{opacity:.65}
+html[data-skin=clear] body #app#app #rlw#rlw .rlfo:not(.sent){background:linear-gradient(#ffc46e,#f7931e)!important;border-color:#fff!important;color:#2a1600!important}
+html[data-skin=navy] body #app#app #rlw#rlw .rlfo:not(.sent){background:#f7931e!important;border-color:#ffb85c!important}
+html[data-skin=dark] body #app#app #rlw#rlw .rlfo:not(.sent){background:rgba(34,211,238,.25)!important;border-color:#22d3ee!important;color:#67e8f9!important;box-shadow:0 0 10px rgba(34,211,238,.35)!important}
+#rlvol{width:74px;accent-color:#fff;height:4px;margin:0;cursor:pointer;pointer-events:auto}
+html[data-skin=clear] #rlvol{accent-color:#f7931e}html[data-skin=navy] #rlvol{accent-color:#f7931e}html[data-skin=dark] #rlvol{accent-color:#22d3ee}
 .rlcp{margin-top:9px;font-size:14px;line-height:1.38;max-height:5.6em;overflow:hidden;word-break:break-word}
 .rlcp a,.rlcp .tag,.rlcp .mn,.rlcp [data-tag],.rlcp [data-u]{color:var(--rhl)!important;font-weight:700}
 .rlbar{position:absolute;left:0;right:0;bottom:0;height:3px;background:rgba(255,255,255,.25)}
@@ -1722,10 +1729,6 @@ html[data-skin=dark] body #rlw .rltop #rlnew{background:var(--ra)!important;colo
  .rli{padding:0}.rlc{aspect-ratio:auto;width:100%}
  .rlv{border-radius:0;border:0;box-shadow:none}
  .rltop{top:10px}
-}
-@media (min-width:700px){
- .rla{right:auto;left:calc(100% + 14px);bottom:6px}
- .rla>div b{color:var(--rtx);text-shadow:none}
 }
 /* comments / create / menu sheets */
 .rcm{max-height:48vh;overflow-y:auto;margin:6px 0 10px}
@@ -2175,7 +2178,7 @@ V.home=async(tag)=>{homeTag=typeof tag==='string'?tag:'';postImg=null;
   loadStories();loadReelStrip();
   await loadFeed()};
 // ---------- Reels ----------
-let RMUTE=true,RLIO=null,RLEND=false,RLBUSY=false,RLLAST=0,RLSEEN=new Set(),RLMAP={};
+let RVOL=(()=>{try{const v=parseFloat(localStorage.rvol);return v>=0&&v<=1?v:1}catch{return 1}})(),RMUTE=true,RLIO=null,RLEND=false,RLBUSY=false,RLLAST=0,RLSEEN=new Set(),RLMAP={};
 const rlN=n=>n>=1e6?(n/1e6).toFixed(1).replace(/\.0$/,'')+'M':n>=1e3?(n/1e3).toFixed(1).replace(/\.0$/,'')+'K':String(n||0);
 const RLI={
  heart:'<svg viewBox="0 0 24 24"><path d="M12 20.5S3.5 15 3.5 8.9A4.4 4.4 0 0 1 12 7a4.4 4.4 0 0 1 8.5 1.9C20.5 15 12 20.5 12 20.5z"/></svg>',
@@ -2186,13 +2189,14 @@ const RLI={
  off:'<svg viewBox="0 0 24 24"><path d="M4 9v6h4l5 4V5L8 9z"/><path d="M17 9.5l4 5M21 9.5l-4 5"/></svg>',
  play:'<svg viewBox="0 0 24 24"><path d="M8 5l11 7-11 7z"/></svg>',
  pause:'<svg viewBox="0 0 24 24"><path d="M7 5h3.5v14H7zM13.5 5H17v14h-3.5z"/></svg>'};
+const rlFol=x=>x.fs==='none'?'<span role="button" class="rlfo" data-a="fol">Follow</span>':x.fs==='sent'?'<span class="rlfo sent">Requested</span>':x.fs==='incoming'?'<span role="button" class="rlfo" data-a="fol">Accept</span>':'';
 const rlMod=()=>['staff','admin'].includes(ST.role);
 function rlItem(x){RLMAP[x.id]=x;ROLES[x.user]=x.role;
  return `<section class="rli" data-id="${x.id}"><div class="rlc"><div class="rlv">
   <video playsinline loop muted preload="none" ${x.poster?`poster="${esc(x.poster)}"`:''} data-src="${esc(x.url)}"></video>
   <div class="rlfx"><i class="rlpp"></i><i class="rlhh">${RLI.heart}</i></div>
   <div class="rlsh"></div>
-  <div class="rlin"><div class="rlu" data-a="user">${av(x.user,38)}<div><b style="color:#fff">${esc(x.user)}</b>${rt(x.role,x.user)}<small>${ago(x.ts)} · ▶ ${rlN(x.views)}</small></div></div>
+  <div class="rlin"><div class="rlu" data-a="user">${av(x.user,38)}<div><b style="color:#fff">${esc(x.user)}</b>${rt(x.role,x.user)}<small>${ago(x.ts)} · ▶ ${rlN(x.views)}</small></div>${rlFol(x)}</div>
   ${x.caption?`<div class="rlcp">${rich(x.caption)}</div>`:''}</div>
   <div class="rlbar"><i></i></div></div>
   <div class="rla"><div role="button" tabindex="0" data-a="like" class="${x.liked?'on':''}" aria-label="Like"><i class="rlb">${RLI.heart}</i><b>${rlN(x.likes)}</b></div><div role="button" tabindex="0" data-a="cmt" aria-label="Comments"><i class="rlb">${RLI.cmt}</i><b>${rlN(x.comments)}</b></div><div role="button" tabindex="0" data-a="shr" aria-label="Share"><i class="rlb">${RLI.shr}</i><b>Share</b></div><div role="button" tabindex="0" data-a="more" aria-label="More"><i class="rlb">${RLI.dots}</i></div></div>
@@ -2201,18 +2205,18 @@ function rlSize(){const w=$('rlw');if(!w)return;const t=w.getBoundingClientRect(
 addEventListener('resize',()=>{if(cur==='reels')rlSize()});
 function rlAct(sec){const vd=sec.querySelector('video');document.querySelectorAll('#rl video').forEach(v=>{if(v!==vd){v.pause()}});
  const load=s=>{const v=s&&s.querySelector('video');if(v&&!v.src){v.src=v.dataset.src;v.preload='metadata'}};load(sec);load(sec.nextElementSibling);
- vd.muted=RMUTE;vd.play().catch(()=>{RMUTE=true;vd.muted=true;rlMuteBtn();vd.play().catch(()=>{})});
+ vd.volume=RVOL;vd.muted=RMUTE||RVOL===0;vd.play().catch(()=>{RMUTE=true;vd.muted=true;rlMuteBtn();vd.play().catch(()=>{})});
  const id=+sec.dataset.id;if(!RLSEEN.has(id)){RLSEEN.add(id);api('POST','/reels/'+id+'/view').catch(()=>{})}
  if(!sec.nextElementSibling||!sec.nextElementSibling.nextElementSibling)rlMore()}
-function rlMuteBtn(){const b=$('rlmu');if(b)b.innerHTML=RMUTE?RLI.off:RLI.on;document.querySelectorAll('#rl video').forEach(v=>v.muted=RMUTE)}
+function rlMuteBtn(){const b=$('rlmu'),m=RMUTE||RVOL===0;if(b)b.innerHTML=m?RLI.off:RLI.on;const r=$('rlvol');if(r)r.value=m?0:RVOL;document.querySelectorAll('#rl video').forEach(v=>{v.volume=RVOL;v.muted=m})}
 async function rlMore(){if(RLEND||RLBUSY)return;RLBUSY=true;try{const l=await api('GET','/reels?limit=8'+(RLLAST?'&before='+RLLAST:''));if(l.length<8)RLEND=true;const seen=new Set([...document.querySelectorAll('#rl .rli')].map(e=>+e.dataset.id)),n=l.filter(x=>!seen.has(x.id));if(l.length)RLLAST=l[l.length-1].id;const box=$('rl');if(!box)return;box.querySelector('.rlem')?.remove();box.insertAdjacentHTML('beforeend',n.map(rlItem).join(''));n.forEach(x=>{const e=box.querySelector(`.rli[data-id="${x.id}"]`);e&&RLIO&&RLIO.observe(e)});
   if(!box.children.length)box.innerHTML=`<div class="rlem"><div>🎬</div><h3>No reels yet</h3><p>Be the first to share a short video.</p><button class="o" data-a="new">＋ Create Reel</button></div>`}
  catch(e){fail(e)}finally{RLBUSY=false}}
 V.reels=async function(a){RLEND=false;RLBUSY=false;RLLAST=0;RLMAP={};if(RLIO)RLIO.disconnect();
- $('view').innerHTML=`<div id="rlw"><div class="rltop"><b><svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="5"/><path d="M3 9h18M9 3l3 6M15 3l3 6"/><path d="M10.5 12.8v4.4l3.6-2.2z" class="f"/></svg>Reels</b><span><button id="rlmu" aria-label="Sound">${RLI.off}</button><button id="rlnew" data-a="new">＋ <em>Create</em></button></span></div><div id="rl"></div></div>`;
+ $('view').innerHTML=`<div id="rlw"><div class="rltop"><b><svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="5"/><path d="M3 9h18M9 3l3 6M15 3l3 6"/><path d="M10.5 12.8v4.4l3.6-2.2z" class="f"/></svg>Reels</b><span><input type="range" id="rlvol" min="0" max="1" step="0.05" value="1" aria-label="Volume"><button id="rlmu" aria-label="Sound">${RLI.off}</button><button id="rlnew" data-a="new">＋ <em>Create</em></button></span></div><div id="rl"></div></div>`;
  rlSize();const box=$('rl');
  RLIO=new IntersectionObserver(es=>{es.forEach(e=>{if(e.isIntersecting&&e.intersectionRatio>=.6){box.querySelectorAll('.rli.cur').forEach(s=>s.classList.remove('cur'));e.target.classList.add('cur');rlAct(e.target)}else if(!e.isIntersecting){e.target.querySelector('video')?.pause()}})},{root:box,threshold:[0,.6]});
- $('rlmu').onclick=()=>{RMUTE=!RMUTE;rlMuteBtn()};rlMuteBtn();
+ $('rlmu').onclick=()=>{if(RMUTE||RVOL===0){RMUTE=false;if(RVOL===0)RVOL=.6}else RMUTE=true;try{localStorage.rvol=RVOL}catch{}rlMuteBtn()};$('rlvol').oninput=e=>{RVOL=+e.target.value;RMUTE=RVOL===0;try{localStorage.rvol=RVOL}catch{}document.querySelectorAll('#rl video').forEach(v=>{v.volume=RVOL;v.muted=RMUTE})};$('rlmu').innerHTML=RLI.off;rlMuteBtn();
  let tap=0,tapT=0;
  box.onclick=e=>{const b=e.target.closest('[data-a]');if(b){rlDo(b.dataset.a,b,e);return}
   const v=e.target.closest('.rlv');if(!v)return;const sec=v.closest('.rli'),vd=v.querySelector('video');
@@ -2231,10 +2235,12 @@ async function rlLike(sec){const id=+sec.dataset.id,x=RLMAP[id],b=sec.querySelec
 function rlDo(a,b){const sec=b.closest('.rli'),id=sec&&+sec.dataset.id;
  if(a==='new')return rlCreate();
  if(a==='user')return go('profile',RLMAP[id].user);
+ if(a==='fol')return rlFollow(RLMAP[id].user,b);
  if(a==='like')return rlLike(sec);
  if(a==='cmt')return rlComments(id,sec);
  if(a==='shr')return rlShare(id);
  if(a==='more')return rlMenu(id,sec)}
+async function rlFollow(u,b){b.style.pointerEvents='none';try{const x=Object.values(RLMAP).find(r=>r.user===u),acc=b.textContent==='Accept';await api('POST','/friends/'+(acc?'accept':'request'),{name:u});const ns=acc?'friends':'sent';Object.values(RLMAP).forEach(r=>{if(r.user===u)r.fs=ns});document.querySelectorAll('#rl .rli').forEach(sec=>{const r=RLMAP[sec.dataset.id];if(r&&r.user===u){const o=sec.querySelector('.rlfo');if(o)o.outerHTML=rlFol(r)}});toast(acc?'✅ You are friends now':'✅ Follow request sent')}catch(e){b.style.pointerEvents='';fail(e)}}
 async function rlShare(id){const u=location.origin+'/#reel='+id;try{if(navigator.share){await navigator.share({title:'Reel by '+RLMAP[id].user,url:u});return}}catch(e){if(e&&e.name==='AbortError')return}
  try{await navigator.clipboard.writeText(u);toast('🔗 Link copied')}catch{popup({icon:'🔗',title:'Reel link',html:`<div class="pb" style="user-select:all;word-break:break-all">${esc(u)}</div>`})}}
 function rlMenu(id,sec){const x=RLMAP[id],can=x.mine||rlMod();
