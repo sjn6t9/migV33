@@ -1752,10 +1752,12 @@ html body #sh .rcb p{display:block!important;padding:0!important;margin:2px 0 0!
 .rcb p{margin:2px 0 0;font-size:14px;line-height:1.35;word-break:break-word;color:var(--tx)}
 .rcx{border:0!important;background:none!important;color:var(--mu)!important;cursor:pointer;font-size:14px;padding:4px 6px!important;width:auto!important;height:auto!important}
 .rcf{display:flex;gap:8px}.rcf input{flex:1;min-width:0}
+html[data-skin] body #sheet.rln{align-items:center;justify-content:center}
+html[data-skin] body #sheet.rln #sh{width:min(400px,94vw)!important;max-width:400px!important;margin:auto!important;border-radius:22px!important;max-height:92vh;overflow-y:auto;box-sizing:border-box}
 .rlpk{display:block;cursor:pointer}
-.rlpv{position:relative;height:min(46vh,380px);aspect-ratio:9/14;max-width:100%;margin:6px auto 10px;border:2px dashed var(--ln);border-radius:16px;display:grid;place-content:center;justify-items:center;gap:4px;text-align:center;overflow:hidden;background:var(--sf2);color:var(--mu)}
+.rlpv{position:relative;height:min(44vh,340px);width:100%;box-sizing:border-box;margin:6px 0 10px;border:2px dashed var(--ln);border-radius:16px;display:grid;place-content:center;justify-items:center;gap:4px;text-align:center;overflow:hidden;background:var(--sf2);color:var(--mu)}
 .rlpv span{font-size:40px}.rlpv b{color:var(--tx)}.rlpv small{font-size:12px;padding:0 10px}
-.rlpv video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.rlpv video{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;background:#000}
 .rlpv .rlch{position:absolute;left:0;right:0;bottom:8px;color:#fff;text-shadow:0 1px 3px #000}
 #rlcap{width:100%;box-sizing:border-box;margin:0 0 10px;border-radius:12px;resize:none}
 .rlpg{margin:0 0 10px}.rlpg{height:auto}
@@ -2279,7 +2281,7 @@ function rlUp(path,blob,onp){return new Promise((ok,no)=>{const q=new XMLHttpReq
  q.onload=()=>{let d={};try{d=JSON.parse(q.responseText)}catch{}if(q.status===401)logout();q.status>=200&&q.status<300?ok(d):no(new Error(d.error||'Upload failed ('+q.status+')'))};q.send(blob)})}
 function rlCreate(){let file=null,dur=0,poster=null,busy=false;
  sheetOpen(`<h2>Create Reel</h2><label class="rlpk" id="rlpk"><input type="file" id="rlf" accept="video/mp4,video/webm,video/quicktime,video/*" hidden><div class="rlpv" id="rlpv"><span>🎬</span><b>Choose a video</b><small>MP4 or WebM · up to 15 seconds · max 40 MB</small></div></label><textarea id="rlcap" rows="2" maxlength="300" placeholder="Write a caption… use #tags and @mentions"></textarea><div class="rlpg" id="rlpg" hidden><i></i><small></small></div><button class="o" id="rlgo" disabled>Share Reel</button>`);
- const go2=$('rlgo');
+ $('sheet').classList.add('rln'); const go2=$('rlgo');
  $('rlf').onchange=e=>{const f=e.target.files[0];e.target.value='';if(!f)return;
   if(f.size>40e6){toast('⚠ Video is too large (40 MB max)',1);return}
   const url=URL.createObjectURL(f),pv=$('rlpv');pv.innerHTML=`<video muted playsinline loop autoplay src="${url}"></video><small class="rlch">Tap to change</small>`;go2.disabled=true;go2.textContent='Preparing…';poster=null;file=null;
@@ -2837,7 +2839,7 @@ async function micStart(){if(REC)return;
   mr.start();$('f').hidden=true;$('recbar').hidden=false;
   const tick=()=>{const s=Math.round((Date.now()-t0)/1000);$('rect').textContent=fmtDur(s);if(s>=60)micStop(true)};tick();REC.tm=setInterval(tick,500)}
 function micStop(send){if(!REC)return;REC.send=send;try{REC.mr.stop()}catch{}}
-const sheetOpen=h=>{$('sh').classList.remove('stw');$('sheet').classList.remove('spn');$('sh').innerHTML=h;$('sheet').classList.add('open')};
+const sheetOpen=h=>{$('sh').classList.remove('stw');$('sheet').classList.remove('spn','rln');$('sh').innerHTML=h;$('sheet').classList.add('open')};
 function memSheet(){sheetOpen(`<h2>${esc(lastRoom)} · ${RM.length} online</h2><div style="max-height:55vh;overflow:auto;display:grid;gap:6px">`+(RM.map(u=>`<button data-n="${esc(u.name)}" style="text-align:left;display:flex;gap:8px;align-items:center">${av(u.name,32)}<b style="color:${nc(u.name)}">${esc(u.name)}</b>${lvtag(u.name,u.xp)}${rt(u.role,u.name)}</button>`).join('')||'<div class="mu">Nobody here yet.</div>')+'</div>');
   $('sh').onclick=e=>{const n=e.target.closest('[data-n]')?.dataset.n;if(!n)return;$('sheet').classList.remove('open');if(n!==me)setTarget(n)}}
 function modInfo(){const o=RI?.owner||'—';sheetOpen(`<h2>Room staff</h2><div>Managed by: <b style="color:${nc(o)}">${esc(o)}</b></div><div class="mu">Moderators: ${(RI?.mods||[]).map(esc).join(', ')||'none'}</div><div class="mu">Staff and admins can kick, ban and silence in public rooms.</div>`)}
