@@ -1758,8 +1758,14 @@ html[data-skin=dark] .rlpg>i{background:linear-gradient(90deg,#0ea5c6,#22d3ee);b
 .rlmn button{text-align:left;padding:13px 14px;border-radius:12px;border:1px solid var(--ln);background:var(--sf2);color:var(--tx);font:600 15px inherit;cursor:pointer}
 .rlmn .dg{color:var(--bad)}
 /* Home strip */
-.rls{margin:12px 8px 0}
-@media (min-width:700px){.rls{max-width:640px;margin:12px auto 0;padding:0 8px}}
+.rls{margin:0;padding:10px 8px 0}html[data-skin] body #stories[hidden],html[data-skin] body #rlstrip[hidden],html[data-skin] body #view #stories[hidden]#stories[hidden]{display:none!important}
+.srw{margin:10px 0 0}
+.srt{display:flex;gap:6px;margin:0 8px;border-bottom:1px solid var(--ln)}
+.srt span{flex:1;text-align:center;padding:10px 4px;font-weight:700;font-size:15px;color:var(--mu);cursor:pointer;border-bottom:3px solid transparent;margin-bottom:-1px;user-select:none}
+.srt span.on{color:var(--tx);border-bottom-color:#f7931e}
+html[data-skin=dark] .srt span.on{color:#67e8f9;border-bottom-color:#22d3ee;text-shadow:0 0 8px rgba(34,211,238,.5)}
+@media (min-width:700px){.srw{max-width:640px;margin:10px auto 0}}
+
 .rsh{display:flex;justify-content:space-between;align-items:center;margin:0 2px 8px}
 .rsh b{display:flex;align-items:center;gap:7px;font-size:17px;color:var(--tx)}
 .rsh b svg{color:#e8431a}
@@ -1772,6 +1778,7 @@ html body .rsc{position:relative;flex:0 0 112px;width:112px!important;height:190
 html[data-skin=navy] body .rsc{border-color:#2d4a86!important;box-shadow:0 3px 12px rgba(0,0,0,.45)!important}
 html[data-skin=dark] body .rsc{border-color:rgba(34,211,238,.4)!important;box-shadow:0 0 12px rgba(34,211,238,.14)!important}
 .rsc img,.rsc video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+html[data-skin] body #app#app #rlstrip .rsc{border-radius:14px!important}
 .rsg{position:absolute;inset:0;background:linear-gradient(180deg,rgba(0,0,0,.3),transparent 35%,rgba(0,0,0,.75))}
 .rsa{position:absolute;left:7px;top:7px;border-radius:50%;box-shadow:0 0 0 2px #f7931e;display:block;line-height:0}
 html[data-skin=dark] .rsa{box-shadow:0 0 0 2px #22d3ee,0 0 8px #22d3ee}
@@ -2156,7 +2163,7 @@ const rich=t=>emo(rich0(t));
 function snack(msg,label,fn){const d=document.createElement('div');d.className='snack';d.innerHTML=`<span>${esc(msg)}</span>${label?`<button>${esc(label)}</button>`:''}`;if(label)d.querySelector('button').onclick=()=>{d.remove();fn()};document.body.append(d);setTimeout(()=>d.remove(),6000)}
 let homeTag='',PS={},postImg=null;
 V.home=async(tag)=>{homeTag=typeof tag==='string'?tag:'';postImg=null;
-  view(`<div id="stories" class="stor"></div><div id="rlstrip" class="rls"></div><div class="cmpx"><div class="cr">${av(me,44)}<textarea id="pt" rows="2" maxlength="500" placeholder="What's on your mind, ${esc(me)}? Use @name and #tag"></textarea></div><div id="pprev"></div><div id="sug" hidden></div>
+  view(`<div class="srw"><div class="srt" id="srt"><span role="tab" data-t="s" class="on">Stories</span><span role="tab" data-t="r">Reels</span></div><div id="stories" class="stor"></div><div id="rlstrip" class="rls" hidden></div></div><div class="cmpx"><div class="cr">${av(me,44)}<textarea id="pt" rows="2" maxlength="500" placeholder="What's on your mind, ${esc(me)}? Use @name and #tag"></textarea></div><div id="pprev"></div><div id="sug" hidden></div>
   <div class="cb"><button id="pph" type="button" title="Add a photo">📷<span> Photo</span></button><button id="pmn" type="button" title="Mention someone">@<span> Mention</span></button><button id="pht" type="button" title="Add a hashtag">#<span> Tag</span></button><button id="pem" type="button" title="Add an emoji">😊</button><input type="file" id="pfi" accept="image/*" hidden><span class="mu" id="pcnt">0/500</span><button class="o" id="pb">Post</button></div><div id="emp" hidden>${CE.map(c=>`<button type="button" data-e="${esc(c.code||":"+c.name+":")}" title="${esc(c.name)}">${ceImg(c,32)}</button>`).join("")||'<span class="mu" style="padding:6px">No emoticons yet. Staff can add them in Admin Panel.</span>'}</div></div><div id="feed" class="mu pad">Loading…</div>`);
   const pt=$('pt');
   const ins=t=>{const a=pt.selectionStart??pt.value.length,b=pt.selectionEnd??a;if(pt.value.length-(b-a)+t.length>500)return;pt.value=pt.value.slice(0,a)+t+pt.value.slice(b);pt.focus();pt.selectionStart=pt.selectionEnd=a+t.length;pt.oninput()};
@@ -2175,6 +2182,7 @@ V.home=async(tag)=>{homeTag=typeof tag==='string'?tag:'';postImg=null;
   loadHeadline();clearInterval(window._hlT);window._hlT=setInterval(()=>{if(cur==='home')loadHeadline();else clearInterval(window._hlT)},30000);
   $('feed').onclick=feedClick;
   $('stories').onclick=e=>{const b=e.target.closest('[data-sc]');if(!b)return;b.dataset.sc==='new'?openCreateStory():openStory(+b.dataset.sc)};
+  $('srt').onclick=e=>{const t=e.target.closest('[data-t]');if(!t)return;const r=t.dataset.t==='r';document.querySelectorAll('#srt [data-t]').forEach(x=>x.classList.toggle('on',x===t));$('stories').hidden=r;$('rlstrip').hidden=!r;try{sessionStorage.srt=r?'r':'s'}catch{}};try{if(sessionStorage.srt==='r')$('srt').querySelector('[data-t=r]').click()}catch{}
   loadStories();loadReelStrip();
   await loadFeed()};
 // ---------- Reels ----------
@@ -2283,8 +2291,8 @@ function rlCreate(){let file=null,dur=0,poster=null,busy=false;
   catch(e){fail(e);busy=false;go2.disabled=false;pg.hidden=true;bar.style.width='0'}}}
 // Home strip
 async function loadReelStrip(){const el=$('rlstrip');if(!el)return;let l=[];try{l=await api('GET','/reels?limit=10')}catch{}if(!$('rlstrip'))return;
- el.innerHTML=`<div class="rsh"><b><svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="5"/><path d="M3 9h18M9 3l3 6M15 3l3 6"/><path d="M10.5 12.8v4.4l3.6-2.2z" class="f"/></svg>Reels</b><button data-r="all">See all ›</button></div><div class="rss"><button class="rsc mk" data-r="new"><div class="top">${av(me,64)}</div><span class="pl">＋</span><b>Create reel</b></button>`+
-  l.map(x=>`<button class="rsc" data-r="${x.id}">${x.poster?`<img src="${esc(x.poster)}" alt="" loading="lazy">`:`<video muted playsinline preload="metadata" src="${esc(x.url)}#t=0.5"></video>`}<span class="rsg"></span><span class="rsa">${av(x.user,28)}</span><b class="rsn">${esc(x.user)}</b><small>▶ ${rlN(x.views)}</small></button>`).join('')+`</div>`;
+ el.innerHTML=`<div class="rss"><div role="button" class="rsc mk" data-r="new"><div class="top">${av(me,64)}</div><span class="pl">＋</span><b>Create reel</b></div>`+
+  l.map(x=>`<div role="button" class="rsc" data-r="${x.id}">${x.poster?`<img src="${esc(x.poster)}" alt="" loading="lazy">`:`<video muted playsinline preload="metadata" src="${esc(x.url)}#t=0.5"></video>`}<span class="rsg"></span><span class="rsa">${av(x.user,28)}</span><b class="rsn">${esc(x.user)}</b><small>▶ ${rlN(x.views)}</small></div>`).join('')+`</div>`;
  el.onclick=e=>{const b=e.target.closest('[data-r]');if(!b)return;const k=b.dataset.r;k==='new'?(go('reels'),setTimeout(rlCreate,350)):k==='all'?go('reels'):go('reels',+k)}}
 const BARS=['#f7c600','#f7852b','#4aa8e8'];
 function postHTML(p,i){const mod=['staff','admin'].includes(ST.role),own=p.user===me,canC=!p.locked||own||mod;
