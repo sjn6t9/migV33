@@ -1267,7 +1267,8 @@ app.post('/api/reels/media', auth, express.raw({ type: () => true, limit: '40mb'
 });
 app.post('/api/reels', auth, ok((q, r) => {
   const url = String(q.body?.url || ''), poster = String(q.body?.poster || ''), caption = String(q.body?.caption || '').replace(/\s+/g, ' ').trim().slice(0, 300);
-  const dur = Math.max(1, Math.min(90, Math.round(Number(q.body?.dur) || 0)));
+  const dur = Math.max(1, Math.round(Number(q.body?.dur) || 0));
+  if (dur > 16) return bad(r, 'Reels can be up to 15 seconds.');
   if (!REEL_VID.test(url)) return bad(r, 'Invalid video.');
   const f = db.prepare('select user from reel_files where url=?').get(url);
   if (!f || f.user !== q.user) return bad(r, 'Upload the video first.');
