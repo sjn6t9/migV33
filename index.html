@@ -1057,6 +1057,10 @@ img.emt{width:32px;height:32px;vertical-align:middle;margin:0 1px;display:inline
 #log .nt span{color:#f7931e}
 .alnote{margin:40px 16px;padding:18px;border-radius:18px;text-align:center;display:grid;gap:10px;background:#0f1a2b;border:1px solid rgba(255,255,255,.25)}
 #log .gf{font-weight:700}
+html body #log .gf.gblk,html body #log .gf.gblk *{color:#fff!important}
+html[data-skin=clear] body #log .gf.gblk,html[data-skin=clear] body #log .gf.gblk *{color:#111!important}
+html body #log .rl.ann,html body #log .rl.ann b{color:#c4813f!important}
+html[data-skin=clear] body #log .rl.ann,html[data-skin=clear] body #log .rl.ann b{color:#8b4513!important}
 #log .gf .gfi{height:26px;width:26px;object-fit:contain;vertical-align:middle;margin:0 3px}
 #log .errb{display:flex;gap:10px;align-items:flex-start;background:#fdeeee;border:1.5px solid #f2a9a9;border-radius:16px;padding:10px 14px;color:#8b1c1c;font-weight:700}
 #log .errb i{font-style:normal;font-size:20px;color:#d93a3a}
@@ -2922,7 +2926,7 @@ function addFx(m){const K=m.kind,d=document.createElement('div'),L=$('log'),tm=n
   else if(K==='err'){d.className='errb';d.innerHTML=`<i>⚠</i><div><b>${esc(m.text)}</b><small>Only you · ${esc(tm)}</small></div>`}
   else if(K==='emote'||K==='emotep'){d.className='emo'+(K==='emotep'?' p':'');d.textContent=m.text}
   else if(K==='note'||K==='notel'||K==='notea'){d.className='nt'+(K==='notel'?' l':K==='notea'?' a':'');d.innerHTML=`<span>Administration:</span> ${esc(m.text)}`}
-  else if(K==='gift'){const g=/^\{c:(#[0-9a-fA-F]{3,6})\}([\s\S]*)$/.exec(m.text);if(!g)return false;d.className='gf';d.style.color=giftCol(g[1]);
+  else if(K==='gift'){const g=/^\{c:(#[0-9a-fA-F]{3,6})\}([\s\S]*)$/.exec(m.text);if(!g)return false;d.className='gf';if(g[1].toLowerCase()==='#1c1c1e')d.classList.add('gblk');else d.style.color=giftCol(g[1]);
     d.innerHTML=g[2].split(/(\[g:\/uploads\/[a-f0-9]{32}\.\w+\])/).map(p=>{const x=/^\[g:(\/uploads\/[a-f0-9]{32}\.\w+)\]$/.exec(p);return x?`<img src="${esc(x[1])}" alt="" class="gfi">`:esc(p).replace(/\*([^*]+)\*/g,'<b>$1</b>')}).join('')}
   else return false;
   L.append(d);L.scrollTop=1e9;return true}
