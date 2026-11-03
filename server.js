@@ -1499,12 +1499,28 @@ try {
       if (db.prepare('select 1 from emo_seeded where k=?').get(key)) continue;
       for (const e of all.filter(x => (x.batch || 1) === batch)) {
         if (db.prepare('select 1 from custom_emo where name=?').get(e.name)) continue;
-        const buf = Buffer.from(e.gif, 'base64'), nm = crypto.randomBytes(16).toString('hex') + '.gif';
+        const buf = Buffer.from(e.png || e.gif, 'base64'), nm = crypto.randomBytes(16).toString('hex') + (e.png ? '.png' : '.gif');
         fs.mkdirSync('uploads', { recursive: true }); fs.writeFileSync('uploads/' + nm, buf);
         db.prepare('insert into custom_emo(name,code,icon,active,ts) values(?,?,?,1,?)').run(e.name, e.code && !db.prepare('select 1 from custom_emo where code=?').get(e.code) ? e.code : null, '/uploads/' + nm, Date.now());
       }
       db.prepare('insert into emo_seeded(k) values(?)').run(key);
     }
+  }
+  // one-time upgrade: swap the original 16px pictures for the sharp 96px versions (only if the picture was never replaced by staff)
+  if (fs.existsSync('emoticons.json') && !db.prepare("select 1 from emo_seeded where k='hd1'").get()) {
+    for (const e of JSON.parse(fs.readFileSync('emoticons.json', 'utf8'))) {
+      if (!e.png) continue;
+      const row = db.prepare('select icon from custom_emo where name=?').get(e.name);
+      if (!row || !/^\/uploads\/[a-f0-9]{32}\.gif$/.test(row.icon || '')) continue;
+      try {
+        if (!fs.readFileSync('.' + row.icon).equals(Buffer.from(e.gif, 'base64'))) continue;
+        const nm = crypto.randomBytes(16).toString('hex') + '.png';
+        fs.writeFileSync('uploads/' + nm, Buffer.from(e.png, 'base64'));
+        db.prepare('update custom_emo set icon=? where name=?').run('/uploads/' + nm, e.name);
+        try { fs.unlinkSync('.' + row.icon); } catch {}
+      } catch {}
+    }
+    db.prepare("insert into emo_seeded(k) values('hd1')").run();
   }
 } catch (e) { console.log('[emoticons seed]', e.message); }
 const emoList = () => db.prepare('select name,code,icon from custom_emo where active=1 order by ts').all();

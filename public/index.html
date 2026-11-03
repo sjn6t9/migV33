@@ -1043,7 +1043,7 @@ html #gp .gb,html #gp .cp,html #gp .side{font-family:inherit}
 #log.navy .inf,#log.dark .inf,html[data-theme=dark] #log .inf{color:#dbe6ff}
 #log .inf.ok{color:#2a6a50}
 #log.navy .inf.ok,#log.dark .inf.ok,html[data-theme=dark] #log .inf.ok{color:#7fe0b0}
-img.emt{width:32px;height:32px;vertical-align:middle;margin:0 1px;display:inline-block;image-rendering:pixelated;image-rendering:crisp-edges;image-rendering:-webkit-optimize-contrast;image-rendering:pixelated}
+img.emt{width:32px;height:32px;vertical-align:middle;margin:0 1px;display:inline-block;image-rendering:auto}
 .rpk img.emt{width:32px;height:32px;margin:0}
 .rpk{flex-wrap:wrap!important;width:max-content;max-width:min(92vw,372px);max-height:46vh;overflow-y:auto;border-radius:20px!important}
 .rpk button{padding:2px!important}
@@ -2940,7 +2940,7 @@ function add(m){if(['info','ok','err','emote','emotep','note','notel','notea','g
     d.innerHTML=`<b data-u="${esc(m.user)}" style="color:${nc(m.user,light?40:72)}">${esc(m.user)}</b><div class="mdia">${m.kind==='image'?'📷 ':'🎤 '}</div><div>${body}</div>`;d.querySelector('.mdia').remove()}
   else if(m.kind==='game'){d.className='b game';d.style.whiteSpace='pre-wrap';d.innerHTML=`<span class="gn">${m.priv?'🔒 ':''}${esc(m.user||'Teen Patti Gold')}:</span> ${esc(m.text)}`}
   else{const light=$('log').classList.contains('light');d.className='b';d.innerHTML=`<b data-u="${esc(m.user)}" style="color:${nc(m.user,light?40:72)}">${esc(m.user)}</b>: ${emo(esc(m.text))}`}
-  $('log').append(d);if(m.kind==='msg'||m.kind==='image'||m.kind==='voice'){const sp=stamp(),w=(m.ts||Date.now())+60000-Date.now();if(w>0){sp.style.display='none';setTimeout(()=>{sp.style.display=''},w)}$('log').append(sp)}$('log').scrollTop=1e9}
+  $('log').append(d);if(m.kind==='msg'||m.kind==='image'||m.kind==='voice'){const sp=stamp(),w=(m.ts||Date.now())+60000-Date.now();if(w>0){sp.style.display='none';setTimeout(()=>{const L=$('log'),end=!!L&&L.contains(sp)&&L.scrollHeight-L.scrollTop-L.clientHeight<90;sp.style.display='';if(end)L.scrollTop=1e9},w)}$('log').append(sp)}$('log').scrollTop=1e9}
 const uno=o=>tx({t:'uno',...o});
 const lbl=c=>c==='W'?'Wild':c==='F'?'+4':({S:'Skip',V:'Rev',D:'+2'}[c[1]]||c[1]);
 function renderUno(s){
