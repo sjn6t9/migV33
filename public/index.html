@@ -1471,6 +1471,17 @@ html.emb[data-skin] body #hdr #top#top#top,html.emb[data-skin] body #hdr #sub#su
 html.emb[data-skin] body #hdr{padding-top:4px!important}
 html.emb #rbx,html.emb #rbx *,html.emb #tn,html.emb #coins{display:none!important}
 html[data-skin] body #drawer#drawer#drawer#drawer#drawer#drawer #dn#dn#dn .dsr .dbell{border:0!important;border-color:transparent!important;box-shadow:none!important}
+/* Daily Spin popup: small, centred box with no inner borders */
+#sheet.spn{align-items:center;justify-content:center}
+html[data-skin] body #sheet.spn #sh{width:min(330px,92vw)!important;max-width:330px!important;margin:auto!important;padding:10px!important;border-radius:22px!important;overflow:hidden}
+html[data-skin] body #sheet.spn #sh:before{display:none!important}
+html[data-skin] body #sheet.spn #sh div:not([style*="#f59e0b"]){background:none!important;border:0!important;box-shadow:none!important;padding:0!important;border-radius:0!important;backdrop-filter:none!important}
+#sheet.spn #sh .cmp{display:none!important}
+#sheet.spn #sh .card{padding:2px!important}
+#sheet.spn #sh h2{font-size:16px!important;margin:6px 0 0!important}
+#sheet.spn #sh #whw{width:min(200px,100%)!important}
+#sheet.spn #sh #go{padding:8px 24px!important;font-size:15px!important}
+#sheet.spn #sh p.mu{font-size:11px!important;margin-top:8px!important}
 html body.onhome #sub#sub#sub{display:none!important}
 /* custom headline colours */
 html[data-skin=navy] body #strip#strip#strip#strip .h6{color:#ffe08a!important}
@@ -1590,7 +1601,7 @@ html body #hdr #top #rtabs .rt .rfl{width:20px;height:14px}
 html body #hdr #top #rtabs .rt.on{display:inline-flex!important;align-items:center;justify-content:center;gap:0}
 </style>
 <link rel="stylesheet" href="theme-dark.css?v=26">
-<link rel="stylesheet" href="theme-clear.css?v=6">
+<link rel="stylesheet" href="theme-clear.css?v=7">
 <style>/* role name colours: kept in their own block so they always load */
 :root{--nm-admin:#e8591f;--nm-staff:#2f9a3d;--nm-mentor:#b01020;--nm-headmentor:#8a6a14;--nm-merchant:#7e22ce;--nm-vip:#00706f;--nm-user:#2a7bd8}
 html[data-theme=dark],#log.navy,#log.dark{--nm-admin:#ff7a33;--nm-staff:#4cc24f;--nm-mentor:#f2394a;--nm-headmentor:#e8c23c;--nm-merchant:#b45cff;--nm-vip:#2ec4bf;--nm-user:#6db3ff}
@@ -2459,7 +2470,7 @@ async function micStart(){if(REC)return;
   mr.start();$('f').hidden=true;$('recbar').hidden=false;
   const tick=()=>{const s=Math.round((Date.now()-t0)/1000);$('rect').textContent=fmtDur(s);if(s>=60)micStop(true)};tick();REC.tm=setInterval(tick,500)}
 function micStop(send){if(!REC)return;REC.send=send;try{REC.mr.stop()}catch{}}
-const sheetOpen=h=>{$('sh').classList.remove('stw');$('sh').innerHTML=h;$('sheet').classList.add('open')};
+const sheetOpen=h=>{$('sh').classList.remove('stw');$('sheet').classList.remove('spn');$('sh').innerHTML=h;$('sheet').classList.add('open')};
 function memSheet(){sheetOpen(`<h2>${esc(lastRoom)} · ${RM.length} online</h2><div style="max-height:55vh;overflow:auto;display:grid;gap:6px">`+(RM.map(u=>`<button data-n="${esc(u.name)}" style="text-align:left;display:flex;gap:8px;align-items:center">${av(u.name,32)}<b style="color:${nc(u.name)}">${esc(u.name)}</b>${lvtag(u.name,u.xp)}${rt(u.role,u.name)}</button>`).join('')||'<div class="mu">Nobody here yet.</div>')+'</div>');
   $('sh').onclick=e=>{const n=e.target.closest('[data-n]')?.dataset.n;if(!n)return;$('sheet').classList.remove('open');if(n!==me)setTarget(n)}}
 function modInfo(){const o=RI?.owner||'—';sheetOpen(`<h2>Room staff</h2><div>Managed by: <b style="color:${nc(o)}">${esc(o)}</b></div><div class="mu">Moderators: ${(RI?.mods||[]).map(esc).join(', ')||'none'}</div><div class="mu">Staff and admins can kick, ban and silence in public rooms.</div>`)}
@@ -3158,7 +3169,7 @@ if(tok())connect();
 
 /* ---------- spin reminder ---------- */
 let spinHide=0;
-function openSpinSheet(){const host=document.createElement('div');host.id='spsheet';host.style.cssText='padding:4px 2px';sheetOpen('');$('sh').appendChild(host);window.VIEW_TARGET=host;V.spin().catch(e=>fail(e)).finally(()=>{window.VIEW_TARGET=null})}
+function openSpinSheet(){const host=document.createElement('div');host.id='spsheet';host.style.cssText='padding:4px 2px';sheetOpen('');$('sheet').classList.add('spn');$('sh').appendChild(host);window.VIEW_TARGET=host;V.spin().catch(e=>fail(e)).finally(()=>{window.VIEW_TARGET=null})}
 async function spinCheck(){let pill=$('spb');const off=()=>{if(pill)pill.remove()};
   if(!me||cur==='spin'||cur==='chat'||Date.now()<spinHide)return off();
   try{const d=await api('GET','/spin');if(!(d.free||d.spins>0))return off()}catch{return}
