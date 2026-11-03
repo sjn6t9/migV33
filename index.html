@@ -1712,6 +1712,7 @@ html[data-skin=clear] .rlbar i{background:#f7931e}html[data-skin=navy] .rlbar i{
 .rla>div:active .rlb{transform:scale(.88)}
 .rla>div b{font-size:12px;font-weight:700;color:#fff;text-shadow:0 1px 3px rgba(0,0,0,.8)}
 .rla [data-a=more] svg circle{fill:#fff!important;stroke:none!important}
+.rla .rlvv{cursor:default}
 .rla [data-a=like].on .rlb{background:rgba(0,0,0,.18)}
 html[data-skin=dark] .rlb{border-color:rgba(34,211,238,.4);background:rgba(3,16,26,.3);box-shadow:0 0 10px rgba(34,211,238,.15)}
 html[data-skin=dark] .rla svg{stroke:#67e8f9!important}html[data-skin=dark] .rla [data-a=more] svg circle{fill:#67e8f9!important}
@@ -2215,7 +2216,7 @@ function rlItem(x){RLMAP[x.id]=x;ROLES[x.user]=x.role;
   <div class="rlin"><div class="rlu" data-a="user">${av(x.user,38)}<div><b style="color:#fff">${esc(x.user)}</b>${rt(x.role,x.user)}<small>${ago(x.ts)} · ▶ ${rlN(x.views)}</small></div>${rlFol(x)}</div>
   ${x.caption?`<div class="rlcp">${rich(x.caption)}</div>`:''}</div>
   <div class="rlbar"><i></i></div></div>
-  <div class="rla"><div role="button" tabindex="0" data-a="like" class="${x.liked?'on':''}" aria-label="Like"><i class="rlb">${RLI.heart}</i><b>${rlN(x.likes)}</b></div><div role="button" tabindex="0" data-a="cmt" aria-label="Comments"><i class="rlb">${RLI.cmt}</i><b>${rlN(x.comments)}</b></div><div role="button" tabindex="0" data-a="shr" aria-label="Share"><i class="rlb">${RLI.shr}</i><b>Share</b></div><div role="button" tabindex="0" data-a="more" aria-label="More"><i class="rlb">${RLI.dots}</i></div></div>
+  <div class="rla"><div class="rlvv" aria-label="Views"><i class="rlb"><svg viewBox="0 0 24 24"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg></i><b>${rlN(x.views)}</b></div><div role="button" tabindex="0" data-a="like" class="${x.liked?'on':''}" aria-label="Like"><i class="rlb">${RLI.heart}</i><b>${rlN(x.likes)}</b></div><div role="button" tabindex="0" data-a="cmt" aria-label="Comments"><i class="rlb">${RLI.cmt}</i><b>${rlN(x.comments)}</b></div><div role="button" tabindex="0" data-a="shr" aria-label="Share"><i class="rlb">${RLI.shr}</i><b>Share</b></div><div role="button" tabindex="0" data-a="more" aria-label="More"><i class="rlb">${RLI.dots}</i></div></div>
  </div></section>`}
 function rlSize(){const w=$('rlw');if(!w)return;const t=w.getBoundingClientRect().top,bn=$('bnav'),b=(innerWidth<1000&&bn&&getComputedStyle(bn).display!=='none')?bn.offsetHeight:0;const h=Math.max(320,innerHeight-t-b);w.style.height=h+'px';w.style.setProperty('--cw',innerWidth<700?'100%':Math.min(innerWidth,Math.round((h-24)*9/16))+'px')}
 addEventListener('resize',()=>{if(cur==='reels')rlSize()});
