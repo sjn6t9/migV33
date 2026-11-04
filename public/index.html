@@ -1498,6 +1498,7 @@ html[data-skin] body #sheet.spn #sh div:not([style*="#f59e0b"]){background:none!
 #sheet.spn #sh #go{padding:8px 24px!important;font-size:15px!important}
 #sheet.spn #sh p.mu{font-size:11px!important;margin-top:8px!important}
 /* ===== call screen ===== */
+#callui .crate{display:block;margin-top:4px;font-size:12px;font-weight:700;color:#f7b733}
 #callui{position:fixed;inset:0;z-index:9000;display:grid;place-items:center;background:rgba(4,9,20,.72);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);animation:cuIn .25s ease both}
 @keyframes cuIn{from{opacity:0}}
 #callui .cc{position:relative;width:min(340px,92vw);border-radius:28px;padding:26px 18px 20px;text-align:center;color:#eaf0ff;background:linear-gradient(180deg,#14233f,#0b1426);border:1px solid rgba(140,170,255,.28);box-shadow:0 20px 60px rgba(0,0,0,.55);overflow:hidden}
@@ -1939,7 +1940,7 @@ async function pushAsk(){if(!pushOk())return toast('This browser cannot get call
   const ok=await pushSub();const ps=$('pst');if(ps&&ok)ps.textContent='✔ On for this device';toast(ok?'🔔 Call alerts are on for this device':'Could not turn on call alerts: '+(window._pushErr||'unknown error'),!ok);const b=$('pson');if(b&&ok)b.textContent='✔ On — refresh'}
 /* opened from the call notification's "Answer" button */
 window._autoAns=(()=>{try{const a=new URLSearchParams(location.search).get('ans');if(a){history.replaceState(null,'','/');return a}}catch{}return ''})();
-try{navigator.serviceWorker&&navigator.serviceWorker.addEventListener('message',e=>{const d=e.data||{};if(d.t==='callans'){if(CALL&&CALL.id===d.id&&CALL.dir==='in'&&CALL.state==='ring')callAccept();else window._autoAns=d.id}})}catch{}
+try{navigator.serviceWorker&&navigator.serviceWorker.addEventListener('message',e=>{const d=e.data||{};if(d.t==='calldec'){if(CALL&&CALL.id===d.id&&CALL.dir==='in'&&CALL.state==='ring')callReject();return}if(d.t==='callans'){if(CALL&&CALL.id===d.id&&CALL.dir==='in'&&CALL.state==='ring')callAccept();else window._autoAns=d.id}})}catch{}
 /* ---------- socket ---------- */
 let tries=0;
 const DC=new Set(),DCW={};
@@ -2098,7 +2099,10 @@ function callRing(mode){try{clearInterval(RING&&RING.t);if(RING&&RING.c)RING.c.c
   if(mode==='in'){try{navigator.vibrate&&navigator.vibrate([400,200,400,1200,400,200,400])}catch{}}}
 async function callNotify(from,kind){try{if(!('Notification'in window)||Notification.permission!=='granted'||!document.hidden)return;
   const o={body:`Incoming ${kind==='video'?'video':'audio'} call`,tag:'migv33-call',renotify:true,requireInteraction:true,vibrate:[400,200,400,200,400],icon:'/Logo.PNG'};
-  const reg=navigator.serviceWorker&&await navigator.serviceWorker.getRegistration();if(reg)await reg.showNotification(from+' is calling',o);else new Notification(from+' is calling',o)}catch{}}
+  let reg=null;try{reg=navigator.serviceWorker&&(await navigator.serviceWorker.getRegistration()||await navigator.serviceWorker.register('/sw.js'))}catch{}
+  if(reg){o.actions=[{action:'accept',title:'📞 Answer'},{action:'decline',title:'✖ Decline'}];o.data={id:CALL&&CALL.id,kind};
+    try{await reg.showNotification(from+' is calling',o)}catch(e){await reg.showNotification(from+' is calling',{body:o.body,tag:o.tag,icon:o.icon})}}
+  else new Notification(from+' is calling',o)}catch(e){console.log('call notify',e)}}
 async function callNotifyClear(){try{const reg=navigator.serviceWorker&&await navigator.serviceWorker.getRegistration();if(reg)(await reg.getNotifications({tag:'migv33-call'})).forEach(n=>n.close())}catch{}}
 function callUI(){let d=cq('callui');if(!CALL){if(d)d.remove();return}
   if(!d){d=document.createElement('div');d.id='callui';document.body.append(d)}
@@ -2106,7 +2110,7 @@ function callUI(){let d=cq('callui');if(!CALL){if(d)d.remove();return}
   const st=C.dir==='in'?(live?(C.t0?'':'Connecting…'):`Incoming ${vid?'video':'audio'} call`):(live?(C.t0?'':'Connecting…'):(C.ringing?'Ringing…':'Calling…'));
   d.className='cu'+(vid&&live?' vid':'')+(live?' live':'');
   d.innerHTML=`<div class="cc"><div class="cvw"><video id="cvr" autoplay playsinline></video><video id="cvl" autoplay playsinline muted></video></div>
-   <div class="cwho"><span class="cav">${av(C.peer,vid&&live?44:96)}</span><b>${esc(C.peer)}</b><small id="cst">${st}</small></div>
+   <div class="cwho"><span class="cav">${av(C.peer,vid&&live?44:96)}</span><b>${esc(C.peer)}</b><small id="cst">${st}</small>${C.dir==='out'?`<small class="crate">🪙 ${vid?50:20} coins / second</small>`:''}</div>
    <div class="cbt">${incoming?`<button class="cx rej" id="cdec" aria-label="Decline"><svg viewBox="0 0 24 24"><path d="M3 15c5-5 13-5 18 0l-3 3-3-2v-2a12 12 0 00-6 0v2l-3 2z"/></svg><span>Decline</span></button><button class="cx acc" id="cacc" aria-label="Accept"><svg viewBox="0 0 24 24"><path d="M5 4h4l2 5-2.5 1.5a11 11 0 005 5L15 13l5 2v4a2 2 0 01-2 2A16 16 0 013 6a2 2 0 012-2z"/></svg><span>Accept</span></button>`
    :`${live?`<button class="cx" id="cmute" aria-label="Mute"><svg viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5.5 11.5a6.5 6.5 0 0013 0M12 18v3"/></svg><span>Mute</span></button>${vid?`<button class="cx" id="ccam" aria-label="Camera"><svg viewBox="0 0 24 24"><rect x="3" y="6" width="12" height="12" rx="2"/><path d="M15 10l6-3v10l-6-3z"/></svg><span>Camera</span></button>`:''}`:''}<button class="cx rej" id="cend" aria-label="${live?'End call':'Cancel'}"><svg viewBox="0 0 24 24"><path d="M3 15c5-5 13-5 18 0l-3 3-3-2v-2a12 12 0 00-6 0v2l-3 2z"/></svg><span>${live?'End':'Cancel'}</span></button>`}</div></div>`;
   const rv=cq('cvr'),lv=cq('cvl');if(C.remote){rv.srcObject=C.remote;rv.play&&rv.play().catch(()=>{})}if(C.local&&vid)lv.srcObject=C.local;
@@ -2138,13 +2142,13 @@ async function callSig(d){const C=CALL;if(!C||!C.pc)return;const pc=C.pc;
   try{if(d.sdp){await pc.setRemoteDescription(d.sdp);while(C.pend.length)await pc.addIceCandidate(C.pend.shift());
       if(d.sdp.type==='offer'){const a=await pc.createAnswer();await pc.setLocalDescription(a);tx({t:'call_sig',id:C.id,data:{sdp:pc.localDescription}})}}
     else if(d.ice){if(pc.remoteDescription)await pc.addIceCandidate(d.ice);else C.pend.push(d.ice)}}catch(e){console.warn('[call]',e)}}
-const CALLMSG={declined:n=>`${n} declined the call.`,noanswer:n=>`${n} didn't answer.`,busy:n=>`${n} is on another call.`,offline:n=>`${n} is offline right now.`,blocked:()=>'You cannot call this user.',nouser:()=>'User not found.',inacall:()=>'You are already in a call.',wait:()=>'Please wait a moment before calling again.',dropped:()=>'The call was disconnected.',failed:()=>'The call could not connect. The network may be blocking it. Try Wi-Fi or another network.',cancelled:n=>`Missed call from ${n}.`};
-function callFinish(reason,tellPeer){const C=CALL;if(!C)return;CALL=null;callRing(null);callNotifyClear();clearInterval(C.tk);clearTimeout(C.dt);clearTimeout(C.ct);
+const CALLMSG={declined:n=>`${n} declined the call.`,noanswer:n=>`${n} didn't answer.`,busy:n=>`${n} is on another call.`,offline:n=>`${n} is offline right now.`,blocked:()=>'You cannot call this user.',nouser:()=>'User not found.',inacall:()=>'You are already in a call.',wait:()=>'Please wait a moment before calling again.',dropped:()=>'The call was disconnected.',failed:()=>'The call could not connect. The network may be blocking it. Try Wi-Fi or another network.',cancelled:n=>`Missed call from ${n}.`,nocoins:()=>'Not enough coins. Audio calls cost 20 coins and video calls 50 coins per second.'};
+function callFinish(reason,tellPeer){const C=CALL;if(!C)return;if(window._needNotif){window._needNotif=0;setTimeout(()=>{try{snack('Calls only rang with sound because notifications are off. Turn on call alerts to see who is calling.','Turn on',pushAsk)}catch{}},1500)}CALL=null;callRing(null);callNotifyClear();clearInterval(C.tk);clearTimeout(C.dt);clearTimeout(C.ct);
   if(tellPeer&&C.id)tx({t:'call_end',id:C.id});
   try{C.pc&&C.pc.close()}catch{}try{C.local&&C.local.getTracks().forEach(t=>t.stop())}catch{}
   callUI();const m=CALLMSG[reason];if(m&&!(reason==='cancelled'&&C.dir==='out'))toast(m(C.peer),['busy','offline','blocked','nouser','inacall','wait','failed','dropped'].includes(reason))}
 function callOn(m){
-  if(m.t==='call_in'){if(CALL)return;CALL={id:m.id,peer:m.from,kind:m.kind,dir:'in',state:'ring'};callUI();callRing('in');callNotify(m.from,m.kind);if(window._autoAns===m.id){window._autoAns='';setTimeout(callAccept,300)}}
+  if(m.t==='call_in'){if(CALL)return;CALL={id:m.id,peer:m.from,kind:m.kind,dir:'in',state:'ring'};callUI();callRing('in');callNotify(m.from,m.kind);if(document.hidden&&(!('Notification'in window)||Notification.permission!=='granted'))window._needNotif=1;if(window._autoAns===m.id){window._autoAns='';setTimeout(callAccept,300)}}
   else if(m.t==='call_ringing'){if(CALL&&CALL.dir==='out'&&!CALL.id){CALL.id=m.id;CALL.ringing=true;callUI()}}
   else if(m.t==='call_accepted'){const C=CALL;if(!C||C.id!==m.id||C.dir!=='out')return;callRing(null);C.state='live';callUI();
     callPC().then(async pc=>{const o=await pc.createOffer();await pc.setLocalDescription(o);tx({t:'call_sig',id:C.id,data:{sdp:pc.localDescription}})}).catch(()=>callFinish('failed',true))}

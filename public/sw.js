@@ -41,7 +41,9 @@ self.addEventListener('notificationclick', e => {
   const n = e.notification, d = n.data || {};
   n.close();
   if (e.action === 'decline' && d.id) {
-    e.waitUntil(fetch('/api/call/decline', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: d.id, key: d.key }) }).catch(() => {}));
+    e.waitUntil(d.key
+      ? fetch('/api/call/decline', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: d.id, key: d.key }) }).catch(() => {})
+      : self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(l => l.forEach(c => c.postMessage({ t: 'calldec', id: d.id }))));
     return;
   }
   const ans = d.id && e.action === 'accept' ? d.id : '';   // "Answer" opens the app and answers; tapping the notification opens the app on the ringing call
