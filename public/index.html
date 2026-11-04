@@ -1982,7 +1982,7 @@ function mountDC(r,msg,why){if($('dcbar')||!$('f'))return;why=why||DCW[r]||'';co
 /* Rejoin works with one tap: if the connection is still coming back, the rejoin waits for it and happens by itself */
 function rejoinRoom(r,b){
   if(!ws||ws.readyState!==1){window._rj=r;if(b){b.textContent='Rejoining…';b.disabled=true}tries=0;if(!ws||ws.readyState>1)connect();return}
-  window._rj=null;DC.delete(r);AL.delete(r);dropRoom(r);const d=$('dcbar');if(d)d.remove();V.chat(r);
+  window._rj=null;DC.delete(r);AL.delete(r);dropRoom(r);window._fresh=r;const d=$('dcbar');if(d)d.remove();V.chat(r);
   const t0=Date.now();setTimeout(()=>{if(room===r&&(window._lastRx||0)<t0&&ws&&ws.readyState===1){window._rj=r;try{ws.close()}catch{}}},6000)}
 const dcWhy=e=>{const c=e&&e.code;
   if(!navigator.onLine)return 'Your internet connection was lost. Check your Wi-Fi or mobile data, then tap Rejoin.';
@@ -2856,7 +2856,7 @@ V.chat=async(r)=>{room=r;if(!r.startsWith('dm:'))lastRoom=r;target='';pend=null;
   UNR[r]=0;drawTabs();
   fitChat();const lg=()=>{const g=$('log');if(g)g.scrollTop=g.scrollHeight};lg();setTimeout(()=>{fitChat();lg()},120);setTimeout(()=>{fitChat();lg()},600);
   if(window.SWD){const c=$('chatbox'),d=window.SWD;window.SWD=0;try{c.animate([{transform:`translateX(${d*48}px)`,opacity:0},{transform:'none',opacity:1}],{duration:300,easing:'cubic-bezier(.16,1,.3,1)'})}catch{}}
-  drawOnline();if(AL.has(r)){showAL(r);return}tx({t:'join',room:r,have:hadLog});
+  drawOnline();if(AL.has(r)){showAL(r);return}const fr=window._fresh===r;if(fr)window._fresh=null;tx({t:'join',room:r,have:hadLog,fresh:fr||undefined});
   if(r==='games'){$('uno').style.display='block';$('uno').innerHTML='<button class="o" id="jn">Join UNO</button>';$('jn').onclick=()=>uno({a:'join'})}};
 /* room tabs: tap to switch, swipe left/right to move between open rooms */
 function drawTabs(){const t=$('rtabs');if(!t)return;if(!EMB&&innerWidth>=1000)return wTabs();if(cur==='chat'&&DC.has(room)&&!$('dcbar'))mountDC(room,AL.has(room)?'Disconnected from <b>'+esc(rtitle(room))+'</b>':null);if(!RFL){RFL=1;setTimeout(loadRF,0)}

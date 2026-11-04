@@ -2577,7 +2577,9 @@ function onWsMessage(ws, raw) {
       leaveRoom(ws, true);   // switching tabs/rooms is not leaving: no 'left' line, and the 30-minute 'entered' memory is kept
       ws.room = m.room; ws.roomAt = Date.now();
       if (!members.has(m.room)) members.set(m.room, new Set());
-      const wasHere = sameRoom || [...members.get(m.room)].some(w => w.user === ws.user && w !== ws) || !!recentlyIn(ws.user, m.room);
+      // Tapping Rejoin is a fresh entry: everyone sees 'has entered' and the old chat is not shown again
+      if (m.fresh && !/^dm:/.test(m.room)) { try { db.prepare('delete from room_seen where user=? and room=?').run(ws.user, m.room); db.prepare('delete from room_since where user=? and room=?').run(ws.user, m.room); } catch {} }
+      const wasHere = !m.fresh && (sameRoom || [...members.get(m.room)].some(w => w.user === ws.user && w !== ws) || !!recentlyIn(ws.user, m.room));
       members.get(m.room).add(ws);
       const isDm = /^dm:/.test(m.room);
       let sinceTs = 0;
