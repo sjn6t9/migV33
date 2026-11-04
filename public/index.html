@@ -1676,6 +1676,18 @@ html[data-skin] body #view#view #tp .felt .seat .st{font-size:calc(var(--cw)*.28
 html[data-skin] body #view#view #tp .felt .seat .amt{font-size:calc(var(--cw)*.28 + 3.5px)!important}
 html[data-skin] body #view#view #tp .potchip{padding:1px 9px!important;font-size:12.5px!important;border-width:1px!important}
 html[data-skin] body #view#view #tp .tpsub{font-size:10.5px!important}
+
+/* Teen Patti: players seated in order (grid), your hand above the pot, tighter table */
+html[data-skin] body #view#view #tp .felt{min-height:0!important;padding:5px 6px!important;gap:2px!important}
+html[data-skin] body #view#view #tp .felt .seats{display:flex!important;flex-direction:column!important;align-items:center;gap:2px!important}
+html[data-skin] body #view#view #tp .felt .oth{display:grid;grid-template-columns:repeat(var(--cols,3),minmax(0,1fr));gap:2px 6px;width:100%;justify-items:center}
+html[data-skin] body #view#view #tp .felt .oth:empty{display:none}
+html[data-skin] body #view#view #tp .mewrap{order:0!important;flex-basis:auto!important}
+html[data-skin] body #view#view #tp .felt .seat.me{background:transparent!important;border:0!important;padding:0!important}
+html[data-skin] body #view#view #tp .felt .seat.me.turn .nm{color:#ffe08a}
+html[data-skin] body #view#view #tp .felt .seat .st{padding:0 5px!important;margin-top:0!important;line-height:1.25!important}
+html[data-skin] body #view#view #tp .felt .seat .nm{margin-top:1px!important}
+html[data-skin] body #view#view #tp .felt .seat .st,html[data-skin] body #view#view #tp .felt .seat .amt{display:inline-block!important;margin:1px 2px 0!important}
 /* real playing cards (board + chat) */
 .pc.face .sv.h,.mc .sv.h{-webkit-mask-image:url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2024%2024'%3E%3Cpath%20d='M12%2021.5C5%2015.5%202%2012%202%208.3%202%205.4%204.2%203.5%206.8%203.5c2%200%203.9%201.1%205.2%203%201.3-1.9%203.2-3%205.2-3C19.8%203.5%2022%205.4%2022%208.3c0%203.7-3%207.2-10%2013.2z'/%3E%3C/svg%3E");mask-image:url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2024%2024'%3E%3Cpath%20d='M12%2021.5C5%2015.5%202%2012%202%208.3%202%205.4%204.2%203.5%206.8%203.5c2%200%203.9%201.1%205.2%203%201.3-1.9%203.2-3%205.2-3C19.8%203.5%2022%205.4%2022%208.3c0%203.7-3%207.2-10%2013.2z'/%3E%3C/svg%3E")}
 .pc.face .sv.d,.mc .sv.d{-webkit-mask-image:url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2024%2024'%3E%3Cpath%20d='M12%201.5%2020.5%2012%2012%2022.5%203.5%2012z'/%3E%3C/svg%3E");mask-image:url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2024%2024'%3E%3Cpath%20d='M12%201.5%2020.5%2012%2012%2022.5%203.5%2012z'/%3E%3C/svg%3E")}
@@ -2696,7 +2708,7 @@ const Panel = (function () {
       const mst = you.state === 'out' ? `<span class="st out">out</span>` : (you.allIn ? `<span class="st allin">all-in</span>` : (playing ? `<span class="st">${you.state}</span>` : ''));
       meSeat = `<div class="mewrap"><div class="seat me ${you.state === 'out' ? 'out' : ''} ${you.isTurn && playing ? 'turn' : ''}"><div class="mini">${mc}</div><span class="nm">You</span>${mst}${v.phase === 'joining' ? '' : `<span class="amt">${fmt(you.invested)}</span>`}</div></div>`;
     }
-    const nSeat = others.length + (you ? 1 : 0), cw = nSeat <= 2 ? 30 : nSeat === 3 ? 26 : nSeat === 4 ? 22 : nSeat <= 6 ? 19 : 15;
+    const nSeat = others.length + (you ? 1 : 0), cw = others.length <= 2 ? 22 : others.length <= 4 ? 20 : 18, cols = others.length ? Math.ceil(others.length / Math.ceil(others.length / 4)) : 1;
     let pill = `<span class="pill" id="pill">⏱ 0s</span>`;
     if (joining) pill = `<span class="pill join" id="pill">⏱ ${secsLeft(v.joinDeadline)}s</span>`;
     if (playing) pill = `<span class="pill" id="pill">⏱ ${secsLeft(v.turnDeadline)}s</span>`;
@@ -2751,7 +2763,7 @@ const Panel = (function () {
       <div class="tph"><span>🎴</span><b>Teen Patti Gold</b>${pill}<span class="sp"></span>
         <button class="ib" data-top="1" aria-label="Top players"><i class="ti tr"></i></button><button class="ib" data-help="1" aria-label="Help"><i class="ti q"></i></button><button class="tpmin" data-min="1" aria-label="Collapse table"><i class="ti v"></i></button></div>
       ${banner}
-      <div class="felt" style="--cw:${cw}px;--cwm:${cw + 8}px"><div class="seats">${seatHtml}${meSeat}</div>
+      <div class="felt" style="--cw:${cw}px;--cwm:${cw + 8}px;--cols:${cols}"><div class="seats"><div class="oth">${seatHtml}</div>${meSeat}</div>
         <div><span class="potchip">💰 ${fmt(v.pot)}</span></div>
         <div class="tpsub">boot ${fmt(v.boot)} · ${v.seats.length}/${v.maxSeats} seats${playing ? ' · stake ' + fmt(v.stake) : ''}</div></div>
       ${mine}`;
