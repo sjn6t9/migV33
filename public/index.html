@@ -1819,6 +1819,18 @@ html body .rsc.mk{background:var(--sf)!important;border-color:var(--ln)!importan
 .rsc.mk .pl{position:absolute;left:50%;top:68%;transform:translate(-50%,-50%);width:30px;height:30px;border-radius:50%;display:grid;place-items:center;font-size:20px;font-weight:800;color:#fff;background:linear-gradient(#ffa63a,#e8431a);border:3px solid var(--sf)}
 html[data-skin=dark] .rsc.mk .pl{background:#0e7490;border-color:#03101a;box-shadow:0 0 10px #22d3ee}
 .rsc.mk b{position:absolute;left:0;right:0;bottom:9px;text-align:center;color:var(--tx);font-size:12px}
+
+#sh .gfw{display:flex;flex-direction:column;max-height:calc(88vh - 40px);max-height:calc(88dvh - 40px);min-height:0}
+#sh .gfh{flex:none;display:block;padding:0!important;background:none!important;border:0!important;box-shadow:none!important;border-radius:0!important;width:auto!important;max-width:none!important;margin:0!important}
+#sh .gfh:before{content:none!important;display:none!important}
+#sh .gfh h2{margin:0 0 4px}
+#sh .gfg{flex:1 1 auto;min-height:0;overflow-y:auto;overscroll-behavior:contain;display:grid;grid-template-columns:repeat(auto-fill,minmax(66px,1fr));gap:6px;margin-top:10px;padding:2px 2px 6px}
+#sh .gfx{display:flex;flex-direction:column;align-items:center;gap:1px;padding:6px 2px 5px;min-width:0;border-radius:12px;border:1px solid rgba(128,128,128,.35);background:rgba(128,128,128,.14);color:inherit;cursor:pointer;text-align:center;-webkit-tap-highlight-color:transparent}
+#sh .gfx:hover,#sh .gfx:focus-visible{border-color:#f7931e;background:rgba(247,147,30,.18);outline:0}
+#sh .gfx i{font-style:normal;height:38px;width:38px;display:grid;place-items:center;font-size:30px;line-height:1}
+#sh .gfx i img{height:38px;width:38px;object-fit:contain}
+#sh .gfx em{font-style:normal;font-size:10.5px;line-height:1.2;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#sh .gfx b{font-size:11px;font-weight:800;color:#f7931e}
 </style>
 </head>
 <body>
@@ -2948,9 +2960,9 @@ async function roomEdit(){
   $('sh').onclick=async ev=>{const b=ev.target.closest('[data-rm]');if(b&&await save({removeMod:b.dataset.rm}))roomEdit()}}
 function giftSheet(){
   const dm=room.startsWith('dm:'),to=dm?room.slice(3).split(':').find(x=>x!==me):target;
-  sheetOpen(`<h2>Send Gift</h2>${dm?`<small>To: <b>${esc(to)}</b></small>`:`<small>To (username):</small><input id="gto" value="${esc(to||'')}" maxlength="16" placeholder="Username (or tap a name in the chat first)">`}
-  ${dm?'':'<label style="display:flex;gap:8px;align-items:center;margin:8px 0"><input type="checkbox" id="gall" style="width:auto"> Everyone in this room</label>'}
-  <nav class="chips">${Object.entries(G).map(([k,g])=>`<button data-g="${k}" title="${esc(g.n)}">${g.img?`<img src="${esc(g.img)}" alt="" style="height:22px;width:22px;object-fit:contain;vertical-align:middle">`:g.e} ${esc(g.n)} · ${g.c}</button>`).join('')}</nav>`);
+  sheetOpen(`<section class="gfw"><section class="gfh"><h2>Send Gift</h2>${dm?`<small>To: <b>${esc(to)}</b></small>`:`<small>To (username):</small><input id="gto" value="${esc(to||'')}" maxlength="16" placeholder="Username (or tap a name in the chat first)">`}
+  ${dm?'':'<label style="display:flex;gap:8px;align-items:center;margin:8px 0 0"><input type="checkbox" id="gall" style="width:auto"> Everyone in this room</label>'}</section>
+  <nav class="gfg">${Object.entries(G).map(([k,g])=>`<span role="button" tabindex="0" class="gfx" data-g="${k}" title="${esc(g.n)} · ${g.c}"><i>${g.img?`<img src="${esc(g.img)}" alt="">`:g.e}</i><em>${esc(g.n)}</em><b>${g.c}</b></span>`).join('')}</nav></section>`);
   $('sh').onclick=e=>{const k=e.target.closest('[data-g]')?.dataset.g;if(!k)return;
     if(!dm&&$('gall')?.checked){$('sheet').classList.remove('open');return tx({t:'msg',text:`/gift all ${k}`})}
     const who=dm?to:$('gto').value.trim();if(!who)return alert('Type a username first.');
