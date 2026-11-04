@@ -1947,6 +1947,7 @@ const rbStore = {
 };
 const royale = !RB ? null : new RB.RoyaleBattleManager({
   send: (room, text) => cast(room, { t: 'msg', room, user: 'Royale Battle', text, kind: 'game', ts: Date.now(), role: '' }),
+  sendTo: (room, userId, text) => members.get(room)?.forEach(w => w.user === userId && send(w, { t: 'msg', room, user: 'Royale Battle', text, kind: 'game', priv: true, ts: Date.now(), role: '' })),
   store: rbStore,
   isAdmin: async u => !!u.isAdmin,
   config: { ...RB.CONFIG, COIN_NAME: 'coins' },
@@ -2627,6 +2628,7 @@ function onWsMessage(ws, raw) {
   }
 }
 const ghosts = new Map();
+const ROOM_GRACE = 5 * 60e3;   // minimised / dropped connections stay in their room this long
 function closeWs(ws) {
   if (ws.user && !ws.emb && !hasSock(ws.user)) {
     const u0 = ws.user, rooms0 = userRooms(u0); if (ws.room) rooms0.push(ws.room);
@@ -2635,16 +2637,20 @@ function closeWs(ws) {
     if (ws._bye) setImmediate(upd); setTimeout(upd, 16e3);
   }
   try { for (const c of [...calls.values()]) if (c.fromWs === ws || c.toWs === ws) callEnd(c, c.state === 'ring' ? 'cancelled' : 'dropped', ws.user); } catch {}
-  // a dropped connection leaves its room immediately
+  // an explicit exit (tab closed / Leave) leaves at once; a dropped connection (app minimised, bad network) keeps the room for a grace period
   const r0 = ws.room;
   const otherTabs = ws.tabs && ws.user ? [...ws.tabs].filter(x => x !== r0 && !x.startsWith('dm:')) : [];
-  leaveRoom(ws);   // a dropped connection leaves the room at once ('has left'); Rejoin / reconnect shows 'has entered' again
-  for (const t of otherTabs) {   // rooms that were only open as background tabs on this connection are left too
-    if (roomNames(t).has(ws.user)) continue;
-    try { db.prepare('delete from room_seen where user=? and room=?').run(ws.user, t); db.prepare('delete from room_since where user=? and room=?').run(ws.user, t); } catch {}
-    cast(t, { t: 'leave', room: t, user: ws.user, role: roleOf(ws.user), xp: xpOf(ws.user), ts: Date.now() }); castRoster(t);
-  }
-
+  const doLeave = () => {
+    leaveRoom(ws);
+    for (const t of otherTabs) {
+      if (roomNames(t).has(ws.user)) continue;
+      try { db.prepare('delete from room_seen where user=? and room=?').run(ws.user, t); db.prepare('delete from room_since where user=? and room=?').run(ws.user, t); } catch {}
+      cast(t, { t: 'leave', room: t, user: ws.user, role: roleOf(ws.user), xp: xpOf(ws.user), ts: Date.now() }); castRoster(t);
+    }
+    online();
+  };
+  if (ws._bye || !ws.user) doLeave();
+  else setTimeout(() => { if (hasSock(ws.user)) { try { leaveRoom(ws, true); } catch {} return; } doLeave(); }, ROOM_GRACE);
   online();
 }
 process.on('uncaughtException', e => console.error('[uncaught]', e));

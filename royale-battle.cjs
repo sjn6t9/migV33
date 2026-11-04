@@ -28,6 +28,7 @@ const CONFIG = {
     tirel:     { min: 2, max: 3,  windowMs: 12 * HOUR },
   },
   COIN_NAME: 'coins',
+  AUTO_NEXT: false,           // false: after a round, wait for a player to type !start
   START_ADMIN_ONLY: false,    // anyone may type !start
   QUEUE_STOP: false,          // false: /bot stop is refused while a round runs (admin must retry after the round).
                               // true : /bot stop during a round is queued and executes when the round ends.
@@ -320,9 +321,10 @@ function parseAmount(s) {
  *         'stopped'  bot removed from the room
  */
 class RoyaleBattle {
-  constructor({ roomId, send, store, config = CONFIG, planner, now = () => Date.now(), onRound = null, onStopped = null }) {
+  constructor({ roomId, send, sendTo = null, store, config = CONFIG, planner, now = () => Date.now(), onRound = null, onStopped = null }) {
     this.roomId = roomId;
     this.send = send;           // send(text) -> post into this room as the bot
+    this.sendTo = sendTo || ((uid, text) => send(text));   // private reply to one user (balance etc.)
     this.store = store;
     this.cfg = config;
     this.now = now;
@@ -341,12 +343,13 @@ class RoyaleBattle {
   /** Bot joins the room (does not start rounds yet). */
   attach() {
     this.phase = 'ready';
-    this.send('🎴 Royale Battle Bot is now in this room. Admin: type !start to begin.');
+    this.send('🎴 Royale Battle Bot is now in this room. Type !start to begin.');
   }
 
   /** Start the rounds. Returns false if it is not in the 'ready' phase. */
   start() {
-    if (this.phase !== 'ready') return false;
+    if (this.phase !== 'ready' && this.phase !== 'between') return false;
+    clearTimeout(this.timer);
     this._startRound();
     return true;
   }
@@ -465,7 +468,8 @@ class RoyaleBattle {
     this.bets = new Map();
     this.phase = 'between'; this.deadline = Date.now() + c.RESULT_PAUSE_SECONDS * 1000;
     if (this.stopAfterRound) { this.stopAfterRound = false; this._halt(); return; }
-    this.timer = setTimeout(() => this._startRound(), c.RESULT_PAUSE_SECONDS * 1000);
+    if (c.AUTO_NEXT) this.timer = setTimeout(() => this._startRound(), c.RESULT_PAUSE_SECONDS * 1000);
+    else { this.deadline = null; this.send('Round finished. Type !start for the next round.'); }
   }
 
   /* ---- player commands (!bet, !balance, !top) ---- */
@@ -478,7 +482,7 @@ class RoyaleBattle {
       case '!bet': return this._bet(userId, userName, rest);
       case '!balance': case '!bal': {
         const b = await this.store.getBalance(userId);
-        return this.send(`${userName}, your balance: ${fmt(b)} ${this.cfg.COIN_NAME}`);
+        return this.sendTo(userId, `Your balance: ${fmt(b)} ${this.cfg.COIN_NAME}`);
       }
       case '!top': {
         if (!this.store.top) return;
@@ -491,7 +495,7 @@ class RoyaleBattle {
 
   async _bet(userId, userName, args) {
     const c = this.cfg;
-    if (this.phase === 'ready') return this.send(`${userName}, the game has not started yet. An admin must type !start.`);
+    if (this.phase === 'ready') return this.sendTo(userId, `The game has not started yet. Type !start to begin.`);
     if (this.phase !== 'betting') return this.send(`${userName}, betting is closed. Wait for the next round.`);
     if (args.length < 2) return this.send(`${userName}, usage: !bet [option] [amount] (e.g. !bet red 500)`);
 
@@ -508,11 +512,11 @@ class RoyaleBattle {
       const left = await this.store.placeBet({
         roomId: this.roomId, roundId: rid, userId: String(userId), name: userName, option: opt, amount,
       });
-      if (left === null) return this.send(`${userName}, not enough ${c.COIN_NAME}.`);
+      if (left === null) return this.sendTo(userId, `Not enough ${c.COIN_NAME}.`);
       const b = this.bets.get(String(userId)) || { name: userName, opts: {} };
       b.opts[opt] = (b.opts[opt] || 0) + amount;
       this.bets.set(String(userId), b);
-      this.send(`✅ ${userName} bet ${fmt(amount)} on ${OPTION_LABEL[opt]} (balance ${fmt(left)})`);
+      this.sendTo(userId, `✅ You bet ${fmt(amount)} on ${OPTION_LABEL[opt]} (balance ${fmt(left)})`);
     })();
     this.inflight.add(job);
     try { await job; } finally { this.inflight.delete(job); }
@@ -534,8 +538,8 @@ class RoyaleBattleManager {
    * @param isAdmin  (user, roomId) => boolean | Promise<boolean>   default: user.isAdmin
    * @param plannerFile  optional path; keeps the hand-frequency plan across restarts
    */
-  constructor({ send, store, config = CONFIG, isAdmin = (u) => !!(u && u.isAdmin), onRound = null, plannerFile = null, now = () => Date.now() }) {
-    this.send = send; this.store = store; this.cfg = config; this.isAdmin = isAdmin;
+  constructor({ send, sendTo = null, store, config = CONFIG, isAdmin = (u) => !!(u && u.isAdmin), onRound = null, plannerFile = null, now = () => Date.now() }) {
+    this.send = send; this.sendTo = sendTo; this.store = store; this.cfg = config; this.isAdmin = isAdmin;
     this.onRound = onRound; this.plannerFile = plannerFile; this.now = now;
     this.rooms = new Map();   // roomId -> RoyaleBattle
     this.savedPlans = {};
@@ -596,6 +600,7 @@ class RoyaleBattleManager {
     const game = new RoyaleBattle({
       roomId, store: this.store, config: this.cfg, planner, now: this.now, onRound: this.onRound,
       send: (text) => this.send(roomId, text),
+      sendTo: this.sendTo ? (uid, text) => this.sendTo(roomId, uid, text) : null,
       onStopped: () => this.rooms.delete(roomId),
     });
     this.rooms.set(roomId, game);
