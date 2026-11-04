@@ -496,7 +496,7 @@ class RoyaleBattle {
   async _bet(userId, userName, args) {
     const c = this.cfg;
     if (this.phase === 'ready') return this.sendTo(userId, `The game has not started yet. Type !start to begin.`);
-    if (this.phase !== 'betting') return this.send(`${userName}, betting is closed. Wait for the next round.`);
+    if (this.phase !== 'betting') return this.sendTo(userId, this.phase === 'between' || this.phase === 'ready' ? 'Type !start to start board.' : 'Betting is closed.');
     if (args.length < 2) return this.send(`${userName}, usage: !bet [option] [amount] (e.g. !bet red 500)`);
 
     const amount = parseAmount(args[args.length - 1]);
@@ -516,7 +516,8 @@ class RoyaleBattle {
       const b = this.bets.get(String(userId)) || { name: userName, opts: {} };
       b.opts[opt] = (b.opts[opt] || 0) + amount;
       this.bets.set(String(userId), b);
-      this.send(`✅ ${userName} bet ${fmt(amount)} on ${OPTION_LABEL[opt]}`);
+      const tot = Object.values(b.opts).reduce((a, x) => a + x, 0), parts = Object.entries(b.opts).map(([k, v]) => `${OPTION_LABEL[k]}: ${fmt(v)}`).join(', ');
+      this.send(`✅ ${userName} bet ${fmt(amount)} on ${OPTION_LABEL[opt]} — total ${fmt(tot)} ${c.COIN_NAME} (${parts})`);
       this.sendTo(userId, `Your balance: ${fmt(left)} ${c.COIN_NAME}`);
     })();
     this.inflight.add(job);
