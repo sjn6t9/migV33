@@ -1841,6 +1841,9 @@ html[data-skin] body #view#view#view#view#view#view#view#view#view#view#view#vie
 html[data-skin] body #whw{isolation:isolate!important;border-radius:50%!important;background:none!important;box-shadow:none!important;border:0!important;outline:0!important;-webkit-mask-image:-webkit-radial-gradient(white,black)}
 html[data-skin] body #whw #wh{border-radius:50%!important;overflow:hidden!important;background:none!important;box-shadow:none!important;border:0!important;outline:0!important;backdrop-filter:none!important;-webkit-backdrop-filter:none!important;will-change:transform;backface-visibility:hidden;-webkit-backface-visibility:hidden}
 html[data-skin] body #whw #wh>svg{display:block;background:none!important;border-radius:50%!important;filter:none!important}
+
+html[data-skin] body #app#app#app .fbp a.mn,html[data-skin] body #app#app#app .fbp a.ht{color:#2f7fd8!important;font-weight:700}
+html[data-theme=dark][data-skin] body #app#app#app .fbp a.mn,html[data-theme=dark][data-skin] body #app#app#app .fbp a.ht{color:#6db3ff!important}
 </style>
 </head>
 <body>
@@ -2301,7 +2304,7 @@ function rlItem(x){RLMAP[x.id]=x;ROLES[x.user]=x.role;
 function rlSize(){const w=$('rlw');if(!w)return;const t=w.getBoundingClientRect().top,bn=$('bnav'),b=(innerWidth<1000&&bn&&getComputedStyle(bn).display!=='none')?bn.offsetHeight:0;const h=Math.max(320,innerHeight-t-b);w.style.height=h+'px';w.style.setProperty('--cw',innerWidth<700?'100%':Math.min(innerWidth,Math.round((h-24)*9/16))+'px')}
 addEventListener('resize',()=>{if(cur==='reels')rlSize()});
 function rlAct(sec){const vd=sec.querySelector('video');document.querySelectorAll('#rl video').forEach(v=>{if(v!==vd){v.pause()}});
- const load=s=>{const v=s&&s.querySelector('video');if(v&&!v.src){v.src=v.dataset.src;v.preload='metadata'}};load(sec);load(sec.nextElementSibling);
+ const load=s=>{const v=s&&s.querySelector('video');if(v&&!v.src){v.addEventListener('loadeddata',()=>v.removeAttribute('poster'),{once:true});v.src=v.dataset.src+'#t=0.1';v.preload='auto'}};load(sec);load(sec.nextElementSibling);
  vd.volume=RVOL;vd.muted=RMUTE||RVOL===0;vd.play().catch(()=>{RMUTE=true;vd.muted=true;rlMuteBtn();vd.play().catch(()=>{})});
  const id=+sec.dataset.id;if(!RLSEEN.has(id)){RLSEEN.add(id);api('POST','/reels/'+id+'/view').catch(()=>{})}
  if(!sec.nextElementSibling||!sec.nextElementSibling.nextElementSibling)rlMore()}
@@ -2369,7 +2372,7 @@ function rlCreate(){let file=null,dur=0,poster=null,busy=false;
   v.onerror=()=>{pv.innerHTML='<span>⚠</span><b>This video can\'t be read here</b><small>Try an MP4 (H.264) or WebM file</small>';toast('⚠ Unsupported video format',1)};
   v.onloadedmetadata=()=>{dur=v.duration||0;if(dur>15.5){pv.innerHTML='<span>⏱️</span><b>Too long</b><small>Choose a video up to 15 seconds</small>';toast('⚠ Reels can be up to 15 seconds',1);return}
    const t=Math.min(.6,dur/2);const tm=setTimeout(fin,2500);
-   v.onseeked=()=>{v.onseeked=null;try{const W=360,H=Math.round(W*(v.videoHeight||640)/(v.videoWidth||360)),c=document.createElement('canvas');c.width=W;c.height=Math.min(H,800);c.getContext('2d').drawImage(v,0,0,W,c.height);c.toBlob(b=>{poster=b;clearTimeout(tm);fin()},'image/jpeg',.72)}catch{clearTimeout(tm);fin()}};
+   v.onseeked=async()=>{v.onseeked=null;try{v.pause()}catch{}await new Promise(r=>setTimeout(r,200));try{const W=360,H=Math.round(W*(v.videoHeight||640)/(v.videoWidth||360)),c=document.createElement('canvas');c.width=W;c.height=Math.min(H,800);c.getContext('2d').drawImage(v,0,0,W,c.height);c.toBlob(b=>{poster=b;clearTimeout(tm);fin()},'image/jpeg',.72)}catch{clearTimeout(tm);fin()}};
    try{v.currentTime=t}catch{}}};
  go2.onclick=async()=>{if(!file||busy)return;busy=true;go2.disabled=true;const pg=$('rlpg');pg.hidden=false;const bar=pg.querySelector('i'),lb=pg.querySelector('small');
   try{lb.textContent='Uploading video…';const v=await rlUp('/reels/media?kind=video',file,p=>{bar.style.width=Math.round(p*85)+'%';lb.textContent='Uploading… '+Math.round(p*100)+'%'});
@@ -2382,7 +2385,7 @@ function rlCreate(){let file=null,dur=0,poster=null,busy=false;
 // Home strip
 async function loadReelStrip(){const el=$('rlstrip');if(!el)return;let l=[];try{l=await api('GET','/reels?limit=10')}catch{}if(!$('rlstrip'))return;
  el.innerHTML=`<div class="rss"><div role="button" class="rsc mk" data-r="new"><div class="top">${av(me,64)}</div><span class="pl">＋</span><b>Create reel</b></div>`+
-  l.map(x=>`<div role="button" class="rsc" data-r="${x.id}">${x.poster?`<img src="${esc(x.poster)}" alt="" loading="lazy">`:`<video muted playsinline preload="metadata" src="${esc(x.url)}#t=0.5"></video>`}<span class="rsg"></span><span class="rsa">${av(x.user,28)}</span><b class="rsn">${esc(x.user)}</b><small>▶ ${rlN(x.views)}</small></div>`).join('')+`</div>`;
+  l.map(x=>`<div role="button" class="rsc" data-r="${x.id}">${x.poster?`<img src="${esc(x.poster)}" alt="" loading="lazy">`:''}<video muted playsinline preload="auto" src="${esc(x.url)}#t=0.1" onerror="this.remove()"></video><span class="rsg"></span><span class="rsa">${av(x.user,28)}</span><b class="rsn">${esc(x.user)}</b><small>▶ ${rlN(x.views)}</small></div>`).join('')+`</div>`;
  el.onclick=e=>{const b=e.target.closest('[data-r]');if(!b)return;const k=b.dataset.r;k==='new'?(go('reels'),setTimeout(rlCreate,350)):k==='all'?go('reels'):go('reels',+k)}}
 const BARS=['#f7c600','#f7852b','#4aa8e8'];
 function postHTML(p,i){const mod=['staff','admin'].includes(ST.role),own=p.user===me,canC=!p.locked||own||mod;
