@@ -868,20 +868,28 @@ const purgeColors = () => {
   const gone = db.prepare('select distinct a.user from user_color_active a join user_colors c on c.user=a.user and c.color=a.color where c.expires>0 and c.expires<=?').all(now).map(x => x.user);
   const goneFx = db.prepare('select distinct a.user from user_fx_active a join user_colors c on c.user=a.user and c.color=a.color where c.expires>0 and c.expires<=?').all(now).map(x => x.user);
   db.prepare('delete from user_colors where expires>0 and expires<=?').run(now);
-  db.prepare('delete from user_color_active where not exists (select 1 from user_colors c where c.user=user_color_active.user and c.color=user_color_active.color)').run();
+  db.prepare("delete from user_color_active where color not like 'badge:%' and not exists (select 1 from user_colors c where c.user=user_color_active.user and c.color=user_color_active.color)").run();
   db.prepare('delete from user_fx_active where not exists (select 1 from user_colors c where c.user=user_fx_active.user and c.color=user_fx_active.color)').run();
   gone.forEach(u => bcastColors(u, null));
   goneFx.forEach(u => bcastFx(u, null));
 };
 setInterval(purgeColors, 10 * 60 * 1000);
-const activeColors = () => { purgeColors(); const o = {}; db.prepare('select a.user, c.color from user_color_active a join user_colors c on c.user=a.user and c.color=a.color').all().forEach(x => { if (COLOR_SHOP[x.color]) o[x.user] = COLOR_SHOP[x.color].hex; }); return o; };
+// Badge colours: a user may colour their ID with the colour of any badge they hold (their role badge and/or VIP)
+const BADGE_NAMES = { staff: 'Staff', admin: 'Admin', headmentor: 'Head Mentor', mentor: 'Mentor', merchant: 'Merchant', vip: 'VIP' };
+const badgesOf = user => { const o = []; const r = roleOf(user); if (r && r !== 'vip' && BADGE_NAMES[r]) o.push(r); if (r === 'vip' || db.prepare('select vip from users where name=?').get(user)?.vip) o.push('vip'); return o; };
+const badgeHex = k => `var(--nm-${k})`;   // theme-aware: same colour as the badge in Day, Night and Stonic
+const activeColors = () => { purgeColors(); const o = {};
+  db.prepare('select a.user, a.color from user_color_active a').all().forEach(x => {
+    if (x.color.startsWith('badge:')) { const k = x.color.slice(6); if (badgesOf(x.user).includes(k)) o[x.user] = badgeHex(k); return; }
+    if (COLOR_SHOP[x.color] && db.prepare('select 1 from user_colors where user=? and color=?').get(x.user, x.color)) o[x.user] = COLOR_SHOP[x.color].hex; });
+  return o; };
 const activeFx = () => { purgeColors(); const o = {}; db.prepare('select a.user, c.color from user_fx_active a join user_colors c on c.user=a.user and c.color=a.color').all().forEach(x => { if (COLOR_SHOP[x.color]?.shadow) o[x.user] = COLOR_SHOP[x.color].shadow; }); return o; };
 app.get('/api/colors', auth, ok((q, r) => {
   purgeColors();
   const rows = db.prepare('select color, expires from user_colors where user=?').all(q.user);
   const active = db.prepare('select color from user_color_active where user=?').get(q.user)?.color || null;
   const fxActive = db.prepare('select color from user_fx_active where user=?').get(q.user)?.color || null;
-  r.json({ shop: COLOR_SHOP, owned: rows.map(x => x.color), expires: Object.fromEntries(rows.map(x => [x.color, x.expires])), active, fxActive, coins: coins(q.user), days: COL_DAYS, renewDays: COL_RENEW_DAYS });
+  r.json({ badges: badgesOf(q.user).map(k => ({ k, n: BADGE_NAMES[k] })), shop: COLOR_SHOP, owned: rows.map(x => x.color), expires: Object.fromEntries(rows.map(x => [x.color, x.expires])), active, fxActive, coins: coins(q.user), days: COL_DAYS, renewDays: COL_RENEW_DAYS });
 }));
 app.post('/api/colors/buy/:k', auth, ok((q, r) => {
   purgeColors();
@@ -907,6 +915,11 @@ app.post('/api/colors/apply/:k', auth, ok((q, r) => {
   }
   db.prepare('insert into user_color_active(user,color) values(?,?) on conflict(user) do update set color=excluded.color').run(q.user, c.k);
   bcastColors(q.user, c.hex); r.json({ ok: true });
+}));
+app.post('/api/colors/badge/:k', auth, ok((q, r) => {
+  const k = q.params.k; if (!badgesOf(q.user).includes(k)) return bad(r, 'You do not have this badge.', 403);
+  db.prepare('insert into user_color_active(user,color) values(?,?) on conflict(user) do update set color=excluded.color').run(q.user, 'badge:' + k);
+  bcastColors(q.user, badgeHex(k)); r.json({ ok: true });
 }));
 app.post('/api/colors/fx/remove', auth, ok((q, r) => {
   db.prepare('delete from user_fx_active where user=?').run(q.user);
@@ -1614,9 +1627,9 @@ const server = http.createServer(app);
 app.get('/api/people', auth, ok((q, r) => {
   const rows = w => db.prepare(`select name,role,xp from users where banned=0 and ${w} order by xp desc, name`).all().map(u => ({ name: u.name, role: u.role, level: level(u.xp) }));
   const G = (k, title, w) => { const list = rows(w); return { k, title, count: list.length, list }; };
-  const top = db.prepare('select name,role,xp from users where banned=0 order by xp desc, name limit 20').all().map(u => ({ name: u.name, role: u.role, level: level(u.xp) }));
+  const top = db.prepare("select name,role,xp from users where banned=0 and role not in ('staff','admin') and lower(name)!=? order by xp desc, name").all(STAFF_USER).map(u => ({ name: u.name, role: u.role, level: level(u.xp) }));
   r.json([G('staff', 'Staff', "role='staff'"), G('admin', 'Admins', "role='admin'"), G('headmentor', 'Head Mentors', "role='headmentor'"), G('mentor', 'Mentors', "role='mentor'"),
-    G('merchant', 'Merchants', "role='merchant'"), G('vip', 'VIP User', 'vip=1'), G('verified', 'Verified', 'verified=1'), { k: 'top', title: 'Top 20 Levels', count: top.length, list: top }]);
+    G('merchant', 'Merchants', "role='merchant'"), G('vip', 'VIP User', 'vip=1'), G('verified', 'Verified', 'verified=1'), { k: 'top', title: 'All Users', count: top.length, list: top }]);
 }));
 
 // ---------- Contests ----------
