@@ -386,7 +386,7 @@ class RoyaleBattle {
     const c = this.cfg;
     const opts = Object.keys(c.PAYOUTS).map((k) => `${OPTION_LABEL[k]} ${c.PAYOUTS[k]}x`).join(' · ');
     this.send(
-      `🎴 New round! Type !bet [option] [amount] to bet (e.g. !bet red 500).\n` +
+      `🎴 New board! Type !bet [option] [amount] to bet (e.g. !bet red 500).\n` +
       `Options: ${opts}\n` +
       `Category bets pay only when the winning side has that hand; a category on the losing side does not win.\n` +
       `[${c.BET_SECONDS} seconds]`
@@ -460,7 +460,7 @@ class RoyaleBattle {
       console.error('[RoyaleBattle] round failed, refunding bets', e);
       try {
         await this.store.refundPending(this.roomId);
-        this.send('⚠️ This round was cancelled because of an error. All bets were refunded.');
+        this.send('⚠️ This board was cancelled because of an error. All bets were refunded.');
       } catch (e2) { console.error('[RoyaleBattle] REFUND FAILED — check the pending bets in the store', e2); }
     }
 
@@ -469,7 +469,7 @@ class RoyaleBattle {
     this.phase = 'between'; this.deadline = Date.now() + c.RESULT_PAUSE_SECONDS * 1000;
     if (this.stopAfterRound) { this.stopAfterRound = false; this._halt(); return; }
     if (c.AUTO_NEXT) this.timer = setTimeout(() => this._startRound(), c.RESULT_PAUSE_SECONDS * 1000);
-    else { this.deadline = null; this.betweenAt = Date.now(); this.send('Round finished. Type !start for the next round.'); }
+    else { this.deadline = null; this.betweenAt = Date.now(); this.send('Type !start to start board.'); }
   }
 
   /* ---- player commands (!bet, !balance, !top) ---- */

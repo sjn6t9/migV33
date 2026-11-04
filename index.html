@@ -1594,7 +1594,9 @@ html[data-skin] #view#view#view#view#view#view #gp .gh .gtb,html[data-skin] #vie
 #gp .side .sh .dt{width:9px;height:9px;border-radius:50%;flex:none;box-shadow:0 0 0 1.5px rgba(255,255,255,.7)}
 #gp .side.red .dt{background:#ff5a4d}#gp .side.blue .dt{background:#3d8bff}
 html[data-skin] body #gp#gp .vs .side{padding:4px 6px!important;border-radius:14px!important}
-html[data-skin] body #gp#gp .side.won.red,html[data-skin] body #gp#gp .side.won.blue{opacity:.4!important;background-image:none!important;box-shadow:none!important}
+html[data-skin] body #gp#gp .side.won.red,html[data-skin] body #gp#gp .side.won.blue{opacity:1!important;background-image:none!important}
+html[data-skin] body #gp#gp .side.won.red{background:rgba(255,70,58,.14)!important;border:2px solid #ff6a5c!important;box-shadow:0 0 14px rgba(255,90,77,.85)!important}
+html[data-skin] body #gp#gp .side.won.blue{background:rgba(61,139,255,.16)!important;border:2px solid #5aa0ff!important;box-shadow:0 0 14px rgba(80,155,255,.9)!important}
 html[data-skin] body #gp#gp .side.lost.red{background:#8e2a24!important}
 html[data-skin] body #gp#gp .side.lost.blue{background:#24508f!important}
 html[data-skin] body #gp#gp .chips .cp{background:#0f1a2b!important;color:#fff!important}
@@ -2745,7 +2747,7 @@ const GP=(function(){
     return h+(acts.length?`<div class="gacts">${acts.join('')}</div>`:'');
   }
   function royale(){
-    const st=v.state;let h=head(`${v.round?`<span class="chip">Round ${v.round}</span>`:''}${timer()}`);
+    const st=v.state;let h=head(`${timer()}`);
     if(st==='idle'||st==='ready')return h+`<div class="gnote">Royale Battle is ready. Type <b>!start</b> to begin.</div><div class="gacts">${btn('!start','▶ Start rounds',1)}</div>`;
     const L=v.last,pay=v.pay||{};
     if(st==='betting')h+=bar(45);
@@ -2759,8 +2761,8 @@ const GP=(function(){
       const my=Object.values(v.mine).reduce((a,x)=>a+x,0);
       h+=`<div class="gnote">${my?`Your bets: ${K(my)} coins · `:''}${v.bettors} player${v.bettors===1?'':'s'} betting · tap a side to bet ${K(chip)}</div>`;
     }else if(L){
-      h+=`<div class="gnote ${L.won?'win':''}">${L.winner==='red'?'🔴 Red':'🔵 Blue'} wins with ${E(L.label)}${L.won?` · you won ${K(L.won)}`:''}${st==='between'?' · type !start for the next round':''}</div>`;
-      if(st==='between'){const w=Math.ceil(10-(Date.now()+skew-(v.since||0))/1000);h+=w>0?`<div class="gnote" data-wait="1">Next round in ${w}s…</div>`:`<div class="gacts">${btn('!start','▶ Start next round',1)}</div>`}
+      h+=`<div class="gnote ${L.won?'win':''}">${L.winner==='red'?'🔴 Red':'🔵 Blue'} wins with ${E(L.label)}${L.won?` · you won ${K(L.won)}`:''}${st==='between'?'':''}</div>`;
+      if(st==='between'){const w=Math.ceil(10-(Date.now()+skew-(v.since||0))/1000);h+=w>0?`<div data-wait="1" style="height:1px"></div>`:`<div class="gacts">${btn('!start','▶ Start to board',1)}</div>`}
     }else h+=`<div class="gnote">Next round starting…</div>`;
     return h;
   }
@@ -2772,7 +2774,7 @@ const GP=(function(){
   }
   function loop(){clearInterval(tick);tick=setInterval(()=>{const el=document.getElementById('gp');if(!el||!v)return;
     el.querySelectorAll('[data-dl]').forEach(x=>{x.textContent=sec(+x.dataset.dl)+'s'});
-    if(v.g==='royale'&&v.state==='between'){const w=Math.ceil(10-(Date.now()+skew-(v.since||0))/1000);const n=el.querySelector('[data-wait]');if(n&&w>0)n.textContent='Next round in '+w+'s…';else if(n)draw()}
+    if(v.g==='royale'&&v.state==='between'){const w=Math.ceil(10-(Date.now()+skew-(v.since||0))/1000);const n=el.querySelector('[data-wait]');if(n&&w<=0)draw()}
     if(v.deadline&&(v.state==='joining'||v.state==='starting')&&v.g!=='royale'){const l=sec(v.deadline);x5.k!==v.deadline&&l<=5&&l>=1&&(x5.k=v.deadline,glassWarn())}
     el.querySelectorAll('[data-bar]').forEach(x=>{x.style.width=Math.min(100,sec(+x.dataset.bar)/+x.dataset.span*100)+'%'})},500)}
   function bind(){const el=document.getElementById('gp');if(!el||el._b)return;el._b=1;
