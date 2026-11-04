@@ -906,7 +906,7 @@ body.inchat #sub{display:none!important}
 .avg{display:flex;flex-wrap:wrap;gap:6px;justify-content:center}
 .avg button{font-size:24px;width:44px;height:44px;padding:0;border-radius:12px!important;min-width:0}
 .avg button.on{outline:3px solid #f7931e}
-.tiles.t3{grid-template-columns:repeat(3,1fr)}
+.tiles.t3{grid-template-columns:repeat(3,1fr)}.tiles.t2{grid-template-columns:repeat(2,1fr)}
 .tiles.sg{grid-template-columns:repeat(3,1fr)}
 .swb{margin-left:auto;position:relative;width:46px;height:26px;min-width:0!important;padding:0!important;border-radius:99px!important;background:rgba(128,128,128,.45)!important;border:0!important;flex:none}
 .swb i{position:absolute;top:3px;left:3px;width:20px;height:20px;border-radius:50%;background:#fff;box-shadow:0 1px 4px #0006;transition:.2s}
@@ -1545,6 +1545,16 @@ html[data-skin=dark] body #strip#strip#strip#strip .h8{color:#f5d0fe!important}
 #strip .tk{padding-right:0}
 /* bottom bar hides straight down from the centre (it is centred with left/right:0, so no -50% shift) */
 html body.hb #bnav#bnav{transform:translate(0,170%)!important;opacity:0!important;pointer-events:none!important}
+/* menu button flashes when something in the menu is new */
+@keyframes mfl{0%,100%{background:#f97316;box-shadow:0 0 0 0 rgba(249,115,22,.7);color:#fff}50%{background:#22d3ee;box-shadow:0 0 14px 4px rgba(34,211,238,.6);color:#03222b}}
+html body #hdr #top#top#top>#mb.mflash,html body #mb.mflash,html body #hdr #top button.mflash{animation:mfl 1.1s ease-in-out infinite!important}
+html body #hdr #top#top#top>#mb.mflash svg,html body #mb.mflash svg{stroke:currentColor!important}
+html body #bnav#bnav button.mflash svg{animation:mfl2 1.1s ease-in-out infinite}
+@keyframes mfl2{0%,100%{stroke:#f97316;filter:drop-shadow(0 0 4px #f97316)}50%{stroke:#22d3ee;filter:drop-shadow(0 0 6px #22d3ee)}}
+#dn .mbadge.mnew{background:#f97316!important;color:#fff!important}
+/* private chat header: profile photo where rooms show their flag */
+.rfl.rav{display:inline-grid!important;place-items:center;width:24px!important;height:24px!important;border-radius:50%!important;overflow:hidden;flex:none;vertical-align:middle!important;margin:0 6px 0 0!important}
+.rfl.rav .av,.rt .rf .av{width:24px!important;height:24px!important;border-radius:50%!important;font-size:11px!important;line-height:24px;display:inline-grid;place-items:center}
 </style>
 <script>try{var _w=new URLSearchParams(location.search).get('w');if(_w){window.EMBR=_w;document.documentElement.classList.add('emb')}}catch(e){}try{if(localStorage.tk||sessionStorage.tk)document.documentElement.dataset.boot=1;var q=localStorage.skin,k=q==='dark'?'dark':q==='clear'?'clear':q==='navy'?'navy':(matchMedia('(prefers-color-scheme: dark)').matches?'navy':'clear');document.documentElement.dataset.skin=k;document.documentElement.dataset.theme=k==='clear'?'light':'dark'}catch(e){document.documentElement.dataset.skin='navy';document.documentElement.dataset.theme='dark'}</script>
 <style>/* Name effects from the colour shop: each one animates the glow around the username */
@@ -1652,7 +1662,7 @@ html body #hdr #top #rtabs .rt.mini .rfl{margin:0}
 html body #hdr #top #rtabs .rt .rfl{width:20px;height:14px}
 html body #hdr #top #rtabs .rt.on{display:inline-flex!important;align-items:center;justify-content:center;gap:0}
 </style>
-<link rel="stylesheet" href="theme-dark.css?v=27">
+<link rel="stylesheet" href="theme-dark.css?v=28">
 <link rel="stylesheet" href="theme-clear.css?v=7">
 <style>/* role name colours: kept in their own block so they always load */
 :root{--nm-admin:#e8591f;--nm-staff:#2f9a3d;--nm-mentor:#b01020;--nm-headmentor:#8a6a14;--nm-merchant:#7e22ce;--nm-vip:#00706f;--nm-user:#2a7bd8}
@@ -1694,6 +1704,7 @@ html body #rlw .rltop #rlvw #rlmu{border:0!important;background:none!important;b
 html[data-skin] body #app#app #rlw #rlvw #rlmu{display:grid!important;place-items:center;cursor:pointer;background:none!important;border:0!important;box-shadow:none!important;border-radius:0!important;width:36px!important;height:34px!important}
 #rlvol{width:0;opacity:0;margin:0;padding:0;accent-color:#fff;height:4px;cursor:pointer;pointer-events:none;transition:width .25s,opacity .25s,margin .25s}
 #rlvw.open #rlvol{width:78px;opacity:1;margin:0 2px 0 12px;pointer-events:auto}
+@media (max-width:999px),(pointer:coarse){#rlvol,#rlvw.open #rlvol{display:none!important}}
 html[data-skin=clear] #rlvol{accent-color:#f7931e}html[data-skin=navy] #rlvol{accent-color:#f7931e}html[data-skin=dark] #rlvol{accent-color:#22d3ee}
 .rlcp{margin-top:9px;font-size:14px;line-height:1.38;max-height:5.6em;overflow:hidden;word-break:break-word}
 .rlcp a,.rlcp .tag,.rlcp .mn,.rlcp [data-tag],.rlcp [data-u]{color:var(--rhl)!important;font-weight:700}
@@ -1821,7 +1832,7 @@ html[data-skin=dark] .rsc.mk .pl{background:#0e7490;border-color:#03101a;box-sha
   </form>
   <form id="s1" style="display:none">
     <input id="sf" placeholder="Full Name" autocomplete="name" maxlength="40">
-    <input id="su" placeholder="User Name" autocomplete="username" maxlength="16">
+    <input id="su" placeholder="User Name" autocomplete="username" maxlength="16" autocapitalize="none" autocorrect="off" spellcheck="false">
     <input id="se" type="email" placeholder="Email" autocomplete="email" maxlength="100">
     <select id="sg"><option value="">Gender</option><option>Male</option><option>Female</option><option>Other</option></select>
     <input id="sp" type="password" placeholder="Password" autocomplete="new-password">
@@ -1907,8 +1918,10 @@ const post=async(u,b)=>{try{const r=await fetch(u,{method:'POST',headers:{'Conte
 function done(d){const s=localStorage;s.tk=d.token;s.off=$('off').checked?'1':'';connect()}
 $('lf').onsubmit=async e=>{e.preventDefault();const[r,d]=await post('/api/login',{name:$('lu').value.trim(),pass:$('lp').value});if(!r.ok)return $('err').textContent=d.error;done(d)};
 $('s1').onsubmit=async e=>{e.preventDefault();if($('sp').value!==$('sp2').value)return $('err').textContent='Passwords do not match.';
+  {const un=$('su').value.trim();const ue=/[A-Z]/.test(un)?'Username cannot have capital letters. Use small letters only.':/\s/.test(un)?'Username cannot have spaces.':/^[0-9]/.test(un)?'Username cannot start with a number.':!/^[a-z0-9._-]{3,16}$/.test(un)?'Username must be 3–16 characters: small letters, numbers, dot (.), dash (-) or underscore (_).':'';if(ue)return $('err').textContent=ue}
   const[r,d]=await post('/api/signup/start',{fullName:$('sf').value,name:$('su').value.trim(),email:$('se').value.trim(),gender:$('sg').value,pass:$('sp').value});
   if(!r.ok)return $('err').textContent=d.error;if(d.token)return done(d);$('em').textContent=$('se').value.trim();show('s2');otpStart()};
+$('su').addEventListener('input',e=>{const i=e.target,v=i.value,n=v.toLowerCase().replace(/[^a-z0-9._-]/g,'');if(n!==v){const p=Math.max(0,(i.selectionStart||0)-(v.length-n.length));i.value=n;try{i.setSelectionRange(p,p)}catch{}}$('err').textContent=/^[0-9]/.test(n)?'Username cannot start with a number.':''});
 $('s2').onsubmit=async e=>{e.preventDefault();const[r,d]=await post('/api/signup/verify',{name:$('su').value.trim(),code:$('sc').value.trim()});if(!r.ok){$('err').textContent=d.error;const o=$('otp');o.classList.remove('bad');void o.offsetWidth;o.classList.add('bad');$('sc').value='';otpPaint();return}done(d)};
 /* ---------- socket ---------- */
 let tries=0;
@@ -1917,8 +1930,12 @@ function mountDC(r,msg,why){if($('dcbar')||!$('f'))return;why=why||DCW[r]||'';co
   d.querySelectorAll('button').forEach(b=>{const o=b.classList.contains('o');[['height','26px'],['min-height','0'],['width','auto'],['padding','0 10px'],['border-radius','8px'],['font-size','12px'],['font-weight','800'],['border','1px solid '+(o?'#ff8a8f':'#ff6b68')],['background',o?'linear-gradient(#e0434b,#b3202a)':'var(--dcbg,#0f1a2b)'],['color',o?'#fff':'var(--dcfg,#ff9a98)'],['box-shadow','none']].forEach(([k,v])=>b.style.setProperty(k,v,'important'))});
   $('f').before(d);['t','phb','emb','mic'].forEach(i=>{const e=$(i);if(e)e.disabled=true});
   d.onclick=e=>{const b=e.target.closest('[data-dc]');if(!b)return;if(b.dataset.dc==='lv'){DC.delete(r);AL.delete(r);d.remove();closeTab(r);return}
-    if(!ws||ws.readyState!==1){toast('Reconnecting… try again in a moment');return}
-    DC.delete(r);AL.delete(r);dropRoom(r);d.remove();V.chat(r)}}
+    rejoinRoom(r,b)}}
+/* Rejoin works with one tap: if the connection is still coming back, the rejoin waits for it and happens by itself */
+function rejoinRoom(r,b){
+  if(!ws||ws.readyState!==1){window._rj=r;if(b){b.textContent='Rejoining…';b.disabled=true}tries=0;if(!ws||ws.readyState>1)connect();return}
+  window._rj=null;DC.delete(r);AL.delete(r);dropRoom(r);const d=$('dcbar');if(d)d.remove();V.chat(r);
+  const t0=Date.now();setTimeout(()=>{if(room===r&&(window._lastRx||0)<t0&&ws&&ws.readyState===1){window._rj=r;try{ws.close()}catch{}}},6000)}
 const dcWhy=e=>{const c=e&&e.code;
   if(!navigator.onLine)return 'Your internet connection was lost. Check your Wi-Fi or mobile data, then tap Rejoin.';
   if(c===1008||c===4001)return 'The server closed your session. Please log in again if this keeps happening.';
@@ -1928,16 +1945,18 @@ function showDC(why){const r=room;if(!r||cur!=='chat'||r.startsWith('dm:')||DC.h
 function connect(){
   ws=new WebSocket((location.protocol==='https:'?'wss':'ws')+'://'+location.host+'/ws');
   ws.onopen=()=>ws.send(JSON.stringify({t:'auth',token:tok(),offline:isOff(),emb:EMB?1:0}));
-  ws.onmessage=e=>on(JSON.parse(e.data));
-  ws.onclose=e=>{if(me){showDC(dcWhy(e));setTimeout(connect,2000)}else if(tok()){if(++tries<4)setTimeout(connect,1500);else{delete document.documentElement.dataset.boot}}};
+  ws.onmessage=e=>{window._lastRx=Date.now();on(JSON.parse(e.data))};
+  ws.onclose=e=>{if(me){showDC(dcWhy(e));setTimeout(()=>{if(!ws||ws.readyState>1)connect()},2000)}else if(tok()){if(++tries<4)setTimeout(connect,1500);else{delete document.documentElement.dataset.boot}}};
 }
 const tx=o=>ws.readyState===1&&ws.send(JSON.stringify(o));
 const resume=()=>{if(!tok()||document.hidden)return;if(!ws||ws.readyState>1){tries=0;connect()}};
 let autoAway=false;
 document.addEventListener('visibilitychange',()=>{if(EMB||!me||!tok())return;
-  if(document.hidden){if((ST.presence||'online')==='online'){autoAway=true;ST.presence='away';api('PUT','/me',{presence:'away'}).catch(()=>{})}}
-  else if(autoAway){autoAway=false;if(ST.presence==='away'){ST.presence='online';api('PUT','/me',{presence:'online'}).catch(()=>{})}}});
+  if(document.hidden){if((ST.presence||'online')==='online'){autoAway=true;try{localStorage.autoAway=1}catch{}ST.presence='away';api('PUT','/me',{presence:'away'}).catch(()=>{})}}
+  else if(autoAway){autoAway=false;try{delete localStorage.autoAway}catch{}if(ST.presence==='away'){ST.presence='online';api('PUT','/me',{presence:'online'}).catch(()=>{})}}});
 document.addEventListener('visibilitychange',resume);addEventListener('online',resume);addEventListener('pageshow',resume);
+/* closing the browser/tab: tell the server so the ID shows Offline right away (minimising only makes it Away) */
+addEventListener('pagehide',e=>{if(e.persisted||EMB)return;try{tx({t:'bye'})}catch{}});
 function coinDelta(d){const c=$('coins');if(!c||!d)return;const r=c.getBoundingClientRect(),e=document.createElement('span');
   e.className='cdl '+(d>0?'up':'dn');e.textContent=(d>0?'+':'−')+Math.abs(d).toLocaleString();e.style.left=(r.left+r.width/2)+'px';e.style.top=(r.bottom+2)+'px';
   document.body.append(e);setTimeout(()=>e.remove(),2200);c.classList.remove('cpop');void c.offsetWidth;c.classList.add('cpop')}
@@ -1946,11 +1965,11 @@ async function on(m){
   if(EMB){if(['notif','mail','announce','levelup','xp'].includes(m.t))return;if(m.t==='msg'&&m.room===EMBR&&m.user!==me&&m.kind!=='err'){try{parent.postMessage({t:'ev'},'*')}catch{}}}
   if(m.t==='error'){if(m.error==='auth'||m.error==='banned'){if(m.error==='banned')alert('Your account has been banned.');logout()}else alert(m.error)}
   if(m.t==='ready'){const first=!me;me=m.user;api('GET','/emoticons').then(setCE).catch(()=>{});G=m.gifts;UCOL=m.ucols||{};UFX=m.ufx||{};$('auth').style.display='none';$('app').style.display='flex';document.body.classList.add('in');
-    ST=await api('GET','/me').catch(()=>({}));ROLES[me]=ST.role;api('GET','/mail/unread').then(x=>setMailN(x.n)).catch(()=>{});await refreshVer();$('coins').textContent=cn(ST.coins);drawNav();document.documentElement.removeAttribute('data-boot');saveOpen();if(!first&&room&&OPEN.includes(room)&&!room.startsWith('dm:')&&!AL.has(room)&&!DC.has(room)){skipIntro=true;tx({t:'join',room})}if(first&&EMB){go('chat',EMBR);return}if(first){try{navigator.serviceWorker&&navigator.serviceWorker.register('/sw.js').catch(()=>{});if('Notification'in window&&Notification.permission==='default'&&!localStorage.notq)document.addEventListener('pointerdown',()=>{try{localStorage.notq=1;Notification.requestPermission()}catch{}},{once:true})}catch{}}if(first)api('GET','/announcement').then(showAnn).catch(()=>{});if(first){let r=null;try{r=JSON.parse(sessionStorage.lastv||'null')}catch{}if(r&&V[r[0]]&&r[0]!=='admin')go(r[0],r[1]===null?undefined:r[1]);else{const rh=(location.hash.match(/^#reel=(\d+)/)||[])[1];if(rh){history.replaceState(null,'',location.pathname+location.search);go('reels',+rh)}else go('home')}try{const ws0=JSON.parse(sessionStorage.wins||'[]');if(innerWidth>=1000)ws0.forEach(x=>openWin(x.r,x.m));else if(!OPEN.length){ws0.forEach(x=>{if(!OPEN.includes(x.r))OPEN.push(x.r)});if(OPEN.length)saveOpen()}}catch{}}}
+    ST=await api('GET','/me').catch(()=>({}));try{if(localStorage.mfl||Object.keys(MNEW).length)mFlash(true);api('GET','/notifs/count').then(x=>{NUN=x.unread||0;paintBell();if(NUN&&!sessionStorage.mfl0){sessionStorage.mfl0=1;mFlash(true)}}).catch(()=>{})}catch{}try{if(localStorage.autoAway&&ST.presence==='away'&&!document.hidden){ST.presence='online';api('PUT','/me',{presence:'online'}).catch(()=>{})}if(!document.hidden)delete localStorage.autoAway}catch{}ROLES[me]=ST.role;api('GET','/mail/unread').then(x=>setMailN(x.n)).catch(()=>{});await refreshVer();$('coins').textContent=cn(ST.coins);drawNav();document.documentElement.removeAttribute('data-boot');saveOpen();if(window._rj){const rr=window._rj;window._rj=null;if(OPEN.includes(rr)){if(cur==='chat'&&room===rr)rejoinRoom(rr);else{DC.delete(rr);AL.delete(rr);drawTabs()}}}else if(!first&&room&&OPEN.includes(room)&&!room.startsWith('dm:')&&!AL.has(room)&&!DC.has(room)){skipIntro=true;tx({t:'join',room})}if(first&&EMB){go('chat',EMBR);return}if(first){try{navigator.serviceWorker&&navigator.serviceWorker.register('/sw.js').catch(()=>{});if('Notification'in window&&Notification.permission==='default'&&!localStorage.notq)document.addEventListener('pointerdown',()=>{try{localStorage.notq=1;Notification.requestPermission()}catch{}},{once:true})}catch{}}if(first)api('GET','/announcement').then(showAnn).catch(()=>{});if(first){let r=null;try{r=JSON.parse(sessionStorage.lastv||'null')}catch{}if(r&&V[r[0]]&&r[0]!=='admin')go(r[0],r[1]===null?undefined:r[1]);else{const rh=(location.hash.match(/^#reel=(\d+)/)||[])[1];if(rh){history.replaceState(null,'',location.pathname+location.search);go('reels',+rh)}else go('home')}try{const ws0=JSON.parse(sessionStorage.wins||'[]');if(innerWidth>=1000)ws0.forEach(x=>openWin(x.r,x.m));else if(!OPEN.length){ws0.forEach(x=>{if(!OPEN.includes(x.r))OPEN.push(x.r)});if(OPEN.length)saveOpen()}}catch{}}}
   if(m.t==='announce')showAnn(m.a);
-  if(m.t==='mail'){setMailN(m.n);toast(`📧 New mail from ${m.from}: ${m.subject}`);if(cur==='mail'&&!MOPEN)V.mail()}
+  if(m.t==='mail'){setMailN(m.n);menuPing('mail','New mail from '+m.from,m.subject||'');toast(`📧 New mail from ${m.from}: ${m.subject}`);if(cur==='mail'&&!MOPEN)V.mail()}
   if(m.t==='roomcfg'&&m.room===room&&RI){const ch=(RI.descr||'')!==m.descr;Object.assign(RI,{descr:m.descr,minlv:m.minlv,mods:m.mods,supers:m.supers});if(ch&&m.descr&&$('log'))L(m.room[0].toUpperCase()+m.room.slice(1),`📝 ${esc(m.descr)}`)}
-  if(m.t==='notif'){NUN=m.unread||0;paintBell();if(cur==='notifs')V.notifs(window._ng);else toast('🔔 '+m.text)}
+  if(m.t==='notif'){NUN=m.unread||0;paintBell();menuPing(notifItem(m.grp,m.text),'Migv33',m.text);if(cur==='notifs')V.notifs(window._ng);else toast('🔔 '+m.text)}
   if(m.t==='levelup'){ST.xp=Math.max(ST.xp||0,CUM[m.level]);toast(`🎉 Level ${m.level}!${m.reward?` +${m.reward.toLocaleString()} coins`:''}`)}
   if(m.t==='ucol'){if(m.hex)UCOL[m.user]=m.hex;else delete UCOL[m.user];if(cur==='colors')try{V.colors()}catch{}}
   if(m.t==='ufx'){if(m.shadow)UFX[m.user]=m.shadow;else delete UFX[m.user];if(cur==='fxshop')try{V.fxshop()}catch{}}
@@ -2115,20 +2134,29 @@ function callOn(m){
   else if(m.t==='call_end'){if(CALL&&(CALL.id===m.id||(!CALL.id&&CALL.dir==='out')))callFinish(m.reason==='taken'?'':m.reason,false)}}
 function closeDrawer(){const d=document.getElementById('drawer');if(!d||!d.classList.contains('open'))return;if(innerWidth>=1000){d.classList.remove('open');return}
   d.classList.add('closing');clearTimeout(closeDrawer.t);closeDrawer.t=setTimeout(()=>{d.classList.remove('open','closing')},260)}
-async function go(v,a){if(EMB&&!(v==='chat'&&a===EMBR)){try{parent.postMessage(v==='chat'?{t:'open',room:a}:v==='rooms'?{t:'closeme'}:{t:'go',v,a},'*')}catch{}return}if(!EMB&&v==='chat'&&innerWidth>=1000){if(a)openWin(a);return}document.body.classList.toggle('inchat',v==='chat');try{drawTabs()}catch{}try{TNE=TNE||$('tn');CNE=CNE||$('coins');if(v!=='chat'){placeHdr(false);document.querySelectorAll('#hdr #rbw,#hdr #rbt').forEach(n=>n.remove())}}catch{}document.body.style.overflow='';document.documentElement.style.overflow='';$('view')&&($('view').style.overflowY='');if(cur==='chat'&&$('log')&&room&&OPEN.includes(room)&&!room.startsWith('dm:'))LOGC[room]=$('log').innerHTML;if(cur&&cur!==v)PREV={v:cur,a:CURA};cur=v;CURA=a;try{if(v!=='chat')sessionStorage.lastv=JSON.stringify([v,a===undefined?null:a])}catch{}closeDrawer();bnSet(v,a);
+async function go(v,a){if(v&&v!=='chat'){mSeen(v);if(v==='notifs')mSeen('notifs');if(!Object.keys(MNEW).length){mFlash(false);try{delete localStorage.mfl}catch{}}}if(EMB&&!(v==='chat'&&a===EMBR)){try{parent.postMessage(v==='chat'?{t:'open',room:a}:v==='rooms'?{t:'closeme'}:{t:'go',v,a},'*')}catch{}return}if(!EMB&&v==='chat'&&innerWidth>=1000){if(a)openWin(a);return}document.body.classList.toggle('inchat',v==='chat');try{drawTabs()}catch{}try{TNE=TNE||$('tn');CNE=CNE||$('coins');if(v!=='chat'){placeHdr(false);document.querySelectorAll('#hdr #rbw,#hdr #rbt').forEach(n=>n.remove())}}catch{}document.body.style.overflow='';document.documentElement.style.overflow='';$('view')&&($('view').style.overflowY='');if(cur==='chat'&&$('log')&&room&&OPEN.includes(room)&&!room.startsWith('dm:'))LOGC[room]=$('log').innerHTML;if(cur&&cur!==v)PREV={v:cur,a:CURA};cur=v;CURA=a;try{if(v!=='chat')sessionStorage.lastv=JSON.stringify([v,a===undefined?null:a])}catch{}closeDrawer();bnSet(v,a);
   $('th').classList.toggle('on',v==='home');$('tf').classList.toggle('on',v==='friends');$('trl').classList.toggle('on',v==='reels');document.body.classList.toggle('onreels',v==='reels');if(v!=='reels')document.querySelectorAll('#rl video').forEach(x=>{x.pause();x.removeAttribute('src');x.load()});$('tr').classList.toggle('on',v==='rooms'||v==='chat');
   if(innerWidth>=1000)drawNav();$('view').scrollTop=0;$('stt').textContent=TT[v]||'';document.body.classList.toggle('onhome',v==='home');$('strip').style.display='none';$('view').onclick=null;document.body.classList.remove('hb');try{await refreshVer();await V[v](a)}catch(e){fail(e)}}
-addEventListener('resize',()=>{if(me&&innerWidth>=1000)drawNav()});$('th').onclick=()=>go('home');$('tf').onclick=()=>go('friends');$('trl').onclick=()=>go('reels');$('tr').onclick=()=>go('rooms');$('mb').onclick=()=>{if(innerWidth>=1000){const off=document.body.classList.toggle('nav-off');try{localStorage.navoff=off?1:''}catch(e){}if(!off){drawNav();setTimeout(navAnim,120)}return}drawNav();$('drawer').classList.add('open');navAnim()};
+addEventListener('resize',()=>{if(me&&innerWidth>=1000)drawNav()});$('th').onclick=()=>go('home');$('tf').onclick=()=>go('friends');$('trl').onclick=()=>go('reels');$('tr').onclick=()=>go('rooms');$('mb').onclick=()=>{mFlash(false);try{delete localStorage.mfl}catch{}if(innerWidth>=1000){const off=document.body.classList.toggle('nav-off');try{localStorage.navoff=off?1:''}catch(e){}if(!off){drawNav();setTimeout(navAnim,120)}return}drawNav();$('drawer').classList.add('open');navAnim()};
 $('drawer').onclick=e=>{if(e.target.id==='drawer')closeDrawer()};
 function navAnim(){const d=$('dn');d.classList.remove('anim');void d.offsetWidth;d.classList.add('anim');setTimeout(()=>d.classList.remove('anim'),1200)}
 try{if(localStorage.navoff)document.body.classList.add('nav-off')}catch(e){}
 $('dtg').onclick=e=>{e.stopPropagation();if(innerWidth>=1000){const off=document.body.classList.toggle('nav-off');try{localStorage.navoff=off?1:''}catch(e){}if(!off)setTimeout(navAnim,120)}else closeDrawer()};
 let NUN=null;const paintBell=()=>{document.querySelectorAll('#dbell .bbd').forEach(b=>{b.hidden=!NUN;b.textContent=NUN>99?'99+':NUN})};
+/* menu updates: anything new for a menu item puts a dot on it, flashes the menu button and shows a notification */
+let MNEW={};try{MNEW=JSON.parse(localStorage.mnew||'{}')||{}}catch{}
+const mSave=()=>{try{localStorage.mnew=JSON.stringify(MNEW)}catch{}};
+const mFlash=on=>{['mb'].forEach(i=>{const b=$(i);if(b)b.classList.toggle('mflash',!!on)});try{const pb=document.querySelector('#bnav [data-b=profile]');if(pb)pb.classList.toggle('mflash',!!on)}catch{}};
+function menuPing(v,title,body){if(EMB)return;if(v){MNEW[v]=(MNEW[v]||0)+1;mSave()}try{localStorage.mfl=1}catch{}mFlash(true);
+  if($('dn')&&$('drawer')?.classList.contains('open'))drawNav();
+  if(title)try{if('Notification'in window&&Notification.permission==='granted'&&document.hidden){const o={body:body||'',tag:'migv33-'+(v||'menu'),icon:'/Logo.PNG'};navigator.serviceWorker&&navigator.serviceWorker.getRegistration().then(r=>r?r.showNotification(title,o):new Notification(title,o)).catch(()=>{try{new Notification(title,o)}catch{}})}}catch{}}
+const mSeen=v=>{if(v&&MNEW[v]){delete MNEW[v];mSave()}};
+const notifItem=(grp,text)=>{text=String(text||'');if(/reel/i.test(text))return 'reels';if(/contest/i.test(text))return 'contests';if(/followed you|accepted your request|friend/i.test(text))return 'friends';if(/call/i.test(text))return 'friends';if(grp==='mentions'||/post|comment|react|shared/i.test(text))return 'home';if(grp==='rewards'||/coin|gift|level/i.test(text))return 'account';if(/role/i.test(text))return 'profile';return 'notifs'};
 function drawNav(){const items=[['🪪','My Profile','profile'],['🏠','Home','home'],['🎬','Reels','reels'],['✉️','Mail','mail'],['💬','Chat Rooms','rooms'],['👥','Friends','friends'],['💰','My Account','account'],['🧭','Explore','explore'],['🛍️','Store','store'],['🏆','Contests','contests'],['🧑‍🤝‍🧑','Peoples','peoples'],['🎡','Daily Spin','spin'],['⌨️','Command List','cmds'],['🛟','Help & Support','help'],['💬','Feedback & Report','feedback'],['⚙️','Settings','settings']];if(ST.role==='staff')items.splice(items.length-1,0,['🛡️','Admin Panel','admin']);
   else if(ST.role!=='admin')items.splice(items.length-1,0,['🏪',{user:'Become a Merchant',merchant:'Merchant Panel',mentor:'Mentor Panel',headmentor:'Head Mentor Panel'}[ST.role]||'Panel','panel']);
   $('dn').innerHTML=`<form class="dsr" id="ds"><input id="dq" placeholder="Search for a user" maxlength="16" aria-label="Search for a user"><button class="o" aria-label="Search"><svg viewBox="0 0 24 24"><circle cx="10" cy="10" r="6"/><path d="M15 15l6 6"/></svg></button><button type="button" id="dbell" class="dbell" aria-label="Notifications"><svg viewBox="0 0 24 24"><path d="M6 17V11a6 6 0 0112 0v6l1.5 2h-15z"/><path d="M10 21a2 2 0 004 0"/></svg><b class="bbd" ${NUN?'':'hidden'}>${NUN>99?'99+':NUN}</b></button></form>
   <div class="dme" id="mc">${av(me,84)}<div class="g"><span class="nm" style="color:${nc(me)}">${esc(me)}</span>${rt(ST.role,me)}<div class="mu"><span class="dot ${ST.presence||'online'}"></span>${ST.presence||'online'}</div><div class="mu">${lvi(lv(ST.xp||0),22)} Level ${lv(ST.xp||0)}</div><div class="mu xpl">${(ST.xp||0).toLocaleString()} / ${(CUM[lv(ST.xp||0)+1]||ST.xp||0).toLocaleString()} XP</div></div></div><div class="dst" id="dst"><svg viewBox="0 0 24 24" class="dsi"><path d="M4 5h16v11H9l-5 4z"/></svg><span class="dtx${ST.status_text?'':' none'}" id="dtx">${ST.status_text?esc(ST.status_text):'Set your status'}</span><svg viewBox="0 0 24 24" class="dsp"><path d="M4 20l1-4L16 5l3 3L8 19zM14 7l3 3"/></svg></div><div class="dh">Discover</div><div class="dmenu">`+
-  items.map(([i,t,v])=>`<button class="mi${(cur===v||(cur==='chat'&&v==='rooms'))?' on':''}" data-v="${v}"><i>${i}</i>${t}${v==='mail'&&MAILN?`<b class="mbadge">${MAILN>99?'99+':MAILN}</b>`:''}</button>`).join('')+`</div><button class="lgo" data-v="out" type="button"><span>Log Out</span><svg viewBox="0 0 60 44" aria-hidden="true"><g class="rn"><circle cx="14" cy="10" r="4.5"/><path d="M15 16l-3 8-6 3M15 16l5 6 5 1M12 24l-2 10M12 24l6 5 1 9"/></g><rect class="fr" x="34" y="4" width="20" height="36" rx="2"/><path class="dp" d="M36 6h16v32H36z"/><circle class="kn" cx="48" cy="22" r="1.5"/></svg></button>`;
+  items.map(([i,t,v])=>`<button class="mi${(cur===v||(cur==='chat'&&v==='rooms'))?' on':''}" data-v="${v}"><i>${i}</i>${t}${v==='mail'&&MAILN?`<b class="mbadge">${MAILN>99?'99+':MAILN}</b>`:MNEW[v]?`<b class="mbadge mnew">${MNEW[v]>99?'99+':MNEW[v]}</b>`:''}</button>`).join('')+`</div><button class="lgo" data-v="out" type="button"><span>Log Out</span><svg viewBox="0 0 60 44" aria-hidden="true"><g class="rn"><circle cx="14" cy="10" r="4.5"/><path d="M15 16l-3 8-6 3M15 16l5 6 5 1M12 24l-2 10M12 24l6 5 1 9"/></g><rect class="fr" x="34" y="4" width="20" height="36" rx="2"/><path class="dp" d="M36 6h16v32H36z"/><circle class="kn" cx="48" cy="22" r="1.5"/></svg></button>`;
   if(!window.__na){window.__na=1;setTimeout(navAnim)}
   $('ds').onsubmit=e=>{e.preventDefault();const q=$('dq').value.trim();if(q)go('profile',q)};$('dbell').onclick=()=>go('notifs');if(NUN===null){NUN=0;api('GET','/notifs/count').then(x=>{NUN=x.unread||0;paintBell()}).catch(()=>{})}
   $('dn').onclick=e=>{const b=e.target.closest('[data-v]');if(b){b.dataset.v==='out'?(b.classList.add('go'),setTimeout(logout,900)):go(b.dataset.v,b.dataset.v==='profile'?me:undefined);return}
@@ -2241,7 +2269,8 @@ V.reels=async function(a){RLEND=false;RLBUSY=false;RLLAST=0;RLMAP={};if(RLIO)RLI
  $('view').innerHTML=`<div id="rlw"><div class="rltop"><b><svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="5"/><path d="M3 9h18M9 3l3 6M15 3l3 6"/><path d="M10.5 12.8v4.4l3.6-2.2z" class="f"/></svg>Reels</b><span><div id="rlvw"><input type="range" id="rlvol" min="0" max="1" step="0.05" value="1" aria-label="Volume"><span id="rlmu" role="button" aria-label="Sound">${RLI.off}</span></div><button id="rlnew" data-a="new">＋ <em>Create</em></button></span></div><div id="rl"></div></div>`;
  rlSize();const box=$('rl');
  RLIO=new IntersectionObserver(es=>{es.forEach(e=>{if(e.isIntersecting&&e.intersectionRatio>=.6){box.querySelectorAll('.rli.cur').forEach(s=>s.classList.remove('cur'));e.target.classList.add('cur');rlAct(e.target)}else if(!e.isIntersecting){e.target.querySelector('video')?.pause()}})},{root:box,threshold:[0,.6]});
- $('rlnew').onclick=()=>rlCreate();let vt=0;const vOpen=()=>{$('rlvw').classList.add('open');clearTimeout(vt);vt=setTimeout(()=>{const w=$('rlvw');w&&w.classList.remove('open')},5000)};$('rlmu').onclick=()=>{if(!$('rlvw').classList.contains('open')){vOpen();return}if(RMUTE||RVOL===0){RMUTE=false;if(RVOL===0)RVOL=.6}else RMUTE=true;try{localStorage.rvol=RVOL}catch{}rlMuteBtn();vOpen()};$('rlvol').oninput=e=>{vOpen();RVOL=+e.target.value;RMUTE=RVOL===0;try{localStorage.rvol=RVOL}catch{}document.querySelectorAll('#rl video').forEach(v=>{v.volume=RVOL;v.muted=RMUTE})};$('rlmu').innerHTML=RLI.off;rlMuteBtn();
+ $('rlnew').onclick=()=>rlCreate();let vt=0;const vOpen=()=>{$('rlvw').classList.add('open');clearTimeout(vt);vt=setTimeout(()=>{const w=$('rlvw');w&&w.classList.remove('open')},5000)};const rlMob=()=>innerWidth<1000||matchMedia('(pointer:coarse)').matches;$('rlmu').onclick=()=>{if(rlMob()){if(RMUTE||RVOL===0){RMUTE=false;RVOL=1}else RMUTE=true;try{localStorage.rvol=RVOL}catch{}rlMuteBtn();return}  /* phones: the button only turns sound on/off (the phone's own volume keys set the level) */
+  if(!$('rlvw').classList.contains('open')){vOpen();return}if(RMUTE||RVOL===0){RMUTE=false;if(RVOL===0)RVOL=.6}else RMUTE=true;try{localStorage.rvol=RVOL}catch{}rlMuteBtn();vOpen()};$('rlvol').oninput=e=>{vOpen();RVOL=+e.target.value;RMUTE=RVOL===0;try{localStorage.rvol=RVOL}catch{}document.querySelectorAll('#rl video').forEach(v=>{v.volume=RVOL;v.muted=RMUTE})};$('rlmu').innerHTML=RLI.off;rlMuteBtn();
  let tap=0,tapT=0;
  box.onclick=e=>{const b=e.target.closest('[data-a]');if(b){rlDo(b.dataset.a,b,e);return}
   const v=e.target.closest('.rlv');if(!v)return;const sec=v.closest('.rli'),vd=v.querySelector('video');
@@ -2428,7 +2457,7 @@ async function feedClick(e){
   try{if(k){await api('POST',`/posts/${id}/react`,{kind:k.dataset.k});loadFeed();return}
     const b=e.target.closest('[data-a]')||(w?art?.querySelector('[data-a=comment]'):null);if(!b)return;const a=b.dataset.a,cm=art?.querySelector('.cm');
     if(a==='cleartag')go('home');
-    else if(a==='react'){if(window._rhF){window._rhF=0;return}if(matchMedia('(pointer:coarse)').matches){await api('POST',`/posts/${id}/react`,{kind:PS[id]?.mine||'like'});loadFeed()}else reactPop(b,id,PS[id]?.mine)}
+    else if(a==='react'){if(window._rhF){window._rhF=0;return}reactPop(b,id,PS[id]?.mine)}
     else if(a==='menu')menuSheet(PS[id],b);
     else if(a==='share'){await api('POST',`/posts/${id}/share`);loadFeed()}
     else if(a==='comment'){if(!cm.hidden){cm.hidden=true;return}
@@ -2737,7 +2766,7 @@ V.rooms=async()=>{const rs=await api('GET','/rooms');rs.forEach(x=>{RF[x.name]=x
     const r=e.target.closest('[data-r]');if(r)return go('chat',r.dataset.r);const s=e.target.closest('[data-s]');if(s){const d=document.querySelector(`#view [data-sec="${s.dataset.s}"]`);d.style.display=d.style.display==='none'?'':'none';s.classList.toggle('cl',d.style.display==='none');(window.RCOL=window.RCOL||{})[s.dataset.s]=d.style.display==='none'}}};
 /* ---------- chat ---------- */
 const RF={};let RFL=0;const fu=f=>!f?'':/^[a-z]{2}(-[a-z]+)?$/.test(f)?'https://flagcdn.com/w40/'+f+'.png':f;
-const rfl=n=>RF[n]?`<img class="flg rfl" src="${esc(fu(RF[n]))}" alt="">`:'';
+const rfl=n=>n&&n.startsWith('dm:')?`<span class="rfl rav">${av(rtitle(n),24)}</span>`:RF[n]?`<img class="flg rfl" src="${esc(fu(RF[n]))}" alt="">`:'';  // private chat: the other user's profile photo instead of a flag
 async function loadRF(){try{const rs=await api('GET','/rooms');rs.forEach(x=>{RF[x.name]=x.flag||''});const ok=new Set(rs.map(x=>x.name));const n=OPEN.length;for(let i=OPEN.length-1;i>=0;i--)if(!OPEN[i].startsWith('dm:')&&!ok.has(OPEN[i]))OPEN.splice(i,1);if(OPEN.length!==n){saveOpen();if(cur==='chat'&&room&&!OPEN.includes(room)&&!room.startsWith('dm:'))return go(OPEN.length?'chat':'rooms',OPEN[0])}drawTabs()}catch{}}
 const rtitle=r=>r.startsWith('dm:')?r.slice(3).split(':').find(x=>x!==me)||'DM':r;
 const lvtag=(n,xp)=>` <span class="lvt">[${lv(xp||0)}]</span>`;
@@ -2756,14 +2785,14 @@ function emChat(anchor){const old=$('empc');if(old){old.remove();return}
 V.chat=async(r)=>{room=r;if(!r.startsWith('dm:'))lastRoom=r;target='';pend=null;RM=[];RI=null;const dm=r.startsWith('dm:');const title=rtitle(r);
   if(!OPEN.includes(r)){OPEN.push(r);saveOpen()}
   $('stt').innerHTML=rfl(r)+esc(title);
-  view(`<div id="chatbox">${dm?'':'<div id="rbw" class="hid"><div class="rbi"><div id="rbar"></div></div></div><button type="button" id="rbt" aria-label="Hide or show the room bar"><svg viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg></button>'}
+  view(`<div id="chatbox"><div id="rbw" class="hid${dm?' dmb':''}"><div class="rbi"><div id="rbar"></div></div></div><button type="button" id="rbt" aria-label="${dm?'Hide or show the chat bar':'Hide or show the room bar'}"><svg viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg></button>
    <div id="log" class="${localStorage.cbg||'light'}"></div>${dm?'':'<div id="tp" aria-label="Teen Patti Gold table"></div><div id="gp" aria-label="Game table"></div>'}<div id="uno" class="card" style="display:none"></div>
    <div class="row mu" id="tools" style="flex-wrap:wrap"><span id="to"></span></div>
    <form id="f" class="row"><button type="button" id="phb" aria-label="Send a photo"><svg viewBox="0 0 24 24"><path d="M4 8h3l1.6-2.2h6.8L17 8h3v11H4z"/><circle cx="12" cy="13.2" r="3.4"/></svg></button><button type="button" id="emb" aria-label="Emoticons"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M8 14.2c1 1.4 2.4 2.1 4 2.1s3-.7 4-2.1"/><circle cx="9" cy="9.8" r=".6"/><circle cx="15" cy="9.8" r=".6"/></svg></button><input id="t" placeholder="Message…" autocomplete="off" maxlength="500"><button type="button" id="mic" aria-label="Record a voice note"><svg viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5.5 11.5a6.5 6.5 0 0013 0M12 18v3"/></svg></button><button class="o">Send</button></form>
    <div id="recbar" class="row" hidden><button type="button" id="rcx" aria-label="Cancel recording">✕</button><span class="rdot"></span><b id="rect">0:00</b><span class="mu g">Recording…</span><button type="button" class="o" id="rcs">Send ➤</button></div><input type="file" id="pfile" accept="image/*" hidden></div>`);
   try{placeHdr(false)}catch{}
   document.querySelectorAll('#hdr #rbw,#hdr #rbt').forEach(n=>n.remove());
-  if(!dm){const h=$('hdr'),w=$('rbw');w.classList.add('hid');w.classList.remove('show');h.appendChild(w);h.appendChild($('rbt'))}
+  {const h=$('hdr'),w=$('rbw');w.classList.add('hid');w.classList.remove('show');h.appendChild(w);h.appendChild($('rbt'))}
   drawTabs();
   $('f').onsubmit=e=>{e.preventDefault();const t=$('t').value.trim();if(t){if(t[0]==='/'&&!/^\/bot(\s|$)/i.test(t))add({user:me,text:t,kind:'msg',ts:Date.now(),role:ROLES[me]||ST.role||'user',xp:ST.xp});tx({t:'msg',text:t})}$('t').value=''};
   $('log').onclick=e=>{if(e.target.dataset.big)return lightbox(e.target.dataset.big);const u=e.target.dataset.u;if(u&&u!==me)setTarget(u)};
@@ -2780,7 +2809,7 @@ V.chat=async(r)=>{room=r;if(!r.startsWith('dm:'))lastRoom=r;target='';pend=null;
 /* room tabs: tap to switch, swipe left/right to move between open rooms */
 function drawTabs(){const t=$('rtabs');if(!t)return;if(!EMB&&innerWidth>=1000)return wTabs();if(cur==='chat'&&DC.has(room)&&!$('dcbar'))mountDC(room,AL.has(room)?'Disconnected from <b>'+esc(rtitle(room))+'</b>':null);if(!RFL){RFL=1;setTimeout(loadRF,0)}
   UNR[room]=0;
-  const inch=document.body.classList.contains('inchat');t.innerHTML=OPEN.map(x=>(x===room&&inch)?`<button class="rt on${DC.has(x)?' dcd':''}" data-r="${esc(x)}">${rfl(x)}${esc(rtitle(x))}</button>`:`<button class="rt mini${UNR[x]?' has':''}${DC.has(x)?' dcd':''}" data-r="${esc(x)}" title="${esc(rtitle(x))}" aria-label="${esc(rtitle(x))}${UNR[x]?' — '+UNR[x]+' new':''}">${RF[x]?rfl(x).replace('class="flg rfl"','class="flg rfl rfm"').replace('<img','<span class="rf"><img')+'</span>':''}${RF[x]?'':(()=>{const f=rtitle(x).match(/[\u{1F1E6}-\u{1F1FF}]{2}/u);return f?`<span class="rf">${f[0]}</span>`:'<svg viewBox="0 0 24 24" width="18" height="18"><path d="M4 5h16v11H9l-5 4z" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"/></svg>'})()}${UNR[x]?`<b class="ub">${UNR[x]>9?'9+':UNR[x]}</b>`:''}</button>`).join('');
+  const inch=document.body.classList.contains('inchat');t.innerHTML=OPEN.map(x=>(x===room&&inch)?`<button class="rt on${DC.has(x)?' dcd':''}" data-r="${esc(x)}">${rfl(x)}${esc(rtitle(x))}</button>`:`<button class="rt mini${UNR[x]?' has':''}${DC.has(x)?' dcd':''}" data-r="${esc(x)}" title="${esc(rtitle(x))}" aria-label="${esc(rtitle(x))}${UNR[x]?' — '+UNR[x]+' new':''}">${RF[x]?rfl(x).replace('class="flg rfl"','class="flg rfl rfm"').replace('<img','<span class="rf"><img')+'</span>':''}${RF[x]?'':x.startsWith('dm:')?`<span class="rf">${av(rtitle(x),24)}</span>`:(()=>{const f=rtitle(x).match(/[\u{1F1E6}-\u{1F1FF}]{2}/u);return f?`<span class="rf">${f[0]}</span>`:'<svg viewBox="0 0 24 24" width="18" height="18"><path d="M4 5h16v11H9l-5 4z" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"/></svg>'})()}${UNR[x]?`<b class="ub">${UNR[x]>9?'9+':UNR[x]}</b>`:''}</button>`).join('');
   t.onclick=e=>{const c=e.target.closest('[data-x]');if(c){e.stopPropagation();return closeTab(c.dataset.x)}
     if(e.target.closest('[data-add]'))return go('rooms');const b=e.target.closest('[data-r]');if(b&&(b.dataset.r!==room||cur!=='chat'))go('chat',b.dataset.r)};
   {const on=t.querySelector('.on');if(on){const l=on.offsetLeft-t.offsetLeft,w=on.offsetWidth;if(l<t.scrollLeft)t.scrollLeft=Math.max(0,l-6);else if(l+w>t.scrollLeft+t.clientWidth)t.scrollLeft=l+w-t.clientWidth+6}}}
@@ -2801,6 +2830,13 @@ function swipe(el){let x0=0,y0=0,t0=0,drag=false;const W=()=>innerWidth;
   el.addEventListener('touchcancel',()=>{x0=0;if(drag)rst(200);drag=false},{passive:true})}
 const IC={ppl:'<svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c0-3.6 2.9-6 6.5-6s6.5 2.4 6.5 6"/><path d="M16 4.7a3.5 3.5 0 010 6.6M18 14.4c2 .8 3.5 2.6 3.5 5.6"/></svg>',star:'<svg viewBox="0 0 24 24"><path d="M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1L3.2 9.5l6.1-.9z"/></svg>',shield:'<svg viewBox="0 0 24 24"><path d="M12 3l8 3v6c0 4.5-3.3 7.6-8 9-4.7-1.4-8-4.5-8-9V6z"/><path d="M8.5 12l2.5 2.5 4.5-5"/></svg>',more:'<svg viewBox="0 0 24 24"><circle cx="5" cy="12" r="1.3"/><circle cx="12" cy="12" r="1.3"/><circle cx="19" cy="12" r="1.3"/></svg>'};
 function drawOnline(){const b=$('rbar');if(!b)return;
+  if(room&&room.startsWith('dm:')){const pn=rtitle(room),pr=(window.PRES||{})[pn]||'';
+    b.innerHTML=`<button class="on1" data-b="prof">${av(pn,26)}<span class="o1t"><b style="color:${nc(pn)}">${esc(pn)}</b><span class="o1n">${pr==='away'?'Away':pr==='busy'?'Busy':pr==='online'?'Online':pr==='offline'?'Offline':''}</span></span></button>
+     <button class="ib" data-call="audio" data-n="${esc(pn)}" aria-label="Audio call ${esc(pn)}"><svg viewBox="0 0 24 24"><path d="M5 4h4l2 5-2.5 1.5a11 11 0 005 5L15 13l5 2v4a2 2 0 01-2 2A16 16 0 013 6a2 2 0 012-2z"/></svg></button><button class="ib" data-call="video" data-n="${esc(pn)}" aria-label="Video call ${esc(pn)}"><svg viewBox="0 0 24 24"><rect x="3" y="6" width="12" height="12" rx="2"/><path d="M15 10l6-3v10l-6-3z"/></svg></button><button class="ib" data-b="more" aria-label="Chat options">${IC.more}</button>`;
+    if(!b._f){b._f=1;api('GET','/users/'+encodeURIComponent(pn)).then(u=>{(window.PRES=window.PRES||{})[pn]=u.presence||'';if(room&&room.startsWith('dm:')&&rtitle(room)===pn&&$('rbar')===b)drawOnline()}).catch(()=>{})}
+    const bt=$('rbt');if(bt&&!bt._b){bt._b=1;bt.onclick=()=>{const w=$('rbw');const h=w.classList.toggle('hid');clearTimeout(window._rbT);if(!h)window._rbT=setTimeout(()=>{const x=$('rbw');if(x)x.classList.add('hid')},10000)}}
+    b.onclick=e=>{const c=e.target.closest('[data-call]');if(c){e.stopPropagation();return callStart(c.dataset.n,c.dataset.call)}const k=e.target.closest('[data-b]')?.dataset.b;if(k==='prof')return go('profile',pn);if(k==='more')return chatMenu(e.target.closest('[data-b]'))};
+    return}
   const nm=RM.map(u=>`<span style="color:${nc(u.name)}">${esc(u.name)}</span>`).join(', ');
   b.innerHTML=`<button class="on1" data-b="ppl"><span class="dot online" style="width:14px;height:14px;flex:none"></span><span class="o1t"><b>${RM.length} online</b><span class="o1n">${nm}</span></span></button>
    <button class="ib star ${RI?.fav?'on':''}" data-b="fav" aria-label="Favorite">${IC.star}</button><span id="rbx"></span><button class="ib" data-b="more" aria-label="Room options">${IC.more}</button>`;try{placeHdr(true)}catch{}
@@ -2817,7 +2853,7 @@ function popOpen(anchor,html,onPick){const old=$('rpop'),same=old&&old._a===anch
   const off=e=>{if(!p.contains(e.target)&&!anchor.contains(e.target)){p.remove();document.removeEventListener('pointerdown',off,true)}};
   setTimeout(()=>document.addEventListener('pointerdown',off,true),0);
   p.onclick=e=>{if(onPick&&onPick(e,p)!==false){p.remove();document.removeEventListener('pointerdown',off,true)}}}
-function memPop(anchor){popOpen(anchor,`<div class="ph2">${esc(lastRoom)} · ${RM.length} online</div>`+(RM.map(u=>`<button data-n="${esc(u.name)}">${av(u.name,28)}<b style="color:${nc(u.name)}">${esc(u.name)}</b>${lvtag(u.name,u.xp)}${rt(u.role,u.name)}</button>`).join('')||'<div class="mu" style="padding:8px 12px">Nobody here yet.</div>'),
+function memPop(anchor){popOpen(anchor,`<div class="ph2">${esc(lastRoom)} · ${RM.length} online</div>`+(RM.map(u=>`<button data-n="${esc(u.name)}">${av(u.name,28)}<span class="dot ${u.presence==='away'?'away':u.presence==='busy'?'busy':'online'}" title="${u.presence==='away'?'Away':u.presence==='busy'?'Busy':'Online'}" style="width:9px;height:9px;margin:0 2px 0 -2px;flex:none"></span><b style="color:${nc(u.name)}">${esc(u.name)}</b>${lvtag(u.name,u.xp)}${rt(u.role,u.name)}</button>`).join('')||'<div class="mu" style="padding:8px 12px">Nobody here yet.</div>'),
   (e)=>{const n=e.target.closest('[data-n]')?.dataset.n;if(!n)return false;if(n!==me)setTarget(n)})}
 function modPop(anchor){const o=RI?.owner||'—';popOpen(anchor,`<div class="ph2">Room info</div><div class="rinf">Managed by: <b style="color:${nc(o)}">${esc(o)}</b></div><div class="rinf mu">Moderators: ${(RI?.mods||[]).map(esc).join(', ')||'none'}</div>${RI?.descr?`<div class="rinf mu">${esc(RI.descr)}</div>`:''}${RI?.minlv?`<div class="rinf mu">Minimum level: ${RI.minlv}</div>`:''}<div class="rinf mu">Staff and admins can kick, ban and silence in public rooms.</div>`,()=>false)}
 
@@ -2855,7 +2891,7 @@ function chatMenu(anchor){
   if($('rpop'))return $('rpop').remove();
   const dm=room.startsWith('dm:');
   const p=document.createElement('nav');p.id='rpop';
-  p.innerHTML=`${dm?'':'<button data-c="ppl">👥 Participants</button>'}<button data-c="bal">🪙 Check Balance</button><button data-c="gift">🎁 Send Gift</button>${dm?'':'<button data-c="pkt">🧧 Lucky Packet</button>'}${dm?'':'<button data-c="info">ℹ️ Room info</button>'}${canEditRoom()?'<button data-c="edit">✏️ Room Edit</button>':''}<button data-c="clr">🧹 Clear Chat</button><button data-c="cmds">⌨️ Command List</button><button data-c="rooms">💬 All rooms</button>${dm?'':'<button data-c="leave" class="dg">🚪 Leave Room</button>'}`;
+  p.innerHTML=`${dm?'':'<button data-c="ppl">👥 Participants</button>'}<button data-c="bal">🪙 Check Balance</button><button data-c="gift">🎁 Send Gift</button>${dm?'':'<button data-c="pkt">🧧 Lucky Packet</button>'}${dm?'':'<button data-c="info">ℹ️ Room info</button>'}${!dm&&canEditRoom()?'<button data-c="edit">✏️ Room Edit</button>':''}<button data-c="clr">🧹 Clear Chat</button>${dm?'':'<button data-c="cmds">⌨️ Command List</button>'}<button data-c="rooms">💬 All rooms</button>${dm?'<button data-c="leave" class="dg">✖️ Close Chat</button>':'<button data-c="leave" class="dg">🚪 Leave Room</button>'}`;
   const a=(anchor||$('rbar')).getBoundingClientRect();
   document.body.appendChild(p);
   const h=p.offsetHeight,w=p.offsetWidth;
@@ -2927,7 +2963,7 @@ function addFx(m){const K=m.kind,d=document.createElement('div'),L=$('log'),tm=n
   if(K==='info'||K==='ok'){d.className='inf'+(K==='ok'?' ok':'');d.innerHTML=fmtTxt(m.text)}
   else if(K==='err'){d.className='errb';d.innerHTML=`<i>⚠</i><div><b>${esc(m.text)}</b><small>Only you · ${esc(tm)}</small></div>`}
   else if(K==='emote'||K==='emotep'){d.className='emo'+(K==='emotep'?' p':'');d.textContent=m.text}
-  else if(K==='note'||K==='notel'||K==='notea'){d.className='nt'+(K==='notel'?' l':K==='notea'?' a':'');d.innerHTML=`<span>Administration:</span> ${esc(m.text)}`}
+  else if(K==='note'||K==='notel'||K==='notea'){d.className='nt'+(K==='notel'?' l':K==='notea'?' a':'');const rnm=m.room&&!m.room.startsWith('dm:')?m.room[0].toUpperCase()+m.room.slice(1):(room&&!room.startsWith('dm:')?room[0].toUpperCase()+room.slice(1):'Room');d.innerHTML=`<span>${esc(rnm)}:</span> ${esc(m.text)}`}
   else if(K==='gift'){const g=/^\{c:(#[0-9a-fA-F]{3,6})\}([\s\S]*)$/.exec(m.text);if(!g)return false;d.className='gf';if(g[1].toLowerCase()==='#1c1c1e')d.classList.add('gblk');else d.style.color=giftCol(g[1]);
     d.innerHTML=g[2].split(/(\[g:\/uploads\/[a-f0-9]{32}\.\w+\])/).map(p=>{const x=/^\[g:(\/uploads\/[a-f0-9]{32}\.\w+)\]$/.exec(p);return x?`<img src="${esc(x[1])}" alt="" class="gfi">`:esc(p).replace(/\*([^*]+)\*/g,'<b>$1</b>')}).join('')}
   else return false;
@@ -2989,8 +3025,8 @@ V.profile=async(n)=>{n=n||me;const u=await api('GET','/users/'+n);ROLES[u.name]=
    ${u.status_text?`<div class="say">${esc(u.status_text)}</div>`:''}</div></div>
    ${u.bio?`<p style="margin:0;padding:0 12px 10px">${esc(u.bio)}</p>`:''}${mine&&ST.email?`<p class="mu" style="padding:0 12px">✉ ${esc(ST.email)} · only you</p>`:''}
    <div id="pa" class="pa"></div>
-   <div class="tiles t3"><div><b>${lvi(u.level,22)} ${u.level}</b>Level</div><div><b title="${u.xp.toLocaleString()}">${kfmt(u.xp)}</b>XP</div><div><b title="${u.coins.toLocaleString()}">${kfmt(u.coins)}</b>Coins</div></div>
-   ${(()=>{const t=u.stats||{};const c=[[t.followers,'Followers',1],[t.following,'Following',1],[u.friends,'Friends',1],[t.footprints,'Footprints',1],[t.badges,'Badges',1],[t.posts,'Posts',0],[t.giftsSent,'Gifts sent',1],[t.giftsRecv,'Received',1],[t.games,'Games',0]];return`<div class="tiles sg">${c.map(([v,l])=>`<div><b title="${(+v||0).toLocaleString()}">${kfmt(v)}</b>${l}</div>`).join('')}</div>`})()}${u.gifts&&u.gifts.length?`<div class="card"><b>🎁 Gifts received</b><div class="chips">${u.gifts.map(g=>`<span style="display:inline-flex;align-items:center;gap:5px;padding:4px 10px;border-radius:99px;background:rgba(128,128,128,.18)">${g.img?`<img src="${esc(g.img)}" alt="" style="height:22px;width:22px;object-fit:contain">`:g.e} ${esc(g.name)} ×${g.n}</span>`).join('')}</div></div>`:''}
+   <div class="tiles t2"><div><b>${lvi(u.level,22)} ${u.level}</b>Level</div><div><b title="${u.xp.toLocaleString()}">${kfmt(u.xp)}</b>XP</div></div>
+   ${(()=>{const t=u.stats||{};const c=[[t.followers,'Followers',1],[t.following,'Following',1],[u.friends,'Friends',1],[t.footprints,'Footprints',1],[t.badges,'Badges',1],[t.posts,'Posts',0],[t.giftsSent,'Gifts sent',1],[t.giftsRecv,'Gifts received',1],[t.games,'Games',0]];return`<div class="tiles sg">${c.map(([v,l])=>`<div><b title="${(+v||0).toLocaleString()}">${kfmt(v)}</b>${l}</div>`).join('')}</div>`})()}${u.gifts&&u.gifts.length?`<div class="card"><b>🎁 Gifts received</b><div class="chips">${u.gifts.map(g=>`<span style="display:inline-flex;align-items:center;gap:5px;padding:4px 10px;border-radius:99px;background:rgba(128,128,128,.18)">${g.img?`<img src="${esc(g.img)}" alt="" style="height:22px;width:22px;object-fit:contain">`:g.e} ${esc(g.name)} ×${g.n}</span>`).join('')}</div></div>`:''}
    ${(()=>{const L=lv(u.xp);if(L>=1000)return`<div class="xpc"><div class="top">${lvi(L,24)} Max level reached <span>${u.xp.toLocaleString()} XP</span></div></div>`;const lo=CUM[L],hi=CUM[L+1],need=hi-u.xp,pc=Math.max(2,Math.min(100,Math.round((u.xp-lo)/(hi-lo)*100)));return`<div class="xpc"><div class="top"><b>${u.xp.toLocaleString()} XP</b><span>${need.toLocaleString()} XP more to reach Level ${L+1}</span></div><div class="bar2"><i style="width:${pc}%"></i></div><div class="lvs"><span>${lvi(L,20)} Lv ${L}</span><span>${u.xp.toLocaleString()} / ${hi.toLocaleString()} XP</span><span>Lv ${L+1} ${lvi(L+1,20)}</span></div></div>`})()}${mine?'<div class="card" id="pg"><b>🖼️ My uploaded photos</b><div class="mu">Loading…</div></div>':''}`);
   if(mine){$('cp').onclick=()=>$('pfl').click();
     $('pfl').onchange=async e=>{const f=e.target.files[0];e.target.value='';if(!f)return;try{const b=await imgToBlob(f,320,true);AV[me]=await upload('avatar',b);V.profile(me)}catch(er){fail(er)}};
@@ -3589,11 +3625,8 @@ document.addEventListener('click',e=>{if(!b.classList.contains('inchat')||innerW
  if(!o.t)o.t=Date.now();
  if(!o.done&&Date.now()-o.t>=60000){o.done=1;const b=el.querySelector('[data-min]');if(b&&/▾/.test(b.textContent))b.click()}}},1000)})();
 
-/* mobile: hold the React button for 2 seconds to open the reaction picker */
-(()=>{let t=0;const coarse=()=>matchMedia('(pointer:coarse)').matches;
-document.addEventListener('touchstart',e=>{const b=e.target.closest&&e.target.closest('[data-a=react]');if(!b||!coarse())return;window._rhF=0;clearTimeout(t);t=setTimeout(()=>{const art=b.closest('.post');if(!art)return;window._rhF=1;try{navigator.vibrate&&navigator.vibrate(20)}catch{}reactPop(b,art.dataset.id,PS[art.dataset.id]?.mine)},2000)},{passive:true,capture:true});
-['touchend','touchmove','touchcancel'].forEach(n=>document.addEventListener(n,()=>clearTimeout(t),{passive:true,capture:true}));
-document.addEventListener('contextmenu',e=>{if(e.target.closest&&e.target.closest('[data-a=react]'))e.preventDefault()},true)})();
+/* phones: tapping React opens the reaction picker (same as desktop); stop the long-press menu on the button */
+document.addEventListener('contextmenu',e=>{if(e.target.closest&&e.target.closest('[data-a=react]'))e.preventDefault()},true);
 </script>
 </body>
 </html>

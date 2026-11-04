@@ -107,7 +107,10 @@ app.post('/api/signup/start', async (q, r) => {
   hits.set(q.ip, [...h, now]);
   const { fullName = '', name = '', email = '', gender = '', pass = '' } = q.body || {};
   if (fullName.trim().length < 2 || fullName.length > 40) return bad(r, 'Enter your full name.');
-  if (!/^[A-Za-z0-9._-]{3,16}$/.test(name)) return bad(r, 'Username must be 3–16 characters: English letters, numbers, dot (.), dash (-) or underscore (_).');
+  if (/[A-Z]/.test(name)) return bad(r, 'Username cannot have capital letters. Use small letters only.');
+  if (/\s/.test(name)) return bad(r, 'Username cannot have spaces.');
+  if (/^[0-9]/.test(name)) return bad(r, 'Username cannot start with a number.');
+  if (!/^[a-z0-9._-]{3,16}$/.test(name)) return bad(r, 'Username must be 3–16 characters: small letters (a–z), numbers, dot (.), dash (-) or underscore (_).');
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || email.length > 100) return bad(r, 'Enter a valid email address.');
   if (!['Male', 'Female', 'Other'].includes(gender)) return bad(r, 'Select your gender.');
   if (pass.length < 6) return bad(r, 'Password must be at least 6 characters.');
@@ -208,7 +211,7 @@ function addXp(name, n) {
   if (after > before) setImmediate(() => notify(name, 'rewards', `Level up! You reached level ${after}${total ? ` (+${total.toLocaleString()} coins)` : ''}`));
   if (after > before) wss.clients.forEach(w => { if (w.user === name) { send(w, { t: 'levelup', level: after, reward: total }); send(w, { t: 'coins', coins: coins(name) }); } });
 }
-const profile = n => { const u = db.prepare('select name,full_name,gender,country,bio,status_text,presence,xp,coins,role,joined,avatar,avatar_art,avatar_mode from users where name=?').get(n); if (!u) return u; const { avatar, avatar_art, avatar_mode, ...rest } = u; return { ...rest, level: level(u.xp), hasPhoto: !!avatar, hasArt: !!avatar_art, avatarMode: avatar_mode === 'avatar' && avatar_art ? 'avatar' : 'photo' }; };
+const profile = n => { const u = db.prepare('select name,full_name,gender,country,bio,status_text,presence,xp,coins,role,joined,avatar,avatar_art,avatar_mode from users where name=?').get(n); if (!u) return u; const { avatar, avatar_art, avatar_mode, ...rest } = u; return { ...rest, presence: livePres(u.name, u.presence), level: level(u.xp), hasPhoto: !!avatar, hasArt: !!avatar_art, avatarMode: avatar_mode === 'avatar' && avatar_art ? 'avatar' : 'photo' }; };
 const ok = fn => (q, r) => { const f = e => { console.error(e); if (!r.headersSent) bad(r, 'Server error', 500); }; try { const x = fn(q, r); if (x && x.catch) x.catch(f); } catch (e) { f(e); } };
 const fstate = (a, b) => {
   const x = db.prepare('select * from friends where (a=? and b=?) or (a=? and b=?)').get(a, b, b, a);
@@ -220,7 +223,7 @@ app.put('/api/me', auth, ok((q, r) => {
   const { bio, status_text, presence } = q.body || {};
   if (typeof bio === 'string') db.prepare('update users set bio=? where name=?').run(bio.slice(0, 200), q.user);
   if (typeof status_text === 'string') db.prepare('update users set status_text=? where name=?').run(status_text.slice(0, 60), q.user);
-  if (['online', 'away', 'busy', 'offline'].includes(presence)) { db.prepare('update users set presence=? where name=?').run(presence, q.user); online(); }
+  if (['online', 'away', 'busy', 'offline'].includes(presence)) { db.prepare('update users set presence=? where name=?').run(presence, q.user); online(); userRooms(q.user).forEach(castRoster); }
   r.json(profile(q.user));
 }));
 db.exec('create table if not exists footprints(owner text, visitor text, ts int, primary key(owner,visitor))');
@@ -228,10 +231,11 @@ function userStats(n, p) {
   const c = (sql, ...a) => db.prepare(sql).get(...a).c || 0;
   const badges = (db.prepare('select verified from users where name=?').get(n)?.verified ? 1 : 0) + (p.role && p.role !== 'user' ? 1 : 0) + [10, 25, 50, 100, 200, 300, 500, 1000].filter(x => p.level >= x).length + (c('select count(*) c from posts where user=?', n) >= 1 ? 1 : 0);
   return { followers: c('select count(*) c from friends where b=?', n), following: c('select count(*) c from friends where a=?', n), footprints: c('select count(*) c from footprints where owner=?', n), badges,
-    posts: c('select count(*) c from posts where user=?', n), giftsSent: c("select coalesce(-sum(amount),0) c from txs where user=? and kind='gift' and amount<0", n), giftsRecv: c("select coalesce(sum(amount),0) c from txs where user=? and kind='gift' and amount>0", n), games: c("select count(*) c from mevents where user=? and k='game'", n) };
+    posts: c('select count(*) c from posts where user=?', n), giftsSent: c("select count(*) c from txs where user=? and kind='gift' and amount<0", n), giftsRecv: Math.max(c("select count(*) c from txs where user=? and kind='gift' and amount>0", n), c('select coalesce(sum(n),0) c from gift_inv where user=?', n)), games: c("select count(*) c from mevents where user=? and k='game'", n) };
 }
 app.get('/api/users/:n', auth, ok((q, r) => {
   const p = profile(q.params.n); if (!p) return bad(r, 'User not found', 404);
+  delete p.coins;   // coin balances are private: profiles never show them
   if (p.name !== q.user) db.prepare('insert into footprints(owner,visitor,ts) values(?,?,?) on conflict(owner,visitor) do update set ts=excluded.ts').run(p.name, q.user, Date.now());
   const fc = db.prepare("select count(*) c from friends where status='accepted' and (a=? or b=?)").get(p.name, p.name).c;
   r.json({ ...p, gifts: db.prepare('select gift,n from gift_inv where user=? order by n desc').all(p.name).map(x => { const g = allGiftsAny(x.gift); return g && { key: x.gift, n: x.n, name: g.n, e: g.e, img: g.img }; }).filter(Boolean), friends: fc, stats: userStats(p.name, p), state: q.user === p.name ? 'me' : fstate(q.user, p.name) });
@@ -430,7 +434,7 @@ app.get('/api/headline', auth, ok((q, r) => {
   const rooms = db.prepare('select name from rooms').all();
   const chatting = rooms.reduce((n, x) => n + roomNames(x.name).size, 0);
   const seen = new Set(); wss.clients.forEach(w => { if (w.user) seen.add(w.user); });
-  let onlineN = 0; for (const u of seen) if (db.prepare('select presence from users where name=?').get(u)?.presence !== 'offline') onlineN++;
+  let onlineN = 0; for (const u of seen) if (livePres(u, db.prepare('select presence from users where name=?').get(u)?.presence) !== 'offline') onlineN++;
   const live = db.prepare("select name,ends from contests where status='approved' and settled=0 and starts<=? and ends>? order by ends limit 4").all(now, now);
   const upcoming = db.prepare("select name,starts from contests where status='approved' and settled=0 and starts>? order by starts limit 4").all(now);
   const top = db.prepare("select name,xp from users where banned=0 and role not in ('staff','admin') order by xp desc, name limit 3").all().map(u => ({ name: u.name, level: level(u.xp) }));
@@ -483,7 +487,7 @@ app.post('/api/rooms/:n/fav', auth, ok((q, r) => {
 app.get('/api/friends', auth, ok((q, r) => {
   const rows = db.prepare('select * from friends where a=? or b=?').all(q.user, q.user);
   const other = x => (x.a === q.user ? x.b : x.a);
-  const info = n => ({ name: n, ...db.prepare('select presence,xp,status_text,role from users where name=?').get(n) });
+  const info = n => withPres({ name: n, ...db.prepare('select presence,xp,status_text,role from users where name=?').get(n) });
   const seen = new Set([q.user, ...rows.map(other)]);
   r.json({
     friends: rows.filter(x => x.status === 'accepted').map(x => info(other(x))),
@@ -985,7 +989,7 @@ app.post('/api/admin/users/:n/edit', auth, ok((q, r) => {
   if (a === 'rename') {
     const nn = str(b.newName, 16);
     if (isMain(u.name)) return bad(r, 'The main staff ID cannot be renamed');
-    if (!/^[A-Za-z0-9._-]{3,16}$/.test(nn)) return bad(r, 'ID must be 3–16 characters: English letters, numbers, dot, dash or underscore.');
+    if (!/^[a-z._-][a-z0-9._-]{2,15}$/.test(nn)) return bad(r, 'ID must be 3–16 characters: small letters (a–z), numbers, dot, dash or underscore, no capitals or spaces, and it cannot start with a number.');
     if (isMain(nn) || ['admin', 'staff', 'mentor', 'headmentor', 'merchant', 'vip', 'support'].includes(nn.toLowerCase())) return bad(r, 'That ID is reserved.');
     if (db.prepare('select 1 from users where lower(name)=lower(?) and id!=?').get(nn, u.id)) return bad(r, 'That ID is already taken.', 409);
     const old = u.name;
@@ -1726,9 +1730,15 @@ const cast = (room, o) => {
   // also tell them when someone enters or leaves a room they keep as a tab
   if (o.t === 'enter' || o.t === 'leave') wss.clients.forEach(w => { if (w.user && w.user !== o.user && w.room !== room && w.tabs && w.tabs.has(room) && !isBlocked(o.user, w.user)) send(w, { ...o, bg: 1 }); });
 };
+// Live presence: the status the user picked (online / away / busy), but 'offline' once their browser is closed
+// (no open connection for 15 seconds; the short grace keeps a quick reconnect from flashing offline).
+const goneAt = new Map();
+const hasSock = n => [...wss.clients].some(w => w.user === n && !w.emb && w.readyState === 1);
+const livePres = (n, p) => { if (p === 'offline') return 'offline'; if (hasSock(n)) return p || 'online'; const g = goneAt.get(n); return g && Date.now() - g < 15e3 ? (p || 'online') : 'offline'; };
+const withPres = u => (u && u.name ? { ...u, presence: livePres(u.name, u.presence) } : u);
 const online = () => {
   const l = [...new Set([...wss.clients].filter(w => w.user).map(w => w.user))]
-    .map(n => ({ name: n, ...db.prepare('select presence,role,xp from users where name=?').get(n) })).filter(u => u.presence !== 'offline');
+    .map(n => withPres({ name: n, ...db.prepare('select presence,role,xp from users where name=?').get(n) })).filter(u => u.presence !== 'offline');
   wss.clients.forEach(w => send(w, { t: 'online', list: l }));
 };
 const coins = n => db.prepare('select coins from users where name=?').get(n).coins;
@@ -1744,7 +1754,8 @@ setInterval(() => {
 }, 60e3).unref();
 // Everyone who is in a room: joined right now OR has the room open as a tab (an open tab means they are still in that room)
 const roomNames = room => { const st = new Set([...(members.get(room) || [])].map(w => w.user)); for (const w of wss.clients) if (w.user && w.tabs && w.tabs.has(room)) st.add(w.user); return st; };
-const roster = room => [...roomNames(room)].map(n => ({ name: n, ...db.prepare('select role,xp,presence from users where name=?').get(n) })).filter(u => u.presence !== 'offline');
+const roster = room => [...roomNames(room)].map(n => withPres({ name: n, ...db.prepare('select role,xp,presence from users where name=?').get(n) })).filter(u => u.presence !== 'offline');
+const userRooms = n => { const st = new Set(); for (const w of wss.clients) if (w.user === n) { if (w.room) st.add(w.room); if (w.tabs) w.tabs.forEach(x => st.add(x)); } for (const [r0, set] of members) for (const w of set) if (w.user === n) st.add(r0); return [...st].filter(x => x && !x.startsWith('dm:')); };
 const castRoster = room => { if (room && !/^dm:/.test(room)) cast(room, { t: 'members', room, list: roster(room) }); };
 const leaveRoom = (ws, quiet = false) => {
   const r0 = ws.room; if (!r0) return; members.get(r0)?.delete(ws); ws.room = null;
@@ -2440,6 +2451,7 @@ function onWsMessage(ws, raw) {
       const gh = ghosts.get(ws.user);
       if (gh) { ghosts.delete(ws.user); clearTimeout(gh._ghostT); if (gh.room && !ws.room && members.has(gh.room)) { members.get(gh.room).delete(gh); ws.room = gh.room; ws.roomAt = gh.roomAt; members.get(gh.room).add(ws); gh.room = null; } }
       send(ws, { t: 'ready', user: ws.user, coins: coins(ws.user), gifts: allGifts(), ucols: activeColors(), ufx: activeFx() });
+      if (!ws.emb && goneAt.has(ws.user)) { goneAt.delete(ws.user); setImmediate(() => userRooms(ws.user).forEach(castRoster)); }
       return online();
     }
     if (!ws.user) return;
@@ -2458,6 +2470,7 @@ function onWsMessage(ws, raw) {
       if (r1 && ws.room !== r1) { try { ws.tabs && ws.tabs.delete(r1); } catch {} purgeRoomMsgs(r1); }
       return;
     }
+    if (m.t === 'bye') { ws._bye = true; return; }   // the browser/tab is closing: show offline without the grace period
     if (m.t === 'logout') {   // signed out: offline, out of every room
       if (!ws.user) return;
       const u0 = ws.user;
@@ -2529,6 +2542,12 @@ function onWsMessage(ws, raw) {
 }
 const ghosts = new Map();
 function closeWs(ws) {
+  if (ws.user && !ws.emb && !hasSock(ws.user)) {
+    const u0 = ws.user, rooms0 = userRooms(u0); if (ws.room) rooms0.push(ws.room);
+    goneAt.set(u0, ws._bye ? Date.now() - 15e3 : Date.now());
+    const upd = () => { if (hasSock(u0)) return; online(); [...new Set(rooms0)].filter(x => !x.startsWith('dm:')).forEach(castRoster); };
+    if (ws._bye) setImmediate(upd); setTimeout(upd, 16e3);
+  }
   try { for (const c of [...calls.values()]) if (c.fromWs === ws || c.toWs === ws) callEnd(c, c.state === 'ring' ? 'cancelled' : 'dropped', ws.user); } catch {}
   // keep a person in their room for a short while so a quick app switch / reconnect does not kick them out
   const r0 = ws.room;
