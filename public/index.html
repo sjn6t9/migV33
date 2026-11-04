@@ -1531,6 +1531,11 @@ html[data-skin] body #callui#callui#callui button.cx svg{width:54px!important;he
 #callui.vid .cwho{position:absolute;left:12px;top:12px;flex-direction:row;gap:8px;background:rgba(0,0,0,.45);padding:6px 12px 6px 6px;border-radius:30px;align-items:center}
 #callui.vid .cwho small{margin-left:4px}
 #callui.vid .cbt{margin:0 0 16px}
+#callui.vid.fs{background:#000;-webkit-backdrop-filter:none;backdrop-filter:none}
+#callui.vid.fs .cc{width:100vw;max-width:none;height:100vh;height:100dvh;border-radius:0;border:0}
+#callui.vid.fs #cvr{object-fit:contain}
+#callui.vid.fs #cvl{width:22%;max-width:200px}
+#callui.vid .cbt{padding-bottom:env(safe-area-inset-bottom)}
 #callui:not(.vid) .cvw{display:block;position:absolute;width:1px;height:1px;opacity:0;overflow:hidden}
 #callui:not(.vid) #cvr,#callui:not(.vid) #cvl{width:1px;height:1px}
 /* friends: call buttons + call history */
@@ -2144,15 +2149,17 @@ function callUI(){let d=cq('callui');if(!CALL){if(d)d.remove();return}
   if(!d){d=document.createElement('div');d.id='callui';document.body.append(d)}
   const C=CALL,vid=C.kind==='video',live=C.state==='live',incoming=C.dir==='in'&&!live;
   const st=C.dir==='in'?(live?(C.t0?'':'Connecting…'):`Incoming ${vid?'video':'audio'} call`):(live?(C.t0?'':'Connecting…'):(C.ringing?'Ringing…':'Calling…'));
-  d.className='cu'+(vid&&live?' vid':'')+(live?' live':'');
+  d.className='cu'+(vid&&live?' vid':'')+(live?' live':'')+(vid&&live&&C.fs?' fs':'');
   d.innerHTML=`<div class="cc"><div class="cvw"><video id="cvr" autoplay playsinline></video><video id="cvl" autoplay playsinline muted></video></div>
    <div class="cwho"><span class="cav">${av(C.peer,vid&&live?44:96)}</span><b>${esc(C.peer)}</b><small id="cst">${st}</small>${C.dir==='out'?`<small class="crate">🪙 ${vid?10:5} coins / second</small>`:''}</div>
    <div class="cbt">${incoming?`<button class="cx rej" id="cdec" aria-label="Decline"><svg viewBox="0 0 24 24"><path d="M3 15c5-5 13-5 18 0l-3 3-3-2v-2a12 12 0 00-6 0v2l-3 2z"/></svg><span>Decline</span></button><button class="cx acc" id="cacc" aria-label="Accept"><svg viewBox="0 0 24 24"><path d="M5 4h4l2 5-2.5 1.5a11 11 0 005 5L15 13l5 2v4a2 2 0 01-2 2A16 16 0 013 6a2 2 0 012-2z"/></svg><span>Accept</span></button>`
-   :`${live?`<button class="cx" id="cmute" aria-label="Mute"><svg viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5.5 11.5a6.5 6.5 0 0013 0M12 18v3"/></svg><span>Mute</span></button>${vid?`<button class="cx" id="ccam" aria-label="Camera"><svg viewBox="0 0 24 24"><rect x="3" y="6" width="12" height="12" rx="2"/><path d="M15 10l6-3v10l-6-3z"/></svg><span>Camera</span></button>`:''}`:''}<button class="cx rej" id="cend" aria-label="${live?'End call':'Cancel'}"><svg viewBox="0 0 24 24"><path d="M3 15c5-5 13-5 18 0l-3 3-3-2v-2a12 12 0 00-6 0v2l-3 2z"/></svg><span>${live?'End':'Cancel'}</span></button>`}</div></div>`;
+   :`${vid&&live?`<button class="cx" id="cfs" aria-label="${C.fs?'Exit full screen':'Full screen'}"><svg viewBox="0 0 24 24"><path d="${C.fs?'M9 4v5H4M15 4v5h5M9 20v-5H4M15 20v-5h5':'M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5'}"/></svg><span>${C.fs?'Exit':'Full'}</span></button>`:''}${live?`<button class="cx" id="cmute" aria-label="Mute"><svg viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5.5 11.5a6.5 6.5 0 0013 0M12 18v3"/></svg><span>Mute</span></button>${vid?`<button class="cx" id="ccam" aria-label="Camera"><svg viewBox="0 0 24 24"><rect x="3" y="6" width="12" height="12" rx="2"/><path d="M15 10l6-3v10l-6-3z"/></svg><span>Camera</span></button>`:''}`:''}<button class="cx rej" id="cend" aria-label="${live?'End call':'Cancel'}"><svg viewBox="0 0 24 24"><path d="M3 15c5-5 13-5 18 0l-3 3-3-2v-2a12 12 0 00-6 0v2l-3 2z"/></svg><span>${live?'End':'Cancel'}</span></button>`}</div></div>`;
   const rv=cq('cvr'),lv=cq('cvl');if(C.remote){rv.srcObject=C.remote;rv.play&&rv.play().catch(()=>{})}if(C.local&&vid)lv.srcObject=C.local;
+  if(cq('cfs'))cq('cfs').onclick=()=>{C.fs=!C.fs;const el=cq('callui');try{if(C.fs){const f=el.requestFullscreen||el.webkitRequestFullscreen;if(f){const r=f.call(el);r&&r.catch&&r.catch(()=>{})}}else if(document.fullscreenElement||document.webkitFullscreenElement){(document.exitFullscreen||document.webkitExitFullscreen).call(document)}}catch{}callUI()};
   if(cq('cdec'))cq('cdec').onclick=callReject;if(cq('cacc'))cq('cacc').onclick=callAccept;if(cq('cend'))cq('cend').onclick=()=>callFinish('ended',true);
   if(cq('cmute'))cq('cmute').onclick=e=>{C.muted=!C.muted;C.local.getAudioTracks().forEach(t=>t.enabled=!C.muted);e.currentTarget.classList.toggle('off',C.muted);e.currentTarget.querySelector('span').textContent=C.muted?'Unmute':'Mute'};
   if(cq('ccam'))cq('ccam').onclick=e=>{C.camOff=!C.camOff;C.local.getVideoTracks().forEach(t=>t.enabled=!C.camOff);e.currentTarget.classList.toggle('off',C.camOff);e.currentTarget.querySelector('span').textContent=C.camOff?'Camera on':'Camera'}}
+document.addEventListener('fullscreenchange',()=>{if(!document.fullscreenElement&&CALL&&CALL.fs){CALL.fs=false;try{callUI()}catch{}}});
 function callTick(){const e=cq('cst');if(!CALL||!e||!CALL.t0)return;const s=Math.floor((Date.now()-CALL.t0)/1000);e.textContent=String(Math.floor(s/60)).padStart(2,'0')+':'+String(s%60).padStart(2,'0')}
 async function callStart(name,kind){if(EMB){try{parent.postMessage({t:'call',to:name,kind},'*')}catch{}return}
   if(CALL)return toast('You are already in a call.',true);
@@ -2185,7 +2192,8 @@ function callFinish(reason,tellPeer){const C=CALL;if(!C)return;if(window._needNo
   callUI();const m=CALLMSG[reason];if(m&&!(reason==='cancelled'&&C.dir==='out'))toast(m(C.peer),['busy','offline','blocked','nouser','inacall','wait','failed','dropped'].includes(reason))}
 function callOn(m){
   if(m.t==='call_in'){if(CALL)return;CALL={id:m.id,peer:m.from,kind:m.kind,dir:'in',state:'ring'};callUI();callRing('in');callNotify(m.from,m.kind);if(document.hidden&&(!('Notification'in window)||Notification.permission!=='granted'))window._needNotif=1;if(window._autoAns===m.id){window._autoAns='';setTimeout(callAccept,300)}}
-  else if(m.t==='call_ringing'){if(CALL&&CALL.dir==='out'&&!CALL.id){CALL.id=m.id;CALL.ringing=true;callUI()}}
+  else if(m.t==='call_wait'){if(CALL&&CALL.dir==='out'&&!CALL.id){CALL.id=m.id;callUI()}}
+  else if(m.t==='call_ringing'){if(CALL&&CALL.dir==='out'&&(!CALL.id||CALL.id===m.id)){CALL.id=m.id;CALL.ringing=true;callUI()}}
   else if(m.t==='call_accepted'){const C=CALL;if(!C||C.id!==m.id||C.dir!=='out')return;callRing(null);C.state='live';callUI();
     callPC().then(async pc=>{const o=await pc.createOffer();await pc.setLocalDescription(o);tx({t:'call_sig',id:C.id,data:{sdp:pc.localDescription}})}).catch(()=>callFinish('failed',true))}
   else if(m.t==='call_sig'){if(CALL&&CALL.id===m.id)callSig(m.data||{})}

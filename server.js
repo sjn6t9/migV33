@@ -2463,7 +2463,7 @@ function callEnd(c, reason, by) {
     db.prepare('insert into call_log(a,b,kind,status,dur,ts) values(?,?,?,?,?,?)').run(c.from, c.to, c.kind, status, live ? Math.round((Date.now() - c.t0) / 1000) : 0, Date.now());
     for (const u of [c.from, c.to]) db.prepare('delete from call_log where (a=? or b=?) and id not in (select id from call_log where a=? or b=? order by id desc limit 100)').run(u, u, u, u);
   } catch (e) { console.log('[call_log]', e.message); }
-  if (c.state === 'ring' && (reason === 'noanswer' || reason === 'cancelled')) notify(c.to, 'social', `Missed ${c.kind} call from ${c.from}`, 'user:' + c.from);
+  if (c.state === 'ring' && (reason === 'noanswer' || reason === 'cancelled' || reason === 'offline')) notify(c.to, 'social', `Missed ${c.kind} call from ${c.from}`, 'user:' + c.from);
 }
 function callMsg(ws, m) {
   const me = ws.user, id = String(m.id || '');
@@ -2482,11 +2482,14 @@ function callMsg(ws, m) {
     const pres = db.prepare('select presence from users where name=?').get(u.name)?.presence;
     // app closed (no connection): ring the phone/computer with a push notification if the user allowed it
     const seen = socks.some(w => w.vis !== false);   // some open window is on screen right now
-    const viaPush = !seen && pres !== 'offline' && PUSH.has(u.name);
-    if ((!socks.length && !viaPush) || pres === 'offline') return fail('offline');
-    const c = { id: Math.random().toString(36).slice(2, 12), from: me, to: u.name, kind, state: 'ring', fromWs: ws, toWs: null, t0: Date.now(), key: crypto.randomBytes(12).toString('hex'), push: viaPush };
-    c.timer = setTimeout(() => callEnd(c, 'noanswer'), viaPush ? 60e3 : 45e3);
+    const viaPush = !seen && PUSH.has(u.name);
+    // An offline user can still be called. With no connection and no push, the caller sees "Calling…" for up to 15 s while we wait for the
+    // user's internet to come back; when they connect the call rings ("Ringing…"), otherwise it ends as unreachable.
+    const waiting = !socks.length && !viaPush;
+    const c = { id: Math.random().toString(36).slice(2, 12), from: me, to: u.name, kind, state: 'ring', fromWs: ws, toWs: null, t0: Date.now(), key: crypto.randomBytes(12).toString('hex'), push: viaPush, waiting };
+    c.timer = setTimeout(() => callEnd(c, waiting ? 'offline' : 'noanswer'), waiting ? 15e3 : viaPush ? 60e3 : 45e3);
     calls.set(c.id, c);
+    if (waiting) { send(ws, { t: 'call_wait', id: c.id, to: u.name, kind }); return; }
     send(ws, { t: 'call_ringing', id: c.id, to: u.name, kind });
     socks.forEach(w => send(w, { t: 'call_in', id: c.id, from: me, kind, role: roleOf(me), xp: xpOf(me) }));
     if (viaPush) callPush(c);
@@ -2526,7 +2529,10 @@ function onWsMessage(ws, raw) {
       const gh = ghosts.get(ws.user);
       if (gh) { ghosts.delete(ws.user); clearTimeout(gh._ghostT); if (gh.room && !ws.room && members.has(gh.room)) { members.get(gh.room).delete(gh); ws.room = gh.room; ws.roomAt = gh.roomAt; members.get(gh.room).add(ws); gh.room = null; } }
       send(ws, { t: 'ready', user: ws.user, coins: coins(ws.user), gifts: allGifts(), ucols: activeColors(), ufx: activeFx() });
-      if (!ws.emb) for (const c of calls.values()) if (c.to === ws.user && c.state === 'ring') send(ws, { t: 'call_in', id: c.id, from: c.from, kind: c.kind, role: roleOf(c.from), xp: xpOf(c.from) });
+      if (!ws.emb) for (const c of calls.values()) if (c.to === ws.user && c.state === 'ring') {
+        send(ws, { t: 'call_in', id: c.id, from: c.from, kind: c.kind, role: roleOf(c.from), xp: xpOf(c.from) });
+        if (c.waiting) { c.waiting = false; clearTimeout(c.timer); c.timer = setTimeout(() => callEnd(c, 'noanswer'), 45e3); send(c.fromWs, { t: 'call_ringing', id: c.id, to: c.to, kind: c.kind }); }   // the user came online: now it rings
+      }
       if (!ws.emb && goneAt.has(ws.user)) { goneAt.delete(ws.user); setImmediate(() => userRooms(ws.user).forEach(castRoster)); }
       return online();
     }
