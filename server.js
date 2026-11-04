@@ -1988,7 +1988,7 @@ async function botCommand(ws, text) {
     return say(room, u, `🛑 ${GAME_LABEL[cur]} was stopped by ${u}`, 'sys');
   }
   const g = GAME_NAMES[name];
-  if (!g) return reply(ws, 'Usage: !bot cricket | lowcard | dice   (staff/admins also: teenpatti | royalebattle)   ·   !bot stop');
+  if (!g) return reply(ws, 'Usage: /bot cricket | lowcard | dice   (staff/admins also: teenpatti | royalebattle)   ·   /bot stop');
   if (!isSA(u) && !POT_GAMES.includes(g)) return reply(ws, 'Only staff or admins can add Teen Patti and Royale Battle.');
   if (!{ tp, cricket, lowcard, dice, royale }[g]) { const f = { tp: 'teen-patti.cjs', cricket: 'cricket-bot.cjs', lowcard: 'lowcard.cjs', dice: 'dice.cjs', royale: 'royale-battle.cjs' }[g]; return reply(ws, `🔒 ${GAME_LABEL[g] || g} is not loaded on the server. Upload ${f} next to server.js and restart the service.${ENGINE_ERR[f] ? ' (' + ENGINE_ERR[f] + ')' : ''}`); }
   if (cur && cur !== g && !(await stopGame(room))) return reply(ws, `${GAME_LABEL[cur]} is running right now. Try again when it ends.`);
@@ -2001,7 +2001,7 @@ async function botCommand(ws, text) {
 const potTop = () => 'Top players: ' + db.prepare('select name,coins from users where lower(name)!=? order by coins desc limit 5').all(STAFF_USER).map((x, i) => `${i + 1}. ${x.name} (${x.coins})`).join(' · ');
 function gameRoute(ws, text) {
   const room = ws.room, g = gameOf(room);
-  if (!g) return reply(ws, 'No game bot is running in this room. Staff, the room admin or moderators can start one with !bot cricket, !bot lowcard or !bot dice.');
+  if (!g) return reply(ws, 'No game bot is running in this room. Staff, the room admin or moderators can start one with /bot cricket, /bot lowcard or /bot dice.');
   if (!speakOk(ws)) return;
   const u = { id: ws.user, name: ws.user, isAdmin: isSA(ws.user) }, lo = text.trim().toLowerCase().replace(/\s+/g, ' ');
   if (g === 'tp') { ensureTp(room); return tp.handleMessage(room, u, text).catch(e => console.error('[TeenPatti]', e)); }
@@ -2561,7 +2561,7 @@ function onWsMessage(ws, raw) {
       ws.roomAt = Date.now();   // talking restarts the 30-minute idle timer
       const text = String(m.text || '').trim().slice(0, 500);
       if (!text) return;
-      if (/^[\/!]bot(\s|$)/i.test(text)) return botCommand(ws, text).catch(e => console.error('[bot]', e));
+      if (/^\/bot(\s|$)/i.test(text)) return botCommand(ws, text).catch(e => console.error('[bot]', e));
       if (text[0] === '/') return command(ws, text);
       if (text[0] === '!') return gameRoute(ws, text);
       if (!speakOk(ws)) return;
