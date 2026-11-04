@@ -281,12 +281,12 @@ class TeenPattiTable {
       case '!autoblind': case '!playblind': return this._auto(id, 'autoBlind');
       case '!balance': case '!bal': {
         const b = await this.store.getBalance(id);
-        return this._say(`${user.name}, your balance: ${fmt(b)} ${this.cfg.COIN_NAME}`);
+        return this._private(id, `Your balance: ${fmt(b)} ${this.cfg.COIN_NAME}`);
       }
       case '!top': {
         if (!this.store.top) return;
         const rows = await this.store.top(10);
-        return this._say('🏆 Top players\n' + rows.map((x, i) => `${i + 1}. ${x.name} — ${fmt(x.balance)}`).join('\n'));
+        return this._private(id, '🏆 Top players\n' + rows.map((x, i) => `${i + 1}. ${x.name} — ${fmt(x.balance)}`).join('\n'));
       }
     }
   }

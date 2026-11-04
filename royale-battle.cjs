@@ -487,7 +487,7 @@ class RoyaleBattle {
       case '!top': {
         if (!this.store.top) return;
         const rows = await this.store.top(10);
-        return this.send('🏆 Top players\n' +
+        return this.sendTo(userId, '🏆 Top players\n' +
           rows.map((x, i) => `${i + 1}. ${x.name} — ${fmt(x.balance)}`).join('\n'));
       }
     }
