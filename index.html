@@ -250,6 +250,7 @@ input,select,textarea{background:#0f1a2b;border:1px solid rgba(255,255,255,.9);b
 #f #phb,#f #emb,#f #mic{width:40px;height:40px;padding:0;border-radius:50%;flex:none;font-size:18px}
 .rdot{width:12px;height:12px;border-radius:50%;background:#e8302a;box-shadow:0 0 0 4px rgba(232,48,42,.25);animation:rp 1s infinite}
 @keyframes rp{50%{opacity:.35}}
+@keyframes vipOrbit{0%{text-shadow:0 -1px 0 #d9a400,0 0 5px rgba(246,200,60,.85)}12.5%{text-shadow:1px -1px 0 #d9a400,0 0 5px rgba(246,200,60,.85)}25%{text-shadow:1px 0 0 #d9a400,0 0 5px rgba(246,200,60,.85)}37.5%{text-shadow:1px 1px 0 #d9a400,0 0 5px rgba(246,200,60,.85)}50%{text-shadow:0 1px 0 #d9a400,0 0 5px rgba(246,200,60,.85)}62.5%{text-shadow:-1px 1px 0 #d9a400,0 0 5px rgba(246,200,60,.85)}75%{text-shadow:-1px 0 0 #d9a400,0 0 5px rgba(246,200,60,.85)}87.5%{text-shadow:-1px -1px 0 #d9a400,0 0 5px rgba(246,200,60,.85)}100%{text-shadow:0 -1px 0 #d9a400,0 0 5px rgba(246,200,60,.85)}}
 @media (prefers-reduced-motion:reduce){.rdot{animation:none}}
 .chimg{display:block;max-width:min(260px,100%);max-height:300px;border-radius:12px;cursor:zoom-in;margin-top:4px}
 .b audio{height:38px;max-width:100%;margin-top:4px;vertical-align:middle}
@@ -441,7 +442,7 @@ button{transition:none}}
 #tp .note{display:none}
 #tp{padding:6px 6px 8px;margin:4px 6px}
 /* ================= Night mode ================= */
-:root{--nm-admin:#d9540f;--nm-staff:#3f9a2a;--nm-mentor:#c4141b;--nm-headmentor:#0f7472;--nm-merchant:#5d4596;--nm-vip:#b58a0a;--nm-user:#2a7bd8}
+:root{--nm-admin:#d9540f;--nm-staff:#3f9a2a;--nm-mentor:#c4141b;--nm-headmentor:#0f7472;--nm-merchant:#5d4596;--nm-vip:#f6d05f;--nm-user:#2a7bd8}
 html[data-theme=dark],#log.navy,#log.dark{--nm-admin:#f37124;--nm-staff:#68bd45;--nm-mentor:#f5434a;--nm-headmentor:#1fb5b2;--nm-merchant:#9b82d8;--nm-vip:#f6d05f;--nm-user:#6db3ff}
 #tn svg{width:24px;height:24px;stroke:#fff;fill:none;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
 html[data-theme=dark]{--lg:linear-gradient(135deg,rgba(62,78,122,.6),rgba(26,34,66,.5));--lg2:linear-gradient(135deg,rgba(34,46,88,.97),rgba(18,26,56,.97));--rim:inset 1.5px 1.5px 1px rgba(255,255,255,.3),inset -1px -1px 1px rgba(255,255,255,.08),inset 0 0 22px rgba(255,255,255,.05);--drop:0 14px 34px rgba(0,0,0,.45),0 2px 6px rgba(0,0,0,.3);--tx:#eaf0ff;--mu:#9db0d3;--ln:#ffffff26}
@@ -1665,9 +1666,9 @@ html body #hdr #top #rtabs .rt .rfl{width:20px;height:14px}
 html body #hdr #top #rtabs .rt.on{display:inline-flex!important;align-items:center;justify-content:center;gap:0}
 </style>
 <link rel="stylesheet" href="theme-dark.css?v=28">
-<link rel="stylesheet" href="theme-clear.css?v=8">
+<link rel="stylesheet" href="theme-clear.css?v=9">
 <style>/* role name colours: kept in their own block so they always load */
-:root{--nm-admin:#d9540f;--nm-staff:#3f9a2a;--nm-mentor:#c4141b;--nm-headmentor:#0f7472;--nm-merchant:#5d4596;--nm-vip:#b58a0a;--nm-user:#2a7bd8}
+:root{--nm-admin:#d9540f;--nm-staff:#3f9a2a;--nm-mentor:#c4141b;--nm-headmentor:#0f7472;--nm-merchant:#5d4596;--nm-vip:#f6d05f;--nm-user:#2a7bd8}
 html[data-theme=dark],#log.navy,#log.dark{--nm-admin:#f37124;--nm-staff:#68bd45;--nm-mentor:#f5434a;--nm-headmentor:#1fb5b2;--nm-merchant:#9b82d8;--nm-vip:#f6d05f;--nm-user:#6db3ff}
 html body b[style*="--nm-admin"]{color:var(--nm-admin)!important}
 html body b[style*="--nm-staff"]{color:var(--nm-staff)!important}
@@ -1912,7 +1913,7 @@ let AV={};
 const av=(n,s=40)=>AV[n]?`<span class="av" style="width:${s}px;height:${s}px;background:#cfd8e6 url(${esc(AV[n])}) center/cover" role="img" aria-label="${esc(n)}"></span>`:`<span class="av" style="width:${s}px;height:${s}px;background:${col(n)};font-size:${s/2.2}px">${esc(n[0]||'?').toUpperCase()}</span>`;
 const ROLES={},RC={admin:'#f37124',staff:'#68bd45',mentor:'#f5434a',headmentor:'#1fb5b2',merchant:'#9b82d8',vip:'#f6d05f'},RL={admin:'#d9540f',staff:'#3f9a2a',mentor:'#c4141b',headmentor:'#0f7472',merchant:'#5d4596',vip:'#b58a0a'};
 let UCOL={},UFX={};// personal name colours (hex) and name effects (glow) from the colour shop
-const NMH={admin:'#f37124',staff:'#68bd45',mentor:'#f5434a',headmentor:'#1fb5b2',merchant:'#9b82d8',vip:'#f6d05f',user:'#6db3ff'};const nc=n=>{const rk=RC[ROLES[n]]?ROLES[n]:(typeof VIPS!=='undefined'&&VIPS.has(n)?'vip':'user');const c=UCOL[n]||`var(--nm-${rk},${NMH[rk]})`;return UFX[n]?`${c};animation:${UFX[n]}`:c};
+const NMH={admin:'#f37124',staff:'#68bd45',mentor:'#f5434a',headmentor:'#1fb5b2',merchant:'#9b82d8',vip:'#f6d05f',user:'#6db3ff'};const nc=n=>{const rk=RC[ROLES[n]]?ROLES[n]:(typeof VIPS!=='undefined'&&VIPS.has(n)?'vip':'user');const c=UCOL[n]||`var(--nm-${rk},${NMH[rk]})`;const fx=UFX[n]||(c==='var(--nm-vip)'?'vipOrbit 2.6s linear infinite':'');return fx?`${c};animation:${fx}`:c};
 const VERS=new Set(),VIPS=new Set();const refreshVer=()=>Promise.all([api('GET','/vips').then(l=>{VIPS.clear();l.forEach(n=>VIPS.add(n))}).catch(()=>{}),api('GET','/verified').then(l=>{VERS.clear();l.forEach(n=>VERS.add(n))}).catch(()=>{}),api('GET','/avatars').then(o=>{AV=o||{}}).catch(()=>{})]);
 const rt=(r,n)=>(RC[r]&&r!=='vip'?`<img class="ri" src="/badges/${r==='headmentor'?'hmt':r}.png?v=2" alt="${r}" title="${r==='headmentor'?'head mentor':r}">`:'')+(VIPS.has(n)?'<img class="ri" src="/badges/vip.png?v=2" alt="VIP" title="VIP user">':'')+(VERS.has(n)?'<img class="ri" src="/badges/verified.png" alt="verified" title="Verified">':'');
 const LST=[20,98,176,253,331,409,487,564,640,641,760,878,996,1113,1231,1349,1467,1584,1702,1820,1938,2056,2172,2290,2291,2684,3076];
@@ -3244,9 +3245,9 @@ V.panel=async()=>{
   if(d.stats){
     const s=d.stats;
     h+=`<h2>Statistics</h2><div class="card row" style="flex-wrap:wrap;text-align:center"><div class="g"><div class="mu">Trail this cycle</div><b>${s.trailCycle.toLocaleString()}</b></div><div class="g"><div class="mu">Trail all-time</div><b>${s.trailAll.toLocaleString()}</b></div><div class="g"><div class="mu">Payouts this cycle</div><b>${s.payoutsCycle}</b></div><div class="g"><div class="mu">Active tags</div><b>${s.activeTags}</b></div></div>
-    <form id="tg" class="card row"><input id="tgu" placeholder="Username to tag" maxlength="16">${d.hasPin?'<input id="tgp" type="password" inputmode="numeric" maxlength="6" placeholder="MPIN" style="max-width:90px" autocomplete="off">':''}<button class="o">Tag · ${d.tagCost.toLocaleString()} coins</button></form>
+    <form id="tg" class="card" style="display:grid;gap:8px"><div class="row" style="gap:8px"><input id="tgu" placeholder="Username to tag" maxlength="16" autocomplete="off"><button class="o" id="tgb">Check tag</button></div><div id="tgi" class="mu" hidden></div>${d.hasPin?'<input id="tgp" type="password" inputmode="numeric" maxlength="6" placeholder="MPIN" autocomplete="off" hidden>':''}</form>
     <div class="chips">${[['tagged','Tagged'],['byuser','By User'],['payouts','Payouts']].map(([k,t])=>`<button data-x="tab" data-k="${k}" class="${tab===k?'on':''}">${t}</button>`).join('')}</div>`;
-    if(tab==='tagged')h+=d.tagged.map(t=>`<div class="card row"><div class="g"><b style="color:${nc(t.name)}">${esc(t.name)}</b><div class="mu">${lvi(t.level,16)} Level ${t.level} · tagged ${new Date(t.ts).toLocaleDateString()}</div></div></div>`).join('')||'<div class="card" style="text-align:center"><b>No tagged users</b><div class="mu">Send 50,000 coins to an untagged user to tag them.</div></div>';
+    if(tab==='tagged')h+=d.tagged.map(t=>`<div class="card row"><div class="g"><b style="color:${nc(t.name)}">${esc(t.name)}</b><div class="mu">${lvi(t.level,16)} Level ${t.level} · tagged ${new Date(t.ts).toLocaleDateString()}${t.exp?` · ${Math.max(1,Math.ceil((t.exp-Date.now())/864e5))} day${Math.ceil((t.exp-Date.now())/864e5)===1?'':'s'} left`:''}</div></div></div>`).join('')||'<div class="card" style="text-align:center"><b>No tagged users</b><div class="mu">Check a user, then tag them for 30 days. Tagging costs 50,000 coins, sent to that user.</div></div>';
     if(tab==='byuser')h+=d.byUser.map(t=>`<div class="card row"><div class="g"><b style="color:${nc(t.name)}">${esc(t.name)}</b><div class="mu">${t.eligible.toLocaleString()} eligible coins · ${t.n} commissions · last ${new Date(t.last).toLocaleDateString()}</div></div><b class="pos">+${t.amount.toLocaleString()}</b></div>`).join('')||'<div class="card mu">No commissions yet. You earn 5% when your tagged users spend coins.</div>';
     if(tab==='payouts')h+=(d.payouts.map(p=>`<div class="card"><div class="row"><b class="g">${new Date(p.cycle_start).toLocaleDateString()} – ${new Date(p.cycle_end).toLocaleDateString()}</b>${tierB(p.tier==='none'?null:p.tier)}</div><div class="mu">${p.points} pts · trail ${p.trail.toLocaleString()} coins · ${p.result}</div></div>`).join('')+(d.recent.length?'<h2>Recent commissions</h2>'+d.recent.map(c=>`<div class="card row"><div class="g"><b>${esc(c.spender)}</b><div class="mu">${c.eligible.toLocaleString()} ${c.kind} · ${c.pct}% · #${c.tx_id} · ${new Date(c.ts).toLocaleString()}</div></div><b class="pos">+${c.amount.toLocaleString()}</b></div>`).join(''):''))||'<div class="card mu">No payouts yet.</div>';
   }
@@ -3260,7 +3261,16 @@ V.panel=async()=>{
       if(x==='cancel'){await api('POST','/role/cancel',{id:+b.dataset.id});return re()}
       if(x==='ans'){await api('POST','/role/respond',{id:+b.dataset.id,accept:b.dataset.ac==='1'});ST=await api('GET','/me');drawNav();toast(b.dataset.ac==='1'?'Accepted ✔':'Rejected');return re()}
     }catch(er){fail(er)}};
-  if($('tg'))$('tg').onsubmit=async e=>{e.preventDefault();try{await api('POST','/tag',{to:$('tgu').value.trim(),mpin:$('tgp')?.value});toast('User tagged ✔');re()}catch(er){fail(er)}};
+  if($('tg')){let chk=null;const info=$('tgi'),btn=$('tgb'),inp=$('tgu'),reset=()=>{chk=null;btn.textContent='Check tag';info.hidden=true;if($('tgp'))$('tgp').hidden=true};
+    inp.oninput=reset;
+    $('tg').onsubmit=async e=>{e.preventDefault();const to=inp.value.trim();if(!to)return;btn.disabled=true;
+      try{
+        if(!chk||chk.name.toLowerCase()!==to.toLowerCase()){const x=await api('GET','/tag/check?to='+encodeURIComponent(to));chk=x;info.hidden=false;
+          if(x.state==='tagged'){info.innerHTML=`<b style="color:${nc(x.name)}">${esc(x.name)}</b> is already tagged${x.mine?' by you':' by <b>'+esc(x.by)+'</b>'}. <b>${x.daysLeft} day${x.daysLeft===1?'':'s'}</b> left until untag.`;btn.textContent='Check tag';chk=null}
+          else{info.innerHTML=`<b style="color:${nc(x.name)}">${esc(x.name)}</b> is not tagged. Tagging costs <b>${x.cost.toLocaleString()} coins</b>. The coins are taken from your account and added to ${esc(x.name)}'s account. The tag lasts <b>${x.days} days</b>.`;btn.textContent='Tag User';if($('tgp'))$('tgp').hidden=false}
+          return}
+        await api('POST','/tag',{to:chk.name,mpin:$('tgp')?.value});toast('User tagged ✔ — 50,000 coins sent');re()
+      }catch(er){reset();fail(er)}finally{btn.disabled=false}}}
 };
 /* ---------- friends ---------- */
 const callBtns=n=>`<span class="clb"><button type="button" data-call="audio" data-n="${esc(n)}" aria-label="Audio call ${esc(n)}"><svg viewBox="0 0 24 24"><path d="M5 4h4l2 5-2.5 1.5a11 11 0 005 5L15 13l5 2v4a2 2 0 01-2 2A16 16 0 013 6a2 2 0 012-2z"/></svg></button><button type="button" data-call="video" data-n="${esc(n)}" aria-label="Video call ${esc(n)}"><svg viewBox="0 0 24 24"><rect x="3" y="6" width="12" height="12" rx="2"/><path d="M15 10l6-3v10l-6-3z"/></svg></button></span>`;
@@ -3445,8 +3455,8 @@ V.colors=async()=>{
 V.mycolors=async()=>{
   const d=await api('GET','/colors');const act=d.active||'';
   const dot=c=>`<span style="display:inline-block;width:16px;height:16px;border-radius:50%;background:${c};vertical-align:-3px;margin-right:6px;box-shadow:0 0 0 1px rgba(128,128,128,.5)"></span>`;
-  const row=(key,name,col,sub,badge)=>{const on=act===key;return `<div class="card row"><div class="g"><b style="color:${col}">${dot(col)}${esc(name)}</b>${badge||''}<div class="mu">${esc(sub)}</div></div><button class="o" data-pick="${esc(key)}" data-on="${on?1:0}">${on?'In use · Remove':'Use'}</button></div>`};
-  const bd=(d.badges||[]).map(b=>row('badge:'+b.k,b.n+' badge colour',`var(--nm-${b.k})`,'Same colour as your '+b.n+' badge',b.k==='vip'?'<img class="ri" src="/badges/vip.png?v=2" alt="">':`<img class="ri" src="/badges/${b.k==='headmentor'?'hmt':b.k}.png?v=2" alt="">`)).join('');
+  const row=(key,name,col,sub,badge)=>{const on=act===key;return `<div class="card row"><div class="g"><b style="color:${col}${key==='badge:vip'?';animation:vipOrbit 2.6s linear infinite':''}">${dot(col)}${esc(name)}</b>${badge||''}<div class="mu">${esc(sub)}</div></div><button class="o" data-pick="${esc(key)}" data-on="${on?1:0}">${on?'In use · Remove':'Use'}</button></div>`};
+  const bd=(d.badges||[]).map(b=>row('badge:'+b.k,b.n+' badge colour',`var(--nm-${b.k})`,(b.k==='vip'?'Gold colour with a thin golden glow moving around your ID':'Same colour as your '+b.n+' badge'),b.k==='vip'?'<img class="ri" src="/badges/vip.png?v=2" alt="">':`<img class="ri" src="/badges/${b.k==='headmentor'?'hmt':b.k}.png?v=2" alt="">`)).join('');
   const sh=Object.values(d.shop).filter(c=>!c.shadow&&d.owned.includes(c.k)).map(c=>{const left=Math.max(0,Math.ceil((d.expires[c.k]-Date.now())/86400000));return row(c.k,c.n,c.hex,`${left} day${left===1?'':'s'} left`)}).join('');
   view(`<div class="cmp"><button id="mcb">←</button><h2 style="margin:0 0 0 8px">My Colors</h2></div>
   <div class="card mu">Choose which colour shows on your ID. Only colours and badges you own are listed. Tap "Remove" to go back to your normal colour.</div>

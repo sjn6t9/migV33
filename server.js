@@ -585,6 +585,12 @@ create table if not exists role_history(id integer primary key, user text, from_
 const ROLE_LIST = ['user', 'merchant', 'mentor', 'headmentor', 'admin', 'staff'];
 const RANK = { user: 0, merchant: 1, mentor: 2, headmentor: 3 };
 const TAG_COST = 50000, COMM_PCT = 5, CYCLE_MS = 30 * 864e5, MIN_PTS = 300, TRAIL_STEP = 100000, TRAIL_PTS = 20;
+// A tag lasts 30 days, then the user is untagged and can be tagged again (by anyone).
+const TAG_DAYS = 30;
+try { db.exec('alter table tags add column exp int default 0'); } catch {}
+db.prepare('update tags set exp=? where coalesce(exp,0)=0').run(Date.now() + TAG_DAYS * 864e5);   // tags made before expiry existed get 30 days from now
+const purgeTags = () => db.prepare('delete from tags where exp>0 and exp<=?').run(Date.now());
+setInterval(purgeTags, 60 * 60 * 1000);
 const TIERS = [['red', 1000], ['pink', 500], ['purple', 300]];
 const tierOf = p => (TIERS.find(t => p >= t[1]) || [null])[0];
 const TASKS = [
@@ -621,7 +627,7 @@ function pointsOf(name, start, end) {
 }
 // 5% of eligible spending (gifts, game bets) goes to the direct tagger. One commission per transaction (unique tx_id+kind).
 function commissionOn(spender, amount, kind, txId) {
-  const t = db.prepare('select parent from tags where user=?').get(spender); if (!t) return;
+  purgeTags(); const t = db.prepare('select parent from tags where user=?').get(spender); if (!t) return;
   const p = db.prepare('select name,role from users where name=?').get(t.parent);
   if (!p || p.name === spender || !(RANK[p.role] >= 1)) return;
   const c = Math.floor(amount * COMM_PCT / 100); if (c < 1) return;
@@ -656,6 +662,7 @@ const lvOf = n => level(db.prepare('select xp from users where name=?').get(n)?.
 app.get('/api/panel', auth, ok((q, r) => {
   processCycles();
   const me = q.user, u = db.prepare('select role,parent,cycle_start,role_started_at,mpin from users where name=?').get(me), now = Date.now();
+  purgeTags();
   const out = { role: u.role, parent: u.parent, hasPin: !!u.mpin, now, tagCost: TAG_COST, pct: COMM_PCT, minPoints: MIN_PTS, roleStarted: u.role_started_at };
   out.outgoing = db.prepare('select id,to_user,kind,status,ts from role_requests where from_user=? order by id desc limit 1').get(me) || null;
   out.incoming = db.prepare("select id,from_user,kind,ts from role_requests where to_user=? and status='pending' order by id").all(me).map(x => ({ ...x, level: lvOf(x.from_user) }));
@@ -677,7 +684,7 @@ app.get('/api/panel', auth, ok((q, r) => {
       trailAll: sum('select coalesce(sum(amount),0) s from commissions where parent=?', me).s,
       payoutsCycle: sum('select count(*) c from commissions where parent=? and ts>=? and ts<?', me, cs, ce).c,
       activeTags: sum('select count(*) c from tags where parent=?', me).c };
-    out.tagged = db.prepare('select t.user name,t.tagged_at ts,u.xp,u.banned from tags t join users u on u.name=t.user where t.parent=? order by t.tagged_at desc limit 200').all(me).map(x => ({ name: x.name, ts: x.ts, level: level(x.xp) }));
+    out.tagged = db.prepare('select t.user name,t.tagged_at ts,t.exp,u.xp,u.banned from tags t join users u on u.name=t.user where t.parent=? order by t.tagged_at desc limit 200').all(me).map(x => ({ name: x.name, ts: x.ts, exp: x.exp, level: level(x.xp) }));
     out.byUser = db.prepare('select spender name,sum(eligible) eligible,sum(amount) amount,count(*) n,max(ts) last from commissions where parent=? group by spender order by amount desc limit 100').all(me);
     out.payouts = db.prepare('select cycle_start,cycle_end,points,tier,eligible,trail,result from payouts where user=? order by id desc limit 20').all(me);
     out.recent = db.prepare('select spender,eligible,pct,amount,tx_id,kind,ts from commissions where parent=? order by id desc limit 30').all(me);
@@ -768,9 +775,23 @@ app.post('/api/admin/delete-requests/:id', auth, ok((q, r) => {
   else notify(x.user, 'system', 'Your account deletion request was declined.', '');
   r.json({ ok: true });
 }));
+// "Check tag": is this user tagged (and for how many more days), or can they be tagged now?
+app.get('/api/tag/check', auth, ok((q, r) => {
+  const me = q.user, to = String(q.query?.to || '').trim();
+  if (!(RANK[roleOf(me)] >= 1)) return bad(r, 'Only Merchants and Mentors can tag users.', 403);
+  purgeTags();
+  const t = db.prepare('select name,role,banned from users where name=?').get(to);
+  if (!t || to === me) return bad(r, 'User not found');
+  const tg = db.prepare('select parent,exp from tags where user=?').get(to);
+  if (tg) return r.json({ name: t.name, state: 'tagged', by: tg.parent, mine: tg.parent === me, daysLeft: Math.max(1, Math.ceil((tg.exp - Date.now()) / 864e5)) });
+  if (t.role !== 'user' || t.banned) return bad(r, 'This user is not eligible to be tagged.');
+  if (isBlocked(me, to)) return bad(r, "You can't tag this user.");
+  r.json({ name: t.name, state: 'free', cost: TAG_COST, days: TAG_DAYS });
+}));
 app.post('/api/tag', auth, ok((q, r) => {
   const me = q.user, to = String(q.body?.to || '').trim();
   if (!(RANK[roleOf(me)] >= 1)) return bad(r, 'Only Merchants and Mentors can tag users.', 403);
+  purgeTags();
   const t = db.prepare('select name,role,banned from users where name=?').get(to);
   if (!t || to === me) return bad(r, 'User not found');
   if (t.role !== 'user' || t.banned) return bad(r, 'This user is not eligible to be tagged.');
@@ -783,8 +804,8 @@ app.post('/api/tag', auth, ok((q, r) => {
     db.transaction(() => {
       if (!db.prepare('update users set coins=coins-? where name=? and coins>=?').run(TAG_COST, me, TAG_COST).changes) throw new Error('funds');
       db.prepare('update users set coins=coins+? where name=?').run(TAG_COST, to);
-      const tx = addTx(me, 'transfer', `Tagged ${to} (50,000 coins)`, -TAG_COST); addTx(to, 'transfer', `Tag gift from ${me}`, TAG_COST);
-      db.prepare('insert into tags(user,parent,tagged_at,tx_id) values(?,?,?,?)').run(to, me, Date.now(), tx.lastInsertRowid);
+      const tx = addTx(me, 'transfer', `Tagged ${to} for ${TAG_DAYS} days (${TAG_COST.toLocaleString()} coins)`, -TAG_COST); addTx(to, 'transfer', `Tag gift from ${me}`, TAG_COST);
+      db.prepare('insert into tags(user,parent,tagged_at,tx_id,exp) values(?,?,?,?,?)').run(to, me, Date.now(), tx.lastInsertRowid, Date.now() + TAG_DAYS * 864e5);
     })();
   } catch (e) { return bad(r, e.message === 'funds' ? `You need ${TAG_COST.toLocaleString()} coins to tag a user.` : 'This user is already tagged.', e.message === 'funds' ? 400 : 409); }
   pushCoins(me, to); r.json({ ok: true });
