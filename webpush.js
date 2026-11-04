@@ -2,6 +2,7 @@
 // Lets the server ring a user's phone/computer for an incoming call even when Migv33 is closed.
 // The VAPID key pair is created once and kept in the database, so nothing needs to be set in .env.
 import crypto from 'crypto';
+import https from 'https';
 
 const b64u = b => Buffer.from(b).toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 const unb64u = s => Buffer.from(String(s).replace(/-/g, '+').replace(/_/g, '/'), 'base64');
@@ -54,11 +55,17 @@ create index if not exists push_subs_user on push_subs(user)`);
       const headers = { 'Content-Type': 'application/octet-stream', 'Content-Encoding': 'aes128gcm', TTL: String(ttl), Urgency: urgency,
         Authorization: `vapid t=${vapid(sub.endpoint)}, k=${publicKey}` };
       if (topic) headers.Topic = topic;
-      const r = await fetch(sub.endpoint, { method: 'POST', headers, body: encrypt(sub, JSON.stringify(data)) });
+      const body = encrypt(sub, JSON.stringify(data));
+      headers['Content-Length'] = String(body.length);
+      // plain https (works on every Node version, no fetch needed)
+      const r = await new Promise((res, rej) => {
+        const rq = https.request(sub.endpoint, { method: 'POST', headers, timeout: 15000 }, rs => { let t = ''; rs.on('data', c => { if (t.length < 500) t += c; }); rs.on('end', () => res({ status: rs.statusCode, text: t })); });
+        rq.on('timeout', () => rq.destroy(new Error('timeout'))); rq.on('error', rej); rq.end(body);
+      });
       if (r.status === 404 || r.status === 410) db.prepare('delete from push_subs where endpoint=?').run(sub.endpoint);   // subscription expired
-      else if (r.status >= 400) console.log('[push]', r.status, (await r.text().catch(() => '')).slice(0, 200));
-      return r.ok;
-    } catch (e) { console.log('[push]', e.message); return false; }
+      if (r.status >= 300) console.log('[push]', r.status, r.text.slice(0, 200));
+      return { ok: r.status < 300, status: r.status, err: r.status < 300 ? '' : r.text.slice(0, 120) };
+    } catch (e) { console.log('[push]', e.message); return { ok: false, status: 0, err: e.message }; }
   }
 
   return {

@@ -250,6 +250,10 @@ app.get('/api/users/:n', auth, ok((q, r) => {
   r.json({ ...p, gifts: db.prepare('select gift,n from gift_inv where user=? order by n desc').all(p.name).map(x => { const g = allGiftsAny(x.gift); return g && { key: x.gift, n: x.n, name: g.n, e: g.e, img: g.img }; }).filter(Boolean), friends: fc, stats: userStats(p.name, p), state: q.user === p.name ? 'me' : fstate(q.user, p.name) });
 }));
 app.post('/api/push/sub', auth, ok((q, r) => { if (!PUSH.save(q.user, q.body)) return bad(r, 'Bad subscription'); r.json({ ok: true }); }));
+app.post('/api/push/test', auth, ok(async (q, r) => {
+  const res = await PUSH.send(q.user, { title: 'Migv33', body: 'Call alerts work on this device ✔', tag: 'migv33-test' }, { ttl: 120, urgency: 'high' });
+  r.json({ devices: res.length, ok: res.filter(x => x.ok).length, errors: res.filter(x => !x.ok).map(x => `${x.status || ''} ${x.err}`.trim()) });
+}));
 app.post('/api/push/unsub', auth, ok((q, r) => { PUSH.drop(q.user, q.body?.endpoint); r.json({ ok: true }); }));
 app.post('/api/password', auth, ok((q, r) => {
   const { old = '', pass = '' } = q.body || {};
@@ -2404,7 +2408,7 @@ function callPush(c) {
 function callEnd(c, reason, by) {
   if (!calls.has(c.id)) return;
   clearTimeout(c.timer); clearInterval(c.pushT); calls.delete(c.id);
-  if (c.push && !mainSocks(c.to).length) PUSH.send(c.to, { t: 'call_end', id: c.id, from: c.from, kind: c.kind, missed: c.state === 'ring' && (reason === 'noanswer' || reason === 'cancelled') }, { ttl: 600, urgency: 'high', topic: 'call' });
+  if (c.push) PUSH.send(c.to, { t: 'call_end', id: c.id, from: c.from, kind: c.kind, answered: c.state === 'live', missed: c.state === 'ring' && (reason === 'noanswer' || reason === 'cancelled') }, { ttl: 600, urgency: 'high', topic: 'call' });
   const o = { t: 'call_end', id: c.id, reason, by: by || '' };
   mainSocks(c.from).forEach(w => send(w, o)); mainSocks(c.to).forEach(w => send(w, o));
   try {
@@ -2429,7 +2433,8 @@ function callMsg(ws, m) {
     const socks = mainSocks(u.name);
     const pres = db.prepare('select presence from users where name=?').get(u.name)?.presence;
     // app closed (no connection): ring the phone/computer with a push notification if the user allowed it
-    const viaPush = !socks.length && pres !== 'offline' && PUSH.has(u.name);
+    const seen = socks.some(w => w.vis !== false);   // some open window is on screen right now
+    const viaPush = !seen && pres !== 'offline' && PUSH.has(u.name);
     if ((!socks.length && !viaPush) || pres === 'offline') return fail('offline');
     const c = { id: Math.random().toString(36).slice(2, 12), from: me, to: u.name, kind, state: 'ring', fromWs: ws, toWs: null, t0: Date.now(), key: crypto.randomBytes(12).toString('hex'), push: viaPush };
     c.timer = setTimeout(() => callEnd(c, 'noanswer'), viaPush ? 60e3 : 45e3);
@@ -2443,7 +2448,8 @@ function callMsg(ws, m) {
   if (!c) return;
   if (m.t === 'call_accept') {
     if (ws.user !== c.to || c.state !== 'ring') return;
-    clearTimeout(c.timer); c.state = 'live'; c.toWs = ws; c.t0 = Date.now();
+    clearTimeout(c.timer); clearInterval(c.pushT); c.state = 'live'; c.toWs = ws; c.t0 = Date.now();
+    if (c.push) PUSH.send(c.to, { t: 'call_end', id: c.id, from: c.from, kind: c.kind, answered: true }, { ttl: 60, urgency: 'high', topic: 'call' });   // stop the ringing notification
     mainSocks(c.to).forEach(w => { if (w !== ws) send(w, { t: 'call_end', id: c.id, reason: 'taken' }); });
     send(c.fromWs, { t: 'call_accepted', id: c.id });
   } else if (m.t === 'call_reject') {
@@ -2464,7 +2470,7 @@ function onWsMessage(ws, raw) {
   {
     let m; try { m = JSON.parse(raw); } catch { return; }
     if (m.t === 'auth') {
-      try { const t = jwt.verify(m.token, SECRET), u = db.prepare('select name,banned from users where id=?').get(t.id); if (!u || u.banned) throw 0; ws.user = u.name; ws.emb = !!m.emb; } catch { return send(ws, { t: 'error', error: 'auth' }); }
+      try { const t = jwt.verify(m.token, SECRET), u = db.prepare('select name,banned from users where id=?').get(t.id); if (!u || u.banned) throw 0; ws.user = u.name; ws.emb = !!m.emb; ws.vis = m.vis !== 0; } catch { return send(ws, { t: 'error', error: 'auth' }); }
       if (m.offline) db.prepare("update users set presence='offline' where name=?").run(ws.user);
       else db.prepare("update users set presence='online' where name=? and presence='offline'").run(ws.user);
       // The phone's connection dropped and came back (e.g. while the user was on Home/Friends): put them back in the room they were in, with the same 30-minute timer
@@ -2491,7 +2497,8 @@ function onWsMessage(ws, raw) {
       if (r1 && ws.room !== r1) { try { ws.tabs && ws.tabs.delete(r1); } catch {} purgeRoomMsgs(r1); }
       return;
     }
-    if (m.t === 'bye') { ws._bye = true; return; }   // the browser/tab is closing: show offline without the grace period
+    if (m.t === 'bye') { ws._bye = true; return; }
+    if (m.t === 'vis') { ws.vis = !!m.v; return; }   // app on screen (true) or in the background (false)   // the browser/tab is closing: show offline without the grace period
     if (m.t === 'logout') {   // signed out: offline, out of every room
       if (!ws.user) return;
       if (m.endpoint) { try { PUSH.drop(ws.user, m.endpoint); } catch {} }

@@ -18,6 +18,13 @@ self.addEventListener('push', e => {
   } else if (d.t === 'call_end') {
     e.waitUntil((async () => {
       (await self.registration.getNotifications({ tag: 'migv33-call' })).forEach(n => n.close());
+      if (d.answered) {   // answered in the app: just stop the ringing notification
+        const l = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+        if (l.some(c => c.visibilityState === 'visible')) return;
+        await self.registration.showNotification('Call in progress', { body: `On a call with ${d.from || 'someone'}`, tag: 'migv33-missed', icon: '/Logo.PNG', silent: true });
+        setTimeout(() => self.registration.getNotifications({ tag: 'migv33-missed' }).then(x => x.forEach(n => n.close())), 3000);
+        return;
+      }
       // a push must always show something; a missed call is worth showing anyway
       await self.registration.showNotification(d.missed ? `Missed ${kind} call` : 'Call ended', {
         body: d.missed ? `${d.from || 'Someone'} called you on Migv33` : `Call with ${d.from || 'someone'} ended`,

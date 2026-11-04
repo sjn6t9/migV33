@@ -1932,11 +1932,11 @@ async function pushSub(){try{if(!pushOk()||Notification.permission!=='granted'||
   let sub=await reg.pushManager.getSubscription();const{key}=await api('GET','/push/key');
   if(sub&&localStorage.pushk&&localStorage.pushk!==key){try{await sub.unsubscribe()}catch{}sub=null}
   if(!sub)sub=await reg.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:b64ub(key)});
-  await api('POST','/push/sub',sub.toJSON());localStorage.pushk=key;localStorage.pushe=sub.endpoint;return true}catch(e){console.log('push',e);return false}}
+  await api('POST','/push/sub',sub.toJSON());localStorage.pushk=key;localStorage.pushe=sub.endpoint;window._pushErr='';return true}catch(e){console.log('push',e);window._pushErr=(e&&(e.message||e.error))||String(e);return false}}
 async function pushAsk(){if(!pushOk())return toast('This browser cannot get call alerts while closed. On iPhone, add Migv33 to the Home Screen first.',true);
   let p=Notification.permission;if(p==='default'){try{p=await Notification.requestPermission()}catch{}}
   if(p!=='granted')return toast('Notifications are blocked. Allow them for this site in your browser settings.',true);
-  const ok=await pushSub();toast(ok?'🔔 Call alerts are on for this device':'Could not turn on call alerts. Try again.',!ok);const b=$('pson');if(b&&ok)b.textContent='✔ On — refresh'}
+  const ok=await pushSub();const ps=$('pst');if(ps&&ok)ps.textContent='✔ On for this device';toast(ok?'🔔 Call alerts are on for this device':'Could not turn on call alerts: '+(window._pushErr||'unknown error'),!ok);const b=$('pson');if(b&&ok)b.textContent='✔ On — refresh'}
 /* opened from the call notification's "Answer" button */
 window._autoAns=(()=>{try{const a=new URLSearchParams(location.search).get('ans');if(a){history.replaceState(null,'','/');return a}}catch{}return ''})();
 try{navigator.serviceWorker&&navigator.serviceWorker.addEventListener('message',e=>{const d=e.data||{};if(d.t==='callans'){if(CALL&&CALL.id===d.id&&CALL.dir==='in'&&CALL.state==='ring')callAccept();else window._autoAns=d.id}})}catch{}
@@ -1961,7 +1961,7 @@ const dcWhy=e=>{const c=e&&e.code;
 function showDC(why){const r=room;if(!r||cur!=='chat'||r.startsWith('dm:')||DC.has(r)||!OPEN.includes(r)||!$('log'))return;DC.add(r);DCW[r]=why;toast('⚠ Disconnected from '+rtitle(r),true);drawTabs();mountDC(r,null,why)}
 function connect(){
   ws=new WebSocket((location.protocol==='https:'?'wss':'ws')+'://'+location.host+'/ws');
-  ws.onopen=()=>ws.send(JSON.stringify({t:'auth',token:tok(),offline:isOff(),emb:EMB?1:0}));
+  ws.onopen=()=>ws.send(JSON.stringify({t:'auth',token:tok(),offline:isOff(),emb:EMB?1:0,vis:document.hidden?0:1}));
   ws.onmessage=e=>{window._lastRx=Date.now();on(JSON.parse(e.data))};
   ws.onclose=e=>{if(me){showDC(dcWhy(e));setTimeout(()=>{if(!ws||ws.readyState>1)connect()},2000)}else if(tok()){if(++tries<4)setTimeout(connect,1500);else{delete document.documentElement.dataset.boot}}};
 }
@@ -1971,6 +1971,7 @@ let autoAway=false;
 document.addEventListener('visibilitychange',()=>{if(EMB||!me||!tok())return;
   if(document.hidden){if((ST.presence||'online')==='online'){autoAway=true;try{localStorage.autoAway=1}catch{}ST.presence='away';api('PUT','/me',{presence:'away'}).catch(()=>{})}}
   else if(autoAway){autoAway=false;try{delete localStorage.autoAway}catch{}if(ST.presence==='away'){ST.presence='online';api('PUT','/me',{presence:'online'}).catch(()=>{})}}});
+document.addEventListener('visibilitychange',()=>{try{tx({t:'vis',v:!document.hidden})}catch{}});  /* tell the server if the app is on screen: in the background calls also ring by push */
 document.addEventListener('visibilitychange',resume);addEventListener('online',resume);addEventListener('pageshow',resume);
 /* closing the browser/tab: tell the server so the ID shows Offline right away (minimising only makes it Away) */
 addEventListener('pagehide',e=>{if(e.persisted||EMB)return;try{tx({t:'bye'})}catch{}});
@@ -3571,7 +3572,7 @@ V.settings=async()=>{const bg=localStorage.cbg||'light';
   <div class="card row" id="spc" style="cursor:pointer">${av(me)}<div class="g"><b>${esc(me)}</b><span class="lv">${lvi(lv(ST.xp||0),16)}Lv ${lv(ST.xp||0)}</span><div class="mu">Edit profile, status, avatar</div></div>›</div>
   <div class="card"><b>Chat background</b><div class="chips">${['light','navy','dark'].map(k=>`<button data-bg="${k}" class="${bg===k?'on':''}">${k[0].toUpperCase()+k.slice(1)}</button>`).join('')}</div></div>
   <div class="card"><b>App colour</b><div class="chips">${[['auto','Auto (follow device)'],['clear','Day Mode'],['navy','Night Mode'],['dark','Stonic']].map(([k,n])=>`<button data-skin="${k}" class="${SKS()===k?'on':''}">${n}</button>`).join('')}</div><div class="mu" style="margin-top:6px">Auto switches between Day Mode and Night Mode with your device's light/dark setting. Pick one to lock it. Stonic is the cyan design.</div></div>
-  <div class="card"><b>📞 Call alerts</b><div class="mu">Ring this device for incoming calls even when Migv33 is closed.</div><div class="chips"><button id="pson">${pushOk()&&Notification.permission==='granted'&&localStorage.pushe?'✔ On — refresh':'Turn on'}</button></div></div>
+  <div class="card"><b>📞 Call alerts</b><div class="mu">Ring this device for incoming calls even when Migv33 is closed.</div><div class="mu" id="pst">${!pushOk()?'Not supported in this browser (on iPhone: add Migv33 to the Home Screen and open it from there).':Notification.permission==='denied'?'⛔ Notifications are blocked for this site. Allow them in the browser\'s site settings.':Notification.permission==='granted'&&localStorage.pushe?'✔ On for this device':'Off'}</div><div class="chips"><button id="pson">${pushOk()&&Notification.permission==='granted'&&localStorage.pushe?'Refresh':'Turn on'}</button><button id="pstest">Send test</button></div></div>
   <div class="card"><b>Status</b><div class="chips"><button id="ss">${ST.presence||'online'} — change</button></div></div>
   <div class="card"><b>Font size</b><div class="chips">${[['s','Small'],['m','Normal'],['l','Large']].map(([k,n])=>`<button data-fs="${k}" class="${(localStorage.fs||'m')===k?'on':''}">${n}</button>`).join('')}</div></div>
   <form id="mpf" class="card" style="display:grid;gap:8px"><b>MPIN ${ST.hasPin?'(set)':'(not set)'}</b><small class="mu">4–6 digits. Needed for coin transfers.</small>${ST.hasPin?'<input id="mpo" type="password" inputmode="numeric" maxlength="6" placeholder="Current MPIN" autocomplete="off">':''}<input id="mpn" type="password" inputmode="numeric" maxlength="6" placeholder="New MPIN (4–6 digits)" autocomplete="off"><button class="o">${ST.hasPin?'Change MPIN':'Set MPIN'}</button></form>
@@ -3581,7 +3582,7 @@ V.settings=async()=>{const bg=localStorage.cbg||'light';
   <button class="mi out card" id="dacc">🗑 Delete account</button>
   <button class="mi out card" id="lo">⎋ Log out</button><div class="mu" id="ver" style="text-align:center;margin:8px">App b8 · server …</div>`);
   fetch('/api/version').then(r=>r.json()).then(d=>{$('ver').textContent='App b8 · server '+(d.build||'?')}).catch(()=>{if($('ver'))$('ver').textContent='App b8 · server OLD (no version)'});
-  $('spc').onclick=()=>go('profile',me);$('spp').onclick=()=>go('profile',me);$('ss').onclick=e=>statusSheet(e.currentTarget);if($('pson'))$('pson').onclick=pushAsk;$('lo').onclick=logout;$('dacc').onclick=delAccount;
+  $('spc').onclick=()=>go('profile',me);$('spp').onclick=()=>go('profile',me);$('ss').onclick=e=>statusSheet(e.currentTarget);if($('pson'))$('pson').onclick=pushAsk;if($('pstest'))$('pstest').onclick=async()=>{try{await pushSub();const r=await api('POST','/push/test');toast(!r.devices?'No device is set up for call alerts yet. Tap Turn on first.':r.ok?`Test sent to ${r.ok} device${r.ok>1?'s':''}. Close the app and you should still get alerts.`:'Test failed: '+(r.errors[0]||'unknown error'),!r.ok)}catch(e){fail(e)}};$('lo').onclick=logout;$('dacc').onclick=delAccount;
   $('pw').onsubmit=async e=>{e.preventDefault();try{await api('POST','/password',{old:$('po').value,pass:$('pn').value});toast('Password updated ✔');V.settings()}catch(er){fail(er)}};
   $('mpf').onsubmit=async e=>{e.preventDefault();try{await api('POST','/security/pin',{pin:$('mpn').value,old:$('mpo')?.value||''});toast('MPIN saved');ST=await api('GET','/me');V.settings()}catch(er){fail(er)}};
   $('sqf').onsubmit=async e=>{e.preventDefault();try{await api('POST','/security/question',{question:$('sqq').value,answer:$('sqa').value,pass:$('sqp')?.value||''});toast('Security question saved');ST=await api('GET','/me');V.settings()}catch(er){fail(er)}};
