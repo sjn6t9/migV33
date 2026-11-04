@@ -2401,9 +2401,9 @@ const callOf = u => { for (const c of calls.values()) if (c.from === u || c.to =
 const mainSocks = u => [...wss.clients].filter(w => w.user === u && !w.emb && w.readyState === 1);
 const lastInvite = new Map();
 // Call charges: the caller pays per second while the call is live; the call ends when the coins run out
-const CALL_RATE = { audio: 20, video: 50 };
+const CALL_RATE = { audio: 5, video: 10 };
 function callBill(c) {
-  const rate = CALL_RATE[c.kind] || 20; c.paid = 0;
+  const rate = CALL_RATE[c.kind] || 5; c.paid = 0;
   const tick = () => {
     if (!calls.has(c.id) || c.state !== 'live') return;
     const ch = db.prepare('update users set coins=coins-? where name=? and coins>=?').run(rate, c.from, rate).changes;
@@ -2420,7 +2420,7 @@ function callPush(c) {
 function callEnd(c, reason, by) {
   if (!calls.has(c.id)) return;
   clearTimeout(c.timer); clearInterval(c.pushT); clearInterval(c.billT); calls.delete(c.id);
-  if (c.paid) { try { addTx(c.from, 'other', `${c.kind === 'video' ? 'Video' : 'Audio'} call with ${c.to} (${Math.round(c.paid / (CALL_RATE[c.kind] || 20))} sec)`, -c.paid); } catch (e) { console.log('[call bill]', e.message); } }
+  if (c.paid) { try { addTx(c.from, 'other', `${c.kind === 'video' ? 'Video' : 'Audio'} call with ${c.to} (${Math.round(c.paid / (CALL_RATE[c.kind] || 5))} sec)`, -c.paid); } catch (e) { console.log('[call bill]', e.message); } }
   if (c.push) PUSH.send(c.to, { t: 'call_end', id: c.id, from: c.from, kind: c.kind, answered: c.state === 'live', missed: c.state === 'ring' && (reason === 'noanswer' || reason === 'cancelled') }, { ttl: 600, urgency: 'high', topic: 'call' });
   const o = { t: 'call_end', id: c.id, reason, by: by || '' };
   mainSocks(c.from).forEach(w => send(w, o)); mainSocks(c.to).forEach(w => send(w, o));
@@ -2442,7 +2442,7 @@ function callMsg(ws, m) {
     if (!u || u.banned || u.name === me) return fail('nouser');
     if (isBlocked(me, u.name)) return fail('blocked');
     if (callOf(me)) return fail('inacall');
-    if (coins(me) < (CALL_RATE[kind] || 20)) return fail('nocoins');
+    if (coins(me) < (CALL_RATE[kind] || 5)) return fail('nocoins');
     if (callOf(u.name)) return fail('busy');
     const socks = mainSocks(u.name);
     const pres = db.prepare('select presence from users where name=?').get(u.name)?.presence;

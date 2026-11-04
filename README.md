@@ -89,4 +89,4 @@ Built-in original emoticon set (shortcodes like :) :D ;)). Staff can add more un
 `webpush.js` (no extra packages) rings a user's phone/computer for an incoming call when Migv33 is closed. The key pair is created automatically and stored in the database (`push_keys`), device subscriptions in `push_subs`. Users turn it on by allowing notifications (asked on first tap) or in **Settings → Call alerts**. The notification has **Answer** / **Decline**; a missed call shows a "Missed call" notification. Needs HTTPS. On iPhone it only works after "Add to Home Screen" (iOS 16.4+).
 
 ## Call charges
-The caller pays while a call is live: **audio 20 coins/second, video 50 coins/second** (`CALL_RATE` in `server.js`). A call can't start without enough coins for one second, and it ends automatically when the caller's coins run out. Each call is logged once in the caller's coin history.
+The caller pays while a call is live: **audio 5 coins/second, video 10 coins/second** (`CALL_RATE` in `server.js`). A call can't start without enough coins for one second, and it ends automatically when the caller's coins run out. Each call is logged once in the caller's coin history.
