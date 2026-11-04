@@ -469,7 +469,7 @@ class RoyaleBattle {
     this.phase = 'between'; this.deadline = Date.now() + c.RESULT_PAUSE_SECONDS * 1000;
     if (this.stopAfterRound) { this.stopAfterRound = false; this._halt(); return; }
     if (c.AUTO_NEXT) this.timer = setTimeout(() => this._startRound(), c.RESULT_PAUSE_SECONDS * 1000);
-    else { this.deadline = null; this.send('Round finished. Type !start for the next round.'); }
+    else { this.deadline = null; this.betweenAt = Date.now(); this.send('Round finished. Type !start for the next round.'); }
   }
 
   /* ---- player commands (!bet, !balance, !top) ---- */
@@ -516,7 +516,8 @@ class RoyaleBattle {
       const b = this.bets.get(String(userId)) || { name: userName, opts: {} };
       b.opts[opt] = (b.opts[opt] || 0) + amount;
       this.bets.set(String(userId), b);
-      this.sendTo(userId, `✅ You bet ${fmt(amount)} on ${OPTION_LABEL[opt]} (balance ${fmt(left)})`);
+      this.send(`✅ ${userName} bet ${fmt(amount)} on ${OPTION_LABEL[opt]}`);
+      this.sendTo(userId, `Your balance: ${fmt(left)} ${c.COIN_NAME}`);
     })();
     this.inflight.add(job);
     try { await job; } finally { this.inflight.delete(job); }

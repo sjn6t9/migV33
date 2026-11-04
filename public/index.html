@@ -436,8 +436,8 @@ button{transition:none}}
 #tp .btn{box-shadow:none;text-shadow:none;border:0}
 #tp button.ib,#tp .chip{box-shadow:none}
 .b.game{background:#eef4ff;border-color:#c7dafc;color:#2f6fe0;white-space:pre-wrap;align-self:flex-start}
-.b.game .gn{font-weight:800;color:#2e7d32}
-html body #log .b.game,html body #log .b.game *:not(.gn){font-weight:400!important}
+.b.game .gn{color:#2e7d32}
+html body #log .b.game,html body #log .b.game *{font-weight:400!important}
 #log.navy .b.game,#log.dark .b.game{color:#9cc0ff}
 #chatbox #log{min-height:70px}
 #tp .felt{min-height:110px;padding:6px}
@@ -2760,7 +2760,7 @@ const GP=(function(){
       h+=`<div class="gnote">${my?`Your bets: ${K(my)} coins · `:''}${v.bettors} player${v.bettors===1?'':'s'} betting · tap a side to bet ${K(chip)}</div>`;
     }else if(L){
       h+=`<div class="gnote ${L.won?'win':''}">${L.winner==='red'?'🔴 Red':'🔵 Blue'} wins with ${E(L.label)}${L.won?` · you won ${K(L.won)}`:''}${st==='between'?' · type !start for the next round':''}</div>`;
-      if(st==='between')h+=`<div class="gacts">${btn('!start','▶ Next round',1)}</div>`;
+      if(st==='between'){const w=Math.ceil(10-(Date.now()+skew-(v.since||0))/1000);h+=w>0?`<div class="gnote" data-wait="1">Next round in ${w}s…</div>`:`<div class="gacts">${btn('!start','▶ Start next round',1)}</div>`}
     }else h+=`<div class="gnote">Next round starting…</div>`;
     return h;
   }
@@ -2772,6 +2772,7 @@ const GP=(function(){
   }
   function loop(){clearInterval(tick);tick=setInterval(()=>{const el=document.getElementById('gp');if(!el||!v)return;
     el.querySelectorAll('[data-dl]').forEach(x=>{x.textContent=sec(+x.dataset.dl)+'s'});
+    if(v.g==='royale'&&v.state==='between'){const w=Math.ceil(10-(Date.now()+skew-(v.since||0))/1000);const n=el.querySelector('[data-wait]');if(n&&w>0)n.textContent='Next round in '+w+'s…';else if(n)draw()}
     if(v.deadline&&(v.state==='joining'||v.state==='starting')&&v.g!=='royale'){const l=sec(v.deadline);x5.k!==v.deadline&&l<=5&&l>=1&&(x5.k=v.deadline,glassWarn())}
     el.querySelectorAll('[data-bar]').forEach(x=>{x.style.width=Math.min(100,sec(+x.dataset.bar)/+x.dataset.span*100)+'%'})},500)}
   function bind(){const el=document.getElementById('gp');if(!el||el._b)return;el._b=1;

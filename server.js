@@ -1980,7 +1980,7 @@ const gpView = (room, user) => {
     if (!x) return { ...base, state: 'idle' };
     const tot = {}, mine = {};
     for (const [id, b] of x.bets) for (const [o, a] of Object.entries(b.opts)) { tot[o] = (tot[o] || 0) + a; if (id === String(user)) mine[o] = a; }
-    return { ...base, state: x.phase, round: x.roundId, deadline: x.deadline, pay: x.cfg.PAYOUTS, min: x.cfg.MIN_BET, tot, mine, bettors: x.bets.size, last: x.last ? { ...x.last, won: x.last.payouts.filter(p => p.userId === String(user)).reduce((a, p) => a + p.amount, 0) } : null };
+    return { ...base, state: x.phase, round: x.roundId, deadline: x.deadline, since: x.phase === 'between' ? x.betweenAt : 0, pay: x.cfg.PAYOUTS, min: x.cfg.MIN_BET, tot, mine, bettors: x.bets.size, last: x.last ? { ...x.last, won: x.last.payouts.filter(p => p.userId === String(user)).reduce((a, p) => a + p.amount, 0) } : null };
   }
   return null;
 };
