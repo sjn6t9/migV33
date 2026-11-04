@@ -1688,6 +1688,11 @@ html[data-skin] body #view#view #tp .felt .seat.me.turn .nm{color:#ffe08a}
 html[data-skin] body #view#view #tp .felt .seat .st{padding:0 5px!important;margin-top:0!important;line-height:1.25!important}
 html[data-skin] body #view#view #tp .felt .seat .nm{margin-top:1px!important}
 html[data-skin] body #view#view #tp .felt .seat .st,html[data-skin] body #view#view #tp .felt .seat .amt{display:inline-block!important;margin:1px 2px 0!important}
+
+/* Teen Patti: ring seating - others go up the left, over the top and down the right; You + pot in the middle */
+html[data-skin] body #view#view #tp .felt .seats.ring{display:grid!important;flex-direction:initial!important;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);grid-template-areas:"T1 T2 T3" "L2 ME R2" "L3 ME R3";gap:2px 6px!important;align-items:center;justify-items:center;width:100%}
+#tp .seats.ring .mectr{grid-area:ME;display:flex;flex-direction:column;align-items:center;gap:2px;min-width:64px;align-self:end}
+html[data-skin] body #view#view #tp .seats.ring .mewrap{order:0}
 /* real playing cards (board + chat) */
 .pc.face .sv.h,.mc .sv.h{-webkit-mask-image:url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2024%2024'%3E%3Cpath%20d='M12%2021.5C5%2015.5%202%2012%202%208.3%202%205.4%204.2%203.5%206.8%203.5c2%200%203.9%201.1%205.2%203%201.3-1.9%203.2-3%205.2-3C19.8%203.5%2022%205.4%2022%208.3c0%203.7-3%207.2-10%2013.2z'/%3E%3C/svg%3E");mask-image:url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2024%2024'%3E%3Cpath%20d='M12%2021.5C5%2015.5%202%2012%202%208.3%202%205.4%204.2%203.5%206.8%203.5c2%200%203.9%201.1%205.2%203%201.3-1.9%203.2-3%205.2-3C19.8%203.5%2022%205.4%2022%208.3c0%203.7-3%207.2-10%2013.2z'/%3E%3C/svg%3E")}
 .pc.face .sv.d,.mc .sv.d{-webkit-mask-image:url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2024%2024'%3E%3Cpath%20d='M12%201.5%2020.5%2012%2012%2022.5%203.5%2012z'/%3E%3C/svg%3E");mask-image:url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2024%2024'%3E%3Cpath%20d='M12%201.5%2020.5%2012%2012%2022.5%203.5%2012z'/%3E%3C/svg%3E")}
@@ -2693,12 +2698,14 @@ const Panel = (function () {
     const idleWait = idleAt ? Math.ceil(5 - (Date.now() - idleAt) / 1000) : 0;
     clearTimeout(idleT); if (idleWait > 0) idleT = setTimeout(() => view && render(view), idleWait * 1000 + 60);
     const others = v.seats.filter((s) => !s.isYou);
-    const seatHtml = others.map((s) => {
+    const POS = { 1: ['T2'], 2: ['T1', 'T3'], 3: ['T1', 'T2', 'T3'], 4: ['L2', 'T1', 'T3', 'R2'], 5: ['L2', 'T1', 'T2', 'T3', 'R2'], 6: ['L3', 'L2', 'T1', 'T3', 'R2', 'R3'], 7: ['L3', 'L2', 'T1', 'T2', 'T3', 'R2', 'R3'] };
+    const ring = others.length <= 7, order = POS[others.length] || [];
+    const seatHtml = others.map((s, i) => {
       const cards = s.cards ? s.cards.map(face).join('') : (playing ? back() + back() + back() : '');
       const st = s.state === 'out' ? `<span class="st out">out</span>`
         : (s.allIn ? `<span class="st allin">all-in</span>` : (playing ? `<span class="st">${s.state}</span>` : ''));
       const amt = v.phase === 'joining' ? '' : `<span class="amt">${fmt(s.invested)}</span>`;
-      return `<div class="seat ${s.state === 'out' ? 'out' : ''} ${v.turnUserId === s.userId ? 'turn' : ''} ${s.isWinner ? 'win' : ''}">
+      return `<div class="seat ${s.state === 'out' ? 'out' : ''} ${v.turnUserId === s.userId ? 'turn' : ''} ${s.isWinner ? 'win' : ''}"${ring ? ` style="grid-area:${order[i]}"` : ''}>
         <div class="mini">${cards}</div><span class="nm">${s.isWinner ? '🏆 ' : ''}${esc(s.name)}</span>${st}${amt}</div>`;
     }).join('');
 
@@ -2708,7 +2715,7 @@ const Panel = (function () {
       const mst = you.state === 'out' ? `<span class="st out">out</span>` : (you.allIn ? `<span class="st allin">all-in</span>` : (playing ? `<span class="st">${you.state}</span>` : ''));
       meSeat = `<div class="mewrap"><div class="seat me ${you.state === 'out' ? 'out' : ''} ${you.isTurn && playing ? 'turn' : ''}"><div class="mini">${mc}</div><span class="nm">You</span>${mst}${v.phase === 'joining' ? '' : `<span class="amt">${fmt(you.invested)}</span>`}</div></div>`;
     }
-    const nSeat = others.length + (you ? 1 : 0), cw = others.length <= 2 ? 22 : others.length <= 4 ? 20 : 18, cols = others.length ? Math.ceil(others.length / Math.ceil(others.length / 4)) : 1;
+    const nSeat = others.length + (you ? 1 : 0), cw = others.length <= 4 ? 18 : others.length <= 7 ? 16 : 14, cols = others.length ? Math.ceil(others.length / Math.ceil(others.length / 4)) : 1;
     let pill = `<span class="pill" id="pill">⏱ 0s</span>`;
     if (joining) pill = `<span class="pill join" id="pill">⏱ ${secsLeft(v.joinDeadline)}s</span>`;
     if (playing) pill = `<span class="pill" id="pill">⏱ ${secsLeft(v.turnDeadline)}s</span>`;
@@ -2763,8 +2770,7 @@ const Panel = (function () {
       <div class="tph"><span>🎴</span><b>Teen Patti Gold</b>${pill}<span class="sp"></span>
         <button class="ib" data-top="1" aria-label="Top players"><i class="ti tr"></i></button><button class="ib" data-help="1" aria-label="Help"><i class="ti q"></i></button><button class="tpmin" data-min="1" aria-label="Collapse table"><i class="ti v"></i></button></div>
       ${banner}
-      <div class="felt" style="--cw:${cw}px;--cwm:${cw + 4}px;--cols:${cols}"><div class="seats"><div class="oth">${seatHtml}</div>${meSeat}</div>
-        <div><span class="potchip">💰 ${fmt(v.pot)}</span></div>
+      <div class="felt" style="--cw:${cw}px;--cwm:${cw + 4}px;--cols:${cols}">${ring ? `<div class="seats ring">${seatHtml}<div class="mectr">${meSeat}<span class="potchip">💰 ${fmt(v.pot)}</span></div></div>` : `<div class="seats"><div class="oth">${seatHtml}</div>${meSeat}</div><div><span class="potchip">💰 ${fmt(v.pot)}</span></div>`}
         <div class="tpsub">boot ${fmt(v.boot)} · ${v.seats.length}/${v.maxSeats} seats${playing ? ' · stake ' + fmt(v.stake) : ''}</div></div>
       ${mine}`;
   }
