@@ -76,6 +76,7 @@ app.get('/badges/:f', (q, r, next) => {
   const f = newest(...(BADGE_FILES[n] || [n + '.png']).flatMap(x => [path.join(ROOT, 'public/badges', x), path.join(ROOT, x)]));
   f ? r.sendFile(f) : next();
 });
+app.get(['/Logo.PNG', '/logo.png'], (q, r, next) => { const f = newest(path.join(ROOT, 'public/Logo.PNG'), path.join(ROOT, 'Logo.PNG')); f ? r.sendFile(f) : next(); });   // app icon (notifications, home screen)
 app.use(express.static('public'));
 fs.mkdirSync('uploads', { recursive: true });
 app.use('/uploads', express.static('uploads', { maxAge: '7d', setHeaders: res => res.set('X-Content-Type-Options', 'nosniff') }));
