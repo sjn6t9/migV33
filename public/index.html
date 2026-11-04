@@ -1659,6 +1659,23 @@ html[data-skin] body #view#view #tp .showrow{margin-top:4px!important}
 #tp .gorow{display:flex;justify-content:center;margin-top:4px}
 html[data-skin] body #view#view #tp .btn.go{width:auto!important;padding:4px 14px!important;font-size:12.5px!important;border-radius:8px!important}
 html[data-skin] body #view#view #tp .btn.go .ti{width:11px;height:11px}
+
+/* Teen Patti: bigger felt, every player (incl. you) sits on it, cards scale with player count */
+html[data-skin] body #view#view #tp .felt{min-height:120px!important;padding:6px 6px!important;gap:3px!important;justify-content:center}
+html[data-skin] body #view#view #tp .felt .seats{gap:3px 10px!important;width:100%}
+html[data-skin] body #view#view #tp .felt .seat{width:auto!important;min-width:0}
+#tp .mewrap{flex-basis:100%;display:flex;justify-content:center;order:9}
+html[data-skin] body #view#view #tp .felt .seat.me{--cw:var(--cwm)}
+html[data-skin] body #view#view #tp .felt .seat.me .nm{font-weight:800}
+html[data-skin] body #view#view #tp .felt .mini .pc.face,html[data-skin] body #view#view #tp .felt .mini .tpb{width:var(--cw)!important;height:calc(var(--cw)*1.4)!important;margin-left:calc(var(--cw)*-.12);border-radius:calc(var(--cw)*.17)!important;box-shadow:0 1px 4px rgba(0,0,0,.35)}
+html[data-skin] body #view#view #tp .felt .mini .pc.face:first-child,html[data-skin] body #view#view #tp .felt .mini .tpb:first-child{margin-left:0}
+html[data-skin] body #view#view #tp .felt .mini .pc.face .cn{font-size:calc(var(--cw)*.36);display:flex}
+html[data-skin] body #view#view #tp .felt .mini .pc.face .cn.bt{display:none}
+html[data-skin] body #view#view #tp .felt .seat .nm{font-size:calc(var(--cw)*.4 + 2px);max-width:calc(var(--cw)*3.4)}
+html[data-skin] body #view#view #tp .felt .seat .st{font-size:calc(var(--cw)*.28 + 3.5px)!important}
+html[data-skin] body #view#view #tp .felt .seat .amt{font-size:calc(var(--cw)*.28 + 3.5px)!important}
+html[data-skin] body #view#view #tp .potchip{padding:1px 9px!important;font-size:12.5px!important;border-width:1px!important}
+html[data-skin] body #view#view #tp .tpsub{font-size:10.5px!important}
 /* real playing cards (board + chat) */
 .pc.face .sv.h,.mc .sv.h{-webkit-mask-image:url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2024%2024'%3E%3Cpath%20d='M12%2021.5C5%2015.5%202%2012%202%208.3%202%205.4%204.2%203.5%206.8%203.5c2%200%203.9%201.1%205.2%203%201.3-1.9%203.2-3%205.2-3C19.8%203.5%2022%205.4%2022%208.3c0%203.7-3%207.2-10%2013.2z'/%3E%3C/svg%3E");mask-image:url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2024%2024'%3E%3Cpath%20d='M12%2021.5C5%2015.5%202%2012%202%208.3%202%205.4%204.2%203.5%206.8%203.5c2%200%203.9%201.1%205.2%203%201.3-1.9%203.2-3%205.2-3C19.8%203.5%2022%205.4%2022%208.3c0%203.7-3%207.2-10%2013.2z'/%3E%3C/svg%3E")}
 .pc.face .sv.d,.mc .sv.d{-webkit-mask-image:url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2024%2024'%3E%3Cpath%20d='M12%201.5%2020.5%2012%2012%2022.5%203.5%2012z'/%3E%3C/svg%3E");mask-image:url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2024%2024'%3E%3Cpath%20d='M12%201.5%2020.5%2012%2012%2022.5%203.5%2012z'/%3E%3C/svg%3E")}
@@ -2673,6 +2690,13 @@ const Panel = (function () {
         <div class="mini">${cards}</div><span class="nm">${s.isWinner ? '🏆 ' : ''}${esc(s.name)}</span>${st}${amt}</div>`;
     }).join('');
 
+    let meSeat = '';
+    if (you) {
+      const mc = you.cards ? you.cards.map(face).join('') : (playing && you.state !== 'out' ? [0, 1, 2].map(() => back('role="button" tabindex="0" data-see="1" aria-label="Tap to see your cards"')).join('') : '');
+      const mst = you.state === 'out' ? `<span class="st out">out</span>` : (you.allIn ? `<span class="st allin">all-in</span>` : (playing ? `<span class="st">${you.state}</span>` : ''));
+      meSeat = `<div class="mewrap"><div class="seat me ${you.state === 'out' ? 'out' : ''} ${you.isTurn && playing ? 'turn' : ''}"><div class="mini">${mc}</div><span class="nm">You</span>${mst}${v.phase === 'joining' ? '' : `<span class="amt">${fmt(you.invested)}</span>`}</div></div>`;
+    }
+    const nSeat = others.length + (you ? 1 : 0), cw = nSeat <= 2 ? 30 : nSeat === 3 ? 26 : nSeat === 4 ? 22 : nSeat <= 6 ? 19 : 15;
     let pill = `<span class="pill" id="pill">⏱ 0s</span>`;
     if (joining) pill = `<span class="pill join" id="pill">⏱ ${secsLeft(v.joinDeadline)}s</span>`;
     if (playing) pill = `<span class="pill" id="pill">⏱ ${secsLeft(v.turnDeadline)}s</span>`;
@@ -2687,10 +2711,8 @@ const Panel = (function () {
         : (playing && you.state !== 'out' ? [0, 1, 2].map(() => back('role="button" tabindex="0" data-see="1" aria-label="Tap to see your cards"')).join('') : (v.phase === 'idle' && you.cards ? '' : ''));
       const handName = you.hand ? ` — ${esc(you.hand)}` : '';
       const stateTag = you.allIn ? 'allin' : you.state, stateLabel = you.allIn ? 'all-in' : you.state;
-      mine += `<div class="you">You <span class="tag ${stateTag}">${esc(stateLabel)}</span> in ${fmt(you.invested)}</div>`;
       if (playing) {
         mine += you.isTurn ? `<div class="turnbar">▶ Your turn!</div>` : `<div class="turnbar wait">⏳ Waiting for the others…</div>`;
-        mine += `<div class="hand">${cardsHtml}</div>`;
         mine += you.state === 'out'
           ? `<div class="hint">You folded.</div>`
           : (you.allIn ? `<div class="hint">You're all-in — waiting for the hand to finish.</div>`
@@ -2715,7 +2737,6 @@ const Panel = (function () {
         mine += `<div class="status">You're seated — waiting for the deal…</div>`;
       } else {
         const b = you.balance != null ? `Balance ${fmt(you.balance)}` : '';
-        if (seenCards || (v.result && v.seats.some((s) => s.isYou && s.cards))) { mine += `<div class="hand">${(seenCards || []).map(face).join('')}</div>`; }
         mine += `<div class="status">${b}</div>` + (idleWait > 0 ? '' : `<div class="gorow"><button class="btn go" data-c="!start"><i class="ti pl"></i>Play again</button></div>`);
       }
     } else {
@@ -2730,7 +2751,7 @@ const Panel = (function () {
       <div class="tph"><span>🎴</span><b>Teen Patti Gold</b>${pill}<span class="sp"></span>
         <button class="ib" data-top="1" aria-label="Top players"><i class="ti tr"></i></button><button class="ib" data-help="1" aria-label="Help"><i class="ti q"></i></button><button class="tpmin" data-min="1" aria-label="Collapse table"><i class="ti v"></i></button></div>
       ${banner}
-      <div class="felt"><div class="seats">${seatHtml}</div>
+      <div class="felt" style="--cw:${cw}px;--cwm:${cw + 8}px"><div class="seats">${seatHtml}${meSeat}</div>
         <div><span class="potchip">💰 ${fmt(v.pot)}</span></div>
         <div class="tpsub">boot ${fmt(v.boot)} · ${v.seats.length}/${v.maxSeats} seats${playing ? ' · stake ' + fmt(v.stake) : ''}</div></div>
       ${mine}`;
