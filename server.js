@@ -9,6 +9,7 @@ import crypto from 'crypto';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { createPush } from './webpush.js';
 import Module, { createRequire } from 'module';
 const require = createRequire(import.meta.url);
 const ROOT = path.dirname(fileURLToPath(import.meta.url));
@@ -78,6 +79,13 @@ app.get('/badges/:f', (q, r, next) => {
 app.use(express.static('public'));
 fs.mkdirSync('uploads', { recursive: true });
 app.use('/uploads', express.static('uploads', { maxAge: '7d', setHeaders: res => res.set('X-Content-Type-Options', 'nosniff') }));
+const PUSH = createPush(db);
+app.get('/api/push/key', (q, r) => r.json({ key: PUSH.publicKey }));
+app.post('/api/call/decline', (q, r) => {   // the "Decline" button on the call notification (works without opening the app)
+  const c = calls.get(String(q.body?.id || ''));
+  if (c && c.state === 'ring' && c.key && q.body?.key === c.key) callEnd(c, 'declined', c.to);
+  r.json({ ok: true });
+});
 const sign = (id, name) => jwt.sign({ id, name }, SECRET, { expiresIn: '365d' });
 const bad = (r, m, s = 400) => r.status(s).json({ error: m });
 
@@ -240,6 +248,8 @@ app.get('/api/users/:n', auth, ok((q, r) => {
   const fc = db.prepare("select count(*) c from friends where status='accepted' and (a=? or b=?)").get(p.name, p.name).c;
   r.json({ ...p, gifts: db.prepare('select gift,n from gift_inv where user=? order by n desc').all(p.name).map(x => { const g = allGiftsAny(x.gift); return g && { key: x.gift, n: x.n, name: g.n, e: g.e, img: g.img }; }).filter(Boolean), friends: fc, stats: userStats(p.name, p), state: q.user === p.name ? 'me' : fstate(q.user, p.name) });
 }));
+app.post('/api/push/sub', auth, ok((q, r) => { if (!PUSH.save(q.user, q.body)) return bad(r, 'Bad subscription'); r.json({ ok: true }); }));
+app.post('/api/push/unsub', auth, ok((q, r) => { PUSH.drop(q.user, q.body?.endpoint); r.json({ ok: true }); }));
 app.post('/api/password', auth, ok((q, r) => {
   const { old = '', pass = '' } = q.body || {};
   const u = db.prepare('select pass from users where name=?').get(q.user);
@@ -2385,9 +2395,15 @@ const calls = new Map();   // id -> { id, from, to, kind, state: 'ring' | 'live'
 const callOf = u => { for (const c of calls.values()) if (c.from === u || c.to === u) return c; return null; };
 const mainSocks = u => [...wss.clients].filter(w => w.user === u && !w.emb && w.readyState === 1);
 const lastInvite = new Map();
+// Push ringing: sent now and repeated every 12 s while the call is still ringing, so the phone keeps alerting
+function callPush(c) {
+  const ring = () => { if (!calls.has(c.id) || c.state !== 'ring') return; PUSH.send(c.to, { t: 'call', id: c.id, key: c.key, from: c.from, kind: c.kind }, { ttl: 45, urgency: 'high', topic: 'call' }); };
+  ring(); c.pushT = setInterval(ring, 12e3);
+}
 function callEnd(c, reason, by) {
   if (!calls.has(c.id)) return;
-  clearTimeout(c.timer); calls.delete(c.id);
+  clearTimeout(c.timer); clearInterval(c.pushT); calls.delete(c.id);
+  if (c.push && !mainSocks(c.to).length) PUSH.send(c.to, { t: 'call_end', id: c.id, from: c.from, kind: c.kind, missed: c.state === 'ring' && (reason === 'noanswer' || reason === 'cancelled') }, { ttl: 600, urgency: 'high', topic: 'call' });
   const o = { t: 'call_end', id: c.id, reason, by: by || '' };
   mainSocks(c.from).forEach(w => send(w, o)); mainSocks(c.to).forEach(w => send(w, o));
   try {
@@ -2411,12 +2427,15 @@ function callMsg(ws, m) {
     if (callOf(u.name)) return fail('busy');
     const socks = mainSocks(u.name);
     const pres = db.prepare('select presence from users where name=?').get(u.name)?.presence;
-    if (!socks.length || pres === 'offline') return fail('offline');
-    const c = { id: Math.random().toString(36).slice(2, 12), from: me, to: u.name, kind, state: 'ring', fromWs: ws, toWs: null, t0: Date.now() };
-    c.timer = setTimeout(() => callEnd(c, 'noanswer'), 45e3);
+    // app closed (no connection): ring the phone/computer with a push notification if the user allowed it
+    const viaPush = !socks.length && pres !== 'offline' && PUSH.has(u.name);
+    if ((!socks.length && !viaPush) || pres === 'offline') return fail('offline');
+    const c = { id: Math.random().toString(36).slice(2, 12), from: me, to: u.name, kind, state: 'ring', fromWs: ws, toWs: null, t0: Date.now(), key: crypto.randomBytes(12).toString('hex'), push: viaPush };
+    c.timer = setTimeout(() => callEnd(c, 'noanswer'), viaPush ? 60e3 : 45e3);
     calls.set(c.id, c);
     send(ws, { t: 'call_ringing', id: c.id, to: u.name, kind });
     socks.forEach(w => send(w, { t: 'call_in', id: c.id, from: me, kind, role: roleOf(me), xp: xpOf(me) }));
+    if (viaPush) callPush(c);
     return;
   }
   const c = calls.get(id);
@@ -2451,6 +2470,7 @@ function onWsMessage(ws, raw) {
       const gh = ghosts.get(ws.user);
       if (gh) { ghosts.delete(ws.user); clearTimeout(gh._ghostT); if (gh.room && !ws.room && members.has(gh.room)) { members.get(gh.room).delete(gh); ws.room = gh.room; ws.roomAt = gh.roomAt; members.get(gh.room).add(ws); gh.room = null; } }
       send(ws, { t: 'ready', user: ws.user, coins: coins(ws.user), gifts: allGifts(), ucols: activeColors(), ufx: activeFx() });
+      if (!ws.emb) for (const c of calls.values()) if (c.to === ws.user && c.state === 'ring') send(ws, { t: 'call_in', id: c.id, from: c.from, kind: c.kind, role: roleOf(c.from), xp: xpOf(c.from) });
       if (!ws.emb && goneAt.has(ws.user)) { goneAt.delete(ws.user); setImmediate(() => userRooms(ws.user).forEach(castRoster)); }
       return online();
     }
@@ -2473,6 +2493,7 @@ function onWsMessage(ws, raw) {
     if (m.t === 'bye') { ws._bye = true; return; }   // the browser/tab is closing: show offline without the grace period
     if (m.t === 'logout') {   // signed out: offline, out of every room
       if (!ws.user) return;
+      if (m.endpoint) { try { PUSH.drop(ws.user, m.endpoint); } catch {} }
       const u0 = ws.user;
       try { db.prepare("update users set presence='offline' where name=?").run(u0); } catch {}
       for (const w of wss.clients) if (w.user === u0) { try { w.tabs = new Set(); } catch {} }

@@ -84,3 +84,6 @@ Sending or receiving a gift gives XP by price tier (table GIFT_XP in server.js),
 
 ## Emoticons
 Built-in original emoticon set (shortcodes like :) :D ;)). Staff can add more under Admin Panel -> Manage emoticons (picture + name + optional shortcode); they work in chat, posts, comments and as post reactions.
+
+## Call alerts when the app is closed (Web Push)
+`webpush.js` (no extra packages) rings a user's phone/computer for an incoming call when Migv33 is closed. The key pair is created automatically and stored in the database (`push_keys`), device subscriptions in `push_subs`. Users turn it on by allowing notifications (asked on first tap) or in **Settings → Call alerts**. The notification has **Answer** / **Decline**; a missed call shows a "Missed call" notification. Needs HTTPS. On iPhone it only works after "Add to Home Screen" (iOS 16.4+).
