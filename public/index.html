@@ -441,8 +441,8 @@ button{transition:none}}
 #tp .note{display:none}
 #tp{padding:6px 6px 8px;margin:4px 6px}
 /* ================= Night mode ================= */
-:root{--nm-admin:#e8591f;--nm-staff:#2f9a3d;--nm-mentor:#b01020;--nm-headmentor:#8a6a14;--nm-merchant:#7e22ce;--nm-vip:#00706f;--nm-user:#2a7bd8}
-html[data-theme=dark],#log.navy,#log.dark{--nm-admin:#ff7a33;--nm-staff:#4cc24f;--nm-mentor:#f2394a;--nm-headmentor:#e8c23c;--nm-merchant:#b45cff;--nm-vip:#2ec4bf;--nm-user:#6db3ff}
+:root{--nm-admin:#d9540f;--nm-staff:#3f9a2a;--nm-mentor:#c4141b;--nm-headmentor:#0f7472;--nm-merchant:#5d4596;--nm-vip:#b58a0a;--nm-user:#2a7bd8}
+html[data-theme=dark],#log.navy,#log.dark{--nm-admin:#f37124;--nm-staff:#68bd45;--nm-mentor:#f5434a;--nm-headmentor:#1fb5b2;--nm-merchant:#9b82d8;--nm-vip:#f6d05f;--nm-user:#6db3ff}
 #tn svg{width:24px;height:24px;stroke:#fff;fill:none;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
 html[data-theme=dark]{--lg:linear-gradient(135deg,rgba(62,78,122,.6),rgba(26,34,66,.5));--lg2:linear-gradient(135deg,rgba(34,46,88,.97),rgba(18,26,56,.97));--rim:inset 1.5px 1.5px 1px rgba(255,255,255,.3),inset -1px -1px 1px rgba(255,255,255,.08),inset 0 0 22px rgba(255,255,255,.05);--drop:0 14px 34px rgba(0,0,0,.45),0 2px 6px rgba(0,0,0,.3);--tx:#eaf0ff;--mu:#9db0d3;--ln:#ffffff26}
 html[data-theme=dark] body{color:#eaf0ff;background-color:#0d1430;background-image:radial-gradient(70vmax 70vmax at 6% 4%,#33489f 0,#33489f00 60%),radial-gradient(60vmax 60vmax at 98% 14%,#a2501f88 0,#a2501f00 58%),radial-gradient(75vmax 75vmax at 14% 108%,#1a2a78 0,#1a2a7800 62%),radial-gradient(50vmax 50vmax at 92% 98%,#c9601f55 0,#c9601f00 60%),linear-gradient(165deg,#0c1229,#121a3c 58%,#171d48)}
@@ -1665,10 +1665,10 @@ html body #hdr #top #rtabs .rt .rfl{width:20px;height:14px}
 html body #hdr #top #rtabs .rt.on{display:inline-flex!important;align-items:center;justify-content:center;gap:0}
 </style>
 <link rel="stylesheet" href="theme-dark.css?v=28">
-<link rel="stylesheet" href="theme-clear.css?v=7">
+<link rel="stylesheet" href="theme-clear.css?v=8">
 <style>/* role name colours: kept in their own block so they always load */
-:root{--nm-admin:#e8591f;--nm-staff:#2f9a3d;--nm-mentor:#b01020;--nm-headmentor:#8a6a14;--nm-merchant:#7e22ce;--nm-vip:#00706f;--nm-user:#2a7bd8}
-html[data-theme=dark],#log.navy,#log.dark{--nm-admin:#ff7a33;--nm-staff:#4cc24f;--nm-mentor:#f2394a;--nm-headmentor:#e8c23c;--nm-merchant:#b45cff;--nm-vip:#2ec4bf;--nm-user:#6db3ff}
+:root{--nm-admin:#d9540f;--nm-staff:#3f9a2a;--nm-mentor:#c4141b;--nm-headmentor:#0f7472;--nm-merchant:#5d4596;--nm-vip:#b58a0a;--nm-user:#2a7bd8}
+html[data-theme=dark],#log.navy,#log.dark{--nm-admin:#f37124;--nm-staff:#68bd45;--nm-mentor:#f5434a;--nm-headmentor:#1fb5b2;--nm-merchant:#9b82d8;--nm-vip:#f6d05f;--nm-user:#6db3ff}
 html body b[style*="--nm-admin"]{color:var(--nm-admin)!important}
 html body b[style*="--nm-staff"]{color:var(--nm-staff)!important}
 html body b[style*="--nm-mentor"]{color:var(--nm-mentor)!important}
@@ -1903,11 +1903,11 @@ const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',
 const col=(n,l=38)=>{let h=0;for(const c of n)h=(h*31+c.charCodeAt(0))%360;return `hsl(${h} 55% ${l}%)`};
 let AV={};
 const av=(n,s=40)=>AV[n]?`<span class="av" style="width:${s}px;height:${s}px;background:#cfd8e6 url(${esc(AV[n])}) center/cover" role="img" aria-label="${esc(n)}"></span>`:`<span class="av" style="width:${s}px;height:${s}px;background:${col(n)};font-size:${s/2.2}px">${esc(n[0]||'?').toUpperCase()}</span>`;
-const ROLES={},RC={admin:'#ff7a33',staff:'#4cc24f',mentor:'#f2394a',headmentor:'#e8c23c',merchant:'#b45cff',vip:'#2ec4bf'},RL={admin:'#e8591f',staff:'#2f9a3d',mentor:'#b01020',headmentor:'#8a6a14',merchant:'#7e22ce',vip:'#00706f'};
+const ROLES={},RC={admin:'#f37124',staff:'#68bd45',mentor:'#f5434a',headmentor:'#1fb5b2',merchant:'#9b82d8',vip:'#f6d05f'},RL={admin:'#d9540f',staff:'#3f9a2a',mentor:'#c4141b',headmentor:'#0f7472',merchant:'#5d4596',vip:'#b58a0a'};
 let UCOL={},UFX={};// personal name colours (hex) and name effects (glow) from the colour shop
-const NMH={admin:'#ff7a33',staff:'#4cc24f',mentor:'#f2394a',headmentor:'#e8c23c',merchant:'#b45cff',vip:'#2ec4bf',user:'#6db3ff'};const nc=n=>{const rk=RC[ROLES[n]]?ROLES[n]:'user';const c=UCOL[n]||`var(--nm-${rk},${NMH[rk]})`;return UFX[n]?`${c};animation:${UFX[n]}`:c};
+const NMH={admin:'#f37124',staff:'#68bd45',mentor:'#f5434a',headmentor:'#1fb5b2',merchant:'#9b82d8',vip:'#f6d05f',user:'#6db3ff'};const nc=n=>{const rk=RC[ROLES[n]]?ROLES[n]:(typeof VIPS!=='undefined'&&VIPS.has(n)?'vip':'user');const c=UCOL[n]||`var(--nm-${rk},${NMH[rk]})`;return UFX[n]?`${c};animation:${UFX[n]}`:c};
 const VERS=new Set(),VIPS=new Set();const refreshVer=()=>Promise.all([api('GET','/vips').then(l=>{VIPS.clear();l.forEach(n=>VIPS.add(n))}).catch(()=>{}),api('GET','/verified').then(l=>{VERS.clear();l.forEach(n=>VERS.add(n))}).catch(()=>{}),api('GET','/avatars').then(o=>{AV=o||{}}).catch(()=>{})]);
-const rt=(r,n)=>(RC[r]&&r!=='vip'?`<img class="ri" src="/badges/${r==='headmentor'?'hmt':r}.png" alt="${r}" title="${r==='headmentor'?'head mentor':r}">`:'')+(VIPS.has(n)?'<img class="ri" src="/badges/vip.png" alt="VIP" title="VIP user">':'')+(VERS.has(n)?'<img class="ri" src="/badges/verified.png" alt="verified" title="Verified">':'');
+const rt=(r,n)=>(RC[r]&&r!=='vip'?`<img class="ri" src="/badges/${r==='headmentor'?'hmt':r}.png?v=2" alt="${r}" title="${r==='headmentor'?'head mentor':r}">`:'')+(VIPS.has(n)?'<img class="ri" src="/badges/vip.png?v=2" alt="VIP" title="VIP user">':'')+(VERS.has(n)?'<img class="ri" src="/badges/verified.png" alt="verified" title="Verified">':'');
 const LST=[20,98,176,253,331,409,487,564,640,641,760,878,996,1113,1231,1349,1467,1584,1702,1820,1938,2056,2172,2290,2291,2684,3076];
 const lvStep=L=>(LST[L-1]??Math.round(3076+392.5*(L-27)))*(L>=20?2:1);const CUM=[0,0];for(let L=1;L<1000;L++)CUM[L+1]=CUM[L]+lvStep(L);
 /* Level icons: [first level, icon]. Edit the numbers to change when an icon appears. */
@@ -3291,7 +3291,7 @@ V.store=async()=>{
   $('view').onclick=e=>{const g=e.target.closest('[data-go]');if(g)return go(g.dataset.go);if(e.target.closest('#avi'))go('profile',me)}};
 /* ---------- peoples ---------- */
 V.peoples=async()=>{
-  const G=await api('GET','/people');const COL={staff:'#4cc24f',admin:'#ff7a33',headmentor:'#e8c23c',mentor:'#f2394a',merchant:'#b45cff',vip:'#2ec4bf',verified:'#4aa8e8',top:'#f7931e'};
+  const G=await api('GET','/people');const COL={staff:'#68bd45',admin:'#f37124',headmentor:'#1fb5b2',mentor:'#f5434a',merchant:'#9b82d8',vip:'#f6d05f',verified:'#4aa8e8',top:'#f7931e'};
   G.forEach(g=>g.list.forEach(u=>{if(!ROLES[u.name])ROLES[u.name]=u.role}));
   view(`<h2 style="margin-top:12px">Peoples</h2>`+G.map(g=>`<div class="dk cl" style="--c:${COL[g.k]}" data-pg="${g.k}"><div>${esc(g.title)}<span class="n">${g.count}</span></div><svg class="chv" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg></div><div data-pl="${g.k}" style="display:none"></div>`).join(''));
   const row=(u,i,top)=>`<div class="rm" data-u="${esc(u.name)}"><span class="rn">${top?(i+1)+'. ':''}<b style="color:${nc(u.name)}">${esc(u.name)}</b>${rt(u.role,u.name)} <span class="lv">${lvi(u.level,16)}Lv ${u.level}</span></span></div>`;
