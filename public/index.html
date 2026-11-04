@@ -250,7 +250,11 @@ input,select,textarea{background:#0f1a2b;border:1px solid rgba(255,255,255,.9);b
 #f #phb,#f #emb,#f #mic{width:40px;height:40px;padding:0;border-radius:50%;flex:none;font-size:18px}
 .rdot{width:12px;height:12px;border-radius:50%;background:#e8302a;box-shadow:0 0 0 4px rgba(232,48,42,.25);animation:rp 1s infinite}
 @keyframes rp{50%{opacity:.35}}
-@keyframes vipOrbit{0%{text-shadow:0 -1px 0 #d9a400,0 0 5px rgba(246,200,60,.85)}12.5%{text-shadow:1px -1px 0 #d9a400,0 0 5px rgba(246,200,60,.85)}25%{text-shadow:1px 0 0 #d9a400,0 0 5px rgba(246,200,60,.85)}37.5%{text-shadow:1px 1px 0 #d9a400,0 0 5px rgba(246,200,60,.85)}50%{text-shadow:0 1px 0 #d9a400,0 0 5px rgba(246,200,60,.85)}62.5%{text-shadow:-1px 1px 0 #d9a400,0 0 5px rgba(246,200,60,.85)}75%{text-shadow:-1px 0 0 #d9a400,0 0 5px rgba(246,200,60,.85)}87.5%{text-shadow:-1px -1px 0 #d9a400,0 0 5px rgba(246,200,60,.85)}100%{text-shadow:0 -1px 0 #d9a400,0 0 5px rgba(246,200,60,.85)}}
+@property --vang{syntax:'<angle>';initial-value:0deg;inherits:false}
+@keyframes vipOrbit{from{opacity:1}to{opacity:1}}
+@keyframes vipSpin{to{--vang:360deg}}
+b[style*="vipOrbit"]{animation:none!important;position:relative;display:inline-block;padding:0 5px;margin:0 1px;text-shadow:none!important}
+b[style*="vipOrbit"]::before{content:"";position:absolute;inset:-2px -1px;border-radius:9px;padding:1.5px;pointer-events:none;background:conic-gradient(from var(--vang),rgba(217,164,0,.4) 0 58%,#fff1a8 78%,#ffd54a 88%,rgba(217,164,0,.4) 100%);-webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;mask:linear-gradient(#000 0 0) content-box exclude,linear-gradient(#000 0 0);animation:vipSpin 2.4s linear infinite}
 @media (prefers-reduced-motion:reduce){.rdot{animation:none}}
 .chimg{display:block;max-width:min(260px,100%);max-height:300px;border-radius:12px;cursor:zoom-in;margin-top:4px}
 .b audio{height:38px;max-width:100%;margin-top:4px;vertical-align:middle}
