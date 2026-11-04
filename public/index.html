@@ -1603,6 +1603,22 @@ html[data-skin] body #gp#gp .chips .cp{background:#0f1a2b!important;color:#fff!i
 html[data-skin=clear] body #gp#gp .chips .cp{background:#fff!important;color:#111!important;border-color:rgba(0,0,0,.45)!important}
 html[data-skin] body #gp#gp .chips .cp{padding:0!important;display:inline-flex!important;align-items:center;justify-content:center;text-align:center}
 html[data-skin] body #gp#gp .chips .cp.on{background:#f7931e!important;color:#111!important}
+
+/* real playing cards (board + chat) */
+#gp .pc.face,.b.game .mc{position:relative;background:linear-gradient(160deg,#fff,#f1f1f1)!important;color:#1b1b1f!important;border:1px solid #c9c9cf;border-radius:7px;display:block;overflow:hidden;box-shadow:0 2px 6px rgba(0,0,0,.4)}
+#gp .pc.face.r,.b.game .mc.r{color:#d3202a!important}
+#gp .pc.face .cn,.b.game .mc .cn{position:absolute;left:3px;top:2px;display:flex;flex-direction:column;align-items:center;line-height:1;font-weight:800;font-size:11px;font-family:Georgia,'Times New Roman',serif}
+#gp .pc.face .cn i,.b.game .mc .cn i{font-style:normal;font-size:9px;margin-top:0}
+#gp .pc.face .cn.bt,.b.game .mc .cn.bt{left:auto;top:auto;right:3px;bottom:2px;transform:rotate(180deg)}
+#gp .pc.face>b,.b.game .mc>b{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:24px;font-weight:400;line-height:1;opacity:.95;padding-top:2px}
+#gp .pc.face{width:44px;height:62px}
+#gp .side .pc.face{width:30px;height:42px;border-radius:5px}
+#gp .side .pc.face .cn{font-size:8.5px;left:2px;top:1px}#gp .side .pc.face .cn i{font-size:7px}
+#gp .side .pc.face .cn.bt{display:none}#gp .side .pc.face>b{font-size:16px;padding-top:6px}
+.b.game .mc{display:inline-block;vertical-align:middle;width:30px;height:42px;margin:2px 2px;border-radius:5px;text-shadow:none}
+.b.game .mc>b{font-size:19px}.b.game .mc .cn{font-size:9px}.b.game .mc .cn i{font-size:7.5px}
+#gp .gb,#gp .side,#gp .spc button{touch-action:manipulation;-webkit-user-select:none;user-select:none}
+#gp .side.tap1,#gp .spc button.tap1{transform:scale(.96);filter:brightness(1.25)}
 </style>
 <script>try{var _w=new URLSearchParams(location.search).get('w');if(_w){window.EMBR=_w;document.documentElement.classList.add('emb')}}catch(e){}try{if(localStorage.tk||sessionStorage.tk)document.documentElement.dataset.boot=1;var q=localStorage.skin,k=q==='dark'?'dark':q==='clear'?'clear':q==='navy'?'navy':(matchMedia('(prefers-color-scheme: dark)').matches?'navy':'clear');document.documentElement.dataset.skin=k;document.documentElement.dataset.theme=k==='clear'?'light':'dark'}catch(e){document.documentElement.dataset.skin='navy';document.documentElement.dataset.theme='dark'}</script>
 <style>/* Name effects from the colour shop: each one animates the glow around the username */
@@ -2680,7 +2696,7 @@ const Panel = (function () {
 })();
 
 const GP=(function(){
-  let v=null,x5={},skew=0,tick=null,chip=+(localStorage.gpchip||500),min=false,total=0;
+  let dt={k:null,t:0},v=null,x5={},skew=0,tick=null,chip=+(localStorage.gpchip||500),min=false,total=0;
   const E=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
   const K=n=>Number(n||0).toLocaleString('en-US');
   const sec=d=>d?Math.max(0,Math.ceil((d-(Date.now()+skew))/1000)):0;
@@ -2707,7 +2723,7 @@ const GP=(function(){
     if(r===4)return svg(['4','#7be39a','#1f9d4d'],T('4',14),'<path d="M3 17a10 10 0 0 0 18 0" stroke="#d6ffe2" stroke-width="1.6" fill="none"/>');
     if(r===0)return svg(['0','#9fb0d6','#56668f'],'<circle cx="12" cy="12" r="2.4" fill="#fff"/>');
     return svg(['n'+r,'#8cc4ff','#2f6fd6'],T(r,13))};
-  const card=(t,cls='')=>{const r=/[♥♦]/.test(t)?'r':'';return `<div class="pc ${r} ${cls}">${E(t)}</div>`};
+  const card=(t,cls='')=>{const r=/[♥♦]/.test(t)?'r':'';const m=/^(10|[2-9AJQK])([♥♦♠♣])$/.exec(String(t));if(!m)return `<div class="pc ${r} ${cls}">${E(t)}</div>`;return `<div class="pc face ${r} ${cls}"><span class="cn">${m[1]}<i>${m[2]}\uFE0E</i></span><b>${m[2]}\uFE0E</b><span class="cn bt">${m[1]}<i>${m[2]}\uFE0E</i></span></div>`};
   const btn=(c,t,p,dis)=>`<button class="gb ${p?'pri':''}" data-c="${E(c)}" ${dis?'disabled':''}>${t}</button>`;
   function head(extra=''){const t=TITLE[v.g],muted=localStorage.gpmute==='1';return `<div class="gh"><span style="font-size:18px">${t[0]}</span><b>${t[1]}</b>${extra}<span class="gtl"><button class="gtb" data-info="1" aria-label="How to play"><i class="ic ic-i"></i></button><button class="gtb" data-live="1" aria-label="Live result"><i class="ic ic-c"></i></button><button class="gtb" data-snd="1" aria-label="${muted?'Sound off':'Sound on'}"><i class="ic ic-s ${muted?'mt':''}"><u></u></i></button></span><button class="gmin ${min?'cl':''}" data-min="1" aria-label="Minimise"><i class="ic ic-v"></i></button></div>`}
   function timer(){if(!v.deadline)return '';return `<span class="chip tm" data-dl="${v.deadline}">${sec(v.deadline)}s</span>`}
@@ -2759,7 +2775,7 @@ const GP=(function(){
       h+=`<div class="chips">${[100,500,1000,5000,10000,20000].map(a=>`<button class="cp ${a===chip?'on':''}" data-chip="${a}">${a>=1000?a/1000+'K':a}</button>`).join('')}</div>`;
       h+=`<div class="spc">${OPT.map(([k,n])=>`<button data-bet="${k}" class="${v.mine[k]?'has':''}">${n}<b>${pay[k]}x</b>${v.mine[k]?K(v.mine[k]):''}</button>`).join('')}</div>`;
       const my=Object.values(v.mine).reduce((a,x)=>a+x,0);
-      h+=`<div class="gnote">${my?`Your bets: ${K(my)} coins · `:''}${v.bettors} player${v.bettors===1?'':'s'} betting · tap a side to bet ${K(chip)}</div>`;
+      h+=`<div class="gnote">${my?`Your bets: ${K(my)} coins · `:''}${v.bettors} player${v.bettors===1?'':'s'} betting · double-tap a side to bet ${K(chip)}</div>`;
     }else if(L){
       h+=`<div class="gnote ${L.won?'win':''}">${L.winner==='red'?'🔴 Red':'🔵 Blue'} wins with ${E(L.label)}${L.won?` · you won ${K(L.won)}`:''}${st==='between'?'':''}</div>`;
       if(st==='between'){const w=Math.ceil(10-(Date.now()+skew-(v.since||0))/1000);h+=w>0?`<div data-wait="1" style="height:1px"></div>`:`<div class="gacts">${btn('!start','▶ Start to board',1)}</div>`}
@@ -2789,7 +2805,7 @@ const GP=(function(){
       if(e.target.closest('[data-snd]')){try{localStorage.gpmute=localStorage.gpmute==='1'?'':'1'}catch{}draw();return}
       if(e.target.closest('[data-live]')){if(!v)return;const rows=(v.players||[]).map(p=>{const sc=p.runs??p.total;const tag=v.winner===p.n?'🏆 winner':(p.out||p.alive===false)?'out':'';return `<div class="gl-r"><b>${E(p.n)}</b><span>${sc!==undefined&&sc!==null?K(sc):''}</span><i>${tag}</i></div>`}).join('')||'<div class="mu">No players yet.</div>';sheetOpen(`<h2>Live result · ${E(TITLE[v.g]?TITLE[v.g][1]:'Game')}</h2><div class="mu">Pot ${K(v.pot)}${v.round?' · Round '+v.round:''}</div><div class="gl-list">${rows}</div>`);return}
       const c=e.target.closest('[data-chip]');if(c){chip=+c.dataset.chip;try{localStorage.gpchip=chip}catch{}draw();return}
-      const b=e.target.closest('[data-bet]');if(b&&!b.disabled){tx({t:'msg',text:`!bet ${b.dataset.bet} ${chip}`});return}
+      const b=e.target.closest('[data-bet]');if(b&&!b.disabled){const now=Date.now(),k=b.dataset.bet;if(dt.k===k&&now-dt.t<450){dt.k=null;tx({t:'msg',text:`!bet ${k} ${chip}`});return}dt.k=k;dt.t=now;b.classList.add('tap1');setTimeout(()=>b.classList.remove('tap1'),160);return}
       const d=e.target.closest('[data-c]');if(d&&!d.disabled)tx({t:'msg',text:d.dataset.c})})}
   return{render(x){bind();v=x;if(x)skew=x.now-Date.now();draw();loop()},reset(){v=null;min=false;clearInterval(tick);bind()}};
 })();
@@ -3074,7 +3090,7 @@ function add(m){if(['info','ok','err','emote','emotep','note','notel','notea','g
     const [u,dur]=String(m.text).split('|');const safe=/^\/uploads\/[a-f0-9]{32}\.\w+$/.test(u)?u:'';
     const body=m.kind==='image'?`<img class="chimg" src="${esc(safe)}" alt="Photo" loading="lazy" data-big="${esc(safe)}">`:`<audio controls preload="none" src="${esc(safe)}"></audio>${dur?` <small>${fmtDur(+dur)}</small>`:''}`;
     d.innerHTML=`<b data-u="${esc(m.user)}" style="color:${nc(m.user,light?40:72)}">${esc(m.user)}</b><div class="mdia">${m.kind==='image'?'📷 ':'🎤 '}</div><div>${body}</div>`;d.querySelector('.mdia').remove()}
-  else if(m.kind==='game'){d.className='b game';d.style.whiteSpace='pre-wrap';d.innerHTML=`<span class="gn">${m.priv?'🔒 ':''}${esc(m.user||'Teen Patti Gold')}:</span> ${esc(m.text)}`}
+  else if(m.kind==='game'){d.className='b game';d.style.whiteSpace='pre-wrap';d.innerHTML=`<span class="gn">${m.priv?'🔒 ':''}${esc(m.user||'Teen Patti Gold')}:</span> ${esc(m.text).replace(/(^|[\s:])(10|[2-9AJQK])([♥♦♠♣])(?=$|[\s,.—]|<)/g,(x,p,k,s)=>`${p}<span class="mc ${/[♥♦]/.test(s)?'r':''}"><span class="cn">${k}<i>${s}\uFE0E</i></span><b>${s}\uFE0E</b></span>`)}`}
   else{const light=$('log').classList.contains('light');d.className='b';d.innerHTML=`<b data-u="${esc(m.user)}" style="color:${nc(m.user,light?40:72)}">${esc(m.user)}</b>: ${emo(esc(m.text))}`}
   $('log').append(d);if(m.kind==='msg'||m.kind==='image'||m.kind==='voice'){const sp=stamp(),w=(m.ts||Date.now())+60000-Date.now();if(w>0){sp.style.display='none';setTimeout(()=>{const L=$('log'),end=!!L&&L.contains(sp)&&L.scrollHeight-L.scrollTop-L.clientHeight<90;sp.style.display='';if(end)L.scrollTop=1e9},w)}$('log').append(sp)}$('log').scrollTop=1e9}
 const uno=o=>tx({t:'uno',...o});

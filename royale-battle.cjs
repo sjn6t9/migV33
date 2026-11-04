@@ -16,6 +16,7 @@ const CONFIG = {
   BET_SECONDS: 45,            // betting window
   RESULT_PAUSE_SECONDS: 10,   // pause after the result before the next round
   MIN_BET: 100,
+  MAX_TOTAL: 1200000,         // max total a player can bet on one board (all options together)
   MAX_BET: null,              // e.g. 100000, or null for no limit
   PAYOUTS: { red: 1.9, blue: 1.9, jutt: 5, color: 10, run: 20, doublerun: 100, tirel: 200 },
   // How often the WINNING side should show each special hand.
@@ -506,6 +507,11 @@ class RoyaleBattle {
     if (amount < c.MIN_BET) return this.send(`${userName}, minimum bet is ${fmt(c.MIN_BET)}.`);
     if (c.MAX_BET && amount > c.MAX_BET) return this.send(`${userName}, maximum bet is ${fmt(c.MAX_BET)}.`);
 
+    this._res = this._res || new Map();
+    const cur = Object.values((this.bets.get(String(userId)) || { opts: {} }).opts).reduce((a, x) => a + x, 0) + (this._res.get(String(userId)) || 0);
+    if (c.MAX_TOTAL && cur + amount > c.MAX_TOTAL) return this.sendTo(userId, `Maximum ${fmt(c.MAX_TOTAL)} ${c.COIN_NAME} per board (you have ${fmt(cur)} on this board).`);
+
+    this._res.set(String(userId), (this._res.get(String(userId)) || 0) + amount);
     const rid = this.roundId;
     const job = (async () => {
       // Deducts the coins AND records the bet as pending, atomically.
@@ -521,7 +527,7 @@ class RoyaleBattle {
       this.sendTo(userId, `Your balance: ${fmt(left)} ${c.COIN_NAME}`);
     })();
     this.inflight.add(job);
-    try { await job; } finally { this.inflight.delete(job); }
+    try { await job; } finally { this.inflight.delete(job); this._res.set(String(userId), Math.max(0, (this._res.get(String(userId)) || 0) - amount)); }
   }
 }
 
