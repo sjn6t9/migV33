@@ -1292,7 +1292,7 @@ html[data-skin] #view#view#view#view#view#view#view#view#view#view#view#view#vie
 html[data-skin] body .sc:not(.mk){background:var(--sbg)!important;background-size:cover!important;background-position:center!important}
 html[data-skin] body .sc:not(.mk).seen{opacity:.8}
 html[data-skin] body #drawer#drawer .dme .xpl,html[data-skin] #dn .dme .xpl{font-size:10px!important;line-height:1.2!important;letter-spacing:0!important}
-html[data-skin] body #drawer#drawer .dme .mu:not(.xpl){font-size:12px!important}
+html[data-skin] body #drawer#drawer .dme .mu:not(.xpl){font-size:15px!important;line-height:1.3!important;font-weight:600!important}
 #strip{overflow:hidden}
 #strip .tk{display:inline-flex;white-space:nowrap;will-change:transform;animation:tkm 40s linear infinite}
 #strip:active .tk,#strip:hover .tk{animation-play-state:paused}
@@ -1556,6 +1556,12 @@ html body.hb #bnav#bnav{transform:translate(0,170%)!important;opacity:0!importan
 @keyframes mfl{0%,100%{background:#f97316;box-shadow:0 0 0 0 rgba(249,115,22,.7);color:#fff}50%{background:#22d3ee;box-shadow:0 0 14px 4px rgba(34,211,238,.6);color:#03222b}}
 html body #hdr #top#top#top>#mb.mflash,html body #mb.mflash,html body #hdr #top button.mflash{animation:mfl 1.1s ease-in-out infinite!important}
 html body #hdr #top#top#top>#mb.mflash svg,html body #mb.mflash svg{stroke:currentColor!important}
+html body #hdr #top#top#top>#tf.mflash svg,html body #tf.mflash svg{stroke:currentColor!important}
+/* glow ring + glowing icon on the header Menu and Friends buttons (works in every theme, even where the theme paints the button) */
+@keyframes mflr{0%,100%{border-color:#f97316;box-shadow:0 0 0 0 rgba(249,115,22,.7),0 0 8px 1px rgba(249,115,22,.7)}50%{border-color:#22d3ee;box-shadow:0 0 12px 3px rgba(34,211,238,.75),0 0 0 0 rgba(34,211,238,.5)}}
+html body #hdr #top#top#top>#mb.mflash,html body #hdr #top#top#top>#tf.mflash{position:relative!important;overflow:visible!important}
+html body #hdr #top#top#top>#mb.mflash::after,html body #hdr #top#top#top>#tf.mflash::after{content:"";position:absolute;inset:-1px;border-radius:inherit;border:2px solid #f97316;pointer-events:none;animation:mflr 1.1s ease-in-out infinite}
+html body #hdr #top#top#top>#mb.mflash svg,html body #hdr #top#top#top>#tf.mflash svg{animation:mfl2 1.1s ease-in-out infinite!important}
 html body #bnav#bnav button.mflash svg{animation:mfl2 1.1s ease-in-out infinite}
 @keyframes mfl2{0%,100%{stroke:#f97316;filter:drop-shadow(0 0 4px #f97316)}50%{stroke:#22d3ee;filter:drop-shadow(0 0 6px #22d3ee)}}
 #dn .mbadge.mnew{background:#f97316!important;color:#fff!important}
@@ -2198,11 +2204,12 @@ let NUN=null;const paintBell=()=>{document.querySelectorAll('#dbell .bbd').forEa
 /* menu updates: anything new for a menu item puts a dot on it, flashes the menu button and shows a notification */
 let MNEW={};try{MNEW=JSON.parse(localStorage.mnew||'{}')||{}}catch{}
 const mSave=()=>{try{localStorage.mnew=JSON.stringify(MNEW)}catch{}};
-const mFlash=on=>{['mb'].forEach(i=>{const b=$(i);if(b)b.classList.toggle('mflash',!!on)});try{const pb=document.querySelector('#bnav [data-b=profile]');if(pb)pb.classList.toggle('mflash',!!on)}catch{}};
+const fFlash=()=>{try{const on=!!MNEW.friends;const t=$('tf');if(t)t.classList.toggle('mflash',on);const fb=document.querySelector('#bnav [data-b=friends]');if(fb)fb.classList.toggle('mflash',on)}catch{}};
+const mFlash=on=>{fFlash();['mb'].forEach(i=>{const b=$(i);if(b)b.classList.toggle('mflash',!!on)});try{const pb=document.querySelector('#bnav [data-b=profile]');if(pb)pb.classList.toggle('mflash',!!on)}catch{}};
 function menuPing(v,title,body){if(EMB)return;if(v){MNEW[v]=(MNEW[v]||0)+1;mSave()}try{localStorage.mfl=1}catch{}mFlash(true);
   if($('dn')&&$('drawer')?.classList.contains('open'))drawNav();
   if(title)try{if('Notification'in window&&Notification.permission==='granted'&&document.hidden){const o={body:body||'',tag:'migv33-'+(v||'menu'),icon:'/Logo.PNG'};navigator.serviceWorker&&navigator.serviceWorker.getRegistration().then(r=>r?r.showNotification(title,o):new Notification(title,o)).catch(()=>{try{new Notification(title,o)}catch{}})}}catch{}}
-const mSeen=v=>{if(v&&MNEW[v]){delete MNEW[v];mSave()}};
+const mSeen=v=>{if(v&&MNEW[v]){delete MNEW[v];mSave();fFlash()}};
 const notifItem=(grp,text)=>{text=String(text||'');if(/reel/i.test(text))return 'reels';if(/contest/i.test(text))return 'contests';if(/followed you|accepted your request|friend/i.test(text))return 'friends';if(/call/i.test(text))return 'friends';if(grp==='mentions'||/post|comment|react|shared/i.test(text))return 'home';if(grp==='rewards'||/coin|gift|level/i.test(text))return 'account';if(/role/i.test(text))return 'profile';return 'notifs'};
 function drawNav(){const items=[['🪪','My Profile','profile'],['🏠','Home','home'],['🎬','Reels','reels'],['✉️','Mail','mail'],['💬','Chat Rooms','rooms'],['👥','Friends','friends'],['💰','My Account','account'],['🧭','Explore','explore'],['🛍️','Store','store'],['🏆','Contests','contests'],['🧑‍🤝‍🧑','Peoples','peoples'],['🎡','Daily Spin','spin'],['⌨️','Command List','cmds'],['🛟','Help & Support','help'],['💬','Feedback & Report','feedback'],['⚙️','Settings','settings']];if(ST.role==='staff')items.splice(items.length-1,0,['🛡️','Admin Panel','admin']);
   else if(ST.role!=='admin')items.splice(items.length-1,0,['🏪',{user:'Become a Merchant',merchant:'Merchant Panel',mentor:'Mentor Panel',headmentor:'Head Mentor Panel'}[ST.role]||'Panel','panel']);
