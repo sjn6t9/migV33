@@ -413,6 +413,7 @@ class TeenPattiTable {
     this.turnUserId = p.id;
     this.turnDeadline = this.timers.now() + c.TURN_SECONDS * 1000;
     this._say(`▶ ${p.name}'s turn · Pot ${fmt(this.pot)} · ${c.TURN_SECONDS}s`);
+    if (p.state === 'seen') this._private(p.id, `🃏 Your cards: ${cardsStr(p.cards)} — ${p.eval.name}`);
     this._private(p.id, this._optionsText(p));
     this._clearTimers();
     this._timer = this.timers.setTimeout(() => this._enqueue(() => this._timeout(seq)), c.TURN_SECONDS * 1000);

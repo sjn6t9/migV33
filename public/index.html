@@ -1624,9 +1624,9 @@ html[data-skin] body #view#view #tp .tpacts{grid-template-columns:auto minmax(0,
 html[data-skin] body #view#view #tp .btn{letter-spacing:0!important;text-transform:none!important}
 html[data-skin=clear] body #view#view #tp .tph>.ib,html[data-skin=clear] body #view#view #tp .tph>.tpmin{color:#16233a!important}
 html[data-skin=clear] body #view#view #tp .autos .chip,html[data-skin=dark] body #view#view #tp .autos .chip{background:rgba(255,255,255,.06)!important;color:#dfe8ff!important;border:1px solid rgba(255,255,255,.3)!important;padding:5px 10px!important;font-size:12px!important}
-html[data-skin] body #view#view #tp .btn{padding:6px 10px!important;font-size:13px!important;border-radius:9px!important;gap:5px!important;min-height:0!important}
+html[data-skin] body #view#view #tp .btn{padding:3px 8px!important;font-size:11.5px!important;border-radius:7px!important;gap:4px!important;min-height:0!important;line-height:1.2!important}
 html[data-skin] body #view#view #tp .btn.go{padding:8px 12px!important;font-size:14px!important}
-#tp .btn .ti{width:12px;height:12px}
+#tp .btn .ti{width:10px;height:10px}
 html[data-skin] body #view#view #tp .hand .pc.face{width:40px;height:56px;border-width:1.5px;border-radius:6px}
 html[data-skin] body #view#view #tp .hand{gap:7px}
 html[data-skin] body #view#view #tp .hand .tpb{width:40px!important;height:56px!important;border-radius:6px!important}
@@ -1678,7 +1678,7 @@ html[data-skin] body #view#view #tp .potchip{padding:1px 9px!important;font-size
 html[data-skin] body #view#view #tp .tpsub{font-size:10.5px!important}
 
 /* Teen Patti: players seated in order (grid), your hand above the pot, tighter table */
-html[data-skin] body #view#view #tp .felt{min-height:0!important;padding:5px 6px!important;gap:2px!important}
+html[data-skin] body #view#view #tp .felt{height:176px!important;min-height:176px!important;box-sizing:border-box!important;overflow:hidden;padding:5px 6px!important;gap:2px!important}
 html[data-skin] body #view#view #tp .felt .seats{display:flex!important;flex-direction:column!important;align-items:center;gap:2px!important}
 html[data-skin] body #view#view #tp .felt .oth{display:grid;grid-template-columns:repeat(var(--cols,3),minmax(0,1fr));gap:2px 6px;width:100%;justify-items:center}
 html[data-skin] body #view#view #tp .felt .oth:empty{display:none}
@@ -1690,7 +1690,7 @@ html[data-skin] body #view#view #tp .felt .seat .nm{margin-top:1px!important}
 html[data-skin] body #view#view #tp .felt .seat .st,html[data-skin] body #view#view #tp .felt .seat .amt{display:inline-block!important;margin:1px 2px 0!important}
 
 /* Teen Patti: ring seating - others go up the left, over the top and down the right; You + pot in the middle */
-html[data-skin] body #view#view #tp .felt .seats.ring{display:grid!important;flex-direction:initial!important;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);grid-template-areas:"T1 T2 T3" "L2 ME R2" "L3 ME R3";gap:2px 6px!important;align-items:center;justify-items:center;width:100%}
+html[data-skin] body #view#view #tp .felt .seats.ring{display:grid!important;flex-direction:initial!important;grid-template-columns:repeat(5,minmax(0,1fr));grid-template-areas:"T1 T2 T3 T4 T5" "L2 ME ME ME R2" "L3 ME ME ME R3";grid-template-rows:auto 1fr 1fr;gap:2px 6px!important;align-items:center;justify-items:center;width:100%}
 #tp .seats.ring .mectr{grid-area:ME;display:flex;flex-direction:column;align-items:center;gap:2px;min-width:64px;align-self:end}
 html[data-skin] body #view#view #tp .seats.ring .mewrap{order:0}
 /* real playing cards (board + chat) */
@@ -1709,8 +1709,8 @@ html[data-skin] body #view#view #tp .seats.ring .mewrap{order:0}
 .pc.face{width:46px;height:64px}
 #gp .side .pc.face{width:32px;height:44px;border-radius:5px}
 #gp .side .pc.face .cn{font-size:10px}#gp .side .pc.face .cfr{border-width:1px}
-.mc{display:inline-block!important;vertical-align:middle;width:28px;height:40px;margin:2px 1px;border-radius:5px}
-.mc .cn{font-size:9.5px}.mc .cfr{border-width:1px}
+.mc{display:inline-block!important;vertical-align:middle;width:16px;height:22px;margin:1px 1px;border-radius:3px;border-width:1px}
+.mc .cn{font-size:7px;gap:0;letter-spacing:-.5px}.mc .cfr{border-width:1px}
 html body #log .b.game .mc .cn{font-weight:900!important}
 #gp .gb,#gp .side,#gp .spc button{touch-action:manipulation;-webkit-user-select:none;user-select:none}
 #gp .side.tap1,#gp .spc button.tap1{transform:scale(.96);filter:brightness(1.25)}
@@ -2698,8 +2698,8 @@ const Panel = (function () {
     const idleWait = idleAt ? Math.ceil(5 - (Date.now() - idleAt) / 1000) : 0;
     clearTimeout(idleT); if (idleWait > 0) idleT = setTimeout(() => view && render(view), idleWait * 1000 + 60);
     const others = v.seats.filter((s) => !s.isYou);
-    const POS = { 1: ['T2'], 2: ['T1', 'T3'], 3: ['T1', 'T2', 'T3'], 4: ['L2', 'T1', 'T3', 'R2'], 5: ['L2', 'T1', 'T2', 'T3', 'R2'], 6: ['L3', 'L2', 'T1', 'T3', 'R2', 'R3'], 7: ['L3', 'L2', 'T1', 'T2', 'T3', 'R2', 'R3'] };
-    const ring = others.length <= 7, order = POS[others.length] || [];
+    const POS = { 1: ['T3'], 2: ['T2', 'T4'], 3: ['T2', 'T3', 'T4'], 4: ['T1', 'T2', 'T4', 'T5'], 5: ['T1', 'T2', 'T3', 'T4', 'T5'], 6: ['L2', 'T1', 'T2', 'T4', 'T5', 'R2'], 7: ['L2', 'T1', 'T2', 'T3', 'T4', 'T5', 'R2'], 8: ['L3', 'L2', 'T1', 'T2', 'T4', 'T5', 'R2', 'R3'], 9: ['L3', 'L2', 'T1', 'T2', 'T3', 'T4', 'T5', 'R2', 'R3'] };
+    const ring = others.length <= 9, order = POS[others.length] || [];
     const seatHtml = others.map((s, i) => {
       const cards = s.cards ? s.cards.map(face).join('') : (playing ? back() + back() + back() : '');
       const st = s.state === 'out' ? `<span class="st out">out</span>`
@@ -2715,7 +2715,7 @@ const Panel = (function () {
       const mst = you.state === 'out' ? `<span class="st out">out</span>` : (you.allIn ? `<span class="st allin">all-in</span>` : (playing ? `<span class="st">${you.state}</span>` : ''));
       meSeat = `<div class="mewrap"><div class="seat me ${you.state === 'out' ? 'out' : ''} ${you.isTurn && playing ? 'turn' : ''}"><div class="mini">${mc}</div><span class="nm">You</span>${mst}${v.phase === 'joining' ? '' : `<span class="amt">${fmt(you.invested)}</span>`}</div></div>`;
     }
-    const nSeat = others.length + (you ? 1 : 0), cw = others.length <= 4 ? 18 : others.length <= 7 ? 16 : 14, cols = others.length ? Math.ceil(others.length / Math.ceil(others.length / 4)) : 1;
+    const nSeat = others.length + (you ? 1 : 0), cw = others.length <= 3 ? 18 : others.length <= 5 ? 16 : others.length <= 7 ? 14 : 12, cols = others.length ? Math.ceil(others.length / Math.ceil(others.length / 4)) : 1;
     let pill = `<span class="pill" id="pill">⏱ 0s</span>`;
     if (joining) pill = `<span class="pill join" id="pill">⏱ ${secsLeft(v.joinDeadline)}s</span>`;
     if (playing) pill = `<span class="pill" id="pill">⏱ ${secsLeft(v.turnDeadline)}s</span>`;
@@ -2770,7 +2770,7 @@ const Panel = (function () {
       <div class="tph"><span>🎴</span><b>Teen Patti Gold</b>${pill}<span class="sp"></span>
         <button class="ib" data-top="1" aria-label="Top players"><i class="ti tr"></i></button><button class="ib" data-help="1" aria-label="Help"><i class="ti q"></i></button><button class="tpmin" data-min="1" aria-label="Collapse table"><i class="ti v"></i></button></div>
       ${banner}
-      <div class="felt" style="--cw:${cw}px;--cwm:${cw + 4}px;--cols:${cols}">${ring ? `<div class="seats ring">${seatHtml}<div class="mectr">${meSeat}<span class="potchip">💰 ${fmt(v.pot)}</span></div></div>` : `<div class="seats"><div class="oth">${seatHtml}</div>${meSeat}</div><div><span class="potchip">💰 ${fmt(v.pot)}</span></div>`}
+      <div class="felt" style="--cw:${cw}px;--cwm:${others.length <= 5 ? 22 : 18}px;--cols:${cols}">${ring ? `<div class="seats ring">${seatHtml}<div class="mectr">${meSeat}<span class="potchip">💰 ${fmt(v.pot)}</span></div></div>` : `<div class="seats"><div class="oth">${seatHtml}</div>${meSeat}</div><div><span class="potchip">💰 ${fmt(v.pot)}</span></div>`}
         <div class="tpsub">boot ${fmt(v.boot)} · ${v.seats.length}/${v.maxSeats} seats${playing ? ' · stake ' + fmt(v.stake) : ''}</div></div>
       ${mine}`;
   }
