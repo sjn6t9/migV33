@@ -28,7 +28,7 @@ const CONFIG = {
     tirel:     { min: 2, max: 3,  windowMs: 12 * HOUR },
   },
   COIN_NAME: 'coins',
-  START_ADMIN_ONLY: true,     // only admins may type !start
+  START_ADMIN_ONLY: false,    // anyone may type !start
   QUEUE_STOP: false,          // false: /bot stop is refused while a round runs (admin must retry after the round).
                               // true : /bot stop during a round is queued and executes when the round ends.
   NOTIFY_REFUNDS: true,       // announce in the room when bets were refunded after a crash/restart
