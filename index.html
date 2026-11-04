@@ -1634,6 +1634,31 @@ html[data-skin] body #view#view #tp .hand .pc.face .cn{font-size:12px}
 html[data-skin] body #view#view #tp .mini .pc.face{width:16px;height:23px;margin-left:-3px;border-radius:3px;border-width:1px;box-shadow:none}
 html[data-skin] body #view#view #tp .mini .pc.face:first-child{margin-left:0}
 html[data-skin] body #view#view #tp .mini .pc.face .cn{font-size:6px;gap:0}html[data-skin] body #view#view #tp .mini .pc.face .cn.bt{display:none}
+
+/* Teen Patti: tighter layout */
+html[data-skin] body #view#view #tp .hand .pc.face{width:32px!important;height:45px!important;border-radius:5px}
+html[data-skin] body #view#view #tp .hand .tpb{width:32px!important;height:45px!important}
+html[data-skin] body #view#view #tp .hand{margin:3px 0 0!important;gap:6px!important}
+html[data-skin] body #view#view #tp .hand .pc.face .cn{font-size:10px}
+html[data-skin] body #view#view #tp .felt{min-height:0!important;padding:5px 6px!important;gap:4px!important;border-radius:11px!important}
+html[data-skin] body #view#view #tp .seats{min-height:0!important;gap:3px 6px!important}
+html[data-skin] body #view#view #tp .seat{padding:1px!important}
+html[data-skin] body #view#view #tp .seat .st{margin-top:1px!important;padding:0 6px!important;font-size:9.5px!important}
+html[data-skin] body #view#view #tp .potchip{padding:2px 11px!important;font-size:15px!important}
+html[data-skin] body #view#view #tp .tpsub{font-size:11px!important}
+html[data-skin] body #view#view #tp .tph{margin-bottom:3px!important}
+html[data-skin] body #view#view #tp .you{margin-top:2px!important;font-size:13.5px!important}
+html[data-skin] body #view#view #tp .tag{padding:0 8px!important;font-size:11px!important}
+html[data-skin] body #view#view #tp .turnbar{padding:4px!important;margin:4px 0 2px!important;font-size:13px!important;border-radius:8px!important}
+html[data-skin] body #view#view #tp .hint{margin:1px 0 3px!important;font-size:11.5px!important}
+html[data-skin] body #view#view #tp .note{margin:3px 0 0!important;font-size:11.5px!important}
+html[data-skin] body #view#view #tp .autos{margin-top:3px!important;gap:5px!important}
+html[data-skin] body #view#view #tp .status{margin:3px 0 0!important;font-size:12px!important}
+html[data-skin] body #view#view #tp .banner{padding:4px!important;margin-bottom:3px!important;font-size:13px!important}
+html[data-skin] body #view#view #tp .showrow{margin-top:4px!important}
+#tp .gorow{display:flex;justify-content:center;margin-top:4px}
+html[data-skin] body #view#view #tp .btn.go{width:auto!important;padding:4px 14px!important;font-size:12.5px!important;border-radius:8px!important}
+html[data-skin] body #view#view #tp .btn.go .ti{width:11px;height:11px}
 /* real playing cards (board + chat) */
 .pc.face .sv.h,.mc .sv.h{-webkit-mask-image:url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2024%2024'%3E%3Cpath%20d='M12%2021.5C5%2015.5%202%2012%202%208.3%202%205.4%204.2%203.5%206.8%203.5c2%200%203.9%201.1%205.2%203%201.3-1.9%203.2-3%205.2-3C19.8%203.5%2022%205.4%2022%208.3c0%203.7-3%207.2-10%2013.2z'/%3E%3C/svg%3E");mask-image:url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2024%2024'%3E%3Cpath%20d='M12%2021.5C5%2015.5%202%2012%202%208.3%202%205.4%204.2%203.5%206.8%203.5c2%200%203.9%201.1%205.2%203%201.3-1.9%203.2-3%205.2-3C19.8%203.5%2022%205.4%2022%208.3c0%203.7-3%207.2-10%2013.2z'/%3E%3C/svg%3E")}
 .pc.face .sv.d,.mc .sv.d{-webkit-mask-image:url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2024%2024'%3E%3Cpath%20d='M12%201.5%2020.5%2012%2012%2022.5%203.5%2012z'/%3E%3C/svg%3E");mask-image:url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2024%2024'%3E%3Cpath%20d='M12%201.5%2020.5%2012%2012%2022.5%203.5%2012z'/%3E%3C/svg%3E")}
@@ -2627,12 +2652,17 @@ const Panel = (function () {
 
   function secsLeft(deadline) { return Math.max(0, Math.ceil((deadline - (Date.now() + skew)) / 1000)); }
 
+  let prevPh = null, idleAt = 0, idleT = null;
   function render(v) {
     el = document.getElementById('tp'); if (!el) return;
     view = v;
     if (v) skew = v.serverNow - Date.now();
     if (!v) { el.innerHTML = ''; return; }
     const you = v.you, playing = v.phase === 'playing', joining = v.phase === 'joining';
+    if (v.phase === 'idle') { if (prevPh && prevPh !== 'idle' && !idleAt) idleAt = Date.now(); } else idleAt = 0;
+    prevPh = v.phase;
+    const idleWait = idleAt ? Math.ceil(5 - (Date.now() - idleAt) / 1000) : 0;
+    clearTimeout(idleT); if (idleWait > 0) idleT = setTimeout(() => view && render(view), idleWait * 1000 + 60);
     const others = v.seats.filter((s) => !s.isYou);
     const seatHtml = others.map((s) => {
       const cards = s.cards ? s.cards.map(face).join('') : (playing ? back() + back() + back() : '');
@@ -2686,12 +2716,12 @@ const Panel = (function () {
       } else {
         const b = you.balance != null ? `Balance ${fmt(you.balance)}` : '';
         if (seenCards || (v.result && v.seats.some((s) => s.isYou && s.cards))) { mine += `<div class="hand">${(seenCards || []).map(face).join('')}</div>`; }
-        mine += `<div class="status">${b}</div><div style="margin-top:8px"><button class="btn go" data-c="!start"><i class="ti pl"></i>Play again</button></div>`;
+        mine += `<div class="status">${b}</div>` + (idleWait > 0 ? '' : `<div class="gorow"><button class="btn go" data-c="!start"><i class="ti pl"></i>Play again</button></div>`);
       }
     } else {
-      if (joining) mine += `<div class="you">Table open — ${v.seats.length}/${v.maxSeats} seats · boot ${fmt(v.boot)}</div><div style="margin-top:8px"><button class="btn go" data-c="!j"><i class="ti u"></i>Sit down</button></div>`;
+      if (joining) mine += `<div class="you">Table open — ${v.seats.length}/${v.maxSeats} seats · boot ${fmt(v.boot)}</div><div class="gorow"><button class="btn go sit" data-c="!j"><i class="ti u"></i>Sit down</button></div>`;
       else if (playing) mine += `<div class="status">A hand is in progress — watching. ${esc(v.lastEvent || '')}</div>`;
-      else mine += `<div class="you">Type !start to play</div><div style="margin-top:8px"><button class="btn go" data-c="!start"><i class="ti pl"></i>Start table</button></div>`;
+      else mine += `<div class="you">Type !start to play</div>` + (idleWait > 0 ? '' : `<div class="gorow"><button class="btn go" data-c="!start"><i class="ti pl"></i>Start table</button></div>`);
     }
 
     const collapsed = (() => { try { return localStorage.tpmin === '1'; } catch { return false; } })();
