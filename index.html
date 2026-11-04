@@ -253,8 +253,8 @@ input,select,textarea{background:#0f1a2b;border:1px solid rgba(255,255,255,.9);b
 @property --vang{syntax:'<angle>';initial-value:0deg;inherits:false}
 @keyframes vipOrbit{from{opacity:1}to{opacity:1}}
 @keyframes vipSpin{to{--vang:360deg}}
-b[style*="vipOrbit"]{animation:none!important;position:relative;display:inline-block;padding:0 5px;margin:0 1px;text-shadow:none!important}
-b[style*="vipOrbit"]::before{content:"";position:absolute;inset:-2px -1px;border-radius:9px;padding:1.5px;pointer-events:none;background:conic-gradient(from var(--vang),rgba(217,164,0,.4) 0 58%,#fff1a8 78%,#ffd54a 88%,rgba(217,164,0,.4) 100%);-webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;mask:linear-gradient(#000 0 0) content-box exclude,linear-gradient(#000 0 0);animation:vipSpin 2.4s linear infinite}
+[style*="vipOrbit"]{animation:none!important;position:relative;display:inline-block;padding:1px 3px;margin:0 1px;line-height:1.2;text-shadow:none!important}
+[style*="vipOrbit"]::before{content:"";position:absolute;inset:0;border-radius:7px;padding:1.2px;pointer-events:none;background:conic-gradient(from var(--vang),rgba(217,164,0,.4) 0 58%,#fff1a8 78%,#ffd54a 88%,rgba(217,164,0,.4) 100%);-webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;mask:linear-gradient(#000 0 0) content-box exclude,linear-gradient(#000 0 0);animation:vipSpin 2.4s linear infinite}
 @media (prefers-reduced-motion:reduce){.rdot{animation:none}}
 .chimg{display:block;max-width:min(260px,100%);max-height:300px;border-radius:12px;cursor:zoom-in;margin-top:4px}
 .b audio{height:38px;max-width:100%;margin-top:4px;vertical-align:middle}
