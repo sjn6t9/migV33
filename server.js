@@ -2629,15 +2629,16 @@ function closeWs(ws) {
     if (ws._bye) setImmediate(upd); setTimeout(upd, 16e3);
   }
   try { for (const c of [...calls.values()]) if (c.fromWs === ws || c.toWs === ws) callEnd(c, c.state === 'ring' ? 'cancelled' : 'dropped', ws.user); } catch {}
-  // keep a person in their room for a short while so a quick app switch / reconnect does not kick them out
+  // a dropped connection leaves its room immediately
   const r0 = ws.room;
-  if (ws.tabs && ws.user) { const tr = [...ws.tabs].filter(x => x !== r0); setTimeout(() => tr.forEach(castRoster), 90e3); }
-  if (r0 && ws.user && !r0.startsWith('dm:')) {   // stays in the room until the 30-minute no-chat limit, so leaving the chat screen or a dropped connection never removes them early
-    const wait = canMod(r0, ws.user) ? 6 * 3600e3 : Math.max(5e3, (ws.roomAt || Date.now()) + ROOM_STAY_MS - Date.now());
-    ghosts.set(ws.user, ws);
-    ws._ghostT = setTimeout(() => { if (ghosts.get(ws.user) === ws) ghosts.delete(ws.user); if (ws.room === r0) leaveRoom(ws); online(); }, wait);
+  const otherTabs = ws.tabs && ws.user ? [...ws.tabs].filter(x => x !== r0 && !x.startsWith('dm:')) : [];
+  leaveRoom(ws);   // a dropped connection leaves the room at once ('has left'); Rejoin / reconnect shows 'has entered' again
+  for (const t of otherTabs) {   // rooms that were only open as background tabs on this connection are left too
+    if (roomNames(t).has(ws.user)) continue;
+    try { db.prepare('delete from room_seen where user=? and room=?').run(ws.user, t); db.prepare('delete from room_since where user=? and room=?').run(ws.user, t); } catch {}
+    cast(t, { t: 'leave', room: t, user: ws.user, role: roleOf(ws.user), xp: xpOf(ws.user), ts: Date.now() }); castRoster(t);
   }
-  else leaveRoom(ws);
+
   online();
 }
 process.on('uncaughtException', e => console.error('[uncaught]', e));
