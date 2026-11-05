@@ -380,10 +380,11 @@ class TeenPattiTable {
   /* ---- turns ---- */
   _amounts(p) {
     const c = this.cfg, seen = p.state === 'seen';
-    const call = seen ? this.stake * 2 : this.stake;
-    const raise = seen ? this.stake * 4 : this.stake * 2;
+    const lim = this.limit || Infinity;
+    const call = Math.min(lim, seen ? this.stake * 2 : this.stake);
+    const raise = Math.min(lim, seen ? this.stake * 4 : this.stake * 2);
     const newStake = this.stake * 2;
-    let canRaise = p.balance >= raise && newStake <= this.boot * c.MAX_STAKE_MULT && (!this.limit || raise <= this.limit);
+    let canRaise = p.balance >= raise && newStake <= this.boot * c.MAX_STAKE_MULT;
     if (canRaise) for (const o of this._active()) if (o !== p && !o.allIn && o.balance < newStake * 2) canRaise = false;   // table limit: others must be able to follow
     const show = this.stake * c.SHOW_COST_MULT;
     const twoLeft = this._active().length === 2;
@@ -489,6 +490,7 @@ class TeenPattiTable {
       if (!a.canCall) return this._say(`${p.name}, you don't have ${fmt(a.call)} ${this.cfg.COIN_NAME}. ${a.canAllIn ? 'Type !allin or ' : 'Type '}!pack to fold.`);
       if (!(await this._pay(p, a.call))) return this._say(`${p.name}, not enough coins. Type !pack to fold.`);
       this._say(`💰 ${p.name} called ${fmt(a.call)} · Pot ${fmt(this.pot)}`);
+      if (this.limit && a.call >= this.limit) return this._limitShow();
       return this._afterAction();
     }
 
@@ -497,6 +499,7 @@ class TeenPattiTable {
       if (!(await this._pay(p, a.raise))) return this._say(`${p.name}, not enough coins. Type !pack to fold.`);
       this.stake = a.newStake;
       this._say(`💰 ${p.name} raised ${fmt(a.raise)} · Pot ${fmt(this.pot)} · stake ${fmt(this.stake)}`);
+      if (this.limit && a.raise >= this.limit) return this._limitShow();
       return this._afterAction();
     }
 
@@ -527,6 +530,11 @@ class TeenPattiTable {
       p.revealed = true; other.revealed = true;
       return this._award(winner, { reason: 'show', loser, tie: cmp === 0 });
     }
+  }
+
+  async _limitShow() {
+    this._say(`🎚 Bet limit ${fmt(this.limit)} reached — all cards are shown!`);
+    return this._showdown({ reason: 'limit' });
   }
 
   async _fold(p) {
