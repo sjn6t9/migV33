@@ -436,7 +436,9 @@ button{transition:none}}
 #tp .btn{box-shadow:none;text-shadow:none;border:0}
 #tp button.ib,#tp .chip{box-shadow:none}
 .b.game{background:#eef4ff;border-color:#c7dafc;color:#2f6fe0;white-space:pre-wrap;align-self:flex-start}
-.b.game .gn{color:#2e7d32}
+.b.game .gn{color:#0a3dd6}
+html body #log .b.game .gn{color:#0a3dd6!important;font-weight:800!important}
+html body #log.navy .b.game .gn,html body #log.dark .b.game .gn,html[data-theme=dark] body #log .b.game .gn,html[data-skin=dark] body #log .b.game .gn{color:#5aa2ff!important}
 html body #log .b.game,html body #log .b.game *{font-weight:400!important}
 #log.navy .b.game,#log.dark .b.game{color:#9cc0ff}
 #chatbox #log{min-height:70px}
@@ -1500,7 +1502,7 @@ html[data-skin] body #sheet.spn #sh div:not([style*="#f59e0b"]){background:none!
 #sheet.spn #sh .cmp{display:none!important}
 #sheet.spn #sh .card{padding:2px!important}
 #sheet.spn #sh h2{font-size:16px!important;margin:6px 0 0!important}
-#sheet.spn #sh #whw{width:min(200px,100%)!important}
+#sheet.spn #sh #whw{width:min(236px,100%)!important}
 #sheet.spn #sh #go{padding:8px 24px!important;font-size:15px!important}
 #sheet.spn #sh p.mu{font-size:11px!important;margin-top:8px!important}
 /* ===== call screen ===== */
@@ -3823,7 +3825,7 @@ V.spin=async()=>{const d=await api('GET','/spin');const n=d.prizes.length;
    <div style="display:inline-grid;place-items:center;width:44px;height:44px;border-radius:12px;background:#f59e0b;color:#fff;font-size:24px">🎲</div>
    <h2 style="margin:8px 0 2px;font-size:18px">Daily Lucky Draw</h2>
    <p class="mu" id="sinfo" style="margin:0 0 6px"></p>
-   <div id="whw" style="position:relative;width:min(220px,100%);aspect-ratio:1;margin:6px auto 4px;background:none!important;border:0!important;box-shadow:none!important;padding:0!important">
+   <div id="whw" style="position:relative;width:min(252px,100%);aspect-ratio:1;margin:6px auto 4px;background:none!important;border:0!important;box-shadow:none!important;padding:0!important">
     <div id="wh" style="position:absolute;inset:0;background:none!important;border:0!important;box-shadow:none!important;outline:0!important;padding:0!important;transition:transform 4s cubic-bezier(.12,.7,.15,1)"><svg viewBox="0 0 320 320" width="100%" height="100%"><circle cx="${C}" cy="${C}" r="${R+8}" fill="#fde68a"/><circle cx="${C}" cy="${C}" r="${R+8}" fill="none" stroke="#f5c542" stroke-width="2"/>${slices}</svg></div>
     <svg viewBox="0 0 320 320" width="100%" height="100%" style="position:absolute;inset:0;pointer-events:none"><path d="M148 6h24l-12 20z" fill="#3b2417" stroke="#fde68a" stroke-width="2" stroke-linejoin="round"/><circle cx="${C}" cy="${C}" r="25" fill="#3b2417" stroke="#e5e7eb" stroke-width="4"/><path d="M160 146l4 10 10 4-10 4-4 10-4-10-10-4 10-4z" fill="#fcd34d"/><path d="M173 148l1.6 3.8 3.8 1.6-3.8 1.6-1.6 3.8-1.6-3.8-3.8-1.6 3.8-1.6z" fill="#fff"/></svg>
    </div>
