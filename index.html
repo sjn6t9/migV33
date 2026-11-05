@@ -1711,6 +1711,21 @@ html[data-skin] body #gp#gp .spc button{padding:3px 1px 2px!important;line-heigh
 html[data-skin] body #gp#gp .spc button b{margin-top:0}
 #gp .side .tl{display:block;min-height:13px;font-size:10px!important;line-height:1.25}
 #gp .gstart{display:flex;justify-content:center;margin-top:6px}
+/* shared sound-mode icons */
+.sx{display:inline-block;width:12px;height:12px;background:currentColor;-webkit-mask-repeat:no-repeat;mask-repeat:no-repeat;-webkit-mask-size:contain;mask-size:contain;-webkit-mask-position:center;mask-position:center;pointer-events:none}
+.sx.sn{-webkit-mask-image:url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2024%2024'%3E%3Cpath%20fill-rule='evenodd'%20d='M3%209v6h4l5%204V5L7%209zM15.5%208.5a5%205%200%200%201%200%207l-1.4-1.4a3%203%200%200%200%200-4.2zM18.4%205.6a9%209%200%200%201%200%2012.8l-1.4-1.4a7%207%200%200%200%200-10z'/%3E%3C/svg%3E");mask-image:url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2024%2024'%3E%3Cpath%20fill-rule='evenodd'%20d='M3%209v6h4l5%204V5L7%209zM15.5%208.5a5%205%200%200%201%200%207l-1.4-1.4a3%203%200%200%200%200-4.2zM18.4%205.6a9%209%200%200%201%200%2012.8l-1.4-1.4a7%207%200%200%200%200-10z'/%3E%3C/svg%3E")}
+.sx.mu{-webkit-mask-image:url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2024%2024'%3E%3Cpath%20fill-rule='evenodd'%20d='M2%209v6h4l5%204V5L6%209zM14.6%209.4%2016%208l2.5%202.6L21%208l1.4%201.4L19.9%2012l2.5%202.6L21%2016l-2.5-2.6L16%2016l-1.4-1.4L17.1%2012z'/%3E%3C/svg%3E");mask-image:url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2024%2024'%3E%3Cpath%20fill-rule='evenodd'%20d='M2%209v6h4l5%204V5L6%209zM14.6%209.4%2016%208l2.5%202.6L21%208l1.4%201.4L19.9%2012l2.5%202.6L21%2016l-2.5-2.6L16%2016l-1.4-1.4L17.1%2012z'/%3E%3C/svg%3E")}
+.sx.vb{-webkit-mask-image:url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2024%2024'%3E%3Cpath%20fill-rule='evenodd'%20d='M8%203h8a1%201%200%200%201%201%201v16a1%201%200%200%201-1%201H8a1%201%200%200%201-1-1V4a1%201%200%200%201%201-1zm1%202v14h6V5zM2.5%208h1.6v8H2.5zM19.9%208h1.6v8h-1.6z'/%3E%3C/svg%3E");mask-image:url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2024%2024'%3E%3Cpath%20fill-rule='evenodd'%20d='M8%203h8a1%201%200%200%201%201%201v16a1%201%200%200%201-1%201H8a1%201%200%200%201-1-1V4a1%201%200%200%201%201-1zm1%202v14h6V5zM2.5%208h1.6v8H2.5zM19.9%208h1.6v8h-1.6z'/%3E%3C/svg%3E")}
+/* game info: grid of cards instead of a list */
+.gi-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin:10px 0}
+.gi-grid .gi{border:1px solid var(--line,rgba(128,128,160,.35));border-radius:12px;padding:8px 9px 9px;font-size:13px;line-height:1.4;background:rgba(128,128,160,.08);position:relative}
+.gi-grid .gi i{display:inline-grid;place-items:center;width:20px;height:20px;border-radius:50%;background:#f7931e;color:#1b1206;font-style:normal;font-size:11px;font-weight:800;margin-bottom:4px}
+.gi-grid .gi b{font-weight:700}
+html body #sheet#sheet .gi-grid{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:8px!important;margin:10px 0!important;padding:0!important;border:0!important;background:none!important}
+html body #sheet#sheet .gi-grid .gi{display:block!important;border:1px solid rgba(128,128,160,.4)!important;border-radius:12px!important;padding:7px 9px 8px!important;font-size:13px!important;line-height:1.4!important;background:rgba(128,128,160,.1)!important;margin:0!important}
+html body #sheet#sheet .gi-grid .gi i{display:inline-grid!important;place-items:center;width:20px;height:20px;border-radius:50%;background:#f7931e!important;color:#1b1206!important;font-style:normal;font-size:11px;font-weight:800;margin:0 0 3px!important;padding:0!important;border:0!important}
+html body #sheet#sheet .gi-grid .gi .gt{display:block!important;border:0!important;padding:0!important;margin:0!important;background:none!important}
+html body #sheet#sheet .gi-grid .gi b,html body #sheet#sheet .gi-grid .gi code{display:inline!important;border:0!important;padding:0!important;margin:0!important;background:none!important;font-weight:700!important}
 /* real playing cards (board + chat) */
 .pc.face .sv.h,.mc .sv.h{-webkit-mask-image:url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2024%2024'%3E%3Cpath%20d='M12%2021.5C5%2015.5%202%2012%202%208.3%202%205.4%204.2%203.5%206.8%203.5c2%200%203.9%201.1%205.2%203%201.3-1.9%203.2-3%205.2-3C19.8%203.5%2022%205.4%2022%208.3c0%203.7-3%207.2-10%2013.2z'/%3E%3C/svg%3E");mask-image:url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2024%2024'%3E%3Cpath%20d='M12%2021.5C5%2015.5%202%2012%202%208.3%202%205.4%204.2%203.5%206.8%203.5c2%200%203.9%201.1%205.2%203%201.3-1.9%203.2-3%205.2-3C19.8%203.5%2022%205.4%2022%208.3c0%203.7-3%207.2-10%2013.2z'/%3E%3C/svg%3E")}
 .pc.face .sv.d,.mc .sv.d{-webkit-mask-image:url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2024%2024'%3E%3Cpath%20d='M12%201.5%2020.5%2012%2012%2022.5%203.5%2012z'/%3E%3C/svg%3E");mask-image:url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2024%2024'%3E%3Cpath%20d='M12%201.5%2020.5%2012%2012%2022.5%203.5%2012z'/%3E%3C/svg%3E")}
@@ -2691,6 +2706,25 @@ async function feedClick(e){
         cm.innerHTML=cs.map(c=>`<div class="cmt">${av(c.user,32)}<div class="bub"><b data-u="${esc(c.user)}" style="color:${nc(c.user)}">${esc(c.user)}</b>${rt(c.role,c.user)}<div>${rich(c.text)}</div></div></div>`).join('')+(canC?`<div class="cmt wr">${av(me,32)}<input placeholder="Write a comment…" maxlength="300"><button class="o">Send</button></div>`:'<div class="mu lk">🔒 Comments are locked on this post.</div>');
         if(canC)cm.querySelector('button').onclick=async()=>{const t=cm.querySelector('input').value.trim();if(!t)return;try{await api('POST',`/posts/${id}/comments`,{text:t});const c=art.querySelector('[data-w=comment]');c.textContent=+c.textContent+1;loadC()}catch(er){fail(er)}}};
       cm.hidden=false;loadC()}}catch(er){fail(er)}}
+
+/* ===== shared game sounds + vibration (mode 0 = sound+vibrate, 1 = vibrate only, 2 = mute) ===== */
+const GS=(function(){
+  let ac=null,warnKey='';
+  const mode=()=>{try{const m=localStorage.gpmode;if(m!==undefined&&m!=='')return +m;return localStorage.gpmute==='1'?2:0}catch{return 0}};
+  const setMode=m=>{try{localStorage.gpmode=m;localStorage.gpmute=m===2?'1':''}catch{}};
+  const ctx=()=>{if(mode()!==0)return null;try{ac=ac||new (window.AudioContext||window.webkitAudioContext)();if(ac.state==='suspended')ac.resume();return ac}catch{return null}};
+  const vib=p=>{if(mode()===2)return;try{navigator.vibrate&&navigator.vibrate(p)}catch{}};
+  const tone=(a,f,at,d,g,type)=>{const t=a.currentTime+at,o=a.createOscillator(),e=a.createGain();o.type=type||'square';o.frequency.value=f;e.gain.setValueAtTime(0,t);e.gain.linearRampToValueAtTime(g,t+.006);e.gain.exponentialRampToValueAtTime(.0001,t+d);o.connect(e).connect(a.destination);o.start(t);o.stop(t+d+.03)};
+  function beep(n=1){const a=ctx();if(a)for(let i=0;i<n;i++)tone(a,1175,i*.17,.09,.1);vib(n>1?[30,70,30]:[30])}
+  function win(){const a=ctx();if(a){[523,659,784,1047].forEach((f,i)=>tone(a,f,i*.11,.22,.12,'triangle'));tone(a,1319,.46,.5,.1,'triangle')}vib([50,40,50,40,120])}
+  function demo(){const m=mode();if(m===0)beep(1);else if(m===1)vib([60])}
+  // own-turn countdown: Beep Beep every second during the last 4 seconds
+  function turn(key,active,deadline,skew){clearInterval(turn._t);if(!active||!deadline)return;
+    const chk=()=>{const left=Math.ceil((deadline-(Date.now()+skew))/1000);if(left>=1&&left<=4){const k=key+':'+deadline+':'+left;if(k!==warnKey){warnKey=k;beep(2)}}};
+    turn._t=setInterval(chk,250);chk()}
+  return{mode,setMode,ctx,beep,win,turn,demo,vib,cycle(){const m=(mode()+1)%3;setMode(m);demo();return m}}
+})();
+document.addEventListener('pointerdown',()=>{try{const a=GS.ctx();a&&a.state==='suspended'&&a.resume()}catch{}},{passive:true});
 const Panel = (function () {
   let el = null;
   let view = null, skew = 0, tick = null;
@@ -2786,7 +2820,7 @@ const Panel = (function () {
     if (collapsed) { el.innerHTML = `<div class="tph"><span>🎴</span><b>Teen Patti Gold</b>${pill}<span class="sp"></span><span class="tpsub" style="color:#7d68c2">pot ${fmt(v.pot)}</span><button class="tpmin cl" data-min="1" aria-label="Expand table"><i class="ti v"></i></button></div>`; return; }
     el.innerHTML = `
       <div class="tph"><span>🎴</span><b>Teen Patti Gold</b>${pill}<span class="sp"></span>
-        <button class="ib" data-top="1" aria-label="Top players"><i class="ti tr"></i></button><button class="ib" data-help="1" aria-label="Help"><i class="ti q"></i></button><button class="tpmin" data-min="1" aria-label="Collapse table"><i class="ti v"></i></button></div>
+        <button class="ib" data-snd="1" aria-label="Sound"><i class="sx ${['sn','vb','mu'][GS.mode()]}"></i></button><button class="ib" data-help="1" aria-label="Help"><i class="ti q"></i></button><button class="tpmin" data-min="1" aria-label="Collapse table"><i class="ti v"></i></button></div>
       ${banner}
       <div class="felt" style="--cw:${cw}px;--cwm:${others.length <= 5 ? 22 : 18}px;--cols:${cols}">${ring ? `<div class="seats ring">${seatHtml}<div class="mectr">${meSeat}<span class="potchip">💰 ${fmt(v.pot)}</span></div></div>` : `<div class="seats"><div class="oth">${seatHtml}</div>${meSeat}</div><div><span class="potchip">💰 ${fmt(v.pot)}</span></div>`}
       </div>
@@ -2795,11 +2829,11 @@ const Panel = (function () {
   }
 
   document.addEventListener('click', (e) => {
-    const t = e.target.closest('#tp [data-c],#tp [data-see],#tp [data-top],#tp [data-help],#tp [data-min]');
+    const t = e.target.closest('#tp [data-c],#tp [data-see],#tp [data-snd],#tp [data-help],#tp [data-min]');
     if (!t || t.disabled) return;
     if (t.dataset.c) api.onCommand(t.dataset.c);
     else if (t.dataset.see) api.onCommand('!see');
-    else if (t.dataset.top) api.onTop();
+    else if (t.dataset.snd) { const m = GS.cycle(); toast(['🔊 Sound + vibration', '📳 Vibration only', '🔇 Muted'][m]); if (view) render(view); }
     else if (t.dataset.help) api.onHelp();
     else if (t.dataset.min) { try { localStorage.tpmin = localStorage.tpmin === '1' ? '' : '1'; } catch {} if (view) render(view); }
   });
@@ -2815,7 +2849,20 @@ const Panel = (function () {
     else if (view.phase === 'playing') p.textContent = '⏱ ' + secsLeft(view.turnDeadline) + 's';
   }, 250);
 
-  api.render = render;
+  function snd(p, v) {
+    if (!v || !v.you) { GS.turn('tp', false); return; }
+    const y = v.you, py = p && p.you, auto = y.autoCall || (y.autoBlind && y.state === 'blind');
+    const sk = (v.serverNow || Date.now()) - Date.now();
+    if (p && py) {
+      if (y.isTurn && !py.isTurn && !auto) GS.beep(1);
+      const pa = py.autoCall ? 2 : (py.autoBlind && py.state === 'blind' ? 1 : 0);
+      if (y.invested > py.invested && pa) GS.beep(pa);
+      const w = (v.seats || []).some((s) => s.isYou && s.isWinner), pw = (p.seats || []).some((s) => s.isYou && s.isWinner);
+      if (w && !pw) GS.win();
+    }
+    GS.turn('tp', !!y.isTurn && !auto && v.phase === 'playing', v.turnDeadline, sk);
+  }
+  api.render = (v) => { const p = view; render(v); try { snd(p, v); } catch {} };
   return api;
 })();
 
@@ -2828,7 +2875,7 @@ const GP=(function(){
   const TITLE={lowcard:['🃏','LowCard'],dice:['🎲','Dice'],cricket:['🏏','Cricket'],royale:['⚔️','Royale Battle']};
   const DIE=['','⚀','⚁','⚂','⚃','⚄','⚅'];
   const OPT=[['jutt','Jutt'],['color','Color'],['run','Run'],['doublerun','Double Run'],['tirel','Tirel']];
-  const AC=()=>{if(localStorage.gpmute==='1')return null;try{return GP._ac||(GP._ac=new (window.AudioContext||window.webkitAudioContext)())}catch{return null}};
+  const AC=()=>GS.ctx();
   document.addEventListener('pointerdown',()=>{const a=AC();if(a&&a.state==='suspended')a.resume()},{passive:true});
   function glassWarn(){const a=AC();if(!a)return;try{if(a.state==='suspended')a.resume();const t=a.currentTime;
     const ping=(f,at,d,g)=>{const o=a.createOscillator(),e=a.createGain();o.type='sine';o.frequency.value=f;e.gain.setValueAtTime(0,t+at);e.gain.linearRampToValueAtTime(g,t+at+.004);e.gain.exponentialRampToValueAtTime(.0001,t+at+d);o.connect(e).connect(a.destination);o.start(t+at);o.stop(t+at+d+.05)};
@@ -2850,7 +2897,7 @@ const GP=(function(){
     return svg(['n'+r,'#8cc4ff','#2f6fd6'],T(r,13))};
   const card=(t,cls='')=>{const r=/[♥♦]/.test(t)?'r':'';const m=/^(10|[2-9AJQK])([♥♦♠♣])$/.exec(String(t));if(!m)return `<div class="pc ${r} ${cls}">${E(t)}</div>`;return PCH(m[1],m[2],'pc '+cls)};
   const btn=(c,t,p,dis)=>`<button class="gb ${p?'pri':''}" data-c="${E(c)}" ${dis?'disabled':''}>${t}</button>`;
-  function head(extra=''){const t=TITLE[v.g],muted=localStorage.gpmute==='1';return `<div class="gh"><span style="font-size:18px">${t[0]}</span><b>${t[1]}</b>${extra}<span class="gtl"><button class="gtb" data-info="1" aria-label="How to play"><i class="ic ic-i"></i></button><button class="gtb" data-live="1" aria-label="Live result"><i class="ic ic-c"></i></button><button class="gtb" data-snd="1" aria-label="${muted?'Sound off':'Sound on'}"><i class="ic ic-s ${muted?'mt':''}"><u></u></i></button></span><button class="gmin ${min?'cl':''}" data-min="1" aria-label="Minimise"><i class="ic ic-v"></i></button></div>`}
+  function head(extra=''){const t=TITLE[v.g],md=GS.mode();return `<div class="gh"><span style="font-size:18px">${t[0]}</span><b>${t[1]}</b>${extra}<span class="gtl"><button class="gtb" data-info="1" aria-label="How to play"><i class="ic ic-i"></i></button>${v.g==='royale'?'':`<button class="gtb" data-live="1" aria-label="Rank"><i class="ic ic-c"></i></button>`}<button class="gtb" data-snd="1" aria-label="${['Sound and vibration','Vibration only','Muted'][md]}"><i class="sx ${['sn','vb','mu'][md]}"></i></button></span><button class="gmin ${min?'cl':''}" data-min="1" aria-label="Minimise"><i class="ic ic-v"></i></button></div>`}
   function timer(){if(!v.deadline)return '';return `<span class="chip tm" data-dl="${v.deadline}">${sec(v.deadline)}s</span>`}
   function bar(span){if(!v.deadline)return '';return `<div class="gbar"><i data-bar="${v.deadline}" data-span="${span}" style="width:${Math.min(100,sec(v.deadline)/span*100)}%"></i></div>`}
   function idle(more){return `<div class="gnote">${more||'No game is running right now.'}</div><div class="gacts">${btn('!start','▶ Start game',1)}${btn('!start 500','Entry 500')}${btn('!start 1000','Entry 1,000')}</div>`}
@@ -2928,17 +2975,25 @@ const GP=(function(){
         lowcard:['LowCard',['Type <b>!start</b> to open a table, or <b>!start 500</b> to choose the entry.','Others type <b>!j</b> within 30 seconds to join. At least two players are needed.','Each round, every player types <b>!d</b> within 30 seconds to draw one card.','The lowest card is out. Two is the lowest, Ace is the highest.','If several players tie for lowest, only they draw again. The last player standing wins the pot, minus 10 percent.']],
         dice:['Dice',['Type <b>!start</b> to open a table, or <b>!start 500</b> to choose the entry.','Others type <b>!j</b> within 30 seconds to join. At least two players are needed.','Each player types <b>!d</b> within 30 seconds to roll two dice.','The highest total wins the pot, minus 10 percent.','If there is a tie for highest, only the tied players roll again.']],
         royale:['Royale Battle',['Betting is open for 30 seconds. Bet on Red or Blue with <b>!bet red 500</b> or <b>!bet blue 500</b>.','Red and Blue pay 1.9 times your bet.','Special hands pay more: <b>!bet jutt 100</b> pays 5 times, <b>!bet color 100</b> 10 times, <b>!bet run 100</b> 20 times, <b>!bet doublerun 100</b> 100 times, <b>!bet tirel 100</b> 200 times.','The minimum bet is 100 coins.','Check your coins with <b>!bal</b>, and see the top players with <b>!top</b>.','After each result there is a 10-second pause, then the next round opens.']]
-      };const g=G[v.g]||G.cricket;sheetOpen(`<h2>📘 ${g[0]} · how to play</h2><ol class="gi-list">${g[1].map(x=>`<li>${x}</li>`).join('')}</ol><div class="mu">Virtual coins, just for fun.</div>`);return}
-      if(e.target.closest('[data-snd]')){try{localStorage.gpmute=localStorage.gpmute==='1'?'':'1'}catch{}draw();return}
+      };const g=G[v.g]||G.cricket;sheetOpen(`<h2>📘 ${g[0]} · how to play</h2><span class="gi-grid">${g[1].map((x,n)=>`<span class="gi"><i>${n+1}</i><span class="gt">${x}</span></span>`).join('')}</span><div class="mu">Virtual coins, just for fun.</div>`);return}
+      if(e.target.closest('[data-snd]')){const m=GS.cycle();draw();toast(['🔊 Sound + vibration','📳 Vibration only','🔇 Muted'][m]);return}
       if(e.target.closest('[data-live]')){if(!v)return;const rows=(v.players||[]).map(p=>{const sc=p.runs??p.total;const tag=v.winner===p.n?'🏆 winner':(p.out||p.alive===false)?'out':'';return `<div class="gl-r"><b>${E(p.n)}</b><span>${sc!==undefined&&sc!==null?K(sc):''}</span><i>${tag}</i></div>`}).join('')||'<div class="mu">No players yet.</div>';sheetOpen(`<h2>Live result · ${E(TITLE[v.g]?TITLE[v.g][1]:'Game')}</h2><div class="mu">Pot ${K(v.pot)}${v.round?' · Round '+v.round:''}</div><div class="gl-list">${rows}</div>`);return}
       const c=e.target.closest('[data-chip]');if(c){chip=+c.dataset.chip;try{localStorage.gpchip=chip}catch{}draw();return}
       const b=e.target.closest('[data-bet]');if(b&&!b.disabled){const now=Date.now(),k=b.dataset.bet;if(dt.k===k&&now-dt.t<450){dt.k=null;tx({t:'msg',text:`!bet ${k} ${chip}`});return}dt.k=k;dt.t=now;b.classList.add('tap1');setTimeout(()=>b.classList.remove('tap1'),160);return}
       const d=e.target.closest('[data-c]');if(d&&!d.disabled)tx({t:'msg',text:d.dataset.c})})}
-  return{render(x){bind();v=x;if(x)skew=x.now-Date.now();draw();loop()},reset(){v=null;min=false;clearInterval(tick);bind()}};
+  function snd(p,x){
+    if(!x||!p||p.g!==x.g||p.room!==x.room){GS.turn('gp',false);return}
+    if(x.g==='royale'){const sum=o=>Object.values(o||{}).reduce((a,b)=>a+b,0);
+      if(p.round===x.round&&sum(x.mine)>sum(p.mine))GS.beep(1);
+      if(x.state==='between'&&p.state!=='between'&&x.last&&x.last.won>0)GS.win();return}
+    if(x.pending&&(!p.pending||x.round!==p.round))GS.beep(1);
+    GS.turn('gp'+x.g,!!x.pending,x.deadline,skew);
+    if(x.winner&&x.winner!==p.winner&&(x.players||[]).some(q=>q.me&&q.n===x.winner))GS.win()}
+  return{render(x){bind();const p=v;v=x;if(x)skew=x.now-Date.now();draw();loop();try{snd(p,x)}catch{}},reset(){v=null;min=false;clearInterval(tick);GS.turn('gp',false);bind()}};
 })();
 const isTp=n=>String(n||'').toLowerCase()==='legendary';let TPV=null;
 Panel.onCommand=t=>tx({t:'msg',text:t});Panel.onTop=()=>tx({t:'msg',text:'!top'});
-Panel.onHelp=()=>sheetOpen(`<h2>🎴 Teen Patti Gold</h2><div class="mu">Just for fun. Coins have no cash value.</div><div style="font-size:14px;line-height:1.5"><b>How to play:</b> tap <b>Start</b>, then others tap <b>Sit down</b> within 30 seconds. Everyone gets 3 cards. Play Blind (don't look) or tap <b>See</b>. On your turn: <b>Call</b>, <b>Raise</b> or <b>Fold</b> (15 s per turn). When only 2 players are left you can <b>Show</b>.<br><b>Hands (low → high):</b> High Card · Jutt (pair) · Color · Run · Double Run · Tirel (three of a kind).<br><b>Run order:</b> A-K-Q is highest, then A-2-3, then K-Q-J … down to 2-3-4.<br><b>Commands:</b> <code>!start</code> <code>!j</code> <code>!bet</code> <code>!raise</code> <code>!pack</code> <code>!see</code> <code>!show</code> <code>!allin</code> <code>!auto</code> <code>!autoblind</code> <code>!bal</code> <code>!top</code></div>`);
+Panel.onHelp=()=>sheetOpen(`<h2>🎴 Teen Patti Gold · how to play</h2><span class="gi-grid"><span class="gi"><i>1</i><span class="gt">Tap <b>Start</b>, then others tap <b>Sit down</b> within 30 seconds. Up to 10 players.</span></span><span class="gi"><i>2</i><span class="gt">Everyone gets 3 cards. Play <b>Blind</b> (don't look) or tap <b>See</b>.</span></span><span class="gi"><i>3</i><span class="gt">On your turn: <b>Call</b>, <b>Raise</b> or <b>Fold</b>. A blind player pays half of what a seen player pays.</span></span><span class="gi"><i>4</i><span class="gt">After 10 turns every hand is shown automatically. After a show, blind players pay double.</span></span><span class="gi"><i>5</i><span class="gt">When only 2 players are left you can ask for a <b>Show</b>.</span></span><span class="gi"><i>6</i><span class="gt">Hands, low to high: High Card · Jutt (pair) · Color · Run · Double Run · Tirel.</span></span><span class="gi"><i>7</i><span class="gt">Run order: A-K-Q is highest, then A-2-3, then K-Q-J … down to 2-3-4.</span></span><span class="gi"><i>8</i><span class="gt">Commands: <code>!start</code> <code>!j</code> <code>!bet</code> <code>!raise</code> <code>!pack</code> <code>!see</code> <code>!show</code> <code>!allin</code> <code>!auto</code> <code>!autoblind</code> <code>!bal</code> <code>!top</code></span></span></span><div class="mu">Virtual coins, just for fun.</div>`);
 /* ---------- rooms ---------- */
 
 /* ---------- Mail ---------- */
