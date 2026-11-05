@@ -2070,6 +2070,31 @@ html[data-theme=dark][data-skin] body #app#app#app .fbp a.mn,html[data-theme=dar
 .ckp b{display:inline-block;min-width:20px;padding:0 6px;border-radius:99px;background:#1d5fe0;color:#fff;text-align:center;font-weight:900!important;font-size:11.5px}
 html[data-theme=dark] .ckb,html[data-theme=dark] .ckp,#log.dark .ckb,#log.dark .ckp,#log.navy .ckb,#log.navy .ckp{background:rgba(255,255,255,.1);color:#cfe0ff;border-color:rgba(130,170,255,.3)}
 </style>
+<style>/* cricket board v2 */
+#gp .ck-ent{display:flex;align-items:center;gap:8px;margin-top:10px;font-size:15px}
+#gp .ck-c{display:inline-grid;place-items:center;min-width:34px;height:34px;padding:0 4px;border-radius:50%;border:3px dashed #8fb4ff;background:#1d3a7a;color:#fff;font-style:normal;font-size:11px;font-weight:800}
+#gp .ck-ar{opacity:.6}
+#gp .ck-pot{color:#ffb454;font-weight:800}
+#gp .ck-in{margin-left:auto;opacity:.85;font-size:13px}
+#gp .ck-av{display:flex;gap:14px;flex-wrap:wrap;margin-top:12px}
+#gp .ck-a{display:flex;flex-direction:column;align-items:center;gap:3px;font-size:12.5px}
+#gp .ck-a em{font-style:normal;max-width:64px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#gp .ck-ok{margin-top:12px;padding:11px;border-radius:14px;text-align:center;font-weight:800;background:rgba(76,194,79,.22);border:1px solid rgba(130,225,130,.5);color:#8ff08f}
+#gp .ck-ft{margin-top:10px;text-align:center;font-size:12.5px;opacity:.8}
+#gp .ck-st{display:flex;gap:6px;flex-wrap:wrap;margin-top:9px}
+#gp .ck-st span,#gp .ck-p{padding:3px 9px;border-radius:99px;font-size:11.5px;font-weight:700;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2)}
+#gp .ck-me,#gp .ck-end{display:flex;align-items:center;gap:10px;margin-top:10px;padding:10px 12px;border-radius:14px;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.18)}
+#gp .ck-me>span,#gp .ck-end>span:nth-child(2){flex:1;display:flex;flex-direction:column;gap:2px}
+#gp .ck-me small,#gp .ck-end small{font-size:11px;opacity:.7}
+#gp .ck-me.out{justify-content:center;text-align:center}
+#gp .ck-end{background:rgba(255,180,84,.16);border-color:rgba(255,180,84,.5)}
+#gp .ck-tr{font-size:26px}
+#gp .ck-pl{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px}
+#gp .ck-p{display:inline-flex;align-items:center;gap:5px;padding-left:4px}
+#gp .ck-p b{margin-left:2px;color:#ffd58a}
+#gp .ck-p.me{border-color:#6ea8ff;background:rgba(80,130,255,.2)}
+#gp .ck-p.out{opacity:.5;text-decoration:line-through}
+</style>
 </head>
 <body>
 <div id="auth"><div class="fx" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i></div><div class="box">
@@ -2971,19 +2996,24 @@ const GP=(function(){
     return h+(acts.length?`<div class="gacts">${acts.join('')}</div>`:'');
   }
   function cricket(){
-    const st=v.state;let h=head(`<span class="chip">Pot ${K(v.pot)}</span>${timer()}`);
+    const st=v.state,ps=[...v.players.filter(p=>p.me),...v.players.filter(p=>!p.me)],nm=p=>p.me?'You':E(p.n),pot=K(v.pot);
+    let h=head(st==='playing'||st==='ended'?`<span class="chip">Round ${Math.min(v.round||0,v.max)}/${v.max}</span>${timer()}`:`<span class="chip">${st==='joining'?'Joining':''}</span>${timer()}`);
     if(st==='idle')return h+idle();
-    if(st==='joining')h+=bar(30)+`<div class="gnote warn">Joining open · cost ${K(v.cost)} coins · ${v.players.length} joined</div>`;
-    if(st==='playing'||st==='ended'){let o='';for(let i=1;i<=v.max;i++)o+=`<i class="${i<v.round?'on':i===v.round?'cur':''}"></i>`;h+=`<div class="ovs">${o}</div><div class="sub" style="font-size:10.5px;margin-top:3px;color:#cfdcff">Round ${v.round||0} of ${v.max}</div>`;if(st==='playing')h+=bar(30)}
-    const list=[...v.players.filter(p=>p.me),...v.players.filter(p=>!p.me)];
-    h+=`<div class="gsc">`+list.map((p,i)=>{const l=p.last;const bl=l?`<span class="ball ${l.o?'o':l.r>=4?'f':''}" title="${E(l.l)}">${BI(l.l,l.r,l.o)}<em>${l.o?(/lbw/i.test(l.l)?'LBW':/caught/i.test(l.l)?'Caught':/run out/i.test(l.l)?'Run out':'OUT'):l.r===0?'Dot':E(l.l.replace(/!/g,''))}</em></span>`:p.wait?'<span class="ball w">batting…</span>':'';
-      return `<div class="sr ${p.me?'me':''} ${p.out?'out':''} ${v.winner===p.n?'win':''}"><span class="rk">${v.winner===p.n?'🏆':i+1}</span><span class="nm">${p.me?'You':E(p.n)}${p.out?' · OUT':''}</span>${bl}<span class="rn">${p.runs}</span></div>`}).join('')+`</div>`;
-    if(st==='ended'&&v.winner)h+=`<div class="gnote win">🏆 ${E(v.winner)} won ${K(v.prize)} coins</div>`;
-    const acts=[];
-    if(st==='joining')acts.push(btn('!j','＋ Join · '+K(v.cost),!v.joined,v.joined));
-    else if(st==='playing')acts.push(btn('!d','🏏 Bat',v.pending,!v.pending));
-    else if(st==='ended')acts.push(btn('!start','▶ New game',1));
-    return h+(acts.length?`<div class="gacts">${acts.join('')}</div>`:'');
+    if(st==='joining'){
+      h+=bar(30)+`<div class="ck-ent"><i class="ck-c">${K(v.cost)}</i><b>Entry ${K(v.cost)}</b><span class="ck-ar">→</span><span class="ck-pot">Pot ${pot}</span><span class="ck-in">${ps.length} in</span></div>`;
+      h+=`<div class="ck-av">${ps.map(p=>`<span class="ck-a">${av(p.n,34)}<em>${nm(p)}</em></span>`).join('')}</div>`;
+      h+=v.joined?`<div class="ck-ok">✔ You're in · ${ps.length} player${ps.length===1?'':'s'}</div>`:`<div class="gacts">${btn('!j','＋ Join · '+K(v.cost),1)}</div>`;
+      return h+`<div class="ck-ft">${v.max} rounds · an OUT is eliminated · most runs wins</div>`}
+    const left=ps.filter(p=>!p.out),waiting=left.filter(p=>p.wait),batted=left.length-waiting.length,top=[...ps].sort((a,b)=>b.runs-a.runs)[0],meP=ps.find(p=>p.me);
+    if(st==='ended'){
+      h+=`<div class="ck-end"><span class="ck-tr">🏆</span><span><b>${v.winner?nm(ps.find(p=>p.n===v.winner)||{n:v.winner}):'No one'} took the ${pot} pot${v.prize?` · +${K(v.prize)}`:''}</b><small>Cricket · the game has ended</small></span>${btn('!start','▶ Start a new game',1)}</div>`;
+    }else{
+      h+=bar(30)+`<div class="ck-st"><span>${batted}/${left.length} batted</span><span>waiting on ${waiting.length}</span>${top?`<span>top ${top.me?'you':E(top.n)} ${top.runs}</span>`:''}</div>`;
+      if(meP&&meP.out)h+=`<div class="ck-me out"><span><b>You're out — tap to watch</b><small>an OUT knocks you out</small></span></div>`;
+      else if(meP)h+=`<div class="ck-me"><span><b>Your bat</b><small>runs add up · an OUT knocks you out</small></span>${btn('!d','🏏 Bat',v.pending,!v.pending)}</div>`;
+      else h+=`<div class="ck-me out"><span><b>Spectating</b><small>wait for the next game</small></span></div>`}
+    h+=`<div class="ck-pl">${ps.map(p=>`<span class="ck-p ${p.me?'me':''} ${p.out?'out':''}">${av(p.n,18)}${p.me?'you':E(p.n)}<b>${p.runs}</b></span>`).join('')}</div>`;
+    return h+`<div class="ck-ft"><span class="ck-pot">Pot ${pot}</span> · entry ${K(v.cost)}</div>`;
   }
   function royale(){
     const st=v.state;let h=head(`${timer()}`);
