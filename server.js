@@ -522,8 +522,8 @@ app.post('/api/friends/:act', auth, ok((q, r) => {
 
 app.get('/api/account', auth, ok((q, r) => {
   const day = new Date(); day.setHours(0, 0, 0, 0);
-  const t = db.prepare('select coalesce(sum(case when amount>0 then amount end),0) e, coalesce(-sum(case when amount<0 then amount end),0) s from txs where user=? and ts>=?').get(q.user, day.getTime());
-  r.json({ coins: profile(q.user).coins, earned: t.e, spent: t.s, activity: db.prepare('select kind,title,amount,ts from txs where user=? order by id desc limit 50').all(q.user) });
+  const t = db.prepare('select coalesce(sum(case when amount>0 then amount end),0) e, coalesce(-sum(case when amount<0 then amount end),0) s from txs where user=? and kind!=\'gs\' and ts>=?').get(q.user, day.getTime());
+  r.json({ coins: profile(q.user).coins, earned: t.e, spent: t.s, activity: db.prepare("select kind,title,amount,ts from txs where user=? and kind!='gs' order by id desc limit 50").all(q.user) });
 }));
 const pinFails = new Map();
 function checkPin(name, pin) { // true = ok (or no PIN set), false = wrong, 'locked' = too many tries
@@ -2238,7 +2238,7 @@ const payGift0 = (from, to, gf, ctx = 'room') => db.transaction(() => {
   const rc = gf.r ?? Math.floor(gf.c / 2);
   db.prepare('update users set coins=coins+? where name=?').run(rc, to);
   db.prepare('insert into gift_inv(user,gift,n) values(?,?,1) on conflict(user,gift) do update set n=n+1').run(to, gf.key || gf.n.toLowerCase());
-  const tx = addTx(from, 'gift', `Sent ${gf.n} to ${to}`, -gf.c); addTx(to, 'gift', `${gf.n} from ${from}`, rc); setImmediate(() => notify(to, 'rewards', `${from} sent you ${gf.n} (+${rc.toLocaleString()} coins)`));
+  const tx = addTx(from, ctx === 'shower' ? 'gs' : 'gift', `Sent ${gf.n} to ${to}`, -gf.c); addTx(to, 'gift', ctx === 'shower' ? `${gf.n} gift shower from ${from}` : `${gf.n} from ${from}`, rc); setImmediate(() => notify(to, 'rewards', `${from} sent you ${gf.n} (+${rc.toLocaleString()} coins)`));
   const isMig = String(gf.key || gf.n || '').toLowerCase() === 'migmeet' || String(gf.n || '').toLowerCase() === 'migmeet';
   if (isMig) mev(from, 'dm_gift');   // the "Send migmeet gifts" task counts the migmeet gift wherever it is sent
   if (ctx !== 'dm') { mev(from, 'gift_sent'); mev(to, 'gift_recv'); }
@@ -2269,7 +2269,9 @@ function shower(ws, key) {
   if (wait > 0) return reply(ws, `Please wait ${Math.ceil(wait / 1000)} more seconds before sending another gift shower.`);
   if (coins(ws.user) < gf.c * to.length) return reply(ws, `You need ${gf.c * to.length} coins to send ${gf.n} to ${to.length} members.`);
   showerAt.set(ws.user, Date.now());
-  to.forEach(n => { if (payGift(ws.user, n, gf, 'room')) try { contestScore(ws.room, 'gift', ws.user, { gift: gf.key, amount: gf.c }); } catch (e) { console.log('[contest]', e.message); } });
+  let sent = 0;
+  to.forEach(n => { if (payGift(ws.user, n, gf, 'shower')) try { sent++; contestScore(ws.room, 'gift', ws.user, { gift: gf.key, amount: gf.c }); } catch (e) { console.log('[contest]', e.message); } });
+  if (sent) addTx(ws.user, 'gift', `${ws.room} · ${gf.n} gift shower (${sent} members)`, -gf.c * sent);
   const shown = to.length > 8 ? to.slice(0, 8).join(', ') + ` and ${to.length - 8} others` : to.join(', ');
   say(ws.room, ws.user, `{c:${gcol(gf)}}<< 🎆 *GIFT SHOWER* ${ws.user} [${level(xpOf(ws.user))}] gives a ${gf.n} ${giftIcon(gf).trim()} to ${shown}! Hurray! >>`, 'gift');
   reply(ws, `Congratulations for sending gift! You have used ${gf.c * to.length} coins and your estimated remaining balance after gifting will be ${coins(ws.user)} coins.`, 'ok');
