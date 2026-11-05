@@ -1782,8 +1782,9 @@ const cast = (room, o) => {
 // Live presence: the status the user picked (online / away / busy), but 'offline' once their browser is closed
 // (no open connection for 15 seconds; the short grace keeps a quick reconnect from flashing offline).
 const goneAt = new Map();
-const hasSock = n => [...wss.clients].some(w => w.user === n && !w.emb && w.readyState === 1);
-const livePres = (n, p) => { if (p === 'offline') return 'offline'; if (hasSock(n)) return p || 'online'; const g = goneAt.get(n); return g && Date.now() - g < 15e3 ? (p || 'online') : 'offline'; };
+const AWAY_MS = 15 * 60e3;   // minimised / dropped: shown Away this long, then Offline; rooms are kept for one more AWAY_MS
+const hasSock = n => [...wss.clients].some(w => w.user === n && !w.emb && w.readyState === 1 && !(w.hiddenAt && Date.now() - w.hiddenAt > AWAY_MS));
+const livePres = (n, p) => { if (p === 'offline') return 'offline'; if (hasSock(n)) return p || 'online'; const g = goneAt.get(n); return g && Date.now() - g < AWAY_MS ? (!p || p === 'online' ? 'away' : p) : 'offline'; };
 const withPres = u => (u && u.name ? { ...u, presence: livePres(u.name, u.presence) } : u);
 const online = () => {
   const l = [...new Set([...wss.clients].filter(w => w.user).map(w => w.user))]
@@ -1799,6 +1800,16 @@ setInterval(() => {
     if (!w.room || !w.user || w.room.startsWith('dm:') || !w.roomAt || now - w.roomAt < ROOM_STAY_MS) return;
     if (canMod(w.room, w.user)) return;
     const r = w.room; leaveRoom(w); send(w, { t: 'kicked', room: r, by: 'system', auto: true });
+  });
+}, 60e3).unref();
+// App minimised with the connection still open: Away at once (client), Offline after 15 min, rooms reset after 30 min hidden in total
+setInterval(() => {
+  const now = Date.now(), seen = new Set();
+  wss.clients.forEach(w => {
+    if (!w.user || !w.hiddenAt || w.emb) return;
+    const t = now - w.hiddenAt;
+    if (t > AWAY_MS && t < AWAY_MS + 61e3 && !seen.has(w.user)) { seen.add(w.user); online(); userRooms(w.user).forEach(castRoster); }
+    if (t > 2 * AWAY_MS && w.room && !w.room.startsWith('dm:') && !canMod(w.room, w.user)) { const r = w.room; w.tabs && [...w.tabs].forEach(x => { try { w.tabs.delete(x); } catch {} }); leaveRoom(w); send(w, { t: 'kicked', room: r, by: 'system', auto: true }); }
   });
 }, 60e3).unref();
 // Everyone who is in a room: joined right now OR has the room open as a tab (an open tab means they are still in that room)
@@ -2577,7 +2588,7 @@ function onWsMessage(ws, raw) {
       return;
     }
     if (m.t === 'bye') { ws._bye = true; return; }
-    if (m.t === 'vis') { ws.vis = !!m.v; return; }   // app on screen (true) or in the background (false)   // the browser/tab is closing: show offline without the grace period
+    if (m.t === 'vis') { ws.vis = !!m.v; const was = ws.hiddenAt; ws.hiddenAt = m.v ? 0 : Date.now(); if (m.v && was && Date.now() - was > AWAY_MS) { goneAt.delete(ws.user); online(); userRooms(ws.user).forEach(castRoster); } return; }   // app on screen (true) or in the background (false)   // the browser/tab is closing: show offline without the grace period
     if (m.t === 'logout') {   // signed out: offline, out of every room
       if (!ws.user) return;
       if (m.endpoint) { try { PUSH.drop(ws.user, m.endpoint); } catch {} }
@@ -2652,13 +2663,13 @@ function onWsMessage(ws, raw) {
   }
 }
 const ghosts = new Map();
-const ROOM_GRACE = 5 * 60e3;   // minimised / dropped connections stay in their room this long
+const ROOM_GRACE = 30 * 60e3;   // minimised / dropped connections stay in their room this long
 function closeWs(ws) {
   if (ws.user && !ws.emb && !hasSock(ws.user)) {
     const u0 = ws.user, rooms0 = userRooms(u0); if (ws.room) rooms0.push(ws.room);
-    goneAt.set(u0, ws._bye ? Date.now() - 15e3 : Date.now());
+    goneAt.set(u0, ws._bye ? Date.now() - AWAY_MS : Date.now());
     const upd = () => { if (hasSock(u0)) return; online(); [...new Set(rooms0)].filter(x => !x.startsWith('dm:')).forEach(castRoster); };
-    if (ws._bye) setImmediate(upd); setTimeout(upd, 16e3);
+    setImmediate(upd); if (!ws._bye) setTimeout(upd, AWAY_MS + 1e3);
   }
   try { for (const c of [...calls.values()]) if (c.fromWs === ws || c.toWs === ws) callEnd(c, c.state === 'ring' ? 'cancelled' : 'dropped', ws.user); } catch {}
   // an explicit exit (tab closed / Leave) leaves at once; a dropped connection (app minimised, bad network) keeps the room for a grace period
