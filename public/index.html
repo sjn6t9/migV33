@@ -1740,9 +1740,10 @@ html body #sheet#sheet .gi-grid .gi{display:block!important;border:1px solid rgb
 html body #sheet#sheet .gi-grid .gi i{display:inline-grid!important;place-items:center;width:20px;height:20px;border-radius:50%;background:#f7931e!important;color:#1b1206!important;font-style:normal;font-size:11px;font-weight:800;margin:0 0 3px!important;padding:0!important;border:0!important}
 html body #sheet#sheet .gi-grid .gi .gt{display:block!important;border:0!important;padding:0!important;margin:0!important;background:none!important}
 html body #sheet#sheet .gi-grid .gi b,html body #sheet#sheet .gi-grid .gi code{display:inline!important;border:0!important;padding:0!important;margin:0!important;background:none!important;font-weight:700!important}
-/* Royale: the six coin chips stay in ONE row, a little smaller with a thinner border */
-html[data-skin] body #view#view #gp .chips{flex-wrap:nowrap!important;gap:5px!important;justify-content:center!important}
-html[data-skin] body #view#view #gp .chips .cp{width:39px!important;height:39px!important;min-width:0!important;flex:0 0 auto!important;font-size:11px!important;border-width:1px!important;padding:0!important}
+/* Royale: coin chips fill the same width as the Jutt…Tirel row (6 equal columns), one row, thin border */
+html[data-skin] body #view#view #gp .chips{display:grid!important;grid-template-columns:repeat(6,1fr)!important;gap:5px!important;justify-items:center}
+html[data-skin] body #view#view #gp .chips .cp{width:100%!important;max-width:40px;height:auto!important;aspect-ratio:1;font-size:10.5px!important;border-width:1px!important;padding:0!important}
+html[data-skin] body #view#view #gp .chips .cp.cu{font-size:9px!important;letter-spacing:-.3px}
 /* real playing cards (board + chat) */
 .pc.face .sv.h,.mc .sv.h{-webkit-mask-image:url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2024%2024'%3E%3Cpath%20d='M12%2021.5C5%2015.5%202%2012%202%208.3%202%205.4%204.2%203.5%206.8%203.5c2%200%203.9%201.1%205.2%203%201.3-1.9%203.2-3%205.2-3C19.8%203.5%2022%205.4%2022%208.3c0%203.7-3%207.2-10%2013.2z'/%3E%3C/svg%3E");mask-image:url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2024%2024'%3E%3Cpath%20d='M12%2021.5C5%2015.5%202%2012%202%208.3%202%205.4%204.2%203.5%206.8%203.5c2%200%203.9%201.1%205.2%203%201.3-1.9%203.2-3%205.2-3C19.8%203.5%2022%205.4%2022%208.3c0%203.7-3%207.2-10%2013.2z'/%3E%3C/svg%3E")}
 .pc.face .sv.d,.mc .sv.d{-webkit-mask-image:url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2024%2024'%3E%3Cpath%20d='M12%201.5%2020.5%2012%2012%2022.5%203.5%2012z'/%3E%3C/svg%3E");mask-image:url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2024%2024'%3E%3Cpath%20d='M12%201.5%2020.5%2012%2012%2022.5%203.5%2012z'/%3E%3C/svg%3E")}
@@ -2901,7 +2902,7 @@ const Panel = (function () {
 
 const PCH=(k,t,c)=>{const q={'♥':'h','♦':'d','♠':'s','♣':'c'}[t],r=q==='h'||q==='d'?' r':'';return `<div class="${c} face${r}"><span class="cn">${k}<u class="sv ${q}"></u></span><span class="cfr"></span><u class="sv ${q} bgs"></u><span class="cn bt">${k}<u class="sv ${q}"></u></span></div>`};
 const GP=(function(){
-  let dt={k:null,t:0},v=null,x5={},skew=0,tick=null,chip=+(localStorage.gpchip||500),min=false,total=0;
+  let dt={k:null,t:0},v=null,x5={},skew=0,tick=null,chip=+(localStorage.gpchip||500),cust=+(localStorage.gpcust||0),min=false,total=0;
   const E=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
   const K=n=>Number(n||0).toLocaleString('en-US');
   const sec=d=>d?Math.max(0,Math.ceil((d-(Date.now()+skew))/1000)):0;
@@ -2979,7 +2980,7 @@ const GP=(function(){
     if(st==='between'&&w10<=0)return h+`<div class="gacts gstart">${btn('!start','▶ Start',1)}</div>`;
     h+=`<div class="vs">${side('red','Red')}${side('blue','Blue')}</div>`;
     if(st==='betting'){
-      h+=`<div class="chips">${[100,500,1000,5000,10000,20000].map(a=>`<button class="cp ${a===chip?'on':''}" data-chip="${a}">${a>=1000?a/1000+'K':a}</button>`).join('')}</div>`;
+      const PR=[500,1000,5000,10000,20000],sh=a=>a>=1000?(a%1000?(a/1000).toFixed(1):a/1000)+'K':a;h+=`<div class="chips">${PR.map(a=>`<button class="cp ${a===chip?'on':''}" data-chip="${a}">${sh(a)}</button>`).join('')}<button class="cp cu ${!PR.includes(chip)?'on':''}" data-cust="1">${cust?sh(cust):'Cust'}</button></div>`;
       h+=`<div class="spc">${OPT.map(([k,n])=>`<button data-bet="${k}" class="${v.mine[k]?'has':''}">${n}<b>${pay[k]}x</b><i class="ba">${v.mine[k]?K(v.mine[k]):'&nbsp;'}</i></button>`).join('')}</div>`;
       const my=Object.values(v.mine).reduce((a,x)=>a+x,0);
       h+=`<div class="gnote">${my?`Your bets: ${K(my)} coins · `:''}${v.bettors} player${v.bettors===1?'':'s'} betting · double-tap a side to bet ${K(chip)}</div>`;
@@ -3011,6 +3012,7 @@ const GP=(function(){
       };const g=G[v.g]||G.cricket;sheetOpen(`<h2>📘 ${g[0]} · how to play</h2><span class="gi-grid">${g[1].map((x,n)=>`<span class="gi"><i>${n+1}</i><span class="gt">${x}</span></span>`).join('')}</span><div class="mu">Virtual coins, just for fun.</div>`);return}
       if(e.target.closest('[data-snd]')){const m=GS.cycle();draw();toast(['🔊 Sound + vibration','📳 Vibration only','🔇 Muted'][m]);return}
       if(e.target.closest('[data-live]')){if(!v)return;const rows=(v.players||[]).map(p=>{const sc=p.runs??p.total;const tag=v.winner===p.n?'🏆 winner':(p.out||p.alive===false)?'out':'';return `<div class="gl-r"><b>${E(p.n)}</b><span>${sc!==undefined&&sc!==null?K(sc):''}</span><i>${tag}</i></div>`}).join('')||'<div class="mu">No players yet.</div>';sheetOpen(`<h2>Live result · ${E(TITLE[v.g]?TITLE[v.g][1]:'Game')}</h2><div class="mu">Pot ${K(v.pot)}${v.round?' · Round '+v.round:''}</div><div class="gl-list">${rows}</div>`);return}
+      if(e.target.closest('[data-cust]')){sheetOpen(`<h2>Custom coin</h2><div class="mu">Pick any bet amount (minimum 100).</div><input id="gcv" type="number" inputmode="numeric" min="100" placeholder="Amount" value="${cust||''}" style="width:100%;margin:8px 0"><button class="o" id="gcok" style="width:100%">Use this amount</button>`);setTimeout(()=>{const i=$('gcv');if(i)i.focus()},50);$('gcok').onclick=()=>{const n=Math.floor(+$('gcv').value);if(!(n>=100))return toast('Minimum 100',true);cust=n;chip=n;try{localStorage.gpcust=n;localStorage.gpchip=n}catch{}$('sheet').classList.remove('open');draw()};return}
       const c=e.target.closest('[data-chip]');if(c){chip=+c.dataset.chip;try{localStorage.gpchip=chip}catch{}draw();return}
       const b=e.target.closest('[data-bet]');if(b&&!b.disabled){const now=Date.now(),k=b.dataset.bet;if(dt.k===k&&now-dt.t<450){dt.k=null;tx({t:'msg',text:`!bet ${k} ${chip}`});return}dt.k=k;dt.t=now;b.classList.add('tap1');setTimeout(()=>b.classList.remove('tap1'),160);return}
       const d=e.target.closest('[data-c]');if(d&&!d.disabled)tx({t:'msg',text:d.dataset.c})})}
