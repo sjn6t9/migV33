@@ -13,21 +13,15 @@ const HOUR = 3600 * 1000;
 
 /* ======================= CONFIG ======================= */
 const CONFIG = {
-  BET_SECONDS: 45,            // betting window
+  BET_SECONDS: 30,            // betting window
   RESULT_PAUSE_SECONDS: 10,   // pause after the result before the next round
   MIN_BET: 100,
-  MAX_TOTAL: 1200000,         // max total a player can bet on one board (all options together)
+  MAX_TOTAL: 600000,          // max total a player can bet on one board (all options together)
   MAX_BET: null,              // e.g. 100000, or null for no limit
   PAYOUTS: { red: 1.9, blue: 1.9, jutt: 5, color: 10, run: 20, doublerun: 100, tirel: 200 },
   // How often the WINNING side should show each special hand.
   // Every window a random count in [min, max] is chosen and spread at random times.
-  SCHEDULE: {
-    jutt:      { min: 5, max: 10, windowMs: 1 * HOUR },
-    color:     { min: 2, max: 3,  windowMs: 1 * HOUR },
-    run:       { min: 1, max: 2,  windowMs: 1 * HOUR },
-    doublerun: { min: 2, max: 4,  windowMs: 6 * HOUR },
-    tirel:     { min: 2, max: 3,  windowMs: 12 * HOUR },
-  },
+  CYCLE: { size: 100, counts: { jutt: 12, color: 6, run: 3, doublerun: 2, tirel: 1 } },   // per 100 boards, shuffled
   COIN_NAME: 'coins',
   AUTO_NEXT: false,           // false: after a round, wait for a player to type !start
   START_ADMIN_ONLY: false,    // anyone may type !start
@@ -200,31 +194,26 @@ function dealRound(target = null) {
 const PRIORITY = ['tirel', 'doublerun', 'run', 'color', 'jutt'];
 
 class Planner {
-  constructor(schedule = CONFIG.SCHEDULE, now = Date.now()) {
-    this.schedule = schedule;
-    this.plans = {};
-    for (const k of Object.keys(schedule)) this._roll(k, now);
+  // Every "cycle" of 100 boards contains exactly this many special hands, the rest are plain Red/Blue
+  // (High Card) rounds. The 100 outcomes are shuffled, so nobody can predict what comes next.
+  constructor(schedule = CONFIG.CYCLE) {
+    this.cycle = schedule;
+    this.bag = [];
   }
-  _roll(k, start) {
-    const { min, max, windowMs } = this.schedule[k];
-    const count = min + rnd(max - min + 1);
-    const times = Array.from({ length: count }, () => start + rnd(windowMs)).sort((a, b) => a - b);
-    const carry = this.plans[k] ? this.plans[k].times : []; // overdue events are not lost
-    this.plans[k] = { end: start + windowMs, times: [...carry, ...times] };
+  _refill() {
+    const bag = [];
+    let n = 0;
+    for (const [k, c] of Object.entries(this.cycle.counts)) { for (let i = 0; i < c; i++) bag.push(k); n += c; }
+    while (bag.length < this.cycle.size) bag.push(null);
+    this.bag = shuffle(bag);
   }
-  /** Returns the special hand type the next round must show, or null. */
-  next(now = Date.now()) {
-    for (const k of Object.keys(this.schedule)) {
-      while (this.plans[k].end <= now) this._roll(k, this.plans[k].end);
-    }
-    for (const k of PRIORITY) {
-      const p = this.plans[k];
-      if (p && p.times.length && p.times[0] <= now) { p.times.shift(); return k; }
-    }
-    return null;
+  /** Returns the special hand type the next round must show, or null (plain Red/Blue round). */
+  next() {
+    if (!this.bag.length) this._refill();
+    return this.bag.pop();
   }
-  serialize() { return JSON.stringify(this.plans); }
-  restore(json) { this.plans = JSON.parse(json); }
+  serialize() { return JSON.stringify({ bag: this.bag }); }
+  restore(json) { try { const o = JSON.parse(json); this.bag = Array.isArray(o.bag) ? o.bag : []; } catch { this.bag = []; } }
 }
 
 /* ======================= STORAGE ======================= */
@@ -331,7 +320,7 @@ class RoyaleBattle {
     this.now = now;
     this.onRound = onRound;     // optional: called after every round (logging / audit)
     this.onStopped = onStopped; // called when the bot has stopped
-    this.planner = planner || new Planner(config.SCHEDULE, now());
+    this.planner = planner || new Planner(config.CYCLE);
     this.phase = 'ready';
     this.roundId = 0;
     this.deadline = null; this.last = null;   // panel info
@@ -410,7 +399,7 @@ class RoyaleBattle {
       }
       if (lines.length) this.send(lines.join('\n'));
 
-      const target = this.planner.next(this.now());
+      const target = this.planner.next();
       const r = dealRound(target);
       const show = (side) => `${r.hands[side].map(cardStr).join(' ')} — ${HAND_LABEL[r.evals[side].type]}`;
       const catLabel = HAND_LABEL[r.winningType];
@@ -603,8 +592,8 @@ class RoyaleBattleManager {
   }
 
   _create(roomId) {
-    const planner = new Planner(this.cfg.SCHEDULE, this.now());
-    if (this.savedPlans[roomId]) { try { planner.plans = this.savedPlans[roomId]; } catch (e) { /* ignore */ } }
+    const planner = new Planner(this.cfg.CYCLE);
+    if (this.savedPlans[roomId]) { try { planner.bag = Array.isArray(this.savedPlans[roomId].bag) ? this.savedPlans[roomId].bag : []; } catch (e) { /* ignore */ } }
     const game = new RoyaleBattle({
       roomId, store: this.store, config: this.cfg, planner, now: this.now, onRound: this.onRound,
       send: (text) => this.send(roomId, text),
@@ -617,7 +606,7 @@ class RoyaleBattleManager {
 
   savePlanners() {
     if (!this.plannerFile) return;
-    for (const [roomId, g] of this.rooms) this.savedPlans[roomId] = g.planner.plans;
+    for (const [roomId, g] of this.rooms) this.savedPlans[roomId] = { bag: g.planner.bag };
     require('fs').writeFileSync(this.plannerFile, JSON.stringify(this.savedPlans));
   }
 

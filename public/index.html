@@ -1704,6 +1704,13 @@ html[data-skin] body #view#view #tp .turnbar{margin:3px 0 1px!important;padding:
 html[data-skin] body #view#view #tp .hint{margin:0 0 2px!important;font-size:11px!important;line-height:1.25!important}
 html[data-skin] body #view#view #tp .tpacts{margin-top:0!important}
 html[data-skin] body #view#view #tp .gorow{margin-top:2px!important}
+
+/* Royale: fixed bet buttons with reserved amount line */
+#gp .spc button .ba{display:block;font-style:normal;font-size:9.5px;font-weight:600;color:#cfe0ff;line-height:1.15;min-height:11px;margin-top:0}
+html[data-skin] body #gp#gp .spc button{padding:3px 1px 2px!important;line-height:1.15!important;min-height:0!important;height:auto!important;white-space:nowrap;font-size:10px!important;letter-spacing:-.2px}
+html[data-skin] body #gp#gp .spc button b{margin-top:0}
+#gp .side .tl{display:block;min-height:13px;font-size:10px!important;line-height:1.25}
+#gp .gstart{display:flex;justify-content:center;margin-top:6px}
 /* real playing cards (board + chat) */
 .pc.face .sv.h,.mc .sv.h{-webkit-mask-image:url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2024%2024'%3E%3Cpath%20d='M12%2021.5C5%2015.5%202%2012%202%208.3%202%205.4%204.2%203.5%206.8%203.5c2%200%203.9%201.1%205.2%203%201.3-1.9%203.2-3%205.2-3C19.8%203.5%2022%205.4%2022%208.3c0%203.7-3%207.2-10%2013.2z'/%3E%3C/svg%3E");mask-image:url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2024%2024'%3E%3Cpath%20d='M12%2021.5C5%2015.5%202%2012%202%208.3%202%205.4%204.2%203.5%206.8%203.5c2%200%203.9%201.1%205.2%203%201.3-1.9%203.2-3%205.2-3C19.8%203.5%2022%205.4%2022%208.3c0%203.7-3%207.2-10%2013.2z'/%3E%3C/svg%3E")}
 .pc.face .sv.d,.mc .sv.d{-webkit-mask-image:url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2024%2024'%3E%3Cpath%20d='M12%201.5%2020.5%2012%2012%2022.5%203.5%2012z'/%3E%3C/svg%3E");mask-image:url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2024%2024'%3E%3Cpath%20d='M12%201.5%2020.5%2012%2012%2022.5%203.5%2012z'/%3E%3C/svg%3E")}
@@ -2884,19 +2891,21 @@ const GP=(function(){
     const st=v.state;let h=head(`${timer()}`);
     if(st==='idle'||st==='ready')return h+`<div class="gnote">Royale Battle is ready. Type <b>!start</b> to begin.</div><div class="gacts">${btn('!start','▶ Start rounds',1)}</div>`;
     const L=v.last,pay=v.pay||{};
-    if(st==='betting')h+=bar(45);
+    if(st==='betting')h+=bar(30);
     const hand=side=>L?`<div class="mh">${L.hands[side].map(c=>card(c)).join('')}</div><span class="tl">${E(L.handLabel[side])}</span>`:'';
     const tl=s=>v.tot[s]?`${K(v.tot[s])} bet`+(v.mine[s]?` · you ${K(v.mine[s])}`:''):'';
-    const side=(s,n)=>{const res=L&&st!=='betting',won=res&&L.winner===s;return `<button class="side btn ${s} ${won?'won':res?'lost':''}" data-bet="${s}" ${st==='betting'?'':'disabled'}><span class="sh"><i class="dt"></i><b>${n}</b><em class="px">${pay[s]||1.9}x</em></span>${st==='betting'?`<span class="tl">${tl(s)}</span>`:hand(s)}</button>`};
+    const side=(s,n)=>{const res=L&&st!=='betting',won=res&&L.winner===s;return `<button class="side btn ${s} ${won?'won':res?'lost':''}" data-bet="${s}" ${st==='betting'?'':'disabled'}><span class="sh"><i class="dt"></i><b>${n}</b><em class="px">${pay[s]||1.9}x</em></span>${st==='betting'?`<span class="tl">${tl(s)||'&nbsp;'}</span>`:hand(s)}</button>`};
+    const w10=st==='between'?Math.ceil(10-(Date.now()+skew-(v.since||0))/1000):1;
+    if(st==='between'&&w10<=0)return h+`<div class="gacts gstart">${btn('!start','▶ Start',1)}</div>`;
     h+=`<div class="vs">${side('red','Red')}${side('blue','Blue')}</div>`;
     if(st==='betting'){
       h+=`<div class="chips">${[100,500,1000,5000,10000,20000].map(a=>`<button class="cp ${a===chip?'on':''}" data-chip="${a}">${a>=1000?a/1000+'K':a}</button>`).join('')}</div>`;
-      h+=`<div class="spc">${OPT.map(([k,n])=>`<button data-bet="${k}" class="${v.mine[k]?'has':''}">${n}<b>${pay[k]}x</b>${v.mine[k]?K(v.mine[k]):''}</button>`).join('')}</div>`;
+      h+=`<div class="spc">${OPT.map(([k,n])=>`<button data-bet="${k}" class="${v.mine[k]?'has':''}">${n}<b>${pay[k]}x</b><i class="ba">${v.mine[k]?K(v.mine[k]):'&nbsp;'}</i></button>`).join('')}</div>`;
       const my=Object.values(v.mine).reduce((a,x)=>a+x,0);
       h+=`<div class="gnote">${my?`Your bets: ${K(my)} coins · `:''}${v.bettors} player${v.bettors===1?'':'s'} betting · double-tap a side to bet ${K(chip)}</div>`;
     }else if(L){
       h+=`<div class="gnote ${L.won?'win':''}">${L.winner==='red'?'🔴 Red':'🔵 Blue'} wins with ${E(L.label)}${L.won?` · you won ${K(L.won)}`:''}${st==='between'?'':''}</div>`;
-      if(st==='between'){const w=Math.ceil(10-(Date.now()+skew-(v.since||0))/1000);h+=w>0?`<div data-wait="1" style="height:1px"></div>`:`<div class="gacts">${btn('!start','▶ Start to board',1)}</div>`}
+      if(st==='between')h+=`<div data-wait="1" style="height:1px"></div>`
     }else h+=`<div class="gnote">Next round starting…</div>`;
     return h;
   }
@@ -2918,7 +2927,7 @@ const GP=(function(){
         cricket:['Cricket',['Type <b>!start</b> to open a table at 100 coins, or <b>!start 500</b> to choose the entry.','Others type <b>!j</b> within 30 seconds to join. At least two players are needed.','Each round, every batter types <b>!d</b> within 30 seconds to bat.','Outcomes: 1, 2, 3, 4 or 6 runs, a dot ball, or out (caught, run out, LBW).','There are six rounds. The most runs wins the pot, minus a 10 percent house cut.']],
         lowcard:['LowCard',['Type <b>!start</b> to open a table, or <b>!start 500</b> to choose the entry.','Others type <b>!j</b> within 30 seconds to join. At least two players are needed.','Each round, every player types <b>!d</b> within 30 seconds to draw one card.','The lowest card is out. Two is the lowest, Ace is the highest.','If several players tie for lowest, only they draw again. The last player standing wins the pot, minus 10 percent.']],
         dice:['Dice',['Type <b>!start</b> to open a table, or <b>!start 500</b> to choose the entry.','Others type <b>!j</b> within 30 seconds to join. At least two players are needed.','Each player types <b>!d</b> within 30 seconds to roll two dice.','The highest total wins the pot, minus 10 percent.','If there is a tie for highest, only the tied players roll again.']],
-        royale:['Royale Battle',['Betting is open for 45 seconds. Bet on Red or Blue with <b>!bet red 500</b> or <b>!bet blue 500</b>.','Red and Blue pay 1.9 times your bet.','Special hands pay more: <b>!bet jutt 100</b> pays 5 times, <b>!bet color 100</b> 10 times, <b>!bet run 100</b> 20 times, <b>!bet doublerun 100</b> 100 times, <b>!bet tirel 100</b> 200 times.','The minimum bet is 100 coins.','Check your coins with <b>!bal</b>, and see the top players with <b>!top</b>.','After each result there is a 10-second pause, then the next round opens.']]
+        royale:['Royale Battle',['Betting is open for 30 seconds. Bet on Red or Blue with <b>!bet red 500</b> or <b>!bet blue 500</b>.','Red and Blue pay 1.9 times your bet.','Special hands pay more: <b>!bet jutt 100</b> pays 5 times, <b>!bet color 100</b> 10 times, <b>!bet run 100</b> 20 times, <b>!bet doublerun 100</b> 100 times, <b>!bet tirel 100</b> 200 times.','The minimum bet is 100 coins.','Check your coins with <b>!bal</b>, and see the top players with <b>!top</b>.','After each result there is a 10-second pause, then the next round opens.']]
       };const g=G[v.g]||G.cricket;sheetOpen(`<h2>📘 ${g[0]} · how to play</h2><ol class="gi-list">${g[1].map(x=>`<li>${x}</li>`).join('')}</ol><div class="mu">Virtual coins, just for fun.</div>`);return}
       if(e.target.closest('[data-snd]')){try{localStorage.gpmute=localStorage.gpmute==='1'?'':'1'}catch{}draw();return}
       if(e.target.closest('[data-live]')){if(!v)return;const rows=(v.players||[]).map(p=>{const sc=p.runs??p.total;const tag=v.winner===p.n?'🏆 winner':(p.out||p.alive===false)?'out':'';return `<div class="gl-r"><b>${E(p.n)}</b><span>${sc!==undefined&&sc!==null?K(sc):''}</span><i>${tag}</i></div>`}).join('')||'<div class="mu">No players yet.</div>';sheetOpen(`<h2>Live result · ${E(TITLE[v.g]?TITLE[v.g][1]:'Game')}</h2><div class="mu">Pot ${K(v.pot)}${v.round?' · Round '+v.round:''}</div><div class="gl-list">${rows}</div>`);return}
