@@ -144,7 +144,7 @@ class CricketGame {
       }
       // "Counting runs" shows each player's TOTAL runs, highest first (outs are not listed)
       const scorers = active.filter((p) => !this.out.has(p)).sort((a, b) => this.total[b] - this.total[a]);
-      for (const p of scorers) await this.say(`${p} (${runsText(this.total[p])})`);
+      if (scorers.length) await this.say(scorers.map((p) => `${p} (${runsText(this.total[p])})`).join("   "));
 
       const left = this.players.filter((p) => !this.out.has(p));
       if (left.length === 1) return this.finish(left[0], "last player standing");

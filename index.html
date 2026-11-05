@@ -2057,6 +2057,19 @@ html[data-skin] body #whw #wh>svg{display:block;background:none!important;border
 html[data-skin] body #app#app#app .fbp a.mn,html[data-skin] body #app#app#app .fbp a.ht{color:#2f7fd8!important;font-weight:700}
 html[data-theme=dark][data-skin] body #app#app#app .fbp a.mn,html[data-theme=dark][data-skin] body #app#app#app .fbp a.ht{color:#6db3ff!important}
 </style>
+<style>/* cricket chat icons */
+.ckb{display:inline-flex;align-items:center;gap:5px;vertical-align:middle;padding:1px 8px 1px 2px;border-radius:99px;font-weight:800!important;font-size:12px;background:rgba(255,255,255,.7);border:1px solid rgba(60,100,200,.25);color:#1d3a7a}
+.cki{display:inline-grid;place-items:center;width:18px;height:18px;border-radius:50%;font-style:normal;font-size:11px;font-weight:900;color:#fff;box-shadow:inset 0 -2px 3px rgba(0,0,0,.25),0 1px 2px rgba(0,0,0,.25)}
+.ckb.n1 .cki,.ckb.n2 .cki,.ckb.n3 .cki{background:radial-gradient(circle at 35% 30%,#ff7a6b,#b3110c 70%)}
+.ckb.s4 .cki{background:radial-gradient(circle at 35% 30%,#5be08a,#0a7a35 70%)}
+.ckb.s6 .cki{background:radial-gradient(circle at 35% 30%,#ffe27a,#d18a00 70%);color:#5a3500}
+.ckb.d .cki{background:radial-gradient(circle at 35% 30%,#b9c3d6,#6b7691 70%);font-size:15px;line-height:1}
+.ckb.w .cki{background:radial-gradient(circle at 35% 30%,#ff5d5d,#8f0000 70%)}
+.ckb.w{color:#a00000;border-color:rgba(200,0,0,.35)}.ckb.s6{color:#8a5a00}.ckb.s4{color:#0a6a2f}
+.ckp{display:inline-flex;align-items:center;gap:4px;margin:1px 6px 1px 0;padding:0 3px 0 8px;border-radius:99px;background:rgba(255,255,255,.7);border:1px solid rgba(60,100,200,.25);font-weight:700!important}
+.ckp b{display:inline-block;min-width:20px;padding:0 6px;border-radius:99px;background:#1d5fe0;color:#fff;text-align:center;font-weight:900!important;font-size:11.5px}
+html[data-theme=dark] .ckb,html[data-theme=dark] .ckp,#log.dark .ckb,#log.dark .ckp,#log.navy .ckb,#log.navy .ckp{background:rgba(255,255,255,.1);color:#cfe0ff;border-color:rgba(130,170,255,.3)}
+</style>
 </head>
 <body>
 <div id="auth"><div class="fx" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i></div><div class="box">
@@ -3219,6 +3232,8 @@ async function micStart(){if(REC)return;
   mr.start();$('f').hidden=true;$('recbar').hidden=false;
   const tick=()=>{const s=Math.round((Date.now()-t0)/1000);$('rect').textContent=fmtDur(s);if(s>=60)micStop(true)};tick();REC.tm=setInterval(tick,500)}
 function micStop(send){if(!REC)return;REC.send=send;try{REC.mr.stop()}catch{}}
+const CKF=t=>{let m=t.match(/^(.+?) bats: (.+)$/);if(m){const L=m[2].trim(),l=L.toLowerCase();const k=/caught|run out|lbw|out/.test(l)?'w':/six/.test(l)?'s6':/four/.test(l)?'s4':/dot|no run/.test(l)?'d':/three/.test(l)?'n3':/two/.test(l)?'n2':'n1';const ic={w:'✕',s6:'6',s4:'4',d:'•',n3:'3',n2:'2',n1:'1'}[k];return `${m[1]} bats: <span class="ckb ${k}"><i class="cki">${ic}</i>${L}</span>`}
+if(/^.+ \(\d+ runs?\)(\s{2,}.+ \(\d+ runs?\))*$/.test(t)&&!/^Tie/.test(t))return t.split(/\s{2,}/).map(x=>{const q=x.match(/^(.+) \((\d+) runs?\)$/);return q?`<span class="ckp">${q[1]}<b>${q[2]}</b></span>`:x}).join(' ');return t};
 const sheetOpen=h=>{$('sh').classList.remove('stw');$('sheet').classList.remove('spn','rln');$('sh').innerHTML=h;$('sheet').classList.add('open')};
 function memSheet(){sheetOpen(`<h2>${esc(lastRoom)} · ${RM.length} online</h2><div style="max-height:55vh;overflow:auto;display:grid;gap:6px">`+(RM.map(u=>`<button data-n="${esc(u.name)}" style="text-align:left;display:flex;gap:8px;align-items:center">${av(u.name,32)}<b style="color:${nc(u.name)}">${esc(u.name)}</b>${lvtag(u.name,u.xp)}${rt(u.role,u.name)}</button>`).join('')||'<div class="mu">Nobody here yet.</div>')+'</div>');
   $('sh').onclick=e=>{const n=e.target.closest('[data-n]')?.dataset.n;if(!n)return;$('sheet').classList.remove('open');if(n!==me)setTarget(n)}}
@@ -3313,7 +3328,7 @@ function add(m){if(['info','ok','err','emote','emotep','note','notel','notea','g
     const [u,dur]=String(m.text).split('|');const safe=/^\/uploads\/[a-f0-9]{32}\.\w+$/.test(u)?u:'';
     const body=m.kind==='image'?`<img class="chimg" src="${esc(safe)}" alt="Photo" loading="lazy" data-big="${esc(safe)}">`:`<audio controls preload="none" src="${esc(safe)}"></audio>${dur?` <small>${fmtDur(+dur)}</small>`:''}`;
     d.innerHTML=`<b data-u="${esc(m.user)}" style="color:${nc(m.user,light?40:72)}">${esc(m.user)}</b><div class="mdia">${m.kind==='image'?'📷 ':'🎤 '}</div><div>${body}</div>`;d.querySelector('.mdia').remove()}
-  else if(m.kind==='game'){d.className='b game';d.style.whiteSpace='pre-wrap';d.innerHTML=`<span class="gn">${m.priv?'🔒 ':''}${esc(m.user||'Teen Patti Gold')}:</span> ${esc(m.text).replace(/(^|[\s:])(10|[2-9AJQK])([♥♦♠♣])(?=$|[\s,.—]|<)/g,(x,p,k,t)=>p+PCH(k,t,'mc').replace(/<div/,'<span').replace(/<\/div>$/,'</span>'))}`}
+  else if(m.kind==='game'){d.className='b game';d.style.whiteSpace='pre-wrap';d.innerHTML=`<span class="gn">${m.priv?'🔒 ':''}${esc(m.user||'Teen Patti Gold')}:</span> ${(m.user==='Cricket Bot'?CKF:x=>x)(esc(m.text)).replace(/(^|[\s:])(10|[2-9AJQK])([♥♦♠♣])(?=$|[\s,.—]|<)/g,(x,p,k,t)=>p+PCH(k,t,'mc').replace(/<div/,'<span').replace(/<\/div>$/,'</span>'))}`}
   else{const light=$('log').classList.contains('light');d.className='b';d.innerHTML=`<b data-u="${esc(m.user)}" style="color:${nc(m.user,light?40:72)}">${esc(m.user)}</b>: ${emo(esc(m.text))}`}
   $('log').append(d);if(m.kind==='msg'||m.kind==='image'||m.kind==='voice'){const sp=stamp(),w=(m.ts||Date.now())+60000-Date.now();if(w>0){sp.style.display='none';setTimeout(()=>{const L=$('log'),end=!!L&&L.contains(sp)&&L.scrollHeight-L.scrollTop-L.clientHeight<90;sp.style.display='';if(end)L.scrollTop=1e9},w)}$('log').append(sp)}$('log').scrollTop=1e9}
 const uno=o=>tx({t:'uno',...o});
