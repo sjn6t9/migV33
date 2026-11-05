@@ -2147,6 +2147,7 @@ html body .mc>.sv.bgs{width:58%!important;height:46%!important;top:auto!importan
 <style>/* Reels: smaller icons; hide the page-title bar under the main header (like Home) */
 html body.onreels #sub#sub#sub{display:none!important}
 html body #rlw .rla{gap:9px!important}
+html body #rlw .rlfo{padding:3px 10px!important;font-size:11px!important;margin-left:5px!important}
 html body #rlw .rlb{width:34px!important;height:34px!important}
 html body #rlw .rla .rlb svg{width:18px!important;height:18px!important}
 html body #rlw .rla>div{min-width:36px!important;gap:1px!important}
@@ -2623,7 +2624,7 @@ const RLI={
  off:'<svg viewBox="0 0 24 24"><path d="M4 9v6h4l5 4V5L8 9z"/><path d="M17 9.5l4 5M21 9.5l-4 5"/></svg>',
  play:'<svg viewBox="0 0 24 24"><path d="M8 5l11 7-11 7z"/></svg>',
  pause:'<svg viewBox="0 0 24 24"><path d="M7 5h3.5v14H7zM13.5 5H17v14h-3.5z"/></svg>'};
-const rlFol=x=>x.fs==='none'?'<span role="button" class="rlfo" data-a="fol">Follow</span>':x.fs==='sent'?'<span class="rlfo sent">Requested</span>':x.fs==='incoming'?'<span role="button" class="rlfo" data-a="fol">Accept</span>':'';
+const rlFol=x=>x.fs==='none'?'<span role="button" class="rlfo" data-a="fol">Follow</span>':x.fs==='sent'?'':x.fs==='incoming'?'<span role="button" class="rlfo" data-a="fol">Accept</span>':'';
 const rlMod=()=>['staff','admin'].includes(ST.role);
 function rlItem(x){RLMAP[x.id]=x;ROLES[x.user]=x.role;
  return `<section class="rli" data-id="${x.id}"><div class="rlc"><div class="rlv">
