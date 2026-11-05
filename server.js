@@ -2033,16 +2033,37 @@ async function botCommand(ws, text) {
   else if (g === 'lowcard' && /^\d+$/.test(arg)) lowcard.admin(room, true, `/bot lowcard ${arg}`);
   if (cur !== g) say(room, u, `🎮 ${GAME_LABEL[g]} is on in this room (started by ${u}). Type !start to play.`, 'sys');
 }
+db.exec('create table if not exists room_limit(room text primary key, max integer)');
+const limitOf = room => db.prepare('select max from room_limit where room=?').get(room)?.max || 0;
+function applyLimit(room) {
+  const g = gameOf(room), lim = limitOf(room);
+  const t = g === 'tp' ? tp?.rooms.get(room) : g === 'royale' ? royale?.rooms.get(room) : null;
+  if (t) t.limit = lim || null;
+}
+function botLimit(ws, text) {
+  const room = ws.room, u = ws.user, g = gameOf(room), arg = (text.trim().split(/\s+/)[1] || '').toLowerCase().replace(/,/g, '');
+  if (room.startsWith('dm:')) return reply(ws, 'Game bots work in public rooms only.');
+  if (!canMod(room, u)) return reply(ws, 'Only staff, admins, the room admin or room moderators can set the bet limit.');
+  if (g !== 'tp' && g !== 'royale') return reply(ws, 'Bet limit is only for Teen Patti and Royale Battle rooms.');
+  if (!arg) { const l = limitOf(room); return reply(ws, l ? `Bet limit here: ${l}. Use /botlimit [amount] to change, /botlimit off to remove.` : 'No custom bet limit in this room. Use /botlimit [maximum amount].'); }
+  if (arg === 'off' || arg === '0') { db.prepare('delete from room_limit where room=?').run(room); applyLimit(room); return say(room, u, `🎚 Bet limit removed by ${u}`, 'sys'); }
+  const m = /^(\d+(?:\.\d+)?)([km]?)$/.exec(arg);
+  const n = m ? Math.round(+m[1] * (m[2] === 'k' ? 1e3 : m[2] === 'm' ? 1e6 : 1)) : 0;
+  if (!n || n < 100 || n > 1e9) return reply(ws, 'Usage: /botlimit [maximum amount]  e.g. /botlimit 50000 or /botlimit 50k  ·  /botlimit off');
+  db.prepare('insert or replace into room_limit values(?,?)').run(room, n); applyLimit(room);
+  say(room, u, `🎚 Max bet limit is now ${n.toLocaleString('en-US')} (set by ${u})`, 'sys');
+}
 const potTop = () => 'Top players: ' + db.prepare('select name,coins from users where lower(name)!=? order by coins desc limit 5').all(STAFF_USER).map((x, i) => `${i + 1}. ${x.name} (${x.coins})`).join(' · ');
 function gameRoute(ws, text) {
   const room = ws.room, g = gameOf(room);
+  applyLimit(room);
   if (!g) return reply(ws, 'No game bot is running in this room. Staff, the room admin or moderators can start one with /bot cricket, /bot lowcard or /bot dice.');
   if (!speakOk(ws)) return;
   const u = { id: ws.user, name: ws.user, isAdmin: isSA(ws.user) }, lo = text.trim().toLowerCase().replace(/\s+/g, ' ');
   if (g === 'tp') { ensureTp(room); return tp.handleMessage(room, u, text).catch(e => console.error('[TeenPatti]', e)); }
   if (g === 'royale') {
     const pre = !royale.rooms.has(room) ? royale.handleMessage(room, SYSADMIN, '/bot royalebattle') : Promise.resolve();
-    return pre.then(() => royale.handleMessage(room, u, text)).catch(e => console.error('[Royale]', e));
+    return pre.then(() => { applyLimit(room); return royale.handleMessage(room, u, text); }).catch(e => console.error('[Royale]', e));
   }
   if (g === 'cricket' || g === 'lowcard' || g === 'dice') {
     if (lo === '!bal') return reply(ws, `Your balance: ${coins(ws.user)} coins.`);
@@ -2604,6 +2625,7 @@ function onWsMessage(ws, raw) {
       ws.roomAt = Date.now();   // talking restarts the 30-minute idle timer
       const text = String(m.text || '').trim().slice(0, 500);
       if (!text) return;
+      if (/^\/botlimit(\s|$)/i.test(text)) return botLimit(ws, text);
       if (/^\/bot(\s|$)/i.test(text)) return botCommand(ws, text).catch(e => console.error('[bot]', e));
       if (text[0] === '/') return command(ws, text);
       if (text[0] === '!') return gameRoute(ws, text);

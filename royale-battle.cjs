@@ -498,7 +498,8 @@ class RoyaleBattle {
 
     this._res = this._res || new Map();
     const cur = Object.values((this.bets.get(String(userId)) || { opts: {} }).opts).reduce((a, x) => a + x, 0) + (this._res.get(String(userId)) || 0);
-    if (c.MAX_TOTAL && cur + amount > c.MAX_TOTAL) return this.sendTo(userId, `Maximum ${fmt(c.MAX_TOTAL)} ${c.COIN_NAME} per board (you have ${fmt(cur)} on this board).`);
+    const lim = this.limit || c.MAX_TOTAL;
+    if (lim && cur + amount > lim) return this.sendTo(userId, `Maximum ${fmt(lim)} ${c.COIN_NAME} per board (you have ${fmt(cur)} on this board).`);
 
     this._res.set(String(userId), (this._res.get(String(userId)) || 0) + amount);
     const rid = this.roundId;
