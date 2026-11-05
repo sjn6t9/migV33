@@ -383,8 +383,8 @@ class TeenPattiTable {
     const call = seen ? this.stake * 2 : this.stake;
     const raise = seen ? this.stake * 4 : this.stake * 2;
     const newStake = this.stake * 2;
-    let canRaise = p.balance >= raise && newStake <= this.boot * c.MAX_STAKE_MULT;
-    if (canRaise) for (const o of this._active()) if (o !== p && !o.allIn && o.balance < newStake * 2) canRaise = false;   // table limit: others must be able to follow
+    let canRaise = p.balance >= raise && (this.limit || newStake <= this.boot * c.MAX_STAKE_MULT);
+    if (canRaise && !this.limit) for (const o of this._active()) if (o !== p && !o.allIn && o.balance < newStake * 2) canRaise = false;   // table limit: others must be able to follow
     const show = this.stake * c.SHOW_COST_MULT;
     const twoLeft = this._active().length === 2;
     return {
