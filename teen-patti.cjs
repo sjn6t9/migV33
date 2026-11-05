@@ -21,6 +21,7 @@ const CONFIG = {
   TURN_SECONDS: 15,           // per-player turn timer (15 s, as in the reference game)
   RAKE_PERCENT: 10,           // house fee taken from the pot (inferred from the reference: 2,800 pot -> 2,520 paid)
   SHOW_COST_MULT: 2,          // Show costs 2 x the current stake ("Show = double of blind")
+  AUTO_SEE_TURNS: 10,         // after this many turns every player's cards are shown to them (blind players now pay double)
   MAX_STAKE_MULT: 64,         // the stake can never grow beyond boot x this
   START_ADMIN_ONLY: false,    // anyone may type !start (the first one opens the table)
   AUTO_CALL_DELAY_MS: 700,    // pause before an "auto call" plays
@@ -360,12 +361,13 @@ class TeenPattiTable {
     }
     for (const p of this.seats) { p.state = 'blind'; p.revealed = false; }
     this.stake = this.boot;
+    this.turnCount = 0; this._autoSeen = false;
     this.dealerIdx = this.rng(this.seats.length);
     this.turnIdx = (this.dealerIdx + 1) % this.seats.length;
     this.phase = 'playing';
     this._say(`🃏 Cards dealt — ${this.seats.length} players · boot ${fmt(this.boot)} · pot ${fmt(this.pot)}\n` +
       `Players: ${this.seats.map((p) => p.name).join(', ')}\n` +
-      `Type !see to look at your cards, or keep playing blind (bets cost half).`);
+      `Type !see to look at your cards, or keep playing blind (blind bets cost half; after 10 turns everyone sees their cards).`);
     this._beginTurn();
   }
 
@@ -410,6 +412,13 @@ class TeenPattiTable {
   _beginTurn() {
     const c = this.cfg, p = this.seats[this.turnIdx];
     const seq = ++this._turnSeq;
+    this.turnCount = (this.turnCount || 0) + 1;
+    if (!this._autoSeen && c.AUTO_SEE_TURNS && this.turnCount > c.AUTO_SEE_TURNS) {
+      this._autoSeen = true;
+      const blinds = this.seats.filter((x) => x.state === 'blind');
+      for (const x of blinds) { x.state = 'seen'; x.autoBlind = false; this._private(x.id, `🃏 Your cards: ${cardsStr(x.cards)} — ${x.eval.name}`); }
+      this._say(`🃏 ${c.AUTO_SEE_TURNS} turns are over — every player's cards are now shown to them. Everyone now pays the seen (double) rate.`);
+    }
     this.turnUserId = p.id;
     this.turnDeadline = this.timers.now() + c.TURN_SECONDS * 1000;
     this._say(`▶ ${p.name}'s turn · Pot ${fmt(this.pot)} · ${c.TURN_SECONDS}s`);
