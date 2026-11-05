@@ -2120,6 +2120,15 @@ html[data-theme=dark] .ckb,html[data-theme=dark] .ckp,#log.dark .ckb,#log.dark .
 #gp .ck-p.me{border-color:#6ea8ff;background:rgba(80,130,255,.2)}
 #gp .ck-p.out{opacity:.5;text-decoration:line-through}
 </style>
+<style>/* LowCard/Dice seats: compact, eliminated card stays full colour */
+html body #gp .seats{align-items:start!important;grid-template-columns:repeat(auto-fill,minmax(74px,1fr))!important;gap:6px!important;margin-top:6px!important}
+html body #gp .st{min-height:0!important;padding:5px 4px 4px!important;gap:2px!important;border-radius:12px!important}
+html body #gp .st .pc{zoom:.82}
+html body #gp .st .die{zoom:.82}
+html body #gp .st.out{opacity:1!important;border-color:rgba(255,255,255,.14)!important}
+html body #gp .st.out .nm,html body #gp .st.out .sub{opacity:.6}
+html body #gp .st.out .pc,html body #gp .st.out .pc *{opacity:1!important;filter:none!important}
+</style>
 </head>
 <body>
 <div id="auth"><div class="fx" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i></div><div class="box">
