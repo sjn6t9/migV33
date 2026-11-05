@@ -2101,6 +2101,8 @@ html[data-theme=dark] .ckb,html[data-theme=dark] .ckp,#log.dark .ckb,#log.dark .
 #gp .ck-a em{font-style:normal;max-width:64px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 #gp .ck-ok{margin:10px auto 0;width:fit-content;padding:4px 14px;border-radius:99px;font-size:12.5px;text-align:center;font-weight:800;background:rgba(76,194,79,.22);border:1px solid rgba(130,225,130,.5);color:#8ff08f}
 #gp .ck-me .gb,#gp .ck-end .gb{flex:none;min-height:0;padding:6px 14px;font-size:12.5px;border-radius:99px;width:auto}
+#gp .gidle .gb{min-height:0;height:auto;padding:5px 12px;font-size:12.5px;line-height:1.2;white-space:nowrap;border-radius:99px;flex:none}
+#gp .gidle{margin-top:8px}
 #gp .ck-ft{margin-top:10px;text-align:center;font-size:12.5px;opacity:.8}
 #gp .ck-st{display:flex;gap:6px;flex-wrap:wrap;margin-top:9px}
 #gp .ck-st span,#gp .ck-p{padding:3px 9px;border-radius:99px;font-size:11.5px;font-weight:700;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2)}
@@ -2997,7 +2999,7 @@ const GP=(function(){
   function head(extra=''){const t=TITLE[v.g],md=GS.mode();return `<div class="gh"><span style="font-size:18px">${t[0]}</span><b>${t[1]}</b>${extra}<span class="gtl"><button class="gtb" data-info="1" aria-label="How to play"><i class="ic ic-i"></i></button>${v.g==='royale'?'':`<button class="gtb" data-live="1" aria-label="Rank"><i class="ic ic-c"></i></button>`}<button class="gtb" data-snd="1" aria-label="${['Sound and vibration','Vibration only','Muted'][md]}"><i class="sx ${['sn','vb','mu'][md]}"></i></button></span><button class="gmin ${min?'cl':''}" data-min="1" aria-label="Minimise"><i class="ic ic-v"></i></button></div>`}
   function timer(){if(!v.deadline)return '';return `<span class="chip tm" data-dl="${v.deadline}">${sec(v.deadline)}s</span>`}
   function bar(span){if(!v.deadline)return '';return `<div class="gbar"><i data-bar="${v.deadline}" data-span="${span}" style="width:${Math.min(100,sec(v.deadline)/span*100)}%"></i></div>`}
-  function idle(more){return `<div class="gnote">${more||'No game is running right now.'}</div><div class="gacts">${btn('!start','▶ Start game',1)}${btn('!start 500','Entry 500')}${btn('!start 1000','Entry 1,000')}</div>`}
+  function idle(more){return `<div class="gnote">${more||'No game is running right now.'}</div><div class="gacts gidle">${btn('!start','▶ Start game',1)}${btn('!start 500','Entry 500')}${btn('!start 1000','Entry 1,000')}</div>`}
   function lowdice(){
     const dice=v.g==='dice',st=v.state;let h=head(`<span class="chip">Pot ${K(v.pot)}</span>${v.round?`<span class="chip">R${v.round}</span>`:''}${timer()}`);
     if(st==='idle'||st==='ended'&&!v.players?.length)return h+idle();
@@ -3018,7 +3020,7 @@ const GP=(function(){
   }
   function cricket(){
     const st=v.state,pl=v.players||[],ps=[...pl.filter(p=>p.me),...pl.filter(p=>!p.me)],nm=p=>p.me?'You':E(p.n),pot=K(v.pot);
-    let h=head(st==='playing'||st==='ended'?`<span class="chip">Round ${Math.min(v.round||0,v.max)}/${v.max}</span>${timer()}`:`<span class="chip">${st==='joining'?'Joining':''}</span>${timer()}`);
+    let h=head(st==='playing'||st==='ended'?`<span class="chip">Round ${Math.min(v.round||0,v.max)}/${v.max}</span>${timer()}`:`${st==='joining'?'<span class="chip">Joining</span>':''}${timer()}`);
     if(st==='idle')return h+idle();
     if(st==='joining'){
       h+=bar(30)+`<div class="ck-ent"><i class="ck-c">${K(v.cost)}</i><b>Entry ${K(v.cost)}</b><span class="ck-ar">→</span><span class="ck-pot">Pot ${pot}</span><span class="ck-in">${ps.length} in</span></div>`;
