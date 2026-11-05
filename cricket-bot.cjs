@@ -169,7 +169,7 @@ class CricketGame {
       await this.say("Counting runs...");
       await sleep(CFG.countDelay);
       const score = (p) => (res.get(p).out ? 0 : res.get(p).runs);
-      for (const p of pool) await this.say(`${p} (${runsText(score(p))})`);
+      await this.say(pool.map((p) => `${p} (${runsText(score(p))})`).join("   "));
       const best = Math.max(...pool.map(score));
       pool = pool.filter((p) => score(p) === best);
       if (pool.length > 1) await this.say("Still tied! Another tie-break round...");
