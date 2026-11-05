@@ -2070,7 +2070,7 @@ async function botCommand(ws, text) {
   if (!{ tp, cricket, lowcard, dice, royale }[g]) { const f = { tp: 'teen-patti.cjs', cricket: 'cricket-bot.cjs', lowcard: 'lowcard.cjs', dice: 'dice.cjs', royale: 'royale-battle.cjs' }[g]; return reply(ws, `🔒 ${GAME_LABEL[g] || g} is not loaded on the server. Upload ${f} next to server.js and restart the service.${ENGINE_ERR[f] ? ' (' + ENGINE_ERR[f] + ')' : ''}`); }
   if (cur && cur !== g && !(await stopGame(room))) return reply(ws, `${GAME_LABEL[cur]} is running right now. Try again when it ends.`);
   db.prepare('insert or replace into room_game values(?,?)').run(room, g);
-  if (g === 'tp') await tp.handleMessage(room, SYSADMIN, '/bot teenpatti ' + (/^\d+$/.test(arg) ? arg : TP_BOOT));
+  if (g === 'tp') await tp.handleMessage(room, SYSADMIN, '/bot teenpatti ' + (/^\d+$/.test(arg) ? arg : (TP_ROOMS[room]?.[0] || TP_BOOT)));
   else if (g === 'royale') await royale.handleMessage(room, SYSADMIN, '/bot royalebattle');
   else if (g === 'lowcard' && /^\d+$/.test(arg)) lowcard.admin(room, true, `/bot lowcard ${arg}`);
   if (cur !== g) say(room, u, `🎮 ${GAME_LABEL[g]} is on in this room (started by ${u}). Type !start to play.`, 'sys');
@@ -2095,6 +2095,14 @@ function botLimit(ws, text) {
   db.prepare('insert or replace into room_limit values(?,?)').run(room, n); applyLimit(room);
   say(room, u, `🎚 Max bet limit is now ${n.toLocaleString('en-US')} (set by ${u})`, 'sys');
 }
+// Fixed Teen Patti rooms: [minimum bet (boot), pot limit]. Re-applied on every start, so a restart never loses them.
+const TP_ROOMS = { 'TeenPatti': [50, 100000], 'TeenPatti 1': [200, 200000], 'TeenPatti 2': [400, 400000], 'TeenPatti 3': [500, 600000], 'TeenPatti 4': [1000, 1000000], 'TeenPatti 5': [2000, 200000] };
+for (const [n, [, lim]] of Object.entries(TP_ROOMS)) {
+  db.prepare('insert or ignore into rooms(name,cat,owner) values(?,?,?)').run(n, 'game', null);
+  db.prepare('insert or replace into room_game values(?,?)').run(n, 'tp');
+  db.prepare('insert or replace into room_limit values(?,?)').run(n, lim);
+}
+setInterval(() => { for (const room of Object.keys(TP_ROOMS)) { try { applyLimit(room); } catch {} } }, 5e3).unref();
 const potTop = () => 'Top players: ' + db.prepare('select name,coins from users where lower(name)!=? order by coins desc limit 5').all(STAFF_USER).map((x, i) => `${i + 1}. ${x.name} (${x.coins})`).join(' · ');
 function gameRoute(ws, text) {
   const room = ws.room, g = gameOf(room);
@@ -2114,7 +2122,7 @@ function gameRoute(ws, text) {
     return bot.handle(room, ws.user, text, isSA(ws.user)).catch(e => console.error('[' + g + ']', e));
   }
 }
-const ensureTp = room => { if (tp && isTpRoom(room) && !tp.rooms.has(room)) tp.handleMessage(room, { id: 'system', name: 'System', isAdmin: true }, '/bot teenpatti ' + TP_BOOT); };
+const ensureTp = room => { if (tp && isTpRoom(room) && !tp.rooms.has(room)) tp.handleMessage(room, { id: 'system', name: 'System', isAdmin: true }, '/bot teenpatti ' + (TP_ROOMS[room]?.[0] || TP_BOOT)); };
 const shutdownTp = async () => { try { await tp?.shutdown(); } catch {} process.exit(0); };
 process.on('SIGTERM', shutdownTp); process.on('SIGINT', shutdownTp);
 const xpOf = n => db.prepare('select xp from users where name=?').get(n)?.xp || 0;
