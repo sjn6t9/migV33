@@ -149,6 +149,37 @@ app.post('/api/login', (q, r) => {
   r.json({ token: sign(u.id, u.name) });
 });
 
+// ---------- Forgot password: 6-digit code by email ----------
+const resets = new Map(); // username -> { code, exp, tries }
+const fhits = new Map();
+app.post('/api/forgot', async (q, r) => {
+  const now = Date.now(), h = (fhits.get(q.ip) || []).filter(t => now - t < 3600e3);
+  if (h.length >= 8) return bad(r, 'Too many attempts. Please try again later.', 429);
+  fhits.set(q.ip, [...h, now]);
+  const id = String((q.body || {}).id || '').trim().toLowerCase().slice(0, 100);
+  if (!id) return bad(r, 'Enter your username or email.');
+  if (!mailer) return bad(r, 'Email is not set up yet. Please try again later.', 503);
+  const u = db.prepare('select name,email from users where lower(name)=? or lower(email)=?').get(id, id);
+  if (u && u.email) {
+    const code = String(crypto.randomInt(100000, 1000000));
+    resets.set(u.name.toLowerCase(), { code, exp: now + 600e3, tries: 0 });
+    try { await mailer.sendMail({ from: process.env.SMTP_FROM || process.env.SMTP_USER, to: u.email, subject: 'Reset your migv33 password', text: `Your password reset code is ${code}. It expires in 10 minutes. If you did not ask for this, ignore this email.` }); }
+    catch (e) { console.error(e); return bad(r, 'Could not send the email. Please try again.', 502); }
+  }
+  r.json({ ok: true });   // same answer whether or not the account exists
+});
+app.post('/api/reset', (q, r) => {
+  const { id = '', code = '', pass = '' } = q.body || {};
+  const u = db.prepare('select name from users where lower(name)=? or lower(email)=?').get(String(id).trim().toLowerCase(), String(id).trim().toLowerCase());
+  const p = u && resets.get(u.name.toLowerCase());
+  if (!p || Date.now() > p.exp) return bad(r, 'Code expired. Go back and request a new one.');
+  if (++p.tries > 5) { resets.delete(u.name.toLowerCase()); return bad(r, 'Too many wrong codes. Please request a new one.', 429); }
+  if (String(code).trim() !== p.code) return bad(r, 'Wrong code.');
+  if (String(pass).length < 6) return bad(r, 'Password must be at least 6 characters.');
+  db.prepare('update users set pass=? where name=?').run(bcrypt.hashSync(pass, 10), u.name);
+  resets.delete(u.name.toLowerCase());
+  r.json({ ok: true });
+});
 
 // ---------- Social API ----------
 db.exec(`create table if not exists posts(id integer primary key, user text, text text, shares int default 0, ts int);

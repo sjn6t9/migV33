@@ -36,6 +36,13 @@ select option{color:#000}
 .box button.o{padding:13px;font-size:21px;font-weight:700;margin-top:4px;border-radius:6px}
 .box button.go2{background:none;border:0;box-shadow:none;color:#fff;text-decoration:underline;font-size:15px;font-weight:600;padding:6px}
 .ck{display:flex;gap:12px;align-items:center;font-weight:700;font-size:17px;cursor:pointer;color:#fff}
+#auth .ck{gap:9px;font-size:15px}
+#auth .ck input{width:22px;height:22px;border-radius:5px}
+#auth .ck input:checked:after{left:6px;top:1px;width:6px;height:12px;border-width:0 3px 3px 0}
+#auth .rmr{display:flex;align-items:center;justify-content:space-between;gap:8px}
+#auth .rmr .go2{font-size:14px;padding:4px 0}
+#auth #fp small{color:#1e3a5f!important;font-weight:600}
+#auth #fp{gap:10px}#auth #fpb{display:grid;gap:10px}
 .ck input{appearance:none;-webkit-appearance:none;width:30px;height:30px;padding:0;flex:none;border-radius:5px;border:1px solid #9fb0c1;background:#fff;position:relative;cursor:pointer}
 .ck input:checked:after{content:"";position:absolute;left:9px;top:3px;width:8px;height:15px;border:solid #e8431a;border-width:0 4px 4px 0;transform:rotate(40deg)}
 .box small{color:#dbe9f5;font-size:15px}
@@ -2046,8 +2053,17 @@ html[data-theme=dark][data-skin] body #app#app#app .fbp a.mn,html[data-theme=dar
     <input id="lu" placeholder="Username" autocomplete="username" maxlength="16">
     <input id="lp" type="password" placeholder="Password" autocomplete="current-password">
     <button class="o">Log in</button>
-    <label class="ck"><input type="checkbox" id="auto"> Auto Login</label>
+    <div class="rmr"><label class="ck"><input type="checkbox" id="auto" checked> Remember me</label><button type="button" id="fgt" class="go2">Forgot Password?</button></div>
     <label class="ck"><input type="checkbox" id="off"> Login as Offline</label>
+  </form>
+  <form id="fp" style="display:none">
+    <small id="fpm">Enter your username or email and we will send a 6-digit code.</small>
+    <input id="fpi" placeholder="Username or Email" autocomplete="username" maxlength="100" autocapitalize="none">
+    <div id="fpb" style="display:none">
+      <input id="fpc" inputmode="numeric" maxlength="6" placeholder="6-digit code" autocomplete="one-time-code">
+      <input id="fpp" type="password" placeholder="New password" autocomplete="new-password">
+    </div>
+    <button class="o" id="fpgo">Send code</button>
   </form>
   <form id="s1" style="display:none">
     <input id="sf" placeholder="Full Name" autocomplete="name" maxlength="40">
@@ -2131,10 +2147,17 @@ const api=async(m,u,b)=>{const r=await fetch('/api'+u,{method:m,headers:{'Conten
 const fail=e=>toast('⚠ '+(e&&e.message||'Something went wrong'),1);
 const view=h=>{(window.VIEW_TARGET||$('view')).innerHTML=h};
 /* ---------- auth ---------- */
-function show(w){['lf','s1','s2'].forEach(k=>$(k).style.display=k===w?'grid':'none');$('tl').style.display=w==='lf'?'none':'';$('ts').style.display=w==='lf'?'':'none';$('auth').querySelector('h1').textContent=w==='lf'?'Join the Fun!':w==='s1'?'Create Account':'Verify Email';$('err').textContent=''}
+function show(w){['lf','s1','s2','fp'].forEach(k=>$(k).style.display=k===w?'grid':'none');$('tl').style.display=w==='lf'?'none':'';$('ts').style.display=w==='lf'?'':'none';$('auth').querySelector('h1').textContent=w==='lf'?'Join the Fun!':w==='s1'?'Create Account':w==='fp'?'Reset Password':'Verify Email';$('err').textContent=''}
 $('tl').onclick=()=>show('lf');$('ts').onclick=()=>show('s1');$('ce').onclick=()=>show('s1');
 const post=async(u,b)=>{try{const r=await fetch(u,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(b)});let d;try{d=await r.json()}catch{d={error:'Server error ('+r.status+'). Please try again in a moment.'}}return[r,d]}catch{return[{ok:false},{error:'Cannot reach the server. Check your internet and try again.'}]}};
-function done(d){const s=localStorage;s.tk=d.token;s.off=$('off').checked?'1':'';connect()}
+function done(d){const keep=$('auto').checked,s=keep?localStorage:sessionStorage,o=keep?sessionStorage:localStorage;try{delete o.tk;delete o.off}catch{}s.tk=d.token;s.off=$('off').checked?'1':'';try{if(keep)localStorage.ru=$('lu').value.trim();else delete localStorage.ru}catch{}connect()}
+try{if(localStorage.ru)$('lu').value=localStorage.ru}catch{}
+$('fgt').onclick=()=>{show('fp');$('fpb').style.display='none';$('fpgo').textContent='Send code';$('fpi').disabled=false;$('fpi').value=$('lu').value;$('fpm').textContent='Enter your username or email and we will send a 6-digit code.';$('fpgo').dataset.s=''};
+$('fp').onsubmit=async e=>{e.preventDefault();const b=$('fpgo');$('err').textContent='';
+  if(b.dataset.s!=='2'){const[r,d]=await post('/api/forgot',{id:$('fpi').value.trim()});if(!r.ok)return $('err').textContent=d.error;
+    b.dataset.s='2';$('fpb').style.display='grid';$('fpi').disabled=true;b.textContent='Reset password';$('fpm').textContent='If the account exists, a code was sent to its email. Enter it with your new password.';return}
+  const[r,d]=await post('/api/reset',{id:$('fpi').value.trim(),code:$('fpc').value.trim(),pass:$('fpp').value});if(!r.ok)return $('err').textContent=d.error;
+  $('lu').value=$('fpi').value;$('lp').value='';show('lf');$('err').textContent='Password changed. Log in with your new password.'};
 $('lf').onsubmit=async e=>{e.preventDefault();const[r,d]=await post('/api/login',{name:$('lu').value.trim(),pass:$('lp').value});if(!r.ok)return $('err').textContent=d.error;done(d)};
 $('s1').onsubmit=async e=>{e.preventDefault();if($('sp').value!==$('sp2').value)return $('err').textContent='Passwords do not match.';
   {const un=$('su').value.trim();const ue=/[A-Z]/.test(un)?'Username cannot have capital letters. Use small letters only.':/\s/.test(un)?'Username cannot have spaces.':/^[0-9]/.test(un)?'Username cannot start with a number.':!/^[a-z0-9._-]{3,16}$/.test(un)?'Username must be 3–16 characters: small letters, numbers, dot (.), dash (-) or underscore (_).':'';if(ue)return $('err').textContent=ue}
