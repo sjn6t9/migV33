@@ -144,7 +144,7 @@ class CricketGame {
       }
       // "Counting runs" shows each player's TOTAL runs, highest first (outs are not listed)
       const scorers = active.filter((p) => !this.out.has(p)).sort((a, b) => this.total[b] - this.total[a]);
-      if (scorers.length) await this.say(scorers.map((p) => `${p} (${runsText(this.total[p])})`).join("   "));
+      if (scorers.length) await this.say(scorers.map((p) => `${p} (${runsText(this.total[p])})`).join("\n"));
 
       const left = this.players.filter((p) => !this.out.has(p));
       if (left.length === 1) return this.finish(left[0], "last player standing");
@@ -169,7 +169,7 @@ class CricketGame {
       await this.say("Counting runs...");
       await sleep(CFG.countDelay);
       const score = (p) => (res.get(p).out ? 0 : res.get(p).runs);
-      await this.say(pool.map((p) => `${p} (${runsText(score(p))})`).join("   "));
+      await this.say(pool.map((p) => `${p} (${runsText(score(p))})`).join("\n"));
       const best = Math.max(...pool.map(score));
       pool = pool.filter((p) => score(p) === best);
       if (pool.length > 1) await this.say("Still tied! Another tie-break round...");
