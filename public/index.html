@@ -2996,7 +2996,7 @@ const GP=(function(){
     return h+(acts.length?`<div class="gacts">${acts.join('')}</div>`:'');
   }
   function cricket(){
-    const st=v.state,ps=[...v.players.filter(p=>p.me),...v.players.filter(p=>!p.me)],nm=p=>p.me?'You':E(p.n),pot=K(v.pot);
+    const st=v.state,pl=v.players||[],ps=[...pl.filter(p=>p.me),...pl.filter(p=>!p.me)],nm=p=>p.me?'You':E(p.n),pot=K(v.pot);
     let h=head(st==='playing'||st==='ended'?`<span class="chip">Round ${Math.min(v.round||0,v.max)}/${v.max}</span>${timer()}`:`<span class="chip">${st==='joining'?'Joining':''}</span>${timer()}`);
     if(st==='idle')return h+idle();
     if(st==='joining'){
