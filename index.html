@@ -2242,13 +2242,14 @@ html body #stsh .stg button.on{border-color:#2f95e0;outline:2px solid rgba(47,14
 @media (max-width:700px){
 html body #view#view#view#view#view#view#view#view#view#view#view#view#view#view#view#view#view#view#view#view .fbp{width:100%!important;max-width:none!important;margin:0 0 8px!important;border-radius:0!important;border-left:0!important;border-right:0!important;box-shadow:none!important}
 html body #view#view#view#view#view#view#view#view#view#view#view#view#view#view#view#view#view#view#view#view .fbp .tbg{margin-top:8px}
+html body .cprm{width:100%;max-width:none;margin:0 0 8px;border-radius:0;border-left:0;border-right:0}
 }
 html body #stsh .stg button[data-g]:not([data-g=""]){background:var(--sw)!important;border:2px solid transparent!important}
 html body #stsh .stg button.on{border-color:#2f95e0!important}
 @media (max-width:700px){html body #view#view#view#view#view#view#view#view#view#view#view#view#view#view#view#view#view#view#view#view .cmpx .cb{gap:2px!important}html body #view#view#view#view#view#view#view#view#view#view#view#view#view#view#view#view#view#view#view#view .cmpx .cb button:not(.o){padding:4px 7px!important}}
 
 /* ---- Facebook-style "What's on your mind?" row + floating Create post card ---- */
-.cprm{display:flex;align-items:center;gap:10px;width:calc(100% - 16px);max-width:680px;box-sizing:border-box;margin:10px auto;padding:10px 12px;border-radius:16px;background:#fff;border:1px solid rgba(120,130,150,.25)}
+.cprm{display:flex;align-items:center;gap:10px;width:calc(100% - 16px);max-width:calc(100% - 16px);box-sizing:border-box;margin:10px auto;padding:10px 12px;border-radius:16px;background:#fff;border:1px solid rgba(120,130,150,.25)}
 html[data-theme=dark] .cprm{background:#0f1a2b;border-color:rgba(255,255,255,.14)}
 html body .cprm #cpo{flex:1;min-width:0;height:42px;min-height:0;padding:0 16px;border-radius:99px;text-align:left;font-size:15px;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;background:rgba(120,130,150,.16);color:#6b7690;border:0;box-shadow:none}
 html body .cprm #cpp{width:42px;height:42px;min-height:0;padding:0;border-radius:50%;font-size:22px;background:none;border:0;box-shadow:none}
@@ -2718,7 +2719,7 @@ function snack(msg,label,fn){const d=document.createElement('div');d.className='
 let homeTag='',PS={},postImg=null;
 function closeCp(){const d=document.getElementById('cpmod');if(window._cpEsc){document.removeEventListener('keydown',window._cpEsc);window._cpEsc=null}if(!d)return;const c=d.querySelector('.cmpx'),h=window._cpHome;if(c&&h&&h.isConnected){c.classList.add('cpin');h.insertBefore(c,window._cpNext&&window._cpNext.parentNode===h?window._cpNext:null)}d.remove()}
 V.home=async(tag)=>{homeTag=typeof tag==='string'?tag:'';postImg=null;let bgSel='';closeCp();
-  view(`<div class="srw"><div class="srt" id="srt"><span role="tab" data-t="s" class="on">Stories</span><span role="tab" data-t="r">Reels</span></div><div id="stories" class="stor"></div><div id="rlstrip" class="rls" hidden></div></div><div class="cprm" id="cprm">${av(me,40)}<button type="button" id="cpo">What's on your mind, ${esc(me)}?</button><button type="button" id="cpp" aria-label="Photo">🖼️</button></div><div class="cmpx cpin"><div class="cr">${av(me,44)}<textarea id="pt" rows="2" maxlength="500" placeholder="What's on your mind, ${esc(me)}? Use @name and #tag"></textarea></div><div id="pprev"></div><div id="sug" hidden></div>
+  view(`<div class="srw"><div class="srt" id="srt"><span role="tab" data-t="s" class="on">Stories</span><span role="tab" data-t="r">Reels</span></div><div id="stories" class="stor"></div><div id="rlstrip" class="rls" hidden></div></div><div class="cmpx cpin"><div class="cr">${av(me,44)}<textarea id="pt" rows="2" maxlength="500" placeholder="What's on your mind, ${esc(me)}? Use @name and #tag"></textarea></div><div id="pprev"></div><div id="sug" hidden></div>
   <div class="cb"><button id="pbg" type="button" title="Background style" aria-label="Background style"><i class="aa">Aa</i></button><button id="pph" type="button" title="Add a photo">📷<span> Photo</span></button><button id="pmn" type="button" title="Mention someone">@<span> Mention</span></button><button id="pht" type="button" title="Add a hashtag">#<span> Tag</span></button><button id="pem" type="button" title="Add an emoji">😊</button><input type="file" id="pfi" accept="image/*" hidden><span class="mu" id="pcnt">0/500</span><button class="o" id="pb">Post</button></div><div id="emp" hidden>${CE.map(c=>`<button type="button" data-e="${esc(ceCode(c))}" title="${esc(c.name)}">${ceImg(c,32)}</button>`).join("")||'<span class="mu" style="padding:6px">No emoticons yet. Staff can add them in Admin Panel.</span>'}</div></div><div id="feed" class="mu pad">Loading…</div>`);
   const pt=$('pt');
   const ins=t=>{const a=pt.selectionStart??pt.value.length,b=pt.selectionEnd??a;if(pt.value.length-(b-a)+t.length>500)return;pt.value=pt.value.slice(0,a)+t+pt.value.slice(b);pt.focus();pt.selectionStart=pt.selectionEnd=a+t.length;pt.oninput()};
@@ -2729,7 +2730,7 @@ V.home=async(tag)=>{homeTag=typeof tag==='string'?tag:'';postImg=null;let bgSel=
     cmp.classList.remove('cpin');d.querySelector('.cpb').appendChild(cmp);document.body.appendChild(d);
     d.onclick=e=>{if(e.target===d||e.target.closest('.cpx'))closeCp()};document.addEventListener('keydown',window._cpEsc=e=>{if(e.key==='Escape')closeCp()});
     setTimeout(()=>{pt.focus();if(pick)$('pfi').click()},80)};
-  $('cpo').onclick=()=>openCp();$('cpp').onclick=()=>openCp(true);
+  window._openCp=openCp;
   const fitBg=()=>{if(!bgSel){pt.style.cssText='';return}const t=tbgOf(bgSel);pt.rows=1;pt.style.cssText=`background:${t[0]}!important;color:${t[1]}!important;font-size:${tbgFs(pt.value.length)}px!important;${t[2]?'text-shadow:0 2px 10px rgba(0,0,0,.45);':''}padding:16px;height:auto`;const hh=pt.scrollHeight-32,H=Math.max(240,hh+32),pad=Math.max(16,(H-hh)/2);pt.style.paddingTop=pt.style.paddingBottom=pad+'px';pt.style.height=(hh+2*pad)+'px';pt.style.setProperty('--ph',t[1])};
   const setBg=k=>{bgSel=k;cmp.classList.toggle('styled',!!k);if(k&&postImg){postImg=null;$('pprev').innerHTML=''}if(!k)pt.rows=2;fitBg()};
   $('pbg').onclick=()=>{const old=$('stsh');if(old){old.remove();return}const d=document.createElement('div');d.id='stsh';
@@ -2945,8 +2946,9 @@ function svShow(){clearTimeout(svT);const g=STG[SV.gi],it=g.items[SV.ii],own=g.u
   d.onclick=async e=>{const z=e.target.closest('[data-z]');if(e.target.closest('#svx'))return svClose();if(z)return z.dataset.z==='n'?svNext():svPrev();
     if(e.target.closest('#svv')){clearTimeout(svT);try{const l=await api('GET',`/stories/${it.id}/viewers`);sheetOpen(`<h2>Viewers (${l.length})</h2><section class="whol">${l.map(x=>`<article class="wr">${av(x.user,38)}<span class="wt"><b style="color:${nc(x.user)}">${esc(x.user)}</b>${rt(x.role,x.user)}<small>${ago(x.ts)} ago</small></span></article>`).join('')||'<small class="mu">No views yet.</small>'}</section>`);$('sh').onclick=null}catch(er){fail(er)}return}
     if(e.target.closest('#svd')){clearTimeout(svT);if(!confirm('Delete this story?')){svT=setTimeout(svNext,5000);return}try{await api('DELETE','/stories/'+it.id);g.items.splice(SV.ii,1);if(!g.items.length){STG.splice(SV.gi,1);if(!STG.length)return svClose();if(SV.gi>=STG.length)SV.gi=STG.length-1;SV.ii=0}else if(SV.ii>=g.items.length)SV.ii=g.items.length-1;svShow()}catch(er){fail(er)}}}}
+const cprmHTML=()=>`<div class="cprm" id="cprm">${av(me,40)}<button type="button" id="cpo">What's on your mind, ${esc(me)}?</button><button type="button" id="cpp" aria-label="Photo">🖼️</button></div>`;
 async function loadFeed(){const ps=await api('GET','/feed'+(homeTag?'?tag='+encodeURIComponent(homeTag):''));ps.forEach(p=>ROLES[p.user]=p.role);PS={};ps.forEach(p=>PS[p.id]=p);
-  $('feed').className='';$('feed').innerHTML=(homeTag?`<div class="tagbar">Showing <b>#${esc(homeTag)}</b> <button data-a="cleartag">✕ Clear</button></div>`:'')+(ps.length?ps.map(postHTML).join(''):`<div class="card mu">${homeTag?'No posts with this tag yet.':'No posts yet. Be the first to post.'}</div>`)}
+  $('feed').className='';$('feed').innerHTML=cprmHTML()+(homeTag?`<div class="tagbar">Showing <b>#${esc(homeTag)}</b> <button data-a="cleartag">✕ Clear</button></div>`:'')+(ps.length?ps.map(postHTML).join(''):`<div class="card mu">${homeTag?'No posts with this tag yet.':'No posts yet. Be the first to post.'}</div>`)}
 function whoSheet(id,type){const T={react:'Reactions',comment:'Comments',share:'Shares'};
   sheetOpen(`<h2>${T[type]}</h2><section class="whol mu">Loading…</section>`);
   api('GET',`/posts/${id}/who?type=${type}`).then(l=>{l.forEach(x=>ROLES[x.user]=x.role);const w=document.querySelector('#sh .whol');if(!w)return;w.className='whol';
@@ -2977,6 +2979,7 @@ function reactPop(anchor,id,mine){const old=$('rpick');if(old){const same=old._a
   p.onclick=async e=>{const b=e.target.closest('[data-k]');if(!b)return;p.remove();document.removeEventListener('pointerdown',off,true);
     try{await api('POST',`/posts/${id}/react`,{kind:b.dataset.k});loadFeed()}catch(er){fail(er)}}}
 async function feedClick(e){
+  if(e.target.closest('#cpo')){window._openCp&&window._openCp();return}if(e.target.closest('#cpp')){window._openCp&&window._openCp(true);return}
   if(!e.target.closest('.ac'))document.querySelectorAll('.rpk').forEach(x=>x.hidden=true);
   const u=e.target.closest('[data-u]');if(u&&!e.target.closest('#sh')){go('profile',u.dataset.u);return}
   const tg=e.target.closest('[data-tag]');if(tg){go('home',tg.dataset.tag);return}
