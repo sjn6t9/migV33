@@ -2333,7 +2333,7 @@ const DC=new Set(),DCW={};
 function mountDC(r,msg,why){if($('dcbar')||!$('f'))return;why=why||DCW[r]||'';const d=document.createElement('div');d.id='dcbar';d.innerHTML=`<span>⚠ ${msg||'Disconnected from <b>'+esc(rtitle(r))+'</b>'}${why?`<em>${esc(why)}</em>`:''}</span><button class="o" data-dc="re">Rejoin</button><button data-dc="lv">Leave</button>`;
   d.querySelectorAll('button').forEach(b=>{const o=b.classList.contains('o');[['height','26px'],['min-height','0'],['width','auto'],['padding','0 10px'],['border-radius','8px'],['font-size','12px'],['font-weight','800'],['border','1px solid '+(o?'#ff8a8f':'#ff6b68')],['background',o?'linear-gradient(#e0434b,#b3202a)':'var(--dcbg,#0f1a2b)'],['color',o?'#fff':'var(--dcfg,#ff9a98)'],['box-shadow','none']].forEach(([k,v])=>b.style.setProperty(k,v,'important'))});
   $('f').before(d);['t','phb','emb','mic'].forEach(i=>{const e=$(i);if(e)e.disabled=true});
-  d.onclick=e=>{const b=e.target.closest('[data-dc]');if(!b)return;if(b.dataset.dc==='lv'){DC.delete(r);AL.delete(r);d.remove();closeTab(r);return}
+  d.onclick=e=>{const b=e.target.closest('[data-dc]');if(!b)return;if(b.dataset.dc==='lv'){leaveAll();return}
     rejoinRoom(r,b)}}
 /* Rejoin works with one tap: if the connection is still coming back, the rejoin waits for it and happens by itself */
 function rejoinRoom(r,b){
@@ -2350,7 +2350,7 @@ function connect(){
   ws=new WebSocket((location.protocol==='https:'?'wss':'ws')+'://'+location.host+'/ws');
   ws.onopen=()=>ws.send(JSON.stringify({t:'auth',token:tok(),offline:isOff(),emb:EMB?1:0,vis:document.hidden?0:1}));
   ws.onmessage=e=>{window._lastRx=Date.now();on(JSON.parse(e.data))};
-  ws.onclose=e=>{if(me){showDC(dcWhy(e));setTimeout(()=>{if(!ws||ws.readyState>1)connect()},2000)}else if(tok()){if(++tries<4)setTimeout(connect,1500);else{delete document.documentElement.dataset.boot}}};
+  ws.onclose=e=>{if(me){const w0=ws;setTimeout(()=>{if(!ws||ws.readyState>1)connect()},1200);setTimeout(()=>{if(!ws||ws.readyState!==1)showDC(dcWhy(e))},7000)}else if(tok()){if(++tries<4)setTimeout(connect,1500);else{delete document.documentElement.dataset.boot}}};
 }
 const tx=o=>ws.readyState===1&&ws.send(JSON.stringify(o));
 const resume=()=>{if(!tok()||document.hidden)return;if(!ws||ws.readyState>1){tries=0;connect()}};
@@ -2359,9 +2359,14 @@ document.addEventListener('visibilitychange',()=>{if(EMB||!me||!tok())return;
   if(document.hidden){if((ST.presence||'online')==='online'){autoAway=true;try{localStorage.autoAway=1}catch{}ST.presence='away';api('PUT','/me',{presence:'away'}).catch(()=>{})}}
   else if(autoAway){autoAway=false;try{delete localStorage.autoAway}catch{}if(ST.presence==='away'){ST.presence='online';api('PUT','/me',{presence:'online'}).catch(()=>{})}}});
 document.addEventListener('visibilitychange',()=>{try{tx({t:'vis',v:!document.hidden})}catch{}});  /* tell the server if the app is on screen: in the background calls also ring by push */
+let hidAt=0;
+document.addEventListener('visibilitychange',()=>{if(EMB||!me)return;if(document.hidden){hidAt=Date.now();return}
+  const t=hidAt?Date.now()-hidAt:0;hidAt=0;
+  if(t>=30*60e3){if(OPEN.length)leaveAll('All room tabs were closed after 30 minutes away. Join a room again when you are back.')}
+  else if(t>=15*60e3&&OPEN.length){OPEN.forEach(x=>{if(!x.startsWith('dm:'))setAL(x,'bg')});if(cur==='chat'&&room&&!room.startsWith('dm:'))showAL(room);else drawTabs()}});
 document.addEventListener('visibilitychange',resume);addEventListener('online',resume);addEventListener('pageshow',resume);
 /* closing the browser/tab: tell the server so the ID shows Offline right away (minimising only makes it Away) */
-addEventListener('pagehide',e=>{if(e.persisted||EMB)return;try{tx({t:'bye'})}catch{}});
+addEventListener('pagehide',e=>{if(e.persisted||EMB)return;try{tx({t:'bye'});localStorage.pgh=Date.now()}catch{}});
 function coinDelta(d){const c=$('coins');if(!c||!d)return;const r=c.getBoundingClientRect(),e=document.createElement('span');
   e.className='cdl '+(d>0?'up':'dn');e.textContent=(d>0?'+':'−')+Math.abs(d).toLocaleString();e.style.left=(r.left+r.width/2)+'px';e.style.top=(r.bottom+2)+'px';
   document.body.append(e);setTimeout(()=>e.remove(),2200);c.classList.remove('cpop');void c.offsetWidth;c.classList.add('cpop')}
@@ -2394,13 +2399,18 @@ async function on(m){
   if(m.t==='history'&&$('log')&&(!m.room||m.room===room))m.items.forEach(add)
   if(m.t==='msg'){if(m.room===room&&$('log'))add(m);else if(m.room&&!m.room.startsWith('dm:')&&(m.room===room||OPEN.includes(m.room))){(BUF[m.room]=BUF[m.room]||[]).push(m);if(BUF[m.room].length>200)BUF[m.room].shift();if(m.bg&&m.room!==room){UNR[m.room]=(UNR[m.room]||0)+1;drawTabs()}}}
   if(m.t==='uno')renderUno(m);
-  if(m.t==='kicked'&&m.auto){AL.add(m.room);dropRoom(m.room);DC.add(m.room);if(cur==='chat'&&room===m.room)showAL(m.room);else{toast('⚠ Disconnected from '+rtitle(m.room),true);drawTabs()}return}
+  if(m.t==='tabsclosed'){if(OPEN.length)leaveAll('All room tabs were closed after 30 minutes away. Join a room again when you are back.');return}
+  if(m.t==='kicked'&&m.auto){setAL(m.room,m.why);if(cur==='chat'&&room===m.room)showAL(m.room);else{toast('⚠ Disconnected from '+rtitle(m.room),true);drawTabs()}return}
   if(m.t==='kicked'){OPEN=OPEN.filter(x=>x!==m.room);dropRoom(m.room);saveOpen();if(m.auto)toast(`You left ${m.room} after 30 minutes without chatting. Join again any time.`);else if(m.renamed)toast(`${m.room} was renamed to ${m.renamed}.`);else toast(m.text||`You were removed from ${m.room} by ${m.by}.`,true);go('rooms')}
   if(m.t==='denied'){OPEN=OPEN.filter(x=>x!==m.room);dropRoom(m.room);saveOpen();toast(m.error,true);go('rooms')}
 }
-let G={},RM=[],RI=null,OPEN=[];try{if(!EMB)OPEN=JSON.parse(sessionStorage.open||localStorage.open||'[]')}catch{}
+let G={},RM=[],RI=null,OPEN=[];try{if(!EMB){if(!sessionStorage.open&&localStorage.pgh){localStorage.open='[]'}delete localStorage.pgh;OPEN=JSON.parse(sessionStorage.open||localStorage.open||'[]')}}catch{}
 const AL=new Set();   // rooms the server removed me from after 30 minutes
-function showAL(r){const lg=$('log');if(!lg)return;lg.innerHTML='';DC.add(r);drawTabs();mountDC(r,'Disconnected from <b>'+esc(rtitle(r))+'</b>',"You were removed because you didn't send a message for 30 minutes. Tap Rejoin to enter again; earlier chat is not shown after you return.");const t=$('t');if(t)t.placeholder='You are disconnected from this room'}
+const AWH={idle:"You were removed because you didn't send a message for 30 minutes. Tap Rejoin to enter again; earlier chat is not shown after you return.",bg:"You were removed because the app was minimised for more than 15 minutes. Tap Rejoin to enter again; earlier chat is not shown after you return."};
+function setAL(r,why){AL.add(r);DC.add(r);DCW[r]=AWH[why]||AWH.idle;dropRoom(r)}
+/* Leave = out of this room AND every room tab closes */
+function leaveAll(msg){const rs=OPEN.slice();rs.forEach(x=>{try{tx({t:'leave',room:x})}catch{}dropRoom(x)});OPEN=[];AL.clear();DC.clear();for(const k in DCW)delete DCW[k];const d=$('dcbar');if(d)d.remove();saveOpen();if(msg)toast(msg);if(cur==='chat'||rs.length)go('rooms');else try{drawTabs()}catch{}}
+function showAL(r){const lg=$('log');if(!lg)return;lg.innerHTML='';DC.add(r);drawTabs();mountDC(r,'Disconnected from <b>'+esc(rtitle(r))+'</b>',DCW[r]||AWH.idle);const t=$('t');if(t)t.placeholder='You are disconnected from this room'}
 const UNR={},LOGC={},BUF={};let skipIntro=false;const dropRoom=x=>{delete LOGC[x];delete BUF[x];delete UNR[x]};
 const saveOpen=()=>{if(!EMB)try{sessionStorage.open=JSON.stringify(OPEN);localStorage.open=sessionStorage.open}catch{}try{if(ws&&ws.readyState===1)ws.send(JSON.stringify({t:'tabs',rooms:OPEN}))}catch{}};
 /* ---------- navigation ---------- */
@@ -3396,7 +3406,7 @@ function chatMenu(anchor){
     if(k==='info')return modPop(anchor||$('rbar'));
     if(k==='bal')return tx({t:'msg',text:'/balance'});
     if(k==='clr'){$('log').innerHTML='';return toast('Chat cleared on this device')}
-    if(k==='leave')return closeTab(room);
+    if(k==='leave')return leaveAll();
     if(k==='gift')return giftSheet();
     if(k==='pkt')return packetSheet();
     if(k==='cmds'||k==='rooms')return go(k);

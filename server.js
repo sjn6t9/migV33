@@ -1829,11 +1829,26 @@ const ROOM_STAY_MS = 30 * 60e3;
 setInterval(() => {
   const now = Date.now();
   wss.clients.forEach(w => {
-    if (!w.room || !w.user || w.room.startsWith('dm:') || !w.roomAt || now - w.roomAt < ROOM_STAY_MS) return;
+    if (!w.room || !w.user || w.room.startsWith('dm:') || !w.roomAt) return;
+    const mod = canMod(w.room, w.user); if (w._m && !mod) w.roomAt = now; w._m = mod;   // a moderator who loses the role starts the 30 minutes from that moment
+    if (now - w.roomAt < ROOM_STAY_MS) return;
     if (canMod(w.room, w.user)) return;
-    const r = w.room; leaveRoom(w); send(w, { t: 'kicked', room: r, by: 'system', auto: true });
+    const r = w.room; leaveRoom(w); send(w, { t: 'kicked', room: r, by: 'system', auto: true, why: 'idle' });
   });
 }, 60e3).unref();
+const dropAllRooms = (w, why) => {
+  const r0 = w.room, rooms = new Set();
+  if (r0 && !r0.startsWith('dm:')) rooms.add(r0);
+  if (w.tabs) w.tabs.forEach(x => { if (!x.startsWith('dm:')) rooms.add(x); });
+  if (r0 && !r0.startsWith('dm:')) leaveRoom(w);
+  w.tabs = new Set();
+  for (const t of rooms) {
+    if (t === r0 || roomNames(t).has(w.user)) continue;
+    try { db.prepare('delete from room_seen where user=? and room=?').run(w.user, t); db.prepare('delete from room_since where user=? and room=?').run(w.user, t); } catch {}
+    cast(t, { t: 'leave', room: t, user: w.user, role: roleOf(w.user), xp: xpOf(w.user), ts: Date.now() }); castRoster(t); purgeRoomMsgs(t);
+  }
+  rooms.forEach(x => send(w, { t: 'kicked', room: x, by: 'system', auto: true, why }));
+};
 // App minimised with the connection still open: Away at once (client), Offline after 15 min, rooms reset after 30 min hidden in total
 setInterval(() => {
   const now = Date.now(), seen = new Set();
@@ -1841,7 +1856,8 @@ setInterval(() => {
     if (!w.user || !w.hiddenAt || w.emb) return;
     const t = now - w.hiddenAt;
     if (t > AWAY_MS && t < AWAY_MS + 61e3 && !seen.has(w.user)) { seen.add(w.user); online(); userRooms(w.user).forEach(castRoster); }
-    if (t > 2 * AWAY_MS && w.room && !w.room.startsWith('dm:') && !canMod(w.room, w.user)) { const r = w.room; w.tabs && [...w.tabs].forEach(x => { try { w.tabs.delete(x); } catch {} }); leaveRoom(w); send(w, { t: 'kicked', room: r, by: 'system', auto: true }); }
+    if (t >= AWAY_MS && !w._bgOut) { w._bgOut = 1; dropAllRooms(w, 'bg'); }   // 15 minutes minimised: out of every room (moderators too); the tabs stay with Rejoin/Leave
+    if (t >= 2 * AWAY_MS && !w._bgAll) { w._bgAll = 1; send(w, { t: 'tabsclosed' }); }   // 30 minutes: every room tab is closed
   });
 }, 60e3).unref();
 // Everyone who is in a room: joined right now OR has the room open as a tab (an open tab means they are still in that room)
@@ -2628,7 +2644,7 @@ function onWsMessage(ws, raw) {
       return;
     }
     if (m.t === 'bye') { ws._bye = true; return; }
-    if (m.t === 'vis') { ws.vis = !!m.v; const was = ws.hiddenAt; ws.hiddenAt = m.v ? 0 : Date.now(); if (m.v && was && Date.now() - was > AWAY_MS) { goneAt.delete(ws.user); online(); userRooms(ws.user).forEach(castRoster); } return; }   // app on screen (true) or in the background (false)   // the browser/tab is closing: show offline without the grace period
+    if (m.t === 'vis') { ws.vis = !!m.v; const was = ws.hiddenAt; if (m.v) { ws._bgOut = 0; ws._bgAll = 0; } ws.hiddenAt = m.v ? 0 : Date.now(); if (m.v && was && Date.now() - was > AWAY_MS) { goneAt.delete(ws.user); online(); userRooms(ws.user).forEach(castRoster); } return; }   // app on screen (true) or in the background (false)   // the browser/tab is closing: show offline without the grace period
     if (m.t === 'logout') {   // signed out: offline, out of every room
       if (!ws.user) return;
       if (m.endpoint) { try { PUSH.drop(ws.user, m.endpoint); } catch {} }
@@ -2703,7 +2719,7 @@ function onWsMessage(ws, raw) {
   }
 }
 const ghosts = new Map();
-const ROOM_GRACE = 30 * 60e3;   // minimised / dropped connections stay in their room this long
+const ROOM_GRACE = AWAY_MS;   // minimised / dropped connections stay in their room this long
 function closeWs(ws) {
   if (ws.user && !ws.emb && !hasSock(ws.user)) {
     const u0 = ws.user, rooms0 = userRooms(u0); if (ws.room) rooms0.push(ws.room);
