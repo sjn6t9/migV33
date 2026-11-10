@@ -2245,7 +2245,29 @@ html body #view#view#view#view#view#view#view#view#view#view#view#view#view#view
 }
 html body #stsh .stg button[data-g]:not([data-g=""]){background:var(--sw)!important;border:2px solid transparent!important}
 html body #stsh .stg button.on{border-color:#2f95e0!important}
-@media (max-width:700px){html body #view#view#view#view#view#view#view#view#view#view#view#view#view#view#view#view#view#view#view#view .cmpx .cb{gap:2px!important}html body #view#view#view#view#view#view#view#view#view#view#view#view#view#view#view#view#view#view#view#view .cmpx .cb button:not(.o){padding:4px 7px!important}
+@media (max-width:700px){html body #view#view#view#view#view#view#view#view#view#view#view#view#view#view#view#view#view#view#view#view .cmpx .cb{gap:2px!important}html body #view#view#view#view#view#view#view#view#view#view#view#view#view#view#view#view#view#view#view#view .cmpx .cb button:not(.o){padding:4px 7px!important}}
+
+/* ---- Facebook-style "What's on your mind?" row + floating Create post card ---- */
+.cprm{display:flex;align-items:center;gap:10px;width:calc(100% - 16px);max-width:680px;box-sizing:border-box;margin:10px auto;padding:10px 12px;border-radius:16px;background:#fff;border:1px solid rgba(120,130,150,.25)}
+html[data-theme=dark] .cprm{background:#0f1a2b;border-color:rgba(255,255,255,.14)}
+html body .cprm #cpo{flex:1;min-width:0;height:42px;min-height:0;padding:0 16px;border-radius:99px;text-align:left;font-size:15px;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;background:rgba(120,130,150,.16);color:#6b7690;border:0;box-shadow:none}
+html body .cprm #cpp{width:42px;height:42px;min-height:0;padding:0;border-radius:50%;font-size:22px;background:none;border:0;box-shadow:none}
+html body #view#view#view#view#view#view#view#view#view#view#view#view#view#view#view#view#view#view#view#view .cmpx.cpin{display:none!important}
+#cpmod{position:fixed;inset:0;z-index:82;display:grid;place-items:center;padding:12px;background:rgba(5,10,25,.62);animation:popin .2s ease}
+#cpmod .cpc{width:min(560px,100%);max-height:min(92vh,100%);display:flex;flex-direction:column;border-radius:16px;overflow:hidden;background:#fff;color:#1c2330;box-shadow:0 18px 60px rgba(0,0,0,.45)}
+html[data-theme=dark] #cpmod .cpc{background:#121c30;color:#eaf0ff;border:1px solid rgba(255,255,255,.14)}
+#cpmod .cph{position:relative;display:flex;align-items:center;justify-content:center;padding:14px 56px;border-bottom:1px solid rgba(120,130,150,.28);font-size:18px}
+html body #cpmod .cpx{position:absolute;right:10px;top:50%;transform:translateY(-50%);width:34px;height:34px;min-height:0;padding:0;border-radius:50%;border:0;background:rgba(120,130,150,.22);color:inherit;font-size:16px;box-shadow:none}
+#cpmod .cpu{display:flex;align-items:center;gap:10px;padding:12px 16px 4px}#cpmod .cpu small{display:block;opacity:.65;font-size:12px}
+#cpmod .cpb{overflow:auto;padding:0 8px 12px}
+html body #cpmod .cmpx{margin:0!important;padding:4px 8px!important;width:auto!important;max-width:none!important;background:none!important;border:0!important;box-shadow:none!important;border-radius:0!important;color:inherit!important}
+html body #cpmod .cmpx .cr>.av{display:none!important}
+html body #cpmod .cmpx .cr{display:block!important}
+html body #cpmod .cmpx textarea{width:100%!important;box-sizing:border-box;border:0!important;box-shadow:none!important;border-radius:12px}
+html body #cpmod .cmpx:not(.styled) textarea{min-height:140px;background:none!important;font-size:20px!important;padding:8px 6px!important;color:inherit!important}
+html body #cpmod .cmpx.styled textarea{text-align:center!important}
+html body #cpmod .cmpx .cb{border-top:1px solid rgba(120,130,150,.25)!important;margin-top:8px!important;padding-top:10px!important}
+html body #cpmod .cmpx .cb #pb{order:99;flex:1 0 100%;width:100%!important;margin-top:8px;padding:11px!important;border-radius:10px!important;font-size:16px!important;font-weight:800}
 </style>
 </head>
 <body>
@@ -2694,13 +2716,21 @@ const rich0=t=>esc(t).replace(/(^|[\s(])@([A-Za-z0-9._-]{3,16})/g,'$1<a class="m
 const rich=t=>emo(rich0(t));
 function snack(msg,label,fn){const d=document.createElement('div');d.className='snack';d.innerHTML=`<span>${esc(msg)}</span>${label?`<button>${esc(label)}</button>`:''}`;if(label)d.querySelector('button').onclick=()=>{d.remove();fn()};document.body.append(d);setTimeout(()=>d.remove(),6000)}
 let homeTag='',PS={},postImg=null;
-V.home=async(tag)=>{homeTag=typeof tag==='string'?tag:'';postImg=null;let bgSel='';
-  view(`<div class="srw"><div class="srt" id="srt"><span role="tab" data-t="s" class="on">Stories</span><span role="tab" data-t="r">Reels</span></div><div id="stories" class="stor"></div><div id="rlstrip" class="rls" hidden></div></div><div class="cmpx"><div class="cr">${av(me,44)}<textarea id="pt" rows="2" maxlength="500" placeholder="What's on your mind, ${esc(me)}? Use @name and #tag"></textarea></div><div id="pprev"></div><div id="sug" hidden></div>
+function closeCp(){const d=document.getElementById('cpmod');if(window._cpEsc){document.removeEventListener('keydown',window._cpEsc);window._cpEsc=null}if(!d)return;const c=d.querySelector('.cmpx'),h=window._cpHome;if(c&&h&&h.isConnected){c.classList.add('cpin');h.insertBefore(c,window._cpNext&&window._cpNext.parentNode===h?window._cpNext:null)}d.remove()}
+V.home=async(tag)=>{homeTag=typeof tag==='string'?tag:'';postImg=null;let bgSel='';closeCp();
+  view(`<div class="srw"><div class="srt" id="srt"><span role="tab" data-t="s" class="on">Stories</span><span role="tab" data-t="r">Reels</span></div><div id="stories" class="stor"></div><div id="rlstrip" class="rls" hidden></div></div><div class="cprm" id="cprm">${av(me,40)}<button type="button" id="cpo">What's on your mind, ${esc(me)}?</button><button type="button" id="cpp" aria-label="Photo">🖼️</button></div><div class="cmpx cpin"><div class="cr">${av(me,44)}<textarea id="pt" rows="2" maxlength="500" placeholder="What's on your mind, ${esc(me)}? Use @name and #tag"></textarea></div><div id="pprev"></div><div id="sug" hidden></div>
   <div class="cb"><button id="pbg" type="button" title="Background style" aria-label="Background style"><i class="aa">Aa</i></button><button id="pph" type="button" title="Add a photo">📷<span> Photo</span></button><button id="pmn" type="button" title="Mention someone">@<span> Mention</span></button><button id="pht" type="button" title="Add a hashtag">#<span> Tag</span></button><button id="pem" type="button" title="Add an emoji">😊</button><input type="file" id="pfi" accept="image/*" hidden><span class="mu" id="pcnt">0/500</span><button class="o" id="pb">Post</button></div><div id="emp" hidden>${CE.map(c=>`<button type="button" data-e="${esc(ceCode(c))}" title="${esc(c.name)}">${ceImg(c,32)}</button>`).join("")||'<span class="mu" style="padding:6px">No emoticons yet. Staff can add them in Admin Panel.</span>'}</div></div><div id="feed" class="mu pad">Loading…</div>`);
   const pt=$('pt');
   const ins=t=>{const a=pt.selectionStart??pt.value.length,b=pt.selectionEnd??a;if(pt.value.length-(b-a)+t.length>500)return;pt.value=pt.value.slice(0,a)+t+pt.value.slice(b);pt.focus();pt.selectionStart=pt.selectionEnd=a+t.length;pt.oninput()};
   const cmp=document.querySelector('.cmpx');
-  const fitBg=()=>{if(!bgSel){pt.style.cssText='';return}const t=tbgOf(bgSel);pt.rows=1;pt.style.cssText=`background:${t[0]}!important;color:${t[1]}!important;font-size:${tbgFs(pt.value.length)}px;${t[2]?'text-shadow:0 2px 10px rgba(0,0,0,.45);':''}padding:16px;height:auto`;const hh=pt.scrollHeight-32,H=Math.max(240,hh+32),pad=Math.max(16,(H-hh)/2);pt.style.paddingTop=pt.style.paddingBottom=pad+'px';pt.style.height=(hh+2*pad)+'px';pt.style.setProperty('--ph',t[1])};
+  window._cpHome=cmp.parentNode;window._cpNext=cmp.nextSibling;
+  const openCp=(pick)=>{closeCp();const d=document.createElement('div');d.id='cpmod';
+    d.innerHTML=`<div class="cpc" role="dialog" aria-modal="true"><div class="cph"><b>Create post</b><button type="button" class="cpx" aria-label="Close">✕</button></div><div class="cpu">${av(me,44)}<div><b style="color:${nc(me)}">${esc(me)}</b><small>🌐 Public</small></div></div><div class="cpb"></div></div>`;
+    cmp.classList.remove('cpin');d.querySelector('.cpb').appendChild(cmp);document.body.appendChild(d);
+    d.onclick=e=>{if(e.target===d||e.target.closest('.cpx'))closeCp()};document.addEventListener('keydown',window._cpEsc=e=>{if(e.key==='Escape')closeCp()});
+    setTimeout(()=>{pt.focus();if(pick)$('pfi').click()},80)};
+  $('cpo').onclick=()=>openCp();$('cpp').onclick=()=>openCp(true);
+  const fitBg=()=>{if(!bgSel){pt.style.cssText='';return}const t=tbgOf(bgSel);pt.rows=1;pt.style.cssText=`background:${t[0]}!important;color:${t[1]}!important;font-size:${tbgFs(pt.value.length)}px!important;${t[2]?'text-shadow:0 2px 10px rgba(0,0,0,.45);':''}padding:16px;height:auto`;const hh=pt.scrollHeight-32,H=Math.max(240,hh+32),pad=Math.max(16,(H-hh)/2);pt.style.paddingTop=pt.style.paddingBottom=pad+'px';pt.style.height=(hh+2*pad)+'px';pt.style.setProperty('--ph',t[1])};
   const setBg=k=>{bgSel=k;cmp.classList.toggle('styled',!!k);if(k&&postImg){postImg=null;$('pprev').innerHTML=''}if(!k)pt.rows=2;fitBg()};
   $('pbg').onclick=()=>{const old=$('stsh');if(old){old.remove();return}const d=document.createElement('div');d.id='stsh';
     d.innerHTML=`<div class="stc"><div class="sth"><i></i><b>Style</b><button type="button" class="stk" aria-label="Done">✓</button></div><div class="stg"><button type="button" data-g="" class="${bgSel?'':'on'}" aria-label="No style">⊘</button>${[...TBG.keys()].sort((a,b)=>(a<20)-(b<20)||a-b).map(i=>{const t=TBG[i];return `<button type="button" data-g="g${i+1}" class="${bgSel==='g'+(i+1)?'on':''}" style="--sw:${t[0]}" aria-label="Style ${i+1}"></button>`}).join('')}</div></div>`;
@@ -2716,7 +2746,7 @@ V.home=async(tag)=>{homeTag=typeof tag==='string'?tag:'';postImg=null;let bgSel=
   pt.oninput=()=>{$('pcnt').textContent=pt.value.length+'/500';fitBg();clearTimeout(sugT);const m=pt.value.slice(0,pt.selectionStart).match(/(?:^|\s)@([A-Za-z0-9._-]{0,16})$/);if(!m){$('sug').hidden=true;return}
     sugT=setTimeout(async()=>{try{const l=await api('GET','/users-suggest?q='+encodeURIComponent(m[1]));$('sug').innerHTML=l.map(u=>`<button type="button" data-s="${esc(u.name)}">${av(u.name,26)}<b style="color:${nc(u.name)}">${esc(u.name)}</b>${rt(u.role,u.name)}</button>`).join('');$('sug').hidden=!l.length}catch{}},180)};
   $('sug').onclick=e=>{const b=e.target.closest('[data-s]');if(!b)return;const pos=pt.selectionStart,before=pt.value.slice(0,pos).replace(/@[A-Za-z0-9._-]*$/,'@'+b.dataset.s+' ');pt.value=before+pt.value.slice(pos);pt.focus();pt.selectionStart=pt.selectionEnd=before.length;$('sug').hidden=true;pt.oninput()};
-  $('pb').onclick=async()=>{const t=pt.value.trim();if(!t&&!postImg)return;$('pb').disabled=true;try{let image='';if(postImg)image=await upload('image',postImg);await api('POST','/posts',{text:t,image,bg:image?'':bgSel});ST.xp=(ST.xp||0)+5;pt.value='';postImg=null;setBg('');$('pprev').innerHTML='';$('pcnt').textContent='0/500';await loadFeed()}catch(e){fail(e)}$('pb').disabled=false};
+  $('pb').onclick=async()=>{const t=pt.value.trim();if(!t&&!postImg)return;$('pb').disabled=true;try{let image='';if(postImg)image=await upload('image',postImg);await api('POST','/posts',{text:t,image,bg:image?'':bgSel});ST.xp=(ST.xp||0)+5;pt.value='';postImg=null;setBg('');$('pprev').innerHTML='';$('pcnt').textContent='0/500';closeCp();await loadFeed()}catch(e){fail(e)}$('pb').disabled=false};
   loadHeadline();clearInterval(window._hlT);window._hlT=setInterval(()=>{if(cur==='home')loadHeadline();else clearInterval(window._hlT)},30000);
   $('feed').onclick=feedClick;
   $('stories').onclick=e=>{const b=e.target.closest('[data-sc]');if(!b)return;b.dataset.sc==='new'?openCreateStory():openStory(+b.dataset.sc)};
