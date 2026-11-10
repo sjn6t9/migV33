@@ -2242,15 +2242,13 @@ html body #stsh .stg button.on{border-color:#2f95e0;outline:2px solid rgba(47,14
 @media (max-width:700px){
 html body #view#view#view#view#view#view#view#view#view#view#view#view#view#view#view#view#view#view#view#view .fbp{width:100%!important;max-width:none!important;margin:0 0 8px!important;border-radius:0!important;border-left:0!important;border-right:0!important;box-shadow:none!important}
 html body #view#view#view#view#view#view#view#view#view#view#view#view#view#view#view#view#view#view#view#view .fbp .tbg{margin-top:8px}
-html body .cprm{width:100%;max-width:none;margin:0 0 8px;border-radius:0;border-left:0;border-right:0}
 }
 html body #stsh .stg button[data-g]:not([data-g=""]){background:var(--sw)!important;border:2px solid transparent!important}
 html body #stsh .stg button.on{border-color:#2f95e0!important}
 @media (max-width:700px){html body #view#view#view#view#view#view#view#view#view#view#view#view#view#view#view#view#view#view#view#view .cmpx .cb{gap:2px!important}html body #view#view#view#view#view#view#view#view#view#view#view#view#view#view#view#view#view#view#view#view .cmpx .cb button:not(.o){padding:4px 7px!important}}
 
 /* ---- Facebook-style "What's on your mind?" row + floating Create post card ---- */
-.cprm{display:flex;align-items:center;gap:10px;width:calc(100% - 16px);max-width:calc(100% - 16px);box-sizing:border-box;margin:10px auto;padding:10px 12px;border-radius:16px;background:#fff;border:1px solid rgba(120,130,150,.25)}
-html[data-theme=dark] .cprm{background:#0f1a2b;border-color:rgba(255,255,255,.14)}
+html body .fbp.cprm{display:flex!important;align-items:center;gap:10px;padding:10px 12px!important}
 html body .cprm #cpo{flex:1;min-width:0;height:42px;min-height:0;padding:0 16px;border-radius:99px;text-align:left;font-size:15px;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;background:rgba(120,130,150,.16);color:#6b7690;border:0;box-shadow:none}
 html body .cprm #cpp{width:42px;height:42px;min-height:0;padding:0;border-radius:50%;font-size:22px;background:none;border:0;box-shadow:none}
 html body #view#view#view#view#view#view#view#view#view#view#view#view#view#view#view#view#view#view#view#view .cmpx.cpin{display:none!important}
@@ -2946,7 +2944,7 @@ function svShow(){clearTimeout(svT);const g=STG[SV.gi],it=g.items[SV.ii],own=g.u
   d.onclick=async e=>{const z=e.target.closest('[data-z]');if(e.target.closest('#svx'))return svClose();if(z)return z.dataset.z==='n'?svNext():svPrev();
     if(e.target.closest('#svv')){clearTimeout(svT);try{const l=await api('GET',`/stories/${it.id}/viewers`);sheetOpen(`<h2>Viewers (${l.length})</h2><section class="whol">${l.map(x=>`<article class="wr">${av(x.user,38)}<span class="wt"><b style="color:${nc(x.user)}">${esc(x.user)}</b>${rt(x.role,x.user)}<small>${ago(x.ts)} ago</small></span></article>`).join('')||'<small class="mu">No views yet.</small>'}</section>`);$('sh').onclick=null}catch(er){fail(er)}return}
     if(e.target.closest('#svd')){clearTimeout(svT);if(!confirm('Delete this story?')){svT=setTimeout(svNext,5000);return}try{await api('DELETE','/stories/'+it.id);g.items.splice(SV.ii,1);if(!g.items.length){STG.splice(SV.gi,1);if(!STG.length)return svClose();if(SV.gi>=STG.length)SV.gi=STG.length-1;SV.ii=0}else if(SV.ii>=g.items.length)SV.ii=g.items.length-1;svShow()}catch(er){fail(er)}}}}
-const cprmHTML=()=>`<div class="cprm" id="cprm">${av(me,40)}<button type="button" id="cpo">What's on your mind, ${esc(me)}?</button><button type="button" id="cpp" aria-label="Photo">🖼️</button></div>`;
+const cprmHTML=()=>`<div class="fbp cprm" id="cprm">${av(me,40)}<button type="button" id="cpo">What's on your mind, ${esc(me)}?</button><button type="button" id="cpp" aria-label="Photo">🖼️</button></div>`;
 async function loadFeed(){const ps=await api('GET','/feed'+(homeTag?'?tag='+encodeURIComponent(homeTag):''));ps.forEach(p=>ROLES[p.user]=p.role);PS={};ps.forEach(p=>PS[p.id]=p);
   $('feed').className='';$('feed').innerHTML=cprmHTML()+(homeTag?`<div class="tagbar">Showing <b>#${esc(homeTag)}</b> <button data-a="cleartag">✕ Clear</button></div>`:'')+(ps.length?ps.map(postHTML).join(''):`<div class="card mu">${homeTag?'No posts with this tag yet.':'No posts yet. Be the first to post.'}</div>`)}
 function whoSheet(id,type){const T={react:'Reactions',comment:'Comments',share:'Shares'};
