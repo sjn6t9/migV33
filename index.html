@@ -2160,6 +2160,32 @@ html body #rlw .rltop #rlmu svg{width:16px!important;height:16px!important}
 html body #rlw .rltop button svg{width:15px!important;height:15px!important}
 .rlpp{width:56px!important;height:56px!important}.rlpp svg{width:28px!important;height:28px!important}
 </style>
+<style>/* ===== OTP 'ember' slots: dark = glowing embers, other skins = theme colours ===== */
+.box .otp{--e-slot:rgba(255,255,255,.8);--e-ink:#2a1a08;--e-hot:#f7931e;--e-flame:#f7931e;--e-glow:rgba(247,147,30,.45);--e-line:rgba(247,147,30,.35);--e-wick:#f7931e;--e-pill:rgba(255,255,255,.75)}
+html[data-skin=navy] .box .otp{--e-slot:rgba(255,255,255,.1);--e-ink:#f2f6ff;--e-hot:#fff;--e-flame:#ffb85c;--e-glow:rgba(255,184,92,.5);--e-line:rgba(255,255,255,.3);--e-wick:#ffb85c;--e-pill:rgba(255,255,255,.12)}
+html[data-skin=dark] .box .otp{--e-slot:#201914;--e-ink:#f7ebdd;--e-hot:#fff3d6;--e-flame:#ff9b42;--e-glow:rgba(255,140,50,.55);--e-line:rgba(255,160,80,.38);--e-wick:#ff9b42;--e-pill:rgba(255,140,50,.08)}
+html body .box .otp{gap:9px;margin:18px 0 8px}
+html body .box .otp .od{flex:0 1 46px;height:56px;border-radius:15px;background:var(--e-slot);color:var(--e-ink);border:1px solid var(--e-line);font:500 27px/1 "Iowan Old Style","Palatino Linotype",Georgia,serif;box-shadow:inset 0 1px 0 rgba(255,255,255,.08),0 0 14px -6px var(--e-glow);transition:border-color .2s,box-shadow .2s,transform .15s;overflow:visible}
+html body .box .otp .od::before,html body .box .otp .od::after{animation:none;filter:none;background:none;-webkit-mask:none;mask:none;z-index:0}
+html body .box .otp .od::after{content:"";position:absolute;left:30%;right:30%;bottom:9px;top:auto;inset:auto 30% 9px 30%;height:3px;border-radius:3px;background:var(--e-line);opacity:.55;transition:background .2s,opacity .2s,box-shadow .2s}
+html body .box .otp .od::before{content:none}
+html body .box .otp .od.f{background:var(--e-slot);border-color:var(--e-flame);box-shadow:inset 0 -10px 16px -12px var(--e-glow),0 0 16px -4px var(--e-glow);animation:none;text-shadow:0 0 10px var(--e-glow)}
+html body .box .otp .od.f::after{background:var(--e-wick);opacity:1;box-shadow:0 0 8px var(--e-glow)}
+html body .box .otp .od.act{border:2px solid var(--e-flame);box-shadow:0 0 0 3px transparent,0 0 22px -2px var(--e-glow),inset 0 0 12px -6px var(--e-glow)}
+html body .box .otp .od.act:not(.f)::before{content:"";position:absolute;left:50%;top:26%;bottom:34%;width:2px;margin-left:-1px;inset:auto auto 34% 50%;height:40%;background:var(--e-hot);border-radius:2px;animation:emcar 1s steps(1) infinite;box-shadow:0 0 6px var(--e-glow)}
+@keyframes emcar{50%{opacity:0}}
+html body .box .otp .od.ash{animation:emash .26s ease-in forwards;border-color:var(--e-line);box-shadow:none}
+@keyframes emash{0%{color:var(--e-ink)}40%{color:#8a8a8a;filter:blur(.4px)}100%{color:#777;filter:blur(3px);transform:translateY(6px) scale(.85);opacity:0}}
+html body .box .otp.bad .od{border-color:#ff6b6b;box-shadow:0 0 14px -4px #ff6b6b}
+.box .rs{font-size:12px;opacity:.8;margin-top:6px;display:flex;flex-direction:column;align-items:center;gap:8px}
+html body .box #rsb{--p:0;display:inline-flex;align-items:center;gap:9px;padding:9px 18px 9px 12px;border-radius:99px;background:var(--e-pill,rgba(255,255,255,.1));border:1px solid var(--e-line,rgba(255,255,255,.3));color:inherit;font-size:14px;font-weight:600;text-decoration:none;opacity:1}
+html body .box #rsb::before{content:"";width:18px;height:18px;border-radius:50%;flex:none;background:conic-gradient(var(--e-flame,#ff9b42) calc(var(--p)*360deg),var(--e-line,rgba(255,255,255,.2)) 0);-webkit-mask:radial-gradient(circle,transparent 5px,#000 5.5px);mask:radial-gradient(circle,transparent 5px,#000 5.5px)}
+html body .box #rsb:disabled{opacity:1!important;border-radius:99px!important;box-shadow:none!important;color:inherit!important}
+html body .box #rsb{border-radius:99px!important;width:auto!important;min-height:0!important}
+html body .box #rsb:not(:disabled){color:var(--e-flame,#ff9b42);cursor:pointer}
+html body .box #rsb:not(:disabled)::before{--p:1}
+@media (prefers-reduced-motion:reduce){html body .box .otp .od.act:not(.f)::before{animation:none}}
+</style>
 </head>
 <body>
 <div id="auth"><div class="fx" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i></div><div class="box">
@@ -2193,7 +2219,7 @@ html body #rlw .rltop button svg{width:15px!important;height:15px!important}
   <form id="s2" style="display:none">
     <small>We sent a 6-digit code to <b id="em"></b>.</small>
     <div class="otp" id="otp"><i class="od"></i><i class="od"></i><i class="od"></i><i class="od"></i><i class="od"></i><i class="od"></i><input id="sc" class="real" inputmode="numeric" pattern="[0-9]*" autocomplete="one-time-code" maxlength="6" aria-label="6-digit verification code"></div>
-    <div class="rs">Didn't receive the code? <button id="rsb" class="go2" type="button" disabled>Resend in 30s</button></div>
+    <div class="rs">Didn't receive the code? <button id="rsb" class="go2" type="button" disabled>Resend code in 0:30</button></div>
     <button class="o">Create Account</button>
     <button id="ce" class="go2" type="button">Change Email</button>
   </form>
@@ -2548,10 +2574,15 @@ function drawNav(){const items=[['🪪','My Profile','profile'],['🏠','Home','
     }}
 
 /* ---------- OTP boxes ---------- */
-function otpPaint(){const v=$('sc').value.replace(/\D/g,'').slice(0,6),ds=document.querySelectorAll('#otp .od'),foc=document.activeElement===$('sc');$('sc').value=v;ds.forEach((d,i)=>{d.textContent=v[i]||'';d.classList.toggle('f',!!v[i]);d.classList.toggle('act',foc&&i===Math.min(v.length,5))})}
+let otpPrev='';
+function otpPaint(){const v=$('sc').value.replace(/\D/g,'').slice(0,6),ds=document.querySelectorAll('#otp .od'),foc=document.activeElement===$('sc');$('sc').value=v;
+  ds.forEach((d,i)=>{const had=otpPrev[i],now=v[i];
+    if(had&&!now){d.textContent=had;d.classList.remove('f');d.classList.add('ash');setTimeout(()=>{if(!($('sc').value[i])){d.classList.remove('ash');d.textContent=''}},260)}
+    else{d.classList.remove('ash');d.textContent=now||''}
+    d.classList.toggle('f',!!now);d.classList.toggle('act',foc&&i===Math.min(v.length,5))});otpPrev=v}
 let otpT=0;
-function otpTimer(){clearInterval(otpT);let s=30;const b=$('rsb');b.disabled=true;b.textContent='Resend in '+s+'s';otpT=setInterval(()=>{s--;if(s<=0){clearInterval(otpT);b.disabled=false;b.textContent='Resend code'}else b.textContent='Resend in '+s+'s'},1000)}
-function otpStart(){$('sc').value='';otpPaint();otpTimer();setTimeout(()=>$('sc').focus(),80)}
+function otpTimer(){clearInterval(otpT);let s=30;const b=$('rsb'),t=n=>'Resend code in 0:'+String(n).padStart(2,'0');b.disabled=true;b.style.setProperty('--p',1);b.textContent=t(s);otpT=setInterval(()=>{s--;if(s<=0){clearInterval(otpT);b.disabled=false;b.style.setProperty('--p',0);b.textContent='Resend code'}else{b.style.setProperty('--p',s/30);b.textContent=t(s)}},1000)}
+function otpStart(){$('sc').value='';otpPrev='';otpPaint();otpTimer();setTimeout(()=>$('sc').focus(),80)}
 $('sc').addEventListener('input',()=>{otpPaint();if($('sc').value.length===6)setTimeout(()=>$('s2').requestSubmit(),150)});
 $('sc').addEventListener('focus',otpPaint);$('sc').addEventListener('blur',otpPaint);
 $('otp').addEventListener('click',()=>$('sc').focus());
