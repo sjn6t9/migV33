@@ -2202,7 +2202,7 @@ html body .box #rsb:not(:disabled)::before{--p:1}
     <small id="fpm">Enter your username or email and we will send a 6-digit code.</small>
     <input id="fpi" placeholder="Username or Email" autocomplete="username" maxlength="100" autocapitalize="none">
     <div id="fpb" style="display:none">
-      <input id="fpc" inputmode="numeric" maxlength="6" placeholder="6-digit code" autocomplete="one-time-code">
+      <div class="otp" id="fpo"><i class="od"></i><i class="od"></i><i class="od"></i><i class="od"></i><i class="od"></i><i class="od"></i><input id="fpc" class="real" inputmode="numeric" pattern="[0-9]*" maxlength="6" autocomplete="one-time-code" aria-label="6-digit code"></div>
       <input id="fpp" type="password" placeholder="New password" autocomplete="new-password">
     </div>
     <button class="o" id="fpgo">Send code</button>
@@ -2294,11 +2294,11 @@ $('tl').onclick=()=>show('lf');$('ts').onclick=()=>show('s1');$('ce').onclick=()
 const post=async(u,b)=>{try{const r=await fetch(u,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(b)});let d;try{d=await r.json()}catch{d={error:'Server error ('+r.status+'). Please try again in a moment.'}}return[r,d]}catch{return[{ok:false},{error:'Cannot reach the server. Check your internet and try again.'}]}};
 function done(d){const keep=$('auto').checked,s=keep?localStorage:sessionStorage,o=keep?sessionStorage:localStorage;try{delete o.tk;delete o.off}catch{}s.tk=d.token;s.off=$('off').checked?'1':'';try{if(keep)localStorage.ru=$('lu').value.trim();else delete localStorage.ru}catch{}connect()}
 try{if(localStorage.ru)$('lu').value=localStorage.ru}catch{}
-$('fgt').onclick=()=>{show('fp');$('fpb').style.display='none';$('fpgo').textContent='Send code';$('fpi').disabled=false;$('fpi').value=$('lu').value;$('fpm').textContent='Enter your username or email and we will send a 6-digit code.';$('fpgo').dataset.s=''};
+$('fgt').onclick=()=>{show('fp');$('fpb').style.display='none';$('fpgo').textContent='Send code';$('fpi').disabled=false;$('fpi').value=$('lu').value;$('fpm').textContent='Enter your username or email and we will send a 6-digit code.';$('fpgo').dataset.s='';$('fpc').value='';$('fpc')._pv='';$('fpp').value='';otpPaint($('fpc'),$('fpo'))};
 $('fp').onsubmit=async e=>{e.preventDefault();const b=$('fpgo');$('err').textContent='';
   if(b.dataset.s!=='2'){const[r,d]=await post('/api/forgot',{id:$('fpi').value.trim()});if(!r.ok)return $('err').textContent=d.error;
-    b.dataset.s='2';$('fpb').style.display='grid';$('fpi').disabled=true;b.textContent='Reset password';$('fpm').textContent='If the account exists, a code was sent to its email. Enter it with your new password.';return}
-  const[r,d]=await post('/api/reset',{id:$('fpi').value.trim(),code:$('fpc').value.trim(),pass:$('fpp').value});if(!r.ok)return $('err').textContent=d.error;
+    b.dataset.s='2';$('fpb').style.display='grid';$('fpi').disabled=true;setTimeout(()=>$('fpc').focus(),80);b.textContent='Reset password';$('fpm').textContent='If the account exists, a code was sent to its email. Enter it with your new password.';return}
+  const[r,d]=await post('/api/reset',{id:$('fpi').value.trim(),code:$('fpc').value.trim(),pass:$('fpp').value});if(!r.ok){const o=$('fpo');o.classList.remove('bad');void o.offsetWidth;o.classList.add('bad');return $('err').textContent=d.error}
   $('lu').value=$('fpi').value;$('lp').value='';show('lf');$('err').textContent='Password changed. Log in with your new password.'};
 $('lf').onsubmit=async e=>{e.preventDefault();const[r,d]=await post('/api/login',{name:$('lu').value.trim(),pass:$('lp').value});if(!r.ok)return $('err').textContent=d.error;done(d)};
 $('s1').onsubmit=async e=>{e.preventDefault();if($('sp').value!==$('sp2').value)return $('err').textContent='Passwords do not match.';
@@ -2575,16 +2575,17 @@ function drawNav(){const items=[['🪪','My Profile','profile'],['🏠','Home','
 
 /* ---------- OTP boxes ---------- */
 let otpPrev='';
-function otpPaint(){const v=$('sc').value.replace(/\D/g,'').slice(0,6),ds=document.querySelectorAll('#otp .od'),foc=document.activeElement===$('sc');$('sc').value=v;
-  ds.forEach((d,i)=>{const had=otpPrev[i],now=v[i];
-    if(had&&!now){d.textContent=had;d.classList.remove('f');d.classList.add('ash');setTimeout(()=>{if(!($('sc').value[i])){d.classList.remove('ash');d.textContent=''}},260)}
+function otpPaint(inp,wrap){inp=inp&&inp.nodeType?inp:$('sc');wrap=wrap&&wrap.nodeType?wrap:$('otp');const v=inp.value.replace(/\D/g,'').slice(0,6),ds=wrap.querySelectorAll('.od'),foc=document.activeElement===inp,prev=inp._pv||'';inp.value=v;
+  ds.forEach((d,i)=>{const had=prev[i],now=v[i];
+    if(had&&!now){d.textContent=had;d.classList.remove('f');d.classList.add('ash');setTimeout(()=>{if(!(inp.value[i])){d.classList.remove('ash');d.textContent=''}},260)}
     else{d.classList.remove('ash');d.textContent=now||''}
-    d.classList.toggle('f',!!now);d.classList.toggle('act',foc&&i===Math.min(v.length,5))});otpPrev=v}
+    d.classList.toggle('f',!!now);d.classList.toggle('act',foc&&i===Math.min(v.length,5))});inp._pv=v;if(inp===$('sc'))otpPrev=v}
 let otpT=0;
 function otpTimer(){clearInterval(otpT);let s=30;const b=$('rsb'),t=n=>'Resend code in 0:'+String(n).padStart(2,'0');b.disabled=true;b.style.setProperty('--p',1);b.textContent=t(s);otpT=setInterval(()=>{s--;if(s<=0){clearInterval(otpT);b.disabled=false;b.style.setProperty('--p',0);b.textContent='Resend code'}else{b.style.setProperty('--p',s/30);b.textContent=t(s)}},1000)}
-function otpStart(){$('sc').value='';otpPrev='';otpPaint();otpTimer();setTimeout(()=>$('sc').focus(),80)}
+function otpStart(){$('sc').value='';otpPrev='';$('sc')._pv='';otpPaint();otpTimer();setTimeout(()=>$('sc').focus(),80)}
 $('sc').addEventListener('input',()=>{otpPaint();if($('sc').value.length===6)setTimeout(()=>$('s2').requestSubmit(),150)});
-$('sc').addEventListener('focus',otpPaint);$('sc').addEventListener('blur',otpPaint);
+$('sc').addEventListener('focus',()=>otpPaint());$('sc').addEventListener('blur',()=>otpPaint());
+{const fc=$('fpc'),fo=$('fpo'),pf=()=>otpPaint(fc,fo);fc.addEventListener('input',()=>{pf();if(fc.value.length===6)$('fpp').focus()});fc.addEventListener('focus',pf);fc.addEventListener('blur',pf);fo.addEventListener('click',()=>fc.focus())}
 $('otp').addEventListener('click',()=>$('sc').focus());
 $('rsb').onclick=async()=>{$('rsb').disabled=true;const[r,d]=await post('/api/signup/start',{fullName:$('sf').value,name:$('su').value.trim(),email:$('se').value.trim(),gender:$('sg').value,pass:$('sp').value});$('err').textContent=r.ok?'A new code has been sent.':d.error;if(r.ok)otpTimer();else $('rsb').disabled=false};
 /* ---------- bottom bar ---------- */
