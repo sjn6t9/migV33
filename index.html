@@ -2185,6 +2185,8 @@ html body .box #rsb{border-radius:99px!important;width:auto!important;min-height
 html body .box #rsb:not(:disabled){color:var(--e-flame,#ff9b42);cursor:pointer}
 html body .box #rsb:not(:disabled)::before{--p:1}
 @media (prefers-reduced-motion:reduce){html body .box .otp .od.act:not(.f)::before{animation:none}}
+html[data-skin=dark] #auth #fpm,html[data-skin=navy] #auth #fpm,html[data-skin=dark] #auth .box small,html[data-skin=navy] #auth .box small{color:#fff!important;opacity:1!important}
+html[data-skin=clear] #auth #fpm,html[data-skin=clear] #auth .box small{color:#000!important;opacity:1!important}
 </style>
 </head>
 <body>
@@ -2204,6 +2206,7 @@ html body .box #rsb:not(:disabled)::before{--p:1}
     <div id="fpb" style="display:none">
       <div class="otp" id="fpo"><i class="od"></i><i class="od"></i><i class="od"></i><i class="od"></i><i class="od"></i><i class="od"></i><input id="fpc" class="real" inputmode="numeric" pattern="[0-9]*" maxlength="6" autocomplete="one-time-code" aria-label="6-digit code"></div>
       <input id="fpp" type="password" placeholder="New password" autocomplete="new-password">
+      <input id="fpp2" type="password" placeholder="Confirm password" autocomplete="new-password">
     </div>
     <button class="o" id="fpgo">Send code</button>
   </form>
@@ -2294,10 +2297,11 @@ $('tl').onclick=()=>show('lf');$('ts').onclick=()=>show('s1');$('ce').onclick=()
 const post=async(u,b)=>{try{const r=await fetch(u,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(b)});let d;try{d=await r.json()}catch{d={error:'Server error ('+r.status+'). Please try again in a moment.'}}return[r,d]}catch{return[{ok:false},{error:'Cannot reach the server. Check your internet and try again.'}]}};
 function done(d){const keep=$('auto').checked,s=keep?localStorage:sessionStorage,o=keep?sessionStorage:localStorage;try{delete o.tk;delete o.off}catch{}s.tk=d.token;s.off=$('off').checked?'1':'';try{if(keep)localStorage.ru=$('lu').value.trim();else delete localStorage.ru}catch{}connect()}
 try{if(localStorage.ru)$('lu').value=localStorage.ru}catch{}
-$('fgt').onclick=()=>{show('fp');$('fpb').style.display='none';$('fpgo').textContent='Send code';$('fpi').disabled=false;$('fpi').value=$('lu').value;$('fpm').textContent='Enter your username or email and we will send a 6-digit code.';$('fpgo').dataset.s='';$('fpc').value='';$('fpc')._pv='';$('fpp').value='';otpPaint($('fpc'),$('fpo'))};
+$('fgt').onclick=()=>{show('fp');$('fpb').style.display='none';$('fpgo').textContent='Send code';$('fpi').disabled=false;$('fpi').value=$('lu').value;$('fpm').textContent='Enter your username or email and we will send a 6-digit code.';$('fpgo').dataset.s='';$('fpc').value='';$('fpc')._pv='';$('fpp').value='';$('fpp2').value='';otpPaint($('fpc'),$('fpo'))};
 $('fp').onsubmit=async e=>{e.preventDefault();const b=$('fpgo');$('err').textContent='';
   if(b.dataset.s!=='2'){const[r,d]=await post('/api/forgot',{id:$('fpi').value.trim()});if(!r.ok)return $('err').textContent=d.error;
-    b.dataset.s='2';$('fpb').style.display='grid';$('fpi').disabled=true;setTimeout(()=>$('fpc').focus(),80);b.textContent='Reset password';$('fpm').textContent='If the account exists, a code was sent to its email. Enter it with your new password.';return}
+    b.dataset.s='2';$('fpb').style.display='grid';$('fpi').disabled=true;setTimeout(()=>$('fpc').focus(),80);b.textContent='Reset password';$('fpm').textContent='If the account exists, a code was sent to'+(d.hint?' '+d.hint:' its email')+'. Enter it with your new password.';return}
+  if($('fpp').value!==$('fpp2').value)return $('err').textContent='Passwords do not match.';
   const[r,d]=await post('/api/reset',{id:$('fpi').value.trim(),code:$('fpc').value.trim(),pass:$('fpp').value});if(!r.ok){const o=$('fpo');o.classList.remove('bad');void o.offsetWidth;o.classList.add('bad');return $('err').textContent=d.error}
   $('lu').value=$('fpi').value;$('lp').value='';show('lf');$('err').textContent='Password changed. Log in with your new password.'};
 $('lf').onsubmit=async e=>{e.preventDefault();const[r,d]=await post('/api/login',{name:$('lu').value.trim(),pass:$('lp').value});if(!r.ok)return $('err').textContent=d.error;done(d)};

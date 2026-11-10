@@ -166,7 +166,8 @@ app.post('/api/forgot', async (q, r) => {
     try { await mailer.sendMail({ from: process.env.SMTP_FROM || process.env.SMTP_USER, to: u.email, subject: 'Reset your migv33 password', text: `Your password reset code is ${code}. It expires in 10 minutes. If you did not ask for this, ignore this email.` }); }
     catch (e) { console.error(e); return bad(r, 'Could not send the email. Please try again.', 502); }
   }
-  r.json({ ok: true });   // same answer whether or not the account exists
+  const mk = e => { const [l, d = ''] = String(e).split('@'), [dn, ...t] = d.split('.'); return l.slice(0, 1) + '***@' + dn.slice(0, 1) + '***' + (t.length ? '.' + t.join('.') : ''); };
+  r.json({ ok: true, hint: mk(u && u.email ? u.email : (id.includes('@') ? id : id + '@gmail.com')) });   // same shape whether or not the account exists
 });
 app.post('/api/reset', (q, r) => {
   const { id = '', code = '', pass = '' } = q.body || {};
