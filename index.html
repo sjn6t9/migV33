@@ -2187,6 +2187,37 @@ html body .box #rsb:not(:disabled)::before{--p:1}
 @media (prefers-reduced-motion:reduce){html body .box .otp .od.act:not(.f)::before{animation:none}}
 html[data-skin=dark] #auth #fpm,html[data-skin=navy] #auth #fpm,html[data-skin=dark] #auth .box small,html[data-skin=navy] #auth .box small{color:#fff!important;opacity:1!important}
 html[data-skin=clear] #auth #fpm,html[data-skin=clear] #auth .box small{color:#000!important;opacity:1!important}
+
+/* ---- Facebook-style post actions + floating comment/share card ---- */
+html body #view#view#view#view#view#view#view#view#view#view#view#view#view#view#view#view#view#view#view#view .fbp .acts.fbx{display:flex!important;justify-content:flex-start!important;align-items:center!important;gap:4px!important;padding:2px 6px!important;margin:0 6px!important}
+html body #view#view#view#view#view#view#view#view#view#view#view#view#view#view#view#view#view#view#view#view .fbp .acts.fbx .ac{flex:0 0 auto!important;display:flex!important;align-items:center!important;position:relative;min-width:0!important;margin-right:10px}
+html body #view#view#view#view#view#view#view#view#view#view#view#view#view#view#view#view#view#view#view#view .fbp .acts.fbx .ac>button:first-child{width:40px!important;height:40px!important;min-height:0!important;padding:0!important;display:grid!important;place-items:center!important;border-radius:50%!important;background:none!important;border:0!important;box-shadow:none!important;color:#667085!important;font-size:18px!important;gap:0!important}
+html body #view#view#view#view#view#view#view#view#view#view#view#view#view#view#view#view#view#view#view#view .fbp .acts.fbx .ac>button:first-child:hover{background:rgba(120,130,150,.18)!important}
+html body #view#view#view#view#view#view#view#view#view#view#view#view#view#view#view#view#view#view#view#view .fbp .acts.fbx .ac>button:first-child svg{width:24px!important;height:24px!important}
+html body #view#view#view#view#view#view#view#view#view#view#view#view#view#view#view#view#view#view#view#view .fbp .acts.fbx .ac>button:first-child img.emt{width:26px!important;height:26px!important}
+html body #view#view#view#view#view#view#view#view#view#view#view#view#view#view#view#view#view#view#view#view .fbp .acts.fbx .ac>button.cnt{width:auto!important;min-width:0!important;height:auto!important;padding:0 2px!important;margin:0 0 0 -2px!important;background:none!important;border:0!important;border-radius:0!important;box-shadow:none!important;color:#667085!important;font-size:14px!important;font-weight:700!important;line-height:40px!important;align-self:center!important;display:block!important}
+html body #view#view#view#view#view#view#view#view#view#view#view#view#view#view#view#view#view#view#view#view .fbp .acts.fbx .ac>button.cnt:empty{display:none!important}
+html body #view#view#view#view#view#view#view#view#view#view#view#view#view#view#view#view#view#view#view#view .fbp .acts.fbx .ac>button.on{color:var(--ac2,#2f95e0)!important}
+html[data-theme=dark] html body #view#view#view#view#view#view#view#view#view#view#view#view#view#view#view#view#view#view#view#view .fbp .acts.fbx .ac>button:first-child,html[data-theme=dark] html body #view#view#view#view#view#view#view#view#view#view#view#view#view#view#view#view#view#view#view#view .fbp .acts.fbx .ac>button.cnt{color:#b6c4e2!important}
+html[data-theme=dark] html body #view#view#view#view#view#view#view#view#view#view#view#view#view#view#view#view#view#view#view#view .fbp .acts.fbx .ac>button.on{color:#ff9a6a!important}
+#pmod{position:fixed;inset:0;z-index:80;display:grid;place-items:center;padding:14px;background:rgba(5,10,25,.62);animation:popin .2s ease}
+#pmod .pmc{width:min(620px,100%);max-height:min(88vh,100%);display:flex;flex-direction:column;border-radius:16px;overflow:hidden;background:#fff;color:#1c2330;box-shadow:0 18px 60px rgba(0,0,0,.45);border:1px solid rgba(0,0,0,.08)}
+#pmod .pmh{position:relative;display:flex;align-items:center;justify-content:center;padding:14px 56px;border-bottom:1px solid rgba(120,130,150,.28);font-size:17px}
+html body #pmod .pmx{position:absolute;right:10px;top:50%;transform:translateY(-50%);width:34px;height:34px;min-height:0;padding:0;border-radius:50%;border:0;background:rgba(120,130,150,.22);color:inherit;font-size:16px;box-shadow:none}
+#pmod .pmb{flex:1;overflow:auto;padding:12px 16px;min-height:120px}
+#pmod .pmw{display:flex;gap:10px;align-items:center}#pmod .pmw small{display:block;opacity:.65;font-size:12px}
+#pmod .pmt{margin:10px 0;font-size:15px;line-height:1.45;word-break:break-word}
+#pmod .pmp img{display:block;max-width:100%;max-height:300px;border-radius:12px;margin-top:8px;object-fit:cover}
+#pmod .pml{margin-top:12px;border-top:1px solid rgba(120,130,150,.22);padding-top:10px;display:grid;gap:10px}
+#pmod .cmt{display:flex;gap:8px;align-items:flex-start}
+#pmod .cmt .bub{background:rgba(120,130,150,.16);border-radius:16px;padding:7px 12px;font-size:14px;min-width:0;word-break:break-word}
+#pmod .pmf{padding:10px 14px;border-top:1px solid rgba(120,130,150,.28)}
+#pmod .pmi{display:flex;gap:8px;align-items:center}
+html body #pmod .pmi input{flex:1;min-width:0;border-radius:99px;padding:10px 14px;font-size:14px}
+html body #pmod .pms{padding:9px 18px;min-height:0;border-radius:99px;font-size:14px;font-weight:800}
+#pmod .pmf>.pms{width:100%}
+html[data-theme=dark] #pmod .pmc{background:#121c30;color:#eaf0ff;border-color:rgba(255,255,255,.14)}
+@media (max-width:600px){#pmod{padding:10px}#pmod .pmc{max-height:92vh}}
 </style>
 </head>
 <body>
@@ -2770,15 +2801,18 @@ async function loadReelStrip(){const el=$('rlstrip');if(!el)return;let l=[];try{
   l.map(x=>`<div role="button" class="rsc" data-r="${x.id}">${x.poster?`<img src="${esc(x.poster)}" alt="" loading="lazy">`:''}<video muted playsinline preload="auto" src="${esc(x.url)}#t=0.1" onerror="this.remove()"></video><span class="rsg"></span><span class="rsa">${av(x.user,28)}</span><b class="rsn">${esc(x.user)}</b><small>▶ ${rlN(x.views)}</small></div>`).join('')+`</div>`;
  el.onclick=e=>{const b=e.target.closest('[data-r]');if(!b)return;const k=b.dataset.r;k==='new'?(go('reels'),setTimeout(rlCreate,350)):k==='all'?go('reels'):go('reels',+k)}}
 const BARS=['#f7c600','#f7852b','#4aa8e8'];
+const FBI={like:'<svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M7 10.5V21M7 10.5 11 3.2c1.5-.2 2.8 1 2.8 2.5v3.6h5.2a2 2 0 0 1 2 2.3l-1.3 8a2 2 0 0 1-2 1.7H7M7 10.5H3.8A1.3 1.3 0 0 0 2.5 11.8v7.9A1.3 1.3 0 0 0 3.8 21H7"/></svg>',
+cm:'<svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.2c-5 0-9 3.5-9 7.9 0 2.4 1.2 4.5 3.1 6l-.9 3.6c-.1.5.4.8.8.6l4-2.1c.6.1 1.3.2 2 .2 5 0 9-3.500 9-7.900S17 3.200 12 3.200z"/></svg>',
+sh:'<svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4.500 21.500 12 14 19.500v-4.300c-5.500-.2-8.800 1.500-10.700 5 .5-6.200 4-10.400 10.700-11.200z"/></svg>'};
 function postHTML(p,i){const mod=['staff','admin'].includes(ST.role),own=p.user===me,canC=!p.locked||own||mod;
   const stack=(p.rks||'').split(',').filter(Boolean).map(k=>EM[k]).join('')||LIKE_IMG;
   return `<article class="fbp post${p.pinned?' pinned':''}" data-id="${p.id}">${p.pinned?'<div class="pin">📌 Pinned post</div>':''}
   <header>${av(p.user,44)}<div class="who"><div class="nm" style="color:${nc(p.user)}"><span data-u="${esc(p.user)}">${esc(p.user)}</span>${rt(p.role,p.user)}<span class="lvp">${lvi(lv(p.xp),16)}Lv ${lv(p.xp)}</span></div><div class="meta">${ago(p.ts)}${p.edited?' · Edited':''} · 🌐</div></div><button class="pm" data-a="menu" aria-label="Post options">⋯</button></header>
   ${p.text?`<div class="txt${!p.image&&p.text.length<70?' xl':''}">${rich(p.text)}</div>`:''}
   ${p.image?`<img class="pimg" src="${esc(p.image)}" loading="lazy" alt="Photo">`:''}
-  <div class="acts"><div class="ac"><button data-a="react" class="${p.mine?'on':''}">${EM[p.mine]||LIKE_IMG} <span>${p.mine?(p.mine.startsWith('e:')?p.mine.slice(2):p.mine)[0].toUpperCase()+(p.mine.startsWith('e:')?p.mine.slice(2):p.mine).slice(1):'React'}</span></button><button class="cnt" data-w="react" data-n="${p.reacts}" title="Who reacted">${p.reacts}</button><div class="rpk" hidden>${reactList().map(([k,e])=>`<button data-k="${k}" class="${p.mine===k?'on':''}" title="${k}">${e}</button>`).join('')}</div></div>
-  <div class="ac"><button data-a="comment">${p.locked?'🔒':'💬'} <span>Comment</span></button><button class="cnt" data-w="comment" title="Who commented">${p.comments}</button></div>
-  <div class="ac"><button data-a="share">↗ <span>Share</span></button><button class="cnt" data-w="share" title="Who shared">${p.shares}</button></div></div><div class="cm" hidden data-canc="${canC?1:0}"></div></article>`}
+  <div class="acts fbx"><div class="ac"><button data-a="react" class="${p.mine?'on':''}" aria-label="React">${p.mine?(EM[p.mine]||LIKE_IMG):FBI.like}</button><button class="cnt" data-w="react" data-n="${p.reacts}" title="Who reacted">${p.reacts||''}</button><div class="rpk" hidden>${reactList().map(([k,e])=>`<button data-k="${k}" class="${p.mine===k?'on':''}" title="${k}">${e}</button>`).join('')}</div></div>
+  <div class="ac"><button data-a="comment" aria-label="Comment">${p.locked?'🔒':FBI.cm}</button><button class="cnt" data-w="comment" title="Who commented">${p.comments||''}</button></div>
+  <div class="ac"><button data-a="share" aria-label="Share">${FBI.sh}</button><button class="cnt" data-w="share" title="Who shared">${p.shares||''}</button></div></div><div class="cm" hidden data-canc="${canC?1:0}"></div></article>`}
 
 /* ---------- Stories ---------- */
 const SBG=['linear-gradient(135deg,#2f95e0,#1d56b8)','linear-gradient(135deg,#ffb15c,#e8431a)','linear-gradient(135deg,#a569d6,#5b2d91)','linear-gradient(135deg,#3fbf6a,#1b6b34)','linear-gradient(135deg,#f06aa8,#b01f6a)','linear-gradient(135deg,#27325a,#0b1230)'];
@@ -2888,12 +2922,28 @@ async function feedClick(e){
     if(a==='cleartag')go('home');
     else if(a==='react'){if(window._rhF){window._rhF=0;return}reactPop(b,id,PS[id]?.mine)}
     else if(a==='menu')menuSheet(PS[id],b);
-    else if(a==='share'){await api('POST',`/posts/${id}/share`);loadFeed()}
-    else if(a==='comment'){if(!cm.hidden){cm.hidden=true;return}
-      const loadC=async()=>{const cs=await api('GET',`/posts/${id}/comments`);cs.forEach(c=>ROLES[c.user]=c.role);const canC=cm.dataset.canc==='1';
-        cm.innerHTML=cs.map(c=>`<div class="cmt">${av(c.user,32)}<div class="bub"><b data-u="${esc(c.user)}" style="color:${nc(c.user)}">${esc(c.user)}</b>${rt(c.role,c.user)}<div>${rich(c.text)}</div></div></div>`).join('')+(canC?`<div class="cmt wr">${av(me,32)}<input placeholder="Write a comment…" maxlength="300"><button class="o">Send</button></div>`:'<div class="mu lk">🔒 Comments are locked on this post.</div>');
-        if(canC)cm.querySelector('button').onclick=async()=>{const t=cm.querySelector('input').value.trim();if(!t)return;try{await api('POST',`/posts/${id}/comments`,{text:t});const c=art.querySelector('[data-w=comment]');c.textContent=+c.textContent+1;loadC()}catch(er){fail(er)}}};
-      cm.hidden=false;loadC()}}catch(er){fail(er)}}
+    else if(a==='share')postModal(id,'share');
+    else if(a==='comment')postModal(id,'comment')}catch(er){fail(er)}}
+/* Comment / Share open as a floating card (desktop and mobile) */
+function postModal(id,mode){const p=PS[id];if(!p)return;const old=$('pmod');if(old)old.remove();
+  const mod=['staff','admin'].includes(ST.role),canC=!p.locked||p.user===me||mod,sh=mode==='share';
+  const d=document.createElement('div');d.id='pmod';
+  d.innerHTML=`<div class="pmc" role="dialog" aria-modal="true"><div class="pmh"><b>${sh?'Share post':esc(p.user)+"'s Post"}</b><button class="pmx" aria-label="Close">✕</button></div>
+   <div class="pmb"><div class="pmp"><div class="pmw">${av(p.user,40)}<div><b style="color:${nc(p.user)}">${esc(p.user)}</b><small>${ago(p.ts)}</small></div></div>${p.text?`<div class="pmt">${rich(p.text)}</div>`:''}${p.image?`<img src="${esc(p.image)}" alt="Photo">`:''}</div>${sh?'':'<div class="pml"><div class="mu">Loading…</div></div>'}</div>
+   <div class="pmf">${sh?'<button class="o pms">Share now</button>':canC?`<div class="pmi">${av(me,36)}<input placeholder="Write a comment…" maxlength="300" autocomplete="off"><button class="o pms">Send</button></div>`:'<div class="mu lk">🔒 Comments are locked on this post.</div>'}</div></div>`;
+  document.body.appendChild(d);
+  const close=()=>{d.remove();document.removeEventListener('keydown',esc1)},esc1=e=>{if(e.key==='Escape')close()};
+  document.addEventListener('keydown',esc1);
+  d.onclick=e=>{if(e.target===d||e.target.closest('.pmx'))close()};
+  const upd=n=>{const c=document.querySelector(`.post[data-id="${id}"] [data-w=${sh?'share':'comment'}]`);if(c)c.textContent=n};
+  if(sh){d.querySelector('.pms').onclick=async()=>{try{await api('POST',`/posts/${id}/share`);close();toast('Shared');loadFeed()}catch(er){fail(er)}};return}
+  const L=d.querySelector('.pml'),inp=d.querySelector('.pmi input');
+  const load=async()=>{const cs=await api('GET',`/posts/${id}/comments`);cs.forEach(c=>ROLES[c.user]=c.role);
+    L.innerHTML=cs.length?cs.map(c=>`<div class="cmt">${av(c.user,32)}<div class="bub"><b data-u="${esc(c.user)}" style="color:${nc(c.user)}">${esc(c.user)}</b>${rt(c.role,c.user)}<div>${rich(c.text)}</div></div></div>`).join(''):'<div class="mu">No comments yet. Be the first.</div>';
+    upd(cs.length||'');const b=d.querySelector('.pmb');b.scrollTop=b.scrollHeight};
+  load().catch(fail);
+  if(inp){const send=async()=>{const t=inp.value.trim();if(!t)return;inp.value='';try{await api('POST',`/posts/${id}/comments`,{text:t});await load()}catch(er){fail(er)}};
+    d.querySelector('.pms').onclick=send;inp.onkeydown=e=>{if(e.key==='Enter'){e.preventDefault();send()}};setTimeout(()=>inp.focus(),60)}}
 
 /* ===== shared game sounds + vibration (mode 0 = sound+vibrate, 1 = vibrate only, 2 = mute) ===== */
 const GS=(function(){
