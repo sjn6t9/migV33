@@ -367,7 +367,7 @@ app.post('/api/support', auth, ok((q, r) => {
 app.post('/api/posts', auth, ok((q, r) => {
   const text = String(q.body?.text || '').trim().slice(0, 500), image = imgUrl(q.body?.image) ? q.body.image : '';
   if (!text && !image) return bad(r, 'Write something or add a photo first');
-  const bg = !image && /^g([1-9]|1\d|20)$/.test(String(q.body?.bg || '')) ? q.body.bg : '';   // coloured text-post style
+  const bg = !image && /^g([1-9]|1\d|2\d)$/.test(String(q.body?.bg || '')) ? q.body.bg : '';   // coloured text-post style
   const pid = db.prepare('insert into posts(user,text,image,bg,ts) values(?,?,?,?,?)').run(q.user, text, image, bg, Date.now()).lastInsertRowid;
   grantAct(q.user, 'post', pid); notifyMentions(text, q.user, 'in a post', 'post:' + pid); r.json({ ok: true });
 }));
