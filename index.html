@@ -158,9 +158,10 @@ html body #view#view#view .pcv+.ph *{pointer-events:auto}
 html body #view#view#view .pcv+.ph .av{box-shadow:0 0 0 4px var(--bg,#0b1420)!important;border-radius:50%}
 /* chatroom level number inside the flag */
 .rfw{position:relative;display:inline-block;line-height:0;vertical-align:middle}
-.rfw .rlv,.wi .rlv{position:absolute;left:50%;bottom:-1px;transform:translateX(-50%);min-width:12px;height:12px;padding:0 2px;border-radius:99px;background:rgba(10,18,32,.42);color:#fff;font:800 8px/12px system-ui,sans-serif;text-align:center;box-sizing:border-box;box-shadow:0 0 0 1px rgba(255,255,255,.35);text-shadow:0 1px 2px rgba(0,0,0,.6)}
+.rfw .rlv,.wi .rlv{position:absolute;inset:0;left:0;right:0;top:0;bottom:0;transform:none;width:100%;height:100%;min-width:0;padding:0;display:flex;align-items:center;justify-content:center;border-radius:3px;background:rgba(0,0,0,.18);color:#fff;font:900 10px/1 system-ui,sans-serif;text-align:center;box-sizing:border-box;box-shadow:inset 0 0 0 1.5px #fff,0 0 0 1px rgba(0,0,0,.55);-webkit-text-stroke:.6px rgba(0,0,0,.85);text-shadow:0 1px 2px rgba(0,0,0,.7);pointer-events:none}
 .wi{position:relative}
-.wp .wi .rlv{min-width:18px;height:18px;font-size:11px;line-height:18px;bottom:2px}
+.wi .rlv,.wp .wi .rlv{border-radius:50%;font-size:12px}
+.wp .wi .rlv{font-size:20px;box-shadow:inset 0 0 0 2.5px #fff,0 0 0 1px rgba(0,0,0,.55)}
 .rm .rlv,#view .rm .rfw .rlv{display:none!important}
 #rtabs{display:flex;gap:6px;overflow-x:auto;padding:6px 8px;background:linear-gradient(#3a3a3a,#232323);flex:none;scrollbar-width:none}
 #rtabs::-webkit-scrollbar{display:none}
