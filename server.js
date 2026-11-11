@@ -424,6 +424,22 @@ app.get('/api/feed', auth, ok((q, r) => {
     order by p.pinned desc, p.id desc limit 40`).all(tag ? { me: q.user, tag } : { me: q.user });
   r.json(rows);
 }));
+// A profile's posts: what the user wrote plus what they shared (newest first)
+app.get('/api/users/:n/posts', auth, ok((q, r) => {
+  const u = String(q.params.n || '').replace(/[^A-Za-z0-9._-]/g, '').slice(0, 20);
+  if (!db.prepare('select 1 from users where name=?').get(u)) return r.json([]);
+  const rows = db.prepare(`select p.id,p.user,p.text,p.image,p.bg,p.pinned,p.locked,p.edited,p.ts, p.shares + (select count(*) from post_shares where post=p.id) shares,
+    (select xp from users where name=p.user) xp, (select role from users where name=p.user) role,
+    (select count(*) from reacts where post=p.id) reacts, (select kind from reacts where post=p.id and user=@me) mine,
+    (select group_concat(kind) from (select kind from reacts where post=p.id group by kind order by count(*) desc limit 3)) rks,
+    (select count(*) from comments where post=p.id) comments,
+    case when p.user=@u then '' else @u end sharedBy,
+    coalesce((select ts from post_shares where post=p.id and user=@u), p.ts) at
+    from posts p where (p.user=@u or p.id in (select post from post_shares where user=@u))
+    and p.id not in (select post from post_hidden where user=@me)
+    order by at desc limit 40`).all({ me: q.user, u });
+  r.json(rows);
+}));
 app.get('/api/users-suggest', auth, ok((q, r) => {
   const s = String(q.query.q || '').replace(/[^A-Za-z0-9._-]/g, '').slice(0, 16);
   r.json(db.prepare("select name, role from users where name like ? || '%' order by length(name) limit 6").all(s));
