@@ -330,7 +330,7 @@ function lbPay() {
   db.prepare('delete from lb_day where day<?').run(dayKey(Date.now() - 5 * DAYMS));
 }
 setInterval(() => { try { lbPay(); payRoomOwners(); } catch (e) { console.error('[daily]', e); } }, 30e3).unref();
-const profile = n => { const u = db.prepare('select name,full_name,gender,country,bio,status_text,presence,xp,coins,role,joined,avatar,avatar_art,avatar_mode from users where name=?').get(n); if (!u) return u; const { avatar, avatar_art, avatar_mode, ...rest } = u; return { ...rest, presence: livePres(u.name, u.presence), level: level(u.xp), hasPhoto: !!avatar, hasArt: !!avatar_art, avatarMode: avatar_mode === 'avatar' && avatar_art ? 'avatar' : 'photo' }; };
+const profile = n => { const u = db.prepare('select name,full_name,gender,country,bio,status_text,presence,xp,coins,role,joined,cover,avatar,avatar_art,avatar_mode from users where name=?').get(n); if (!u) return u; const { avatar, avatar_art, avatar_mode, ...rest } = u; return { ...rest, presence: livePres(u.name, u.presence), level: level(u.xp), hasPhoto: !!avatar, hasArt: !!avatar_art, avatarMode: avatar_mode === 'avatar' && avatar_art ? 'avatar' : 'photo' }; };
 const ok = fn => (q, r) => { const f = e => { console.error(e); if (!r.headersSent) bad(r, 'Server error', 500); }; try { const x = fn(q, r); if (x && x.catch) x.catch(f); } catch (e) { f(e); } };
 app.get('/api/lb', auth, ok((q, r) => {
   const today = dayKey(), yday = dayKey(Date.now() - DAYMS), cfg = lbCfg();
@@ -1362,7 +1362,7 @@ app.get('/api/leaderboard', auth, ok((q, r) => r.json(db.prepare('select name,xp
 
 // ---------- uploads: profile photos, chat images, voice notes ----------
 try { db.exec("alter table users add column avatar text default ''"); } catch {}
-for (const a of ["alter table users add column joined int default 0", "alter table users add column avatar_art text default ''", "alter table users add column avatar_mode text default 'photo'"]) { try { db.exec(a); } catch {} }
+for (const a of ["alter table users add column joined int default 0", "alter table users add column avatar_art text default ''", "alter table users add column avatar_mode text default 'photo'", "alter table users add column cover text default ''"]) { try { db.exec(a); } catch {} }
 db.exec('create table if not exists user_photos(id integer primary key, user text, url text, ts int); create index if not exists up_user on user_photos(user)');
 try { db.exec("update users set joined = coalesce((select min(ts) from msgs where msgs.user=users.name), " + Date.now() + ") where joined = 0 or joined is null"); } catch {}
 for (const x of db.prepare("select name, avatar from users where avatar != ''").all()) { if (!db.prepare('select 1 from user_photos where user=? and url=?').get(x.name, x.avatar)) db.prepare('insert into user_photos(user,url,ts) values(?,?,?)').run(x.name, x.avatar, Date.now()); }
@@ -1401,6 +1401,10 @@ app.post('/api/upload', auth, express.raw({ type: () => true, limit: '6mb' }), (
     db.prepare("update users set avatar=?, avatar_mode='photo' where name=?").run(url, q.user);
     const extra = db.prepare('select id,url from user_photos where user=? order by id desc limit -1 offset 12').all(q.user);
     for (const x of extra) { db.prepare('delete from user_photos where id=?').run(x.id); dropFile(x.url); }
+  } else if (kind === 'cover') {
+    const old = db.prepare('select cover from users where name=?').get(q.user)?.cover;
+    db.prepare('update users set cover=? where name=?').run(url, q.user);
+    if (old && MEDIA_URL.test(old) && !db.prepare('select 1 from user_photos where url=?').get(old)) fs.unlink('.' + old, () => {});
   } else if (kind === 'avatar_art') {
     const old = db.prepare('select avatar_art from users where name=?').get(q.user)?.avatar_art;
     db.prepare("update users set avatar_art=?, avatar_mode='avatar' where name=?").run(url, q.user);
@@ -1748,6 +1752,12 @@ app.delete('/api/admin/emoticons/:n', auth, ok((q, r) => {
   db.prepare('delete from custom_emo where name=?').run(q.params.n); alog(q.user, q.params.n, 'emo_delete', ''); bcastEmo(); r.json({ ok: true });
 }));
 const reactKind = k => REACTS.includes(k) ? k : (typeof k === 'string' && k.startsWith('e:') && db.prepare('select 1 from custom_emo where name=? and active=1').get(k.slice(2))) ? k : 'like';
+app.delete('/api/me/cover', auth, (q, r) => {
+  const old = db.prepare('select cover from users where name=?').get(q.user)?.cover;
+  db.prepare("update users set cover='' where name=?").run(q.user);
+  if (old && MEDIA_URL.test(old)) fs.unlink('.' + old, () => {});
+  r.json({ ok: true });
+});
 app.delete('/api/me/avatar', auth, (q, r) => {
   const old = db.prepare('select avatar from users where name=?').get(q.user)?.avatar;
   db.prepare("update users set avatar='' where name=?").run(q.user);
