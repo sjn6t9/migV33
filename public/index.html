@@ -2504,6 +2504,7 @@ async function on(m){
   if(m.t==='emos'){setCE(m.list);if(cur==='home')try{loadFeed()}catch{}}
   if(m.t==='gifts'){G=m.gifts;if($('gifts'))$('gifts').innerHTML=Object.entries(G).map(([k,g])=>`<button data-g="${k}" title="${esc(g.n)} (${k}) · ${g.c} coins">${g.img?`<img src="${esc(g.img)}" alt="" style="height:20px;width:20px;object-fit:contain;vertical-align:middle">`:g.e} ${g.c}</button>`).join(' ')}
   if(m.t==='xp'){ST.xp=m.xp;drawNav();if(cur==='profile')go('profile',me)}
+  if(m.t==='rlv'){RLV[m.room]=m.lvl;rlvPaint();return}
   if(m.t==='coins'){const old=ST.coins;ST.coins=m.coins;$('coins').textContent=cn(m.coins);
     const bg=cur==='account'&&document.querySelector('#view .big');if(bg&&!ST.unlimited)bg.textContent='¢ '+m.coins}
   if(m.t==='online'){ONL=m.list;m.list.forEach(u=>ROLES[u.name]=u.role)}
@@ -3432,6 +3433,10 @@ V.rooms=async()=>{const rs=await api('GET','/rooms');rs.forEach(x=>{RF[x.name]=x
 /* ---------- chat ---------- */
 const RF={};let RFL=0;const fu=f=>!f?'':/^[a-z]{2}(-[a-z]+)?$/.test(f)?'https://flagcdn.com/w40/'+f+'.png':f;
 const RLV={};
+function rlvPaint(){try{if(cur==='chat'&&room&&!room.startsWith('dm:')&&$('stt'))$('stt').innerHTML=rfl(room)+esc(rtitle(room));drawTabs();if(typeof wLayout==='function')wLayout();
+  document.querySelectorAll('.cw .wi').forEach(i=>{const w=WINS.find(x=>x.el&&x.el.contains(i));if(w)i.innerHTML=wIcon(w.r,26)})}catch{}}
+setInterval(()=>{try{if(!me||document.hidden)return;const a=document.activeElement;if(a&&/^(INPUT|TEXTAREA)$/.test(a.tagName))return;
+  if(cur==='rooms')V.rooms();else if(cur==='lboard')V.lboard();else if(cur==='account')return}catch{}},20000);
 const rfl=n=>n&&n.startsWith('dm:')?`<span class="rfl rav">${av(rtitle(n),24)}</span>`:RF[n]?`<span class="rfw"><img class="flg rfl" src="${esc(fu(RF[n]))}" alt="">${RLV[n]?`<b class="rlv">${RLV[n]}</b>`:''}</span>`:'';  // private chat: the other user's profile photo instead of a flag
 async function loadRF(){try{const rs=await api('GET','/rooms');rs.forEach(x=>{RF[x.name]=x.flag||'';RLV[x.name]=x.lvl||1});const ok=new Set(rs.map(x=>x.name));const n=OPEN.length;for(let i=OPEN.length-1;i>=0;i--)if(!OPEN[i].startsWith('dm:')&&!ok.has(OPEN[i]))OPEN.splice(i,1);if(OPEN.length!==n){saveOpen();if(cur==='chat'&&room&&!OPEN.includes(room)&&!room.startsWith('dm:'))return go(OPEN.length?'chat':'rooms',OPEN[0])}drawTabs()}catch{}}
 const rtitle=r=>r.startsWith('dm:')?r.slice(3).split(':').find(x=>x!==me)||'DM':r;

@@ -274,7 +274,7 @@ function roomXp(room, n) {
   const before = roomLevel(roomXpOf(room));
   db.prepare('insert into room_stat(room,xp) values(?,?) on conflict(room) do update set xp=xp+?').run(room, n, n);
   const after = roomLevel(roomXpOf(room));
-  if (after > before) setImmediate(() => { try { cast(room, { t: 'msg', room, user: 'Room', text: `🎉 This room reached Level ${after}!`, kind: 'game', ts: Date.now(), role: '' }); } catch {} });
+  if (after > before) setImmediate(() => { try { wss.clients.forEach(w => { try { send(w, { t: 'rlv', room, lvl: after }); } catch {} }); } catch {} try { cast(room, { t: 'msg', room, user: 'Room', text: `🎉 This room reached Level ${after}!`, kind: 'game', ts: Date.now(), role: '' }); } catch {} });
 }
 function roomSpend(room, coins) {
   if (!room || /^dm:/.test(room) || !(coins > 0)) return;
