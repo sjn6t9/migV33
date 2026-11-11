@@ -381,6 +381,29 @@ function userStats(n, p) {
   return { followers: c('select count(*) c from friends where b=?', n), following: c('select count(*) c from friends where a=?', n), footprints: c('select count(*) c from footprints where owner=?', n), badges,
     posts: c('select count(*) c from posts where user=?', n), giftsSent: c("select count(*) c from txs where user=? and kind='gift' and amount<0", n), giftsRecv: Math.max(c("select count(*) c from txs where user=? and kind='gift' and amount>0", n), c('select coalesce(sum(n),0) c from gift_inv where user=?', n)), games: c("select count(*) c from mevents where user=? and k='game'", n) };
 }
+// Detail lists behind the profile stat tiles (visible to every visitor)
+app.get('/api/users/:n/list/:k', auth, ok((q, r) => {
+  const n = String(q.params.n || '').replace(/[^A-Za-z0-9._-]/g, '').slice(0, 20), k = q.params.k;
+  const p = profile(n); if (!p) return bad(r, 'User not found', 404);
+  const names = rows => r.json({ k, users: rows.map(x => x.u).filter((u, i, a) => u && a.indexOf(u) === i).slice(0, 300).map(u => ({ name: u, level: lvOf(u), role: roleOf(u) })) });
+  if (k === 'followers') return names(db.prepare('select a u from friends where b=? order by rowid desc').all(n));
+  if (k === 'following') return names(db.prepare('select b u from friends where a=? order by rowid desc').all(n));
+  if (k === 'friends') return names(db.prepare("select case when a=? then b else a end u from friends where status='accepted' and (a=? or b=?) order by rowid desc").all(n, n, n));
+  if (k === 'footprints') return r.json({ k, users: db.prepare('select visitor name,ts from footprints where owner=? order by ts desc limit 200').all(n).map(x => ({ ...x, level: lvOf(x.name), role: roleOf(x.name) })) });
+  if (k === 'badges') {
+    const L = [], v = db.prepare('select verified from users where name=?').get(n)?.verified;
+    if (v) L.push('Verified');
+    if (p.role && p.role !== 'user') L.push(BADGE_NAMES[p.role] || p.role);
+    [10, 25, 50, 100, 200, 300, 500, 1000].filter(x => p.level >= x).forEach(x => L.push('Level ' + x));
+    if (db.prepare('select count(*) c from posts where user=?').get(n).c >= 1) L.push('First post');
+    return r.json({ k, badges: L });
+  }
+  if (k === 'sent' || k === 'received') {
+    const rows = db.prepare(`select title,amount,ts from txs where user=? and kind='gift' and amount ${k === 'sent' ? '<' : '>'} 0 order by ts desc limit 100`).all(n);
+    return r.json({ k, rows, gifts: k === 'received' ? db.prepare('select gift,n from gift_inv where user=? order by n desc').all(n).map(x => { const g = allGiftsAny(x.gift); return g && { n: x.n, name: g.n, e: g.e, img: g.img }; }).filter(Boolean) : [] });
+  }
+  bad(r, 'Unknown list', 404);
+}));
 app.get('/api/users/:n', auth, ok((q, r) => {
   const p = profile(q.params.n); if (!p) return bad(r, 'User not found', 404);
   delete p.coins;   // coin balances are private: profiles never show them
