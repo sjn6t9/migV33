@@ -46,17 +46,17 @@ html[data-skin=clear][data-look=glass] body .mu,html[data-skin=clear][data-look=
 html[data-skin=clear][data-look=glass] body :is(.lv,.chips button){color:#1b1736!important}
 html[data-skin=clear][data-look=glass] body .chips button.on{color:#ffffff!important}
 /* chat */
-html[data-skin=clear][data-look=glass] body .b{background:linear-gradient(135deg,rgba(255,255,255,.95),rgba(255,247,226,.85))!important;color:#1b1736!important;border:1px solid rgba(255,255,255,.95)!important}
+html[data-skin=clear][data-look=glass] body .b{background:linear-gradient(135deg,rgba(255,255,255,.95),rgba(255,247,226,.85))!important;color:#16233a!important;border:1px solid rgba(255,255,255,.95)!important}
 html[data-skin=clear][data-look=glass] body .b.mine{background:linear-gradient(135deg,rgba(190,240,200,.95),rgba(160,225,175,.85))!important}
-html[data-skin=clear][data-look=glass] body #log :is(.rl,.rl.ent,.rl.ann,.bts,.emo){color:#1b1736!important}
-html[data-skin=clear][data-look=glass] body #log .rl .rn2{color:#5a36ee!important}
+html[data-skin=clear][data-look=glass] body #log :is(.rl,.rl.ent,.rl.ann,.bts,.emo){color:#16233a!important}
+html[data-skin=clear][data-look=glass] body #log .rl .rn2{color:#c4540a!important}
 html[data-skin=clear][data-look=glass] body #rbar svg,html[data-skin=clear][data-look=glass] body #rbar .ib{color:#1b1736!important;stroke:#1b1736}
 html[data-skin=clear][data-look=glass] body #f input{background:rgba(255,255,255,.85)!important}
 html[data-skin=clear][data-look=glass] body #dcbar{background:rgba(255,235,235,.9)!important;border:1px solid #e53935!important;color:#b71c1c!important}
 html[data-skin=clear][data-look=glass] body #dcbar b{color:#7f0000!important}
 /* posts */
 html[data-skin=clear][data-look=glass] body .fbp{color:#1b1736!important}
-html[data-skin=clear][data-look=glass] body .fbp .bub{background:rgba(232,240,252,.95)!important;color:#1b1736!important}
+html[data-skin=clear][data-look=glass] body .fbp .bub{background:rgba(232,240,252,.95)!important;color:#16233a!important}
 html[data-skin=clear][data-look=glass] body .acts button{color:#4a4470!important;background:none!important;box-shadow:none!important;border:0!important}
 /* sheets and popups */
 html[data-skin=clear][data-look=glass] body #sheet div,html[data-skin=clear][data-look=glass] body #pop .pc{background:var(--lg2)!important;color:#1b1736!important;border:1px solid rgba(255,255,255,.9)!important;-webkit-backdrop-filter:blur(28px) saturate(190%)!important;backdrop-filter:blur(28px) saturate(190%)!important}
@@ -132,4 +132,4 @@ html[data-skin=clear][data-look=glass] body #bnav .fab .disc{background:linear-g
 html[data-skin=clear][data-look=glass] body #bnav .ind b{background:linear-gradient(90deg,#8c8bff,#ff9fe0)!important;box-shadow:0 0 8px #a58bff!important}
 html[data-skin=clear][data-look=glass] #rlvol,html[data-skin=clear][data-look=glass] .rlbar i{accent-color:#6a45ff;background:#6a45ff}
 html[data-skin=clear][data-look=glass] body #app#app #rlw#rlw .rlfo:not(.sent){background:linear-gradient(180deg,#34344a,#0d0d14)!important;color:#fff!important}
-html[data-skin=clear][data-look=glass] body #log .rl.ann,html[data-skin=clear][data-look=glass] body #log .rl.ann b{color:#5a36ee!important}
+
