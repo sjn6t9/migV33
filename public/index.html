@@ -2376,7 +2376,7 @@ html[data-skin] body #hdr#hdr #top#top#top #rtabs .rt.on{background:none!importa
   <button data-b="reels" aria-label="Reels"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="5"/><path d="M3 9h18M9 3l3 6M15 3l3 6"/><path d="M10.5 12.8v4.4l3.6-2.2z" style="fill:currentColor"/></svg><span>Reels</span></button>
   <button data-b="profile" aria-label="Profile"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-7 8-7s8 2.6 8 7"/></svg><span>Profile</span></button>
 </nav>
-<aside id="rcol" aria-label="Online friends and chats"><div class="rh">Online Friends <b id="rfn">0</b></div><div class="rbox" id="rfl"></div><div class="rh" id="rch" hidden>Chats</div><div class="rbox" id="rcl" hidden></div><div id="rrw" hidden><button type="button" id="rrt" class="rrt">Rooms <svg viewBox="0 0 24 24" width="14" height="14"><path d="M6 9l6 6 6-6" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg></button><div class="rbox col" id="rrb" hidden></div></div></aside>
+<aside id="rcol" aria-label="Online friends and chats"><div class="rh">Online Friends <b id="rfn">0</b></div><div class="rbox" id="rfl"></div><div class="rh" id="rch" hidden>Chats</div><div class="rbox" id="rcl" hidden></div><div id="rrw" hidden><button type="button" id="rrt" class="rrt">Chat Rooms <svg viewBox="0 0 24 24" width="14" height="14"><path d="M6 9l6 6 6-6" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg></button><div class="rbox col" id="rrb" hidden></div></div></aside>
 <div id="drawer"><nav id="dn"></nav><button id="dtg" type="button" aria-label="Hide or show menu"><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></button></div>
 <div id="sheet"><div id="sh"></div></div>
 
@@ -2552,7 +2552,7 @@ function drawRcol(){const c=$('rcl');if(!c||!me||EMB||innerWidth<1100)return;
   const f=$('rfl');f.className='rbox col';f.innerHTML=RFR.length?RFR.map(u=>`<div class="rfr" data-u="${esc(u.name)}"><span class="p">${av(u.name,38)}<i class="${u.presence||'online'}"></i></span><span class="t"><b>${esc(u.name)}</b><small>${esc(u.status_text||(u.presence==='away'?'Away':u.presence==='busy'?'Busy':'Online'))}</small></span>${callBtns(u.name)}</div>`).join(''):'<div class="mu2">No friends online right now.</div>';
   $('rfn').textContent=RFR.length}
 async function loadRfr(){if(!me||innerWidth<1100)return;try{const d=await api('GET','/friends');RFR=d.friends.filter(u=>u.presence&&u.presence!=='offline'&&u.presence!=='invisible');RFR.forEach(u=>ROLES[u.name]=u.role)}catch{}drawRcol()}
-let RRT=0,RRH=0;const RRC={};
+let RRT=0,RRH=0;const RRC={'Top Level Rooms':1,'Favorite rooms':1,'Official rooms':1,'Game rooms':1};
 const rrHide=()=>{clearTimeout(RRT);const b=$('rrb');if(b)b.hidden=true};const rrArm=()=>{clearTimeout(RRT);if(RRH)return;RRT=setTimeout(()=>{if(!RRH)rrHide()},5000)};
 async function rrShow(){const b=$('rrb');if(!b)return;b.hidden=false;rrArm();
   try{const rs=await api('GET','/rooms');if(!Array.isArray(rs))return;rs.forEach(x=>{RF[x.name]=x.flag||'';RLV[x.name]=x.lvl||1});
