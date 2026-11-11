@@ -4369,6 +4369,10 @@ document.addEventListener('click',e=>{if(!b.classList.contains('inchat')||innerW
  if(!o.t)o.t=Date.now();
  if(!o.done&&Date.now()-o.t>=60000){o.done=1;const b=el.querySelector('[data-min]');if(b&&/▾/.test(b.textContent))b.click()}}},1000)})();
 
+/* auto-refresh: reload when the site or the server code is updated */
+if(!EMB){let v0=null;const chk=async()=>{try{const d=await(await fetch('/api/version',{cache:'no-store'})).json(),k=d.v+':'+d.boot;if(v0===null){v0=k;return}if(k===v0)return;
+  const a=document.activeElement,typing=a&&/^(INPUT|TEXTAREA)$/.test(a.tagName)&&a.value;if(typing||(typeof CALL!=='undefined'&&CALL)||(typeof REC!=='undefined'&&REC))return;location.reload()}catch{}};
+  setInterval(chk,15000);document.addEventListener('visibilitychange',()=>{if(!document.hidden)chk()});setTimeout(chk,2000)}
 /* phones: tapping React opens the reaction picker (same as desktop); stop the long-press menu on the button */
 document.addEventListener('contextmenu',e=>{if(e.target.closest&&e.target.closest('[data-a=react]'))e.preventDefault()},true);
 </script>

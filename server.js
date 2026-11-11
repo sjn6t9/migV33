@@ -68,6 +68,13 @@ app.set('trust proxy', 1); // behind Caddy: use the real visitor IP for rate lim
 app.use(express.json());
 // The GitHub repo may hold everything in one flat folder: fall back to files next to server.js
 const newest = (...fs_) => fs_.filter(f => fs.existsSync(f)).sort((a, b) => fs.statSync(b).mtimeMs - fs.statSync(a).mtimeMs)[0];
+// Version beacon: the browser polls this and reloads itself when the page or the server code changes
+const BOOT = Date.now().toString(36); let VK = '', VH = '';
+app.get('/api/version', (q, r) => {
+  try { const f = newest(path.join(ROOT, 'public/index.html'), path.join(ROOT, 'index.html')), st = fs.statSync(f), k = f + st.mtimeMs + st.size;
+    if (k !== VK) { VK = k; VH = crypto.createHash('sha1').update(fs.readFileSync(f)).digest('hex').slice(0, 12); } } catch {}
+  r.set('Cache-Control', 'no-store'); r.json({ v: VH, boot: BOOT });
+});
 app.get(['/', '/index.html'], (q, r, next) => { const f = newest(path.join(ROOT, 'public/index.html'), path.join(ROOT, 'index.html')); f ? r.sendFile(f) : next(); });
 const BADGE_FILES = { hmt: ['hmt.png', 'Head-Mentor-HMT.png', 'head-mentor-hmt.png'], vip: ['vip.png', 'VIP.png'] };
 app.get('/badges/:f', (q, r, next) => {
@@ -2865,3 +2872,16 @@ process.on('uncaughtException', e => console.error('[uncaught]', e));
 process.on('unhandledRejection', e => console.error('[unhandled]', e));
 
 server.listen(PORT, () => console.log('Migv33 running on :' + PORT));
+// Backend auto-restart: when the GitHub auto-update changes server code, exit so systemd starts the new version (the front end then reloads by itself).
+{
+  const codeHash = () => { const h = crypto.createHash('sha1'); try { for (const f of fs.readdirSync(ROOT).filter(x => /\.(js|cjs|mjs)$/.test(x) || x === 'package.json').sort()) h.update(f).update(fs.readFileSync(path.join(ROOT, f))); } catch {} return h.digest('hex'); };
+  let base = codeHash(), pending = '', sup = false;
+  for (const u of ['/etc/systemd/system/migv33.service', '/lib/systemd/system/migv33.service']) { try { if (/^\s*Restart\s*=\s*(always|on-failure|on-abnormal)/m.test(fs.readFileSync(u, 'utf8'))) sup = true; } catch {} }
+  if (!sup) console.log('[auto-restart] off: add "Restart=always" to the migv33 systemd service to let the server restart itself after updates');
+  else setInterval(() => {
+    const now = codeHash();
+    if (now === base) { pending = ''; return; }
+    if (now !== pending) { pending = now; return; }   // wait until the files stop changing (the update may still be writing)
+    console.log('[auto-restart] backend code changed, restarting'); setTimeout(() => process.exit(1), 500);
+  }, 10e3).unref();
+}
