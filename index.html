@@ -153,6 +153,8 @@ h2{margin:6px 12px 10px;font-size:20px;color:#2a3340}
 html body #view#view#view .pcv .pcb button{width:38px!important;height:38px!important;min-width:0!important;min-height:0!important;padding:0!important;border-radius:50%!important;display:grid!important;place-items:center;font-size:15px!important;font-weight:800;background:#fff!important;color:#111!important;border:0!important;box-shadow:0 2px 8px rgba(0,0,0,.35)!important}
 html body #view#view#view .pcv+.ph{margin:-58px 0 0!important;position:relative;background:none!important;background-image:none!important;box-shadow:none!important;border:0!important;backdrop-filter:none!important;-webkit-backdrop-filter:none!important;border-radius:0!important}
 html body #view#view#view .pcv+.ph>.g{padding-top:48px}
+html body #view#view#view .pcv+.ph{pointer-events:none}
+html body #view#view#view .pcv+.ph *{pointer-events:auto}
 html body #view#view#view .pcv+.ph .av{box-shadow:0 0 0 4px var(--bg,#0b1420)!important;border-radius:50%}
 /* chatroom level number inside the flag */
 .rfw{position:relative;display:inline-block;line-height:0;vertical-align:middle}
@@ -3531,7 +3533,7 @@ const imgToBlob=(file,max,square)=>new Promise((res,rej)=>{const i=new Image();i
 function cropPhoto(src,o={}){return new Promise(async res=>{
   const asp=o.aspect||1,outW=o.outW||800,outH=Math.round(outW/asp),url=typeof src==='string'?src:URL.createObjectURL(src);
   const im=await new Promise(ok=>{const q=new Image();q.onload=()=>ok(q);q.onerror=()=>ok(null);q.src=url});
-  if(!im){res(null);return}
+  if(!im){try{fail(new Error('Could not read this image. Try a JPG or PNG photo.'))}catch{}res(null);return}
   const d=document.createElement('div');d.id='crop';
   d.innerHTML=`<div class="crc"><h3>${esc(o.title||'Position your photo')}</h3><div class="crf${o.circle?' rnd':''}" style="aspect-ratio:${asp}"><img alt="" draggable="false" src="${url}"></div><div class="crz"><span>−</span><input type="range" min="100" max="400" value="100" aria-label="Zoom"><span>+</span></div><small>Drag the photo to move it · pinch or use the slider to zoom</small><div class="cra"><button type="button" data-x="c">Cancel</button><button type="button" class="o" data-x="s">Save</button></div></div>`;
   document.body.append(d);
