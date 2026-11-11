@@ -232,7 +232,7 @@ const auth = (q, r, next) => {
   if (u.banned) return bad(r, 'Your account has been banned.' + (u.ban_reason ? ' Reason: ' + u.ban_reason : ''), 403);
   q.user = u.name; next();
 };
-const addTx = (user, kind, title, amount) => db.prepare('insert into txs(user,kind,title,amount,ts) values(?,?,?,?,?)').run(user, kind, title, amount, Date.now());
+const addTx = (user, kind, title, amount) => { const x = db.prepare('insert into txs(user,kind,title,amount,ts) values(?,?,?,?,?)').run(user, kind, title, amount, Date.now()); try { lbFromTx(user, kind, title, amount); } catch (e) { console.log('[lb]', e.message); } return x; };
 const roleOf = n => db.prepare('select role from users where name=?').get(n)?.role || 'user';
 // ---- Levels: STEPS[L-1] = XP needed to go from level L to L+1. Past level 27 the cost grows by 392.5 per level. ----
 const MAXLV = 1000;
@@ -252,8 +252,108 @@ function addXp(name, n) {
   if (after > before) setImmediate(() => notify(name, 'rewards', `Level up! You reached level ${after}${total ? ` (+${total.toLocaleString()} coins)` : ''}`));
   if (after > before) wss.clients.forEach(w => { if (w.user === name) { send(w, { t: 'levelup', level: after, reward: total }); send(w, { t: 'coins', coins: coins(name) }); } });
 }
+
+// ---------- Chatroom levels: chat, gifts and games add room XP; the owner earns 2% of the coins spent in the room each day ----------
+db.exec(`create table if not exists room_stat(room text primary key, xp real default 0);
+create table if not exists room_day(room text, day text, spent int default 0, paid int default 0, primary key(room,day))`);
+const TZOFF = 6 * 3600e3, DAYMS = 864e5;   // days roll over at 12:00 midnight, Bangladesh time
+const dayKey = (t = Date.now()) => new Date(t + TZOFF).toISOString().slice(0, 10);
+const nextMidnight = (t = Date.now()) => Math.floor((t + TZOFF) / DAYMS) * DAYMS + DAYMS - TZOFF;
+const roomLevel = xp => Math.min(100, 1 + Math.floor(Math.sqrt(Math.max(0, xp || 0) / 200)));   // L2 = 200 XP, L3 = 800, L10 = 16,200
+const roomXpOf = room => db.prepare('select xp from room_stat where room=?').get(room)?.xp || 0;
+const ROOM_OWNER_PCT = 0.02;
+function roomXp(room, n) {
+  if (!room || /^dm:/.test(room) || !(n > 0)) return;
+  const before = roomLevel(roomXpOf(room));
+  db.prepare('insert into room_stat(room,xp) values(?,?) on conflict(room) do update set xp=xp+?').run(room, n, n);
+  const after = roomLevel(roomXpOf(room));
+  if (after > before) setImmediate(() => { try { cast(room, { t: 'msg', room, user: 'Room', text: `🎉 This room reached Level ${after}!`, kind: 'game', ts: Date.now(), role: '' }); } catch {} });
+}
+function roomSpend(room, coins) {
+  if (!room || /^dm:/.test(room) || !(coins > 0)) return;
+  db.prepare('insert into room_day(room,day,spent) values(?,?,?) on conflict(room,day) do update set spent=spent+?').run(room, dayKey(), coins, coins);
+}
+const curRoom = user => { for (const w of wss.clients) if (w.user === user && w.room && !/^dm:/.test(w.room)) return w.room; return ''; };
+const giftXpVal = price => { const t = GIFT_XP.find(x => price <= x[0]) || GIFT_XP[GIFT_XP.length - 1]; return t[2] / t[1]; };
+function payRoomOwners() {
+  const today = dayKey();
+  for (const x of db.prepare('select room,day,spent from room_day where paid=0 and day<?').all(today)) {
+    const owner = db.prepare('select owner from rooms where name=?').get(x.room)?.owner, amt = Math.floor(x.spent * ROOM_OWNER_PCT);
+    db.prepare('update room_day set paid=1 where room=? and day=?').run(x.room, x.day);
+    if (!owner || amt < 1 || !db.prepare('select 1 from users where name=?').get(owner)) continue;
+    db.prepare('update users set coins=coins+? where name=?').run(amt, owner);
+    addTx(owner, 'other', `Room earnings · Room: ${x.room} · 2% of ${x.spent.toLocaleString()} coins spent on ${x.day}`, amt);
+    setImmediate(() => { notify(owner, 'rewards', `Your room ${x.room} earned you ${amt.toLocaleString()} coins (2% of today's spending)`); pushCoins(owner); });
+  }
+  db.prepare('delete from room_day where paid=1 and day<?').run(dayKey(Date.now() - 14 * DAYMS));
+}
+
+// ---------- Daily leaderboards: Top 3 of the day win coins at midnight ----------
+db.exec(`create table if not exists lb_day(day text, cat text, user text, score real default 0, primary key(day,cat,user));
+create table if not exists lb_paid(day text, cat text, ts int, primary key(day,cat));
+create table if not exists lb_award(id integer primary key, day text, cat text, rank int, user text, score real, coins int, ts int)`);
+const LB_CATS = { gift: 'Top 3 Gift Sender', lowcard: 'Top 3 Low Card Player', dice: 'Top 3 Dice Player', cricket: 'Top 3 Cricket Player', tp: 'Top 3 Teen Patti Player', royale: 'Top 3 Legendary Battle Player', active: 'Top 3 Active Player' };
+const LB_HOW = { gift: 'Coins spent on gifts today', lowcard: 'Coins won in Low Card today', dice: 'Coins won in Dice today', cricket: 'Coins won in Cricket today', tp: 'Coins won in Teen Patti today', royale: 'Coins won in Legendary Battle today', active: 'Online minutes + messages sent today' };
+const LB_PRIZE = [15000, 10000, 5000];
+let LBC = null;
+const lbCfg = () => LBC || (LBC = (() => { try { return JSON.parse(db.prepare("select v from kv where k='lb_cfg'").get()?.v || '{}'); } catch { return {}; } })());
+const lbSave = c => { LBC = c; db.prepare("insert or replace into kv(k,v) values('lb_cfg',?)").run(JSON.stringify(c)); };
+const lbLive = (cat, day = dayKey()) => { const c = lbCfg()[cat]; return !!(c && c.on && c.start <= day); };
+const lbEligible = u => { const x = db.prepare('select role,banned from users where name=?').get(u); return !!x && !x.banned && !['staff', 'admin'].includes(x.role) && !/ Bot$/.test(u); };
+function lbAdd(cat, user, n) {
+  if (!user || !(n > 0) || !lbLive(cat)) return;
+  db.prepare('insert into lb_day(day,cat,user,score) values(?,?,?,?) on conflict(day,cat,user) do update set score=score+?').run(dayKey(), cat, user, n, n);
+}
+function lbFromTx(user, kind, title, amount) {
+  if (kind === 'gift' || kind === 'gs') { if (amount < 0 && /^Sent /.test(title)) lbAdd('gift', user, -amount); return; }
+  if (kind !== 'game' || !(amount > 0)) return;
+  const c = /^LowCard Bot: win/.test(title) ? 'lowcard' : /^Dice Bot: win/.test(title) ? 'dice' : /^Cricket Bot: payout/.test(title) ? 'cricket' : /^Teen Patti Gold: win/.test(title) ? 'tp' : /^Royale Battle: win/.test(title) ? 'royale' : '';
+  if (c) lbAdd(c, user, amount);
+}
+const lbTop = (day, cat, n = 3) => db.prepare('select user,score from lb_day where day=? and cat=? order by score desc, user limit ?').all(day, cat, n + 20).filter(x => lbEligible(x.user)).slice(0, n);
+function lbPay() {
+  const today = dayKey(), cfg = lbCfg();
+  for (const cat of Object.keys(LB_CATS)) {
+    const c = cfg[cat]; if (!c || !c.on) continue;
+    for (let t = Date.now() - 3 * DAYMS; dayKey(t) < today; t += DAYMS) {
+      const day = dayKey(t); if (day < c.start || db.prepare('select 1 from lb_paid where day=? and cat=?').get(day, cat)) continue;
+      db.prepare('insert into lb_paid values(?,?,?)').run(day, cat, Date.now());
+      lbTop(day, cat).forEach((w, i) => {
+        if (!(w.score > 0)) return;
+        db.prepare('update users set coins=coins+? where name=?').run(LB_PRIZE[i], w.user);
+        db.prepare('insert into lb_award(day,cat,rank,user,score,coins,ts) values(?,?,?,?,?,?,?)').run(day, cat, i + 1, w.user, w.score, LB_PRIZE[i], Date.now());
+        addTx(w.user, 'other', `Leaderboard reward · ${LB_CATS[cat]} · #${i + 1} on ${day}`, LB_PRIZE[i]);
+        setImmediate(() => { notify(w.user, 'rewards', `You finished #${i + 1} in ${LB_CATS[cat]}! +${LB_PRIZE[i].toLocaleString()} coins`); pushCoins(w.user); });
+      });
+    }
+  }
+  db.prepare('delete from lb_day where day<?').run(dayKey(Date.now() - 5 * DAYMS));
+}
+setInterval(() => { try { lbPay(); payRoomOwners(); } catch (e) { console.error('[daily]', e); } }, 30e3).unref();
 const profile = n => { const u = db.prepare('select name,full_name,gender,country,bio,status_text,presence,xp,coins,role,joined,avatar,avatar_art,avatar_mode from users where name=?').get(n); if (!u) return u; const { avatar, avatar_art, avatar_mode, ...rest } = u; return { ...rest, presence: livePres(u.name, u.presence), level: level(u.xp), hasPhoto: !!avatar, hasArt: !!avatar_art, avatarMode: avatar_mode === 'avatar' && avatar_art ? 'avatar' : 'photo' }; };
 const ok = fn => (q, r) => { const f = e => { console.error(e); if (!r.headersSent) bad(r, 'Server error', 500); }; try { const x = fn(q, r); if (x && x.catch) x.catch(f); } catch (e) { f(e); } };
+app.get('/api/lb', auth, ok((q, r) => {
+  const today = dayKey(), yday = dayKey(Date.now() - DAYMS), cfg = lbCfg();
+  r.json({ prizes: LB_PRIZE, endsAt: nextMidnight(), now: Date.now(), cats: Object.keys(LB_CATS).filter(k => cfg[k]?.on).map(k => {
+    const live = lbLive(k, today);
+    return { key: k, label: LB_CATS[k], how: LB_HOW[k], live, starts: live ? null : cfg[k].start,
+      top: live ? lbTop(today, k).map(x => ({ name: x.user, score: Math.round(x.score), role: roleOf(x.user) })) : [],
+      last: db.prepare('select rank,user name,score,coins from lb_award where day=? and cat=? order by rank').all(yday, k).map(x => ({ ...x, score: Math.round(x.score) })) };
+  }) });
+}));
+app.get('/api/admin/lb', auth, ok((q, r) => {
+  if (roleOf(q.user) !== 'staff') return bad(r, 'Only staff can do this', 403);
+  const cfg = lbCfg(), today = dayKey();
+  r.json(Object.keys(LB_CATS).map(k => ({ key: k, label: LB_CATS[k], how: LB_HOW[k], on: !!cfg[k]?.on, start: cfg[k]?.start || '', live: lbLive(k, today) })));
+}));
+app.post('/api/admin/lb', auth, ok((q, r) => {
+  if (roleOf(q.user) !== 'staff') return bad(r, 'Only staff can do this', 403);
+  const k = String(q.body?.key || ''), on = !!q.body?.on; if (!LB_CATS[k]) return bad(r, 'Unknown leaderboard');
+  const cfg = { ...lbCfg() }, cur = cfg[k] || {};
+  if (on && !cur.on) cfg[k] = { on: true, start: dayKey(Date.now() + DAYMS) };   // switched on today: counting starts at tomorrow 12:00 AM
+  else if (!on) cfg[k] = { on: false, start: '' };
+  lbSave(cfg); alog(q.user, k, 'leaderboard', on ? 'on' : 'off'); r.json({ ok: true });
+}));
 const fstate = (a, b) => {
   const x = db.prepare('select * from friends where (a=? and b=?) or (a=? and b=?)').get(a, b, b, a);
   return !x ? 'none' : x.status === 'accepted' ? 'friends' : x.a === a ? 'sent' : 'incoming';
@@ -510,7 +610,7 @@ app.get('/api/rooms', auth, ok((q, r) => {
   const own = new Map(), isStaffOwner = o => { if (!o) return false; if (!own.has(o)) own.set(o, ['staff', 'admin'].includes(roleOf(o))); return own.get(o); };
   r.json(db.prepare('select name,cat,cap,owner,flag from rooms').all().map(x => {
     const cat = (gameOf(x.name) || x.cat === 'game') ? 'game' : (x.cat === 'official' || isStaffOwner(x.owner)) ? 'official' : 'user';
-    return { name: x.name, cat, cap: x.cap, flag: x.flag || '', count: roomNames(x.name).size, fav: fav.has(x.name) };
+    return { name: x.name, cat, cap: x.cap, owner: x.owner, flag: x.flag || '', count: roomNames(x.name).size, fav: fav.has(x.name), lvl: roomLevel(roomXpOf(x.name)), xp: Math.floor(roomXpOf(x.name)) };
   }).sort((a, b) => b.count - a.count || a.name.localeCompare(b.name)));
 }));
 app.post('/api/rooms', auth, ok((q, r) => {
@@ -1234,6 +1334,7 @@ setInterval(() => {
     for (const u of seen) {
       if (db.prepare('select presence from users where name=?').get(u)?.presence === 'offline') continue;
       const a = (onlineAcc.get(u) || 0) + 60e3;
+      lbAdd('active', u, 1);
       if (a >= 3600e3) { onlineAcc.set(u, a - 3600e3); grantAct(u, 'online', String(Date.now())); } else onlineAcc.set(u, a);
     }
   } catch (e) { console.error(e); }
@@ -1901,7 +2002,7 @@ const tpStore = {
       const c = db.prepare('update users set coins=coins-? where name=? and coins>=?').run(amount, userId, amount);
       if (!c.changes) return null;
       db.prepare('insert into tp_pending values(?,?,?,?)').run(key, String(handId), userId, amount);
-      const btx = addTx(userId, 'game', 'Teen Patti Gold: bet', -amount); mev(userId, 'game'); commissionOn(userId, amount, 'game', btx.lastInsertRowid);
+      const btx = addTx(userId, 'game', 'Teen Patti Gold: bet', -amount); mev(userId, 'game'); roomSpend(key, amount); roomXp(key, 5); commissionOn(userId, amount, 'game', btx.lastInsertRowid);
       return db.prepare('select coins from users where name=?').get(userId).coins;
     });
     const bal = run(); if (bal !== null) pushCoins(userId); return bal;
@@ -1940,7 +2041,7 @@ const cricket = !CB ? null : new CB.CricketBot({
   takeCredits: async (user, amount) => {
     const ok = db.transaction(() => {
       if (!db.prepare('update users set coins=coins-? where name=? and coins>=?').run(amount, user, amount).changes) return false;
-      const tx = addTx(user, 'game', 'Cricket Bot: entry fee', -amount); mev(user, 'game'); commissionOn(user, amount, 'game', tx.lastInsertRowid); return true;
+      const tx = addTx(user, 'game', 'Cricket Bot: entry fee', -amount); mev(user, 'game'); { const rr = curRoom(user); roomSpend(rr, amount); roomXp(rr, 5); } commissionOn(user, amount, 'game', tx.lastInsertRowid); return true;
     })();
     if (ok) pushCoins(user); return ok;
   },
@@ -1961,7 +2062,7 @@ const gameApi = label => ({
     const ok = db.transaction(() => {
       if (!db.prepare('update users set coins=coins-? where name=? and coins>=?').run(amount, user, amount).changes) return false;
       db.prepare('insert into lc_pending values(?,?,?)').run(room, user, amount);
-      const tx = addTx(user, 'game', `${label}: entry fee`, -amount); mev(user, 'game'); commissionOn(user, amount, 'game', tx.lastInsertRowid); return true;
+      const tx = addTx(user, 'game', `${label}: entry fee`, -amount); mev(user, 'game'); roomSpend(room, amount); roomXp(room, 5); commissionOn(user, amount, 'game', tx.lastInsertRowid); return true;
     })();
     if (ok) pushCoins(user); return ok;
   },
@@ -1986,7 +2087,7 @@ const rbStore = {
     const left = db.transaction(() => {
       if (!db.prepare('update users set coins=coins-? where name=? and coins>=?').run(amount, userId, amount).changes) return null;
       db.prepare('insert into rb_pending values(?,?,?,?,?)').run(roomId, roundId, userId, option, amount);
-      const tx = addTx(userId, 'game', `Royale Battle: bet on ${option}`, -amount); mev(userId, 'game'); commissionOn(userId, amount, 'game', tx.lastInsertRowid);
+      const tx = addTx(userId, 'game', `Royale Battle: bet on ${option}`, -amount); mev(userId, 'game'); roomSpend(roomId, amount); roomXp(roomId, 5); commissionOn(userId, amount, 'game', tx.lastInsertRowid);
       return coins(userId);
     })();
     if (left !== null) pushCoins(userId); return left;
@@ -2304,7 +2405,7 @@ function giftXp(name, price) {
   db.prepare('insert into gift_xp(user,u) values(?,?) on conflict(user) do update set u=excluded.u').run(name, tot % GXU);
   if (whole > 0) { addXp(name, whole); wss.clients.forEach(w => { if (w.user === name) send(w, { t: 'xp', xp: xpOf(name) }); }); }
 }
-const payGift = (from, to, gf, ctx = 'room', room = '') => { const ok = payGift0(from, to, gf, ctx, room); if (ok) { try { giftXp(from, gf.c); giftXp(to, gf.c); } catch (e) { console.log('[giftxp]', e.message); } } return ok; };
+const payGift = (from, to, gf, ctx = 'room', room = '') => { const ok = payGift0(from, to, gf, ctx, room); if (ok) { try { roomSpend(room, gf.c); roomXp(room, giftXpVal(gf.c)); } catch (e) { console.log('[roomxp]', e.message); } try { giftXp(from, gf.c); giftXp(to, gf.c); } catch (e) { console.log('[giftxp]', e.message); } } return ok; };
 const payGift0 = (from, to, gf, ctx = 'room', room = '') => db.transaction(() => {
   const where = ctx === 'dm' ? ' · Private chat' : room ? ' · Room: ' + String(room).slice(0, 40) : '';
   if (!db.prepare('update users set coins=coins-? where name=? and coins>=?').run(gf.c, from, gf.c).changes) return false;
@@ -2708,7 +2809,7 @@ function onWsMessage(ws, raw) {
       const o = { user: ws.user, text, kind: 'msg', ts: Date.now(), role: roleOf(ws.user), xp: xpOf(ws.user) };
       db.prepare('insert into msgs(room,user,text,kind,ts) values(?,?,?,?,?)').run(ws.room, o.user, o.text, o.kind, o.ts);
       if (!ws.room.startsWith('dm:')) notifyMentions(text, ws.user, `in ${ws.room}`, 'room:' + ws.room);
-      addXp(ws.user, 1);
+      addXp(ws.user, 1); lbAdd('active', ws.user, 1); roomXp(ws.room, 1);
       cast(ws.room, { t: 'msg', room: ws.room, ...o });
     } else if (m.t === 'media') {
       ws.roomAt = Date.now();
