@@ -1457,6 +1457,7 @@ body.in #rcol{display:flex;flex-direction:column;gap:8px;grid-column:3;grid-row:
 #rcol .rh b{margin-left:6px;color:var(--ac)}
 #rcol .rbox{background:var(--sf);border:1px solid var(--ln);border-radius:16px;padding:10px;display:flex;flex-wrap:wrap;gap:10px;box-sizing:border-box}
 #rcol .rbox.col{flex-direction:column;flex-wrap:nowrap;gap:2px;padding:6px}
+#rcol [hidden]{display:none!important}
 #rcol .rrt{display:flex;align-items:center;justify-content:space-between;width:100%;margin-top:4px;padding:10px 12px;border-radius:14px;border:1px solid var(--ln);background:var(--sf);color:var(--tx);font:800 13px/1 inherit;letter-spacing:.04em;cursor:pointer}
 #rcol .rrs{font-size:11px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--mu);padding:6px 8px 2px}
 #rcol .rf{width:62px;text-align:center;cursor:pointer;background:none;border:0;padding:0;color:var(--tx);font:inherit}
@@ -2374,7 +2375,7 @@ html[data-skin] body #hdr#hdr #top#top#top #rtabs .rt.on{background:none!importa
   <button data-b="reels" aria-label="Reels"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="5"/><path d="M3 9h18M9 3l3 6M15 3l3 6"/><path d="M10.5 12.8v4.4l3.6-2.2z" style="fill:currentColor"/></svg><span>Reels</span></button>
   <button data-b="profile" aria-label="Profile"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-7 8-7s8 2.6 8 7"/></svg><span>Profile</span></button>
 </nav>
-<aside id="rcol" aria-label="Online friends and chats"><div class="rh">Online Friends <b id="rfn">0</b></div><div class="rbox" id="rfl"></div><div class="rh">Chats</div><div class="rbox" id="rcl"></div><div id="rrw" hidden><button type="button" id="rrt" class="rrt">Rooms <svg viewBox="0 0 24 24" width="14" height="14"><path d="M6 9l6 6 6-6" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg></button><div class="rbox col" id="rrb" hidden></div></div></aside>
+<aside id="rcol" aria-label="Online friends and chats"><div class="rh">Online Friends <b id="rfn">0</b></div><div class="rbox" id="rfl"></div><div class="rh" id="rch" hidden>Chats</div><div class="rbox" id="rcl" hidden></div><div id="rrw" hidden><button type="button" id="rrt" class="rrt">Rooms <svg viewBox="0 0 24 24" width="14" height="14"><path d="M6 9l6 6 6-6" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg></button><div class="rbox col" id="rrb" hidden></div></div></aside>
 <div id="drawer"><nav id="dn"></nav><button id="dtg" type="button" aria-label="Hide or show menu"><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></button></div>
 <div id="sheet"><div id="sh"></div></div>
 
