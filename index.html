@@ -2323,6 +2323,9 @@ html[data-skin] body #hdr#hdr #top#top#top #rtabs .rt.on{background:none!importa
 .upi button{font-size:10px!important;padding:2px 6px!important;bottom:3px}.upi button[data-use]{left:3px}.upi button[data-del]{right:3px}
 .upa{font-size:22px!important}.upa small{font-size:10px}
 .rltl{margin:8px 2px 2px}.rlbr{height:8px;border-radius:99px;background:rgba(128,128,128,.28);overflow:hidden}.rlbr i{display:block;height:100%;border-radius:99px;background:linear-gradient(90deg,#8c8bff,#ff9fe0)}.rltl small{display:block;margin-top:5px;font-size:12px;font-weight:700;color:var(--mu)}
+.ei{display:inline-flex;align-items:center;justify-content:center;width:1.55em;height:1.55em;margin-right:.5em;border-radius:.5em;font-size:.95em;line-height:1;vertical-align:-.3em;background:linear-gradient(145deg,rgba(255,255,255,.75),rgba(150,160,200,.28));box-shadow:inset 0 0 0 1px rgba(255,255,255,.7),0 2px 5px rgba(30,40,90,.18);flex:none}
+html[data-theme=dark] .ei{background:linear-gradient(145deg,rgba(255,255,255,.16),rgba(255,255,255,.05));box-shadow:inset 0 0 0 1px rgba(255,255,255,.14),0 2px 5px rgba(0,0,0,.35)}
+button.o .ei{background:rgba(255,255,255,.25);box-shadow:inset 0 0 0 1px rgba(255,255,255,.4)}
 </style>
 </head>
 <body>
@@ -2840,6 +2843,13 @@ const RLI={
  pause:'<svg viewBox="0 0 24 24"><path d="M7 5h3.5v14H7zM13.5 5H17v14h-3.5z"/></svg>'};
 const rlFol=x=>x.fs==='none'?'<span role="button" class="rlfo" data-a="fol">Follow</span>':x.fs==='sent'?'':x.fs==='incoming'?'<span role="button" class="rlfo" data-a="fol">Accept</span>':'';
 document.addEventListener('timeupdate',e=>{const v=e.target;if(v.tagName==='VIDEO'&&v.dataset.dur&&+v.dataset.dur>0&&v.currentTime>=+v.dataset.dur+.05){v.currentTime=0;if(v.paused&&!v.ended)v.play().catch(()=>{})}},true);
+// Icon polish: a leading emoji on a button/heading becomes a styled icon chip (consistent size, rounded gradient tile)
+(()=>{const RX=/^\s*((?:\p{Extended_Pictographic}\uFE0F?(?:\u200D\p{Extended_Pictographic}\uFE0F?)*)+)\s*/u,SKIP=/^[♠♥♦♣✔✓✕✖✅❌⚠⚀-⚅▶▸▾►★☆♥]/;
+ const fix=el=>{if(el.dataset.ei||el.closest('#log,.rlc,.msg,textarea,input,.nolchip,.cd,.card.tbl,.dice,#gm,[contenteditable]'))return;const t=el.firstChild;if(!t||t.nodeType!==3)return;const m=t.nodeValue.match(RX);if(!m||SKIP.test(m[1]))return;
+  el.dataset.ei=1;const sp=document.createElement('span');sp.className='ei';sp.textContent=m[1];t.nodeValue=t.nodeValue.slice(m[0].length);el.insertBefore(sp,t)};
+ let q=0;const run=root=>{(root.querySelectorAll?root.querySelectorAll('button:not(.ib):not(.rcx):not([data-a]),h2,h3,.card>b,.dk>div'):[]).forEach(fix)};
+ const kick=()=>{clearTimeout(q);q=setTimeout(()=>{run(document.getElementById('view')||document.body);const s=document.getElementById('sheet');s&&run(s)},60)};
+ document.addEventListener('DOMContentLoaded',()=>{new MutationObserver(kick).observe(document.body,{childList:true,subtree:true});kick()})})();
 const rlMod=()=>['staff','admin'].includes(ST.role);
 function rlItem(x){RLMAP[x.id]=x;ROLES[x.user]=x.role;
  return `<section class="rli" data-id="${x.id}"><div class="rlc"><div class="rlv">
