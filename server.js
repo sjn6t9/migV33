@@ -1821,7 +1821,7 @@ app.get('/api/people', auth, ok((q, r) => {
   const G = (k, title, w) => { const list = rows(w); return { k, title, count: list.length, list }; };
   const top = db.prepare("select name,role,xp from users where banned=0 and role not in ('staff','admin') and lower(name)!=? order by xp desc, name").all(STAFF_USER).map(u => ({ name: u.name, role: u.role, level: level(u.xp) }));
   r.json([G('staff', 'Staff', "role='staff'"), G('admin', 'Admins', "role='admin'"), G('headmentor', 'Head Mentors', "role='headmentor'"), G('mentor', 'Mentors', "role='mentor'"),
-    G('merchant', 'Merchants', "role='merchant'"), G('vip', 'VIP User', 'vip=1'), G('verified', 'Verified', 'verified=1'), { k: 'top', title: 'All Users', count: top.length, list: top }]);
+    G('merchant', 'Merchants', "role='merchant'"), G('vip', 'VIP User', 'vip=1'), G('verified', 'Verified', 'verified=1'), { k: 'top', title: 'Top 15 User', count: Math.min(15, top.length), list: top.slice(0, 15) }]);
 }));
 
 // ---------- Contests ----------
