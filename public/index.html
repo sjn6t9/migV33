@@ -2322,6 +2322,7 @@ html[data-skin] body #hdr#hdr #top#top#top #rtabs .rt.on{background:none!importa
 .upi,.upa{width:76px!important;height:76px;aspect-ratio:auto;border-radius:12px!important}
 .upi button{font-size:10px!important;padding:2px 6px!important;bottom:3px}.upi button[data-use]{left:3px}.upi button[data-del]{right:3px}
 .upa{font-size:22px!important}.upa small{font-size:10px}
+.rltl{margin:8px 2px 2px}.rlbr{height:8px;border-radius:99px;background:rgba(128,128,128,.28);overflow:hidden}.rlbr i{display:block;height:100%;border-radius:99px;background:linear-gradient(90deg,#8c8bff,#ff9fe0)}.rltl small{display:block;margin-top:5px;font-size:12px;font-weight:700;color:var(--mu)}
 </style>
 </head>
 <body>
@@ -2838,10 +2839,11 @@ const RLI={
  play:'<svg viewBox="0 0 24 24"><path d="M8 5l11 7-11 7z"/></svg>',
  pause:'<svg viewBox="0 0 24 24"><path d="M7 5h3.5v14H7zM13.5 5H17v14h-3.5z"/></svg>'};
 const rlFol=x=>x.fs==='none'?'<span role="button" class="rlfo" data-a="fol">Follow</span>':x.fs==='sent'?'':x.fs==='incoming'?'<span role="button" class="rlfo" data-a="fol">Accept</span>':'';
+document.addEventListener('timeupdate',e=>{const v=e.target;if(v.tagName==='VIDEO'&&v.dataset.dur&&+v.dataset.dur>0&&v.currentTime>=+v.dataset.dur+.05){v.currentTime=0;if(v.paused&&!v.ended)v.play().catch(()=>{})}},true);
 const rlMod=()=>['staff','admin'].includes(ST.role);
 function rlItem(x){RLMAP[x.id]=x;ROLES[x.user]=x.role;
  return `<section class="rli" data-id="${x.id}"><div class="rlc"><div class="rlv">
-  <video playsinline loop muted preload="none" ${x.poster?`poster="${esc(x.poster)}"`:''} data-src="${esc(x.url)}"></video>
+  <video playsinline loop muted preload="none" ${x.poster?`poster="${esc(x.poster)}"`:''} data-dur="${x.dur||0}" data-src="${esc(x.url)}"></video>
   <div class="rlfx"><i class="rlpp"></i><i class="rlhh">${RLI.heart}</i></div>
   <div class="rlsh"></div>
   <div class="rlin"><div class="rlu" data-a="user">${av(x.user,38)}<div><b style="color:#fff">${esc(x.user)}</b>${rt(x.role,x.user)}<small>${ago(x.ts)} · ▶ ${rlN(x.views)}</small></div>${rlFol(x)}</div>
@@ -2910,21 +2912,38 @@ async function rlComments(id,sec){const x=RLMAP[id];
 function rlUp(path,blob,onp){return new Promise((ok,no)=>{const q=new XMLHttpRequest();q.open('POST','/api'+path);q.setRequestHeader('Authorization','Bearer '+tok());q.setRequestHeader('Content-Type','application/octet-stream');
  q.upload.onprogress=e=>{if(e.lengthComputable&&onp)onp(e.loaded/e.total)};q.onerror=()=>no(new Error('Network error. Please try again.'));
  q.onload=()=>{let d={};try{d=JSON.parse(q.responseText)}catch{}if(q.status===401)logout();q.status>=200&&q.status<300?ok(d):no(new Error(d.error||'Upload failed ('+q.status+')'))};q.send(blob)})}
-function rlCreate(){let file=null,dur=0,poster=null,busy=false;
- sheetOpen(`<h2>Create Reel</h2><label class="rlpk" id="rlpk"><input type="file" id="rlf" accept="video/mp4,video/webm,video/quicktime,video/*" hidden><div class="rlpv" id="rlpv"><span>🎬</span><b>Choose a video</b><small>MP4 or WebM · up to 15 seconds · max 40 MB</small></div></label><textarea id="rlcap" rows="2" maxlength="300" placeholder="Write a caption… use #tags and @mentions"></textarea><div class="rlpg" id="rlpg" hidden><i></i><small></small></div><button class="o" id="rlgo" disabled>Share Reel</button>`);
+// Cut the first `max` seconds of a video in the browser (MediaRecorder). Returns null when the browser can't do it (the player still stops at 15 s).
+async function rlTrim(file,max,onp){try{
+ const mt=['video/webm;codecs=vp9,opus','video/webm;codecs=vp8,opus','video/webm'].find(t=>window.MediaRecorder&&MediaRecorder.isTypeSupported(t));if(!mt)return null;
+ const v=document.createElement('video');v.playsInline=true;v.src=URL.createObjectURL(file);await new Promise((ok,no)=>{v.onloadedmetadata=ok;v.onerror=no});
+ if(!v.captureStream)return null;
+ const ac=new(window.AudioContext||window.webkitAudioContext)(),dest=ac.createMediaStreamDestination();try{ac.createMediaElementSource(v).connect(dest)}catch{}
+ const ms=v.captureStream(),tr=[...ms.getVideoTracks(),...dest.stream.getAudioTracks()];const rec=new MediaRecorder(new MediaStream(tr),{mimeType:mt,videoBitsPerSecond:1800000});
+ const ch=[];rec.ondataavailable=e=>{if(e.data.size)ch.push(e.data)};const end=new Promise(ok=>rec.onstop=ok);
+ v.currentTime=0;await v.play();rec.start(500);const t0=performance.now();
+ await new Promise(ok=>{const tk=setInterval(()=>{const s=Math.min(max,v.currentTime||(performance.now()-t0)/1e3);onp&&onp(s/max);if(s>=max-.05||v.ended){clearInterval(tk);ok()}},150)});
+ v.pause();rec.stop();await end;try{ac.close()}catch{}URL.revokeObjectURL(v.src);
+ const b=new Blob(ch,{type:'video/webm'});return b.size>2000?b:null}catch{return null}}
+function rlCreate(){let file=null,dur=0,full=0,cut=0,poster=null,busy=false;
+ sheetOpen(`<h2>Create Reel</h2><label class="rlpk" id="rlpk"><input type="file" id="rlf" accept="video/mp4,video/webm,video/quicktime,video/*" hidden><div class="rlpv" id="rlpv"><span>🎬</span><b>Choose a video</b><small>MP4 or WebM · longer videos are cut to the first 15 seconds</small></div></label><div class="rltl" id="rltl" hidden><div class="rlbr"><i></i></div><small></small></div><textarea id="rlcap" rows="2" maxlength="300" placeholder="Write a caption… use #tags and @mentions"></textarea><div class="rlpg" id="rlpg" hidden><i></i><small></small></div><button class="o" id="rlgo" disabled>Share Reel</button>`);
  $('sheet').classList.add('rln'); const go2=$('rlgo');
  $('rlf').onchange=e=>{const f=e.target.files[0];e.target.value='';if(!f)return;
-  if(f.size>40e6){toast('⚠ Video is too large (40 MB max)',1);return}
+  if(f.size>300e6){toast('⚠ Video is too large (300 MB max)',1);return}
+  $('rltl').hidden=true;
   const url=URL.createObjectURL(f),pv=$('rlpv');pv.innerHTML=`<video muted playsinline loop autoplay src="${url}"></video><small class="rlch">Tap to change</small>`;go2.disabled=true;go2.textContent='Preparing…';poster=null;file=null;
   const v=pv.querySelector('video');let done=false;
   const fin=()=>{if(done)return;done=true;file=f;go2.disabled=false;go2.textContent='Share Reel'};
   v.onerror=()=>{pv.innerHTML='<span>⚠</span><b>This video can\'t be read here</b><small>Try an MP4 (H.264) or WebM file</small>';toast('⚠ Unsupported video format',1)};
-  v.onloadedmetadata=()=>{dur=v.duration||0;if(dur>15.5){pv.innerHTML='<span>⏱️</span><b>Too long</b><small>Choose a video up to 15 seconds</small>';toast('⚠ Reels can be up to 15 seconds',1);return}
+  v.onloadedmetadata=()=>{full=dur=v.duration||0;cut=0;
+   if(dur>15.5){cut=1;dur=15;const tl=$('rltl'),mm=s=>Math.floor(s/60)+':'+String(Math.floor(s%60)).padStart(2,'0');tl.hidden=false;tl.querySelector('i').style.width=(15/full*100)+'%';tl.querySelector('small').textContent='✂️ Only 0:00–0:15 will be uploaded (video is '+mm(full)+'). The rest is dropped.';
+    v.ontimeupdate=()=>{if(v.currentTime>=15){v.currentTime=0;v.play().catch(()=>{})}}}
    const t=Math.min(.6,dur/2);const tm=setTimeout(fin,2500);
    v.onseeked=async()=>{v.onseeked=null;try{v.pause()}catch{}await new Promise(r=>setTimeout(r,200));try{const W=360,H=Math.round(W*(v.videoHeight||640)/(v.videoWidth||360)),c=document.createElement('canvas');c.width=W;c.height=Math.min(H,800);c.getContext('2d').drawImage(v,0,0,W,c.height);c.toBlob(b=>{poster=b;clearTimeout(tm);fin()},'image/jpeg',.72)}catch{clearTimeout(tm);fin()}};
    try{v.currentTime=t}catch{}}};
  go2.onclick=async()=>{if(!file||busy)return;busy=true;go2.disabled=true;const pg=$('rlpg');pg.hidden=false;const bar=pg.querySelector('i'),lb=pg.querySelector('small');
-  try{lb.textContent='Uploading video…';const v=await rlUp('/reels/media?kind=video',file,p=>{bar.style.width=Math.round(p*85)+'%';lb.textContent='Uploading… '+Math.round(p*100)+'%'});
+  try{let up=file;
+   if(cut){lb.textContent='Cutting first 15 seconds…';const t=await rlTrim(file,15,p=>{bar.style.width=Math.round(p*40)+'%'});if(t)up=t;else if(file.size>40e6){throw new Error('This browser can\'t cut the video. Please pick a clip under 40 MB.')}}
+   lb.textContent='Uploading video…';const v=await rlUp('/reels/media?kind=video',up,p=>{bar.style.width=Math.round(p*85)+'%';lb.textContent='Uploading… '+Math.round(p*100)+'%'});
    let pu='';if(poster){try{pu=(await rlUp('/reels/media?kind=poster',poster)).url}catch{}}
    bar.style.width='95%';lb.textContent='Publishing…';
    const r=await api('POST','/reels',{url:v.url,poster:pu,caption:$('rlcap').value.trim(),dur:Math.round(dur)||1});ST.xp=(ST.xp||0)+3;
