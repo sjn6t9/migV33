@@ -133,3 +133,9 @@ html[data-skin=clear][data-look=glass] body #bnav .ind b{background:linear-gradi
 html[data-skin=clear][data-look=glass] #rlvol,html[data-skin=clear][data-look=glass] .rlbar i{accent-color:#6a45ff;background:#6a45ff}
 html[data-skin=clear][data-look=glass] body #app#app #rlw#rlw .rlfo:not(.sent){background:linear-gradient(180deg,#34344a,#0d0d14)!important;color:#fff!important}
 
+
+/* ---- header open-room tabs: tighter spacing, white liquid ring instead of black ---- */
+html[data-skin=clear][data-look=glass] body #hdr#hdr #top#top#top #rtabs .rt.on{padding:0 4px!important;gap:0!important}
+html[data-skin=clear][data-look=glass] body #hdr#hdr #top#top#top #rtabs .rt.on .rfw{margin-right:9px!important}
+html[data-skin=clear][data-look=glass] body #hdr#hdr #top#top#top #rtabs .rt.on .rfw .rlv{background:rgba(255,255,255,.22)!important;border-radius:6px!important;box-shadow:inset 0 0 0 2px rgba(255,255,255,.98),inset 0 0 8px rgba(255,255,255,.75),0 0 0 1.5px rgba(255,255,255,.9),0 0 10px rgba(255,255,255,.95),0 2px 6px rgba(110,80,220,.35)!important;-webkit-text-stroke:.5px rgba(40,20,90,.7);text-shadow:0 1px 2px rgba(40,20,90,.6)}
+html[data-skin=clear][data-look=glass] body #hdr#hdr #top#top#top #rtabs .rt.on .flg{margin-right:0!important;border-radius:6px}
