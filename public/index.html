@@ -1805,7 +1805,7 @@ html body #log .b.game .mc .cn{font-weight:900!important}
 #gp .gb,#gp .side,#gp .spc button{touch-action:manipulation;-webkit-user-select:none;user-select:none}
 #gp .side.tap1,#gp .spc button.tap1{transform:scale(.96);filter:brightness(1.25)}
 </style>
-<script>try{var _w=new URLSearchParams(location.search).get('w');if(_w){window.EMBR=_w;document.documentElement.classList.add('emb')}}catch(e){}try{if(localStorage.tk||sessionStorage.tk)document.documentElement.dataset.boot=1;var q=localStorage.skin,k=q==='dark'?'dark':q==='clear'?'clear':q==='navy'?'navy':(matchMedia('(prefers-color-scheme: dark)').matches?'navy':'clear');document.documentElement.dataset.skin=k;document.documentElement.dataset.theme=k==='clear'?'light':'dark'}catch(e){document.documentElement.dataset.skin='navy';document.documentElement.dataset.theme='dark'}</script>
+<script>try{var _w=new URLSearchParams(location.search).get('w');if(_w){window.EMBR=_w;document.documentElement.classList.add('emb')}}catch(e){}try{if(localStorage.tk||sessionStorage.tk)document.documentElement.dataset.boot=1;var q=localStorage.skin,k=q==='dark'?'dark':(q==='clear'||q==='glass')?'clear':q==='navy'?'navy':(matchMedia('(prefers-color-scheme: dark)').matches?'navy':'clear');if(q==='glass')document.documentElement.dataset.look='glass';document.documentElement.dataset.skin=k;document.documentElement.dataset.theme=k==='clear'?'light':'dark'}catch(e){document.documentElement.dataset.skin='navy';document.documentElement.dataset.theme='dark'}</script>
 <style>/* Name effects from the colour shop: each one animates the glow around the username */
 @keyframes fxPulse{0%,100%{text-shadow:0 0 4px currentColor}50%{text-shadow:0 0 12px currentColor,0 0 22px currentColor}}
 @keyframes fxFlicker{0%,19%,21%,23%,25%,54%,56%,100%{text-shadow:0 0 6px currentColor,0 0 14px currentColor}20%,24%,55%{text-shadow:none}}
@@ -1912,7 +1912,7 @@ html body #hdr #top #rtabs .rt .rfl{width:20px;height:14px}
 html body #hdr #top #rtabs .rt.on{display:inline-flex!important;align-items:center;justify-content:center;gap:0}
 </style>
 <link rel="stylesheet" href="theme-dark.css?v=28">
-<link rel="stylesheet" href="theme-clear.css?v=9">
+<link rel="stylesheet" href="theme-clear.css?v=9"><link rel="stylesheet" href="theme-glass.css?v=1">
 <style>/* role name colours: kept in their own block so they always load */
 :root{--nm-admin:#d9540f;--nm-staff:#3f9a2a;--nm-mentor:#c4141b;--nm-headmentor:#0f7472;--nm-merchant:#5d4596;--nm-vip:#f6d05f;--nm-user:#2a7bd8}
 html[data-theme=dark],#log.navy,#log.dark{--nm-admin:#f37124;--nm-staff:#68bd45;--nm-mentor:#f5434a;--nm-headmentor:#1fb5b2;--nm-merchant:#9b82d8;--nm-vip:#f6d05f;--nm-user:#6db3ff}
@@ -4270,10 +4270,11 @@ V.spin=async()=>{const d=await api('GET','/spin');const n=d.prizes.length;
     setTimeout(async()=>{ST.coins=r.coins;$('coins').textContent=cn(r.coins);D={...D,free:r.free,spins:r.spins,next:r.next};delete $('go')?.dataset.busy;if($('go'))paint();
       const pi=await popup({icon:'✨',title:'You won!',body:`You won ${r.amount.toLocaleString()} coins — added to your balance.`,html:`<div class="pw"><b>+${r.amount.toLocaleString()}</b><span>coins</span><div class="mu" style="margin-top:4px">Landed on ${esc(r.prize)}</div></div>`,buttons:[['Dismiss',''],[(r.free||r.spins>0)?'Next Spin':'Return Home','o']],sticky:1});if(pi===1){if(r.free||r.spins>0){setTimeout(()=>{const g=$('go');if(g&&!g.disabled)g.click()},250)}else go('home')}},4100)}
   catch(e){delete $('go').dataset.busy;fail(e);paint()}}};
-const SKS=()=>{let q='auto';try{q=localStorage.skin||'auto'}catch{}return['clear','navy','dark'].includes(q)?q:'auto'},SKN=k=>k==='dark'?'dark':k==='clear'?'clear':k==='navy'?'navy':(matchMedia('(prefers-color-scheme: dark)').matches?'navy':'clear'),SKC={clear:'#e9eef6',navy:'#0c1d44',dark:'#05080c'};
-const setSkin=k=>{const r=document.documentElement,st=['clear','navy','dark'].includes(k)?k:'auto';k=SKN(st);try{if(st==='auto')localStorage.removeItem('skin');else localStorage.skin=st}catch{}
-  r.dataset.skin=k;r.dataset.theme=k==='clear'?'light':'dark';
-  try{paintTn()}catch{}document.querySelector('meta[name=theme-color]')?.setAttribute('content',SKC[k])};
+const SKS=()=>{let q='auto';try{q=localStorage.skin||'auto'}catch{}return['clear','glass','navy','dark'].includes(q)?q:'auto'},SKN=k=>k==='dark'?'dark':(k==='clear'||k==='glass')?'clear':k==='navy'?'navy':(matchMedia('(prefers-color-scheme: dark)').matches?'navy':'clear'),SKC={clear:'#e9eef6',glass:'#d3c2ff',navy:'#0c1d44',dark:'#05080c'};
+document.addEventListener('pointerdown',e=>{if(document.documentElement.dataset.look!=='glass')return;for(const c of ['','b']){const d=document.createElement('i');d.className='lgrip '+c;d.style.left=e.clientX+'px';d.style.top=e.clientY+'px';document.body.appendChild(d);setTimeout(()=>d.remove(),1100)}},true);
+const setSkin=k=>{const r=document.documentElement,st=['clear','glass','navy','dark'].includes(k)?k:'auto';k=SKN(st);try{if(st==='auto')localStorage.removeItem('skin');else localStorage.skin=st}catch{}
+  r.dataset.skin=k;if(st==='glass')r.dataset.look='glass';else delete r.dataset.look;r.dataset.theme=k==='clear'?'light':'dark';
+  try{paintTn()}catch{}document.querySelector('meta[name=theme-color]')?.setAttribute('content',SKC[st==='glass'?'glass':k])};
 try{matchMedia('(prefers-color-scheme: dark)').addEventListener('change',()=>{if(SKS()==='auto'){setSkin('auto');if(cur==='settings')V.settings()}})}catch{}
 
 /* ---------- notifications, help, feedback, legal ---------- */
@@ -4302,7 +4303,7 @@ V.settings=async()=>{const bg=localStorage.cbg||'light';
   view(`<h2 style="margin-top:12px">Settings</h2><div class="card row" id="spp" style="cursor:pointer">${av(me,48)}<div class="g"><b>Profile photo</b><div class="mu">${AV[me]?'Change or remove your photo':'Add a photo so friends recognise you'}</div></div>📷</div>
   <div class="card row" id="spc" style="cursor:pointer">${av(me)}<div class="g"><b>${esc(me)}</b><span class="lv">${lvi(lv(ST.xp||0),16)}Lv ${lv(ST.xp||0)}</span><div class="mu">Edit profile, status, avatar</div></div>›</div>
   <div class="card"><b>Chat background</b><div class="chips">${['light','navy','dark'].map(k=>`<button data-bg="${k}" class="${bg===k?'on':''}">${k[0].toUpperCase()+k.slice(1)}</button>`).join('')}</div></div>
-  <div class="card"><b>App colour</b><div class="chips">${[['auto','Auto (follow device)'],['clear','Day Mode'],['navy','Night Mode'],['dark','Stonic']].map(([k,n])=>`<button data-skin="${k}" class="${SKS()===k?'on':''}">${n}</button>`).join('')}</div><div class="mu" style="margin-top:6px">Auto switches between Day Mode and Night Mode with your device's light/dark setting. Pick one to lock it. Stonic is the cyan design.</div></div>
+  <div class="card"><b>App colour</b><div class="chips">${[['auto','Auto (follow device)'],['clear','Day Mode'],['glass','Liquid Glass'],['navy','Night Mode'],['dark','Stonic']].map(([k,n])=>`<button data-skin="${k}" class="${SKS()===k?'on':''}">${n}</button>`).join('')}</div><div class="mu" style="margin-top:6px">Auto switches between Day Mode and Night Mode with your device's light/dark setting. Pick one to lock it. Stonic is the cyan design.</div></div>
   <div class="card"><b>📞 Call alerts</b><div class="mu">Ring this device for incoming calls even when Migv33 is closed.</div><div class="mu" id="pst">${!pushOk()?'Not supported in this browser (on iPhone: add Migv33 to the Home Screen and open it from there).':Notification.permission==='denied'?'⛔ Notifications are blocked for this site. Allow them in the browser\'s site settings.':Notification.permission==='granted'&&localStorage.pushe?'✔ On for this device':'Off'}</div><div class="chips"><button id="pson">${pushOk()&&Notification.permission==='granted'&&localStorage.pushe?'Refresh':'Turn on'}</button><button id="pstest">Send test</button></div></div>
   <div class="card"><b>Status</b><div class="chips"><button id="ss">${ST.presence||'online'} — change</button></div></div>
   <div class="card"><b>Font size</b><div class="chips">${[['s','Small'],['m','Normal'],['l','Large']].map(([k,n])=>`<button data-fs="${k}" class="${(localStorage.fs||'m')===k?'on':''}">${n}</button>`).join('')}</div></div>
@@ -4319,9 +4320,9 @@ V.settings=async()=>{const bg=localStorage.cbg||'light';
   $('sqf').onsubmit=async e=>{e.preventDefault();try{await api('POST','/security/question',{question:$('sqq').value,answer:$('sqa').value,pass:$('sqp')?.value||''});toast('Security question saved');ST=await api('GET','/me');V.settings()}catch(er){fail(er)}};
   $('view').onclick=e=>{const g2=e.target.closest('[data-go2]');if(g2)return go(g2.dataset.go2);const fz=e.target.dataset.fs;if(fz){setFs(fz);V.settings()}const b=e.target.dataset.bg;if(b){localStorage.cbg=b;V.settings()}const s=e.target.closest('button[data-skin]');if(s){setSkin(s.dataset.skin);V.settings()}}};
 const CUBE='<svg viewBox="0 0 24 24"><path d="M12 3l8 4.5v9L12 21l-8-4.5v-9z"/><path d="M12 12l8-4.5M12 12v9M12 12L4 7.5"/></svg>',MOON='<svg viewBox="0 0 24 24"><path d="M20 14.5A8.5 8.5 0 019.5 4 8.5 8.5 0 1020 14.5z"/></svg>',SUN='<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>';
-const SKO=['clear','navy','dark'],SKN2={clear:'Day Mode',navy:'Night Mode',dark:'Stonic'};
-const paintTn=()=>{const k=document.documentElement.dataset.skin,nx=SKO[(SKO.indexOf(k)+1)%3];$('tn').innerHTML=k==='clear'?SUN:k==='dark'?CUBE:MOON;$('tn').title='Switch to '+SKN2[nx];document.querySelector('meta[name=theme-color]')?.setAttribute('content',SKC[k]||'#0c1d44')};
-$('tn').onclick=()=>{const k=document.documentElement.dataset.skin;setSkin(SKO[(SKO.indexOf(k)+1)%3]);if(cur==='settings')V.settings()};
+const SKO=['clear','glass','navy','dark'],SKN2={clear:'Day Mode',glass:'Liquid Glass',navy:'Night Mode',dark:'Stonic'};
+const curK=()=>{const d=document.documentElement.dataset;return d.look==='glass'?'glass':d.skin},paintTn=()=>{const k=curK(),nx=SKO[(SKO.indexOf(k)+1)%4];$('tn').innerHTML=(k==='clear'||k==='glass')?SUN:k==='dark'?CUBE:MOON;$('tn').title='Switch to '+SKN2[nx];document.querySelector('meta[name=theme-color]')?.setAttribute('content',SKC[k]||'#0c1d44')};
+$('tn').onclick=()=>{const k=curK();setSkin(SKO[(SKO.indexOf(k)+1)%4]);if(cur==='settings')V.settings()};
 paintTn();
 {let ct;$('coins').onclick=()=>{const c=$('coins');c.classList.add('show');clearTimeout(ct);ct=setTimeout(()=>c.classList.remove('show'),3000)}}
 if(tok())connect();
