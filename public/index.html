@@ -1459,7 +1459,8 @@ body.in #rcol{display:flex;flex-direction:column;gap:8px;grid-column:3;grid-row:
 #rcol .rbox.col{flex-direction:column;flex-wrap:nowrap;gap:2px;padding:6px}
 #rcol [hidden]{display:none!important}
 #rcol .rrt{display:flex;align-items:center;justify-content:space-between;width:100%;margin-top:4px;padding:10px 12px;border-radius:14px;border:1px solid var(--ln);background:var(--sf);color:var(--tx);font:800 13px/1 inherit;letter-spacing:.04em;cursor:pointer}
-#rcol .rrs{font-size:11px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--mu);padding:6px 8px 2px}
+#rcol .rrs{display:flex;align-items:center;justify-content:space-between;width:100%;border:0;background:none;cursor:pointer;font-family:inherit;font-size:11px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--mu);padding:6px 8px 2px}
+#rcol .rrs svg{transition:transform .2s}#rcol .rrs.cl svg{transform:rotate(-90deg)}#rcol .rrl{display:flex;flex-direction:column;gap:2px}
 #rcol .rf{width:62px;text-align:center;cursor:pointer;background:none;border:0;padding:0;color:var(--tx);font:inherit}
 #rcol .rf .p{position:relative;display:inline-block}
 #rcol .rf .p i{position:absolute;right:-1px;bottom:0;width:12px;height:12px;border-radius:50%;border:2px solid var(--sf);background:#2e9d4f}
@@ -2551,16 +2552,17 @@ function drawRcol(){const c=$('rcl');if(!c||!me||EMB||innerWidth<1100)return;
   const f=$('rfl');f.className='rbox col';f.innerHTML=RFR.length?RFR.map(u=>`<div class="rfr" data-u="${esc(u.name)}"><span class="p">${av(u.name,38)}<i class="${u.presence||'online'}"></i></span><span class="t"><b>${esc(u.name)}</b><small>${esc(u.status_text||(u.presence==='away'?'Away':u.presence==='busy'?'Busy':'Online'))}</small></span>${callBtns(u.name)}</div>`).join(''):'<div class="mu2">No friends online right now.</div>';
   $('rfn').textContent=RFR.length}
 async function loadRfr(){if(!me||innerWidth<1100)return;try{const d=await api('GET','/friends');RFR=d.friends.filter(u=>u.presence&&u.presence!=='offline'&&u.presence!=='invisible');RFR.forEach(u=>ROLES[u.name]=u.role)}catch{}drawRcol()}
-let RRT=0;
-const rrHide=()=>{clearTimeout(RRT);const b=$('rrb');if(b)b.hidden=true};
-async function rrShow(){const b=$('rrb');if(!b)return;b.hidden=false;clearTimeout(RRT);RRT=setTimeout(rrHide,5000);
+let RRT=0,RRH=0;const RRC={};
+const rrHide=()=>{clearTimeout(RRT);const b=$('rrb');if(b)b.hidden=true};const rrArm=()=>{clearTimeout(RRT);if(RRH)return;RRT=setTimeout(()=>{if(!RRH)rrHide()},5000)};
+async function rrShow(){const b=$('rrb');if(!b)return;b.hidden=false;rrArm();
   try{const rs=await api('GET','/rooms');if(!Array.isArray(rs))return;rs.forEach(x=>{RF[x.name]=x.flag||'';RLV[x.name]=x.lvl||1});
    const TOPL=[...rs].filter(x=>x.cat!=='game').sort((a,b)=>(b.lvl||1)-(a.lvl||1)||(b.xp||0)-(a.xp||0)).slice(0,10);
    const S=[['Top Level Rooms',TOPL],['Favorite rooms',rs.filter(x=>x.fav||x.owner===me)],['Official rooms',rs.filter(x=>x.cat==='official')],['Game rooms',rs.filter(x=>x.cat==='game')]];
-   b.innerHTML=S.map(([t,l])=>`<div class="rrs">${t} (${l.length})</div>`+(l.length?l.map(x=>`<button class="rc" data-r="${esc(x.name)}"><span class="ic">${RF[x.name]?`<img src="${esc(fu(RF[x.name]))}" alt="">`:'💬'}</span><span class="t"><b>${esc(x.name)}</b><small>${x.count||0} online · Lv ${x.lvl||1}</small></span></button>`).join(''):'<div class="mu2">No rooms</div>')).join('');
-   clearTimeout(RRT);RRT=setTimeout(rrHide,5000)}catch{}}
+   b.innerHTML=S.map(([t,l])=>`<button type="button" class="rrs${RRC[t]?' cl':''}" data-sec="${t}">${t} (${l.length})<svg viewBox="0 0 24 24" width="12" height="12"><path d="M6 9l6 6 6-6" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg></button><div class="rrl"${RRC[t]?' hidden':''}>`+(l.length?l.map(x=>`<button class="rc" data-r="${esc(x.name)}"><span class="ic">${RF[x.name]?`<img src="${esc(fu(RF[x.name]))}" alt="">`:'💬'}</span><span class="t"><b>${esc(x.name)}</b><small>${x.count||0} online · Lv ${x.lvl||1}</small></span></button>`).join(''):'<div class="mu2">No rooms</div>')+'</div>').join('');
+   rrArm()}catch{}}
 $('rrt').onclick=e=>{e.stopPropagation();const b=$('rrb');if(b.hidden)rrShow();else rrHide()};
-$('rrb').onclick=()=>{clearTimeout(RRT);RRT=setTimeout(rrHide,5000)};
+$('rrw').onmouseenter=()=>{RRH=1;clearTimeout(RRT)};$('rrw').onmouseleave=()=>{RRH=0;if(!$('rrb').hidden)rrArm()};
+$('rrb').addEventListener('click',e=>{const s=e.target.closest('.rrs');if(s){e.stopPropagation();const t=s.dataset.sec;RRC[t]=!RRC[t];s.classList.toggle('cl',!!RRC[t]);s.nextElementSibling.hidden=!RRC[t]?false:true;}if(!RRH)rrArm()});
 $('rcol').onclick=e=>{const cb=e.target.closest('[data-call]');if(cb){callStart(cb.dataset.n,cb.dataset.call);return}const r=e.target.closest('[data-r]');if(r)return go('chat',r.dataset.r);const u=e.target.closest('[data-u]');if(u)go('profile',u.dataset.u)};
 setInterval(()=>{if(!me||EMB)return;drawRcol();{const w=$('rrw');if(w){w.hidden=cur!=='home';if(w.hidden)rrHide()}}if(Date.now()-RFT>30000){RFT=Date.now();loadRfr()}},2000);
 addEventListener('resize',()=>{if(me)loadRfr()});
