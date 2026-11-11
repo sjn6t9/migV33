@@ -2595,7 +2595,7 @@ $('rrt').onclick=e=>{e.stopPropagation();const b=$('rrb');if(b.hidden){RRM=0;rrS
 $('rrw').onmouseenter=()=>{RRH=1;clearTimeout(RRT)};$('rrw').onmouseleave=()=>{RRH=0;if(!$('rrb').hidden)rrArm()};
 $('rrb').addEventListener('click',e=>{const s=e.target.closest('.rrs');if(s){e.stopPropagation();const t=s.dataset.sec;RRC[t]=!RRC[t];s.classList.toggle('cl',!!RRC[t]);s.nextElementSibling.hidden=!RRC[t]?false:true;}if(!RRH)rrArm()});
 $('rcol').onclick=e=>{const cb=e.target.closest('[data-call]');if(cb){callStart(cb.dataset.n,cb.dataset.call);return}const r=e.target.closest('[data-r]');if(r)return go('chat',r.dataset.r);const u=e.target.closest('[data-u]');if(u)go('profile',u.dataset.u)};
-setInterval(()=>{if(!me||EMB)return;drawRcol();{const w=$('rrw');if(w){w.hidden=cur!=='home';if(!w.hidden&&!RRM&&(Date.now()-RRL>20000||$('rrb').hidden)){RRL=Date.now();rrShow()}}}if(Date.now()-RFT>30000){RFT=Date.now();loadRfr()}},2000);
+setInterval(()=>{if(!me||EMB)return;drawRcol();{const w=$('rrw');if(w){w.hidden=false;if(!w.hidden&&!RRM&&(Date.now()-RRL>20000||$('rrb').hidden)){RRL=Date.now();rrShow()}}}if(Date.now()-RFT>30000){RFT=Date.now();loadRfr()}},2000);
 addEventListener('resize',()=>{if(me)loadRfr()});
 
 /* ===== desktop floating chat windows: each window runs the normal chat view in its own frame ===== */
