@@ -1968,7 +1968,7 @@ const dropAllRooms = (w, why) => {
   for (const t of rooms) {
     if (t === r0 || roomNames(t).has(w.user)) continue;
     try { db.prepare('delete from room_seen where user=? and room=?').run(w.user, t); db.prepare('delete from room_since where user=? and room=?').run(w.user, t); } catch {}
-    cast(t, { t: 'leave', room: t, user: w.user, role: roleOf(w.user), xp: xpOf(w.user), ts: Date.now() }); castRoster(t); purgeRoomMsgs(t);
+    if (entTake(w.user, t)) cast(t, { t: 'leave', room: t, user: w.user, role: roleOf(w.user), xp: xpOf(w.user), ts: Date.now() }); castRoster(t); purgeRoomMsgs(t);
   }
   rooms.forEach(x => send(w, { t: 'kicked', room: x, by: 'system', auto: true, why }));
 };
@@ -1988,10 +1988,14 @@ const roomNames = room => { const st = new Set([...(members.get(room) || [])].ma
 const roster = room => [...roomNames(room)].map(n => withPres({ name: n, ...db.prepare('select role,xp,presence from users where name=?').get(n) })).filter(u => u.presence !== 'offline');
 const userRooms = n => { const st = new Set(); for (const w of wss.clients) if (w.user === n) { if (w.room) st.add(w.room); if (w.tabs) w.tabs.forEach(x => st.add(x)); } for (const [r0, set] of members) for (const w of set) if (w.user === n) st.add(r0); return [...st].filter(x => x && !x.startsWith('dm:')); };
 const castRoster = room => { if (room && !/^dm:/.test(room)) cast(room, { t: 'members', room, list: roster(room) }); };
+// 'has left' is only announced for someone whose 'has entered' was announced: a dropped/re-opened connection no longer repeats 'left' with no 'entered'
+const ENT = new Set();
+const entMark = (u, r) => ENT.add(u + '\u0001' + r);
+const entTake = (u, r) => ENT.delete(u + '\u0001' + r);
 const leaveRoom = (ws, quiet = false) => {
   const r0 = ws.room; if (!r0) return; members.get(r0)?.delete(ws); ws.room = null;
   if (!quiet && !r0.startsWith('dm:') && ws.user && ![...(members.get(r0) || [])].some(w => w.user === ws.user)) { try { db.prepare('delete from room_seen where user=? and room=?').run(ws.user, r0); db.prepare('delete from room_since where user=? and room=?').run(ws.user, r0); } catch {} } 
-  if (!quiet && !r0.startsWith('dm:') && ws.user && ![...(members.get(r0) || [])].some(w => w.user === ws.user)) cast(r0, { t: 'leave', room: r0, user: ws.user, role: roleOf(ws.user), xp: xpOf(ws.user), ts: Date.now() });
+  if (!quiet && !r0.startsWith('dm:') && ws.user && ![...(members.get(r0) || [])].some(w => w.user === ws.user) && entTake(ws.user, r0)) cast(r0, { t: 'leave', room: r0, user: ws.user, role: roleOf(ws.user), xp: xpOf(ws.user), ts: Date.now() });
   if (!quiet) { try { ws.tabs && ws.tabs.delete(r0); } catch {} }   // really leaving (or timed out): the room is no longer an open tab either
   castRoster(r0);
   if (!quiet) purgeRoomMsgs(r0);
@@ -2809,7 +2813,7 @@ function onWsMessage(ws, raw) {
       const hist = db.prepare('select user,text,kind,ts,(select role from users where name=msgs.user) role,(select xp from users where name=msgs.user) xp from msgs where room=? and not exists(select 1 from blocks where (a=? and b=msgs.user) or (b=? and a=msgs.user)) order by id desc limit 50').all(m.room, ws.user, ws.user).reverse();
       const roomHist = (!isDm && sinceTs && !m.have) ? db.prepare('select user,text,kind,ts,(select role from users where name=msgs.user) role,(select xp from users where name=msgs.user) xp from msgs where room=? and ts>=? and not exists(select 1 from blocks where (a=? and b=msgs.user) or (b=? and a=msgs.user)) order by id desc limit 100').all(m.room, sinceTs, ws.user, ws.user).reverse() : [];
       send(ws, { t: 'history', room: m.room, items: isDm ? hist : roomHist });   // rooms: you only see what is said while you are inside
-      if (!isDm) { if (!wasHere) cast(m.room, { t: 'enter', room: m.room, user: ws.user, role: roleOf(ws.user), xp: xpOf(ws.user), ts: Date.now() }); castRoster(m.room); }
+      if (!isDm) { if (!wasHere) entMark(ws.user, m.room); if (!wasHere) cast(m.room, { t: 'enter', room: m.room, user: ws.user, role: roleOf(ws.user), xp: xpOf(ws.user), ts: Date.now() }); castRoster(m.room); }
       if (tp && isTpRoom(m.room)) { ensureTp(m.room); setTimeout(() => send(ws, { t: 'tp', room: m.room, view: tp.getView(m.room, ws.user) }), 50); }
       if (!isDm && gameOf(m.room) && gameOf(m.room) !== 'tp') { ws._gp = null; gpSend(m.room, ws); }
       if (games.has(m.room)) send(ws, unoState(games.get(m.room), ws.user));
@@ -2860,7 +2864,7 @@ function closeWs(ws) {
     for (const t of otherTabs) {
       if (roomNames(t).has(ws.user)) continue;
       try { db.prepare('delete from room_seen where user=? and room=?').run(ws.user, t); db.prepare('delete from room_since where user=? and room=?').run(ws.user, t); } catch {}
-      cast(t, { t: 'leave', room: t, user: ws.user, role: roleOf(ws.user), xp: xpOf(ws.user), ts: Date.now() }); castRoster(t);
+      if (entTake(ws.user, t)) cast(t, { t: 'leave', room: t, user: ws.user, role: roleOf(ws.user), xp: xpOf(ws.user), ts: Date.now() }); castRoster(t);
     }
     online();
   };
