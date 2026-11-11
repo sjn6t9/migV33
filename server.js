@@ -367,7 +367,7 @@ app.post('/api/support', auth, ok((q, r) => {
 app.post('/api/posts', auth, ok((q, r) => {
   const text = String(q.body?.text || '').trim().slice(0, 500), image = imgUrl(q.body?.image) ? q.body.image : '';
   if (!text && !image) return bad(r, 'Write something or add a photo first');
-  const bg = !image && /^g([1-9]|[12]\d|3[0-8])$/.test(String(q.body?.bg || '')) ? q.body.bg : '';   // coloured text-post style
+  const bg = !image && /^g([1-9]|[12]\d|3[0-8])(\.[0-9a-f]{6})?$/i.test(String(q.body?.bg || '')) ? q.body.bg : '';   // coloured text-post style
   const pid = db.prepare('insert into posts(user,text,image,bg,ts) values(?,?,?,?,?)').run(q.user, text, image, bg, Date.now()).lastInsertRowid;
   grantAct(q.user, 'post', pid); notifyMentions(text, q.user, 'in a post', 'post:' + pid); r.json({ ok: true });
 }));
@@ -488,9 +488,10 @@ app.get('/api/headline', auth, ok((q, r) => {
   const top = db.prepare("select name,xp from users where banned=0 and role not in ('staff','admin') order by xp desc, name limit 3").all().map(u => ({ name: u.name, level: level(u.xp) }));
   r.json({ rooms: rooms.length, chatting, online: onlineN, live, upcoming, top, now, ...headlineCfg() });
 }));
-const HL_DEF = { show: { rooms: true, online: true, live: true, upcoming: true, top: true }, custom: [] };
+const HL_DEF = { show: { rooms: true, online: true, live: true, upcoming: true, top: true }, custom: [], colors: {}, ccolors: [] };
+const HEX = x => /^#[0-9a-f]{6}$/i.test(String(x || '')) ? String(x).toLowerCase() : '';
 function headlineCfg() {
-  try { const c = JSON.parse(db.prepare("select v from kv where k='headline_cfg'").get()?.v || 'null'); if (c) return { show: { ...HL_DEF.show, ...(c.show || {}) }, custom: Array.isArray(c.custom) ? c.custom : [] }; } catch {}
+  try { const c = JSON.parse(db.prepare("select v from kv where k='headline_cfg'").get()?.v || 'null'); if (c) return { show: { ...HL_DEF.show, ...(c.show || {}) }, custom: Array.isArray(c.custom) ? c.custom : [], colors: c.colors && typeof c.colors === 'object' ? c.colors : {}, ccolors: Array.isArray(c.ccolors) ? c.ccolors : [] }; } catch {}
   return HL_DEF;
 }
 app.get('/api/admin/headline', auth, ok((q, r) => { if (roleOf(q.user) !== 'staff') return bad(r, 'Only staff can do this', 403); r.json(headlineCfg()); }));
@@ -498,8 +499,10 @@ app.post('/api/admin/headline', auth, ok((q, r) => {
   if (roleOf(q.user) !== 'staff') return bad(r, 'Only staff can do this', 403);
   const b = q.body || {}, show = {};
   for (const k of Object.keys(HL_DEF.show)) show[k] = b.show?.[k] !== false;
-  const custom = (Array.isArray(b.custom) ? b.custom : []).map(x => String(x || '').trim().slice(0, 200)).filter(Boolean).slice(0, 10);
-  db.prepare("insert or replace into kv(k,v) values('headline_cfg',?)").run(JSON.stringify({ show, custom }));
+  const raw = (Array.isArray(b.custom) ? b.custom : []).map((x, i) => [String(x || '').trim().slice(0, 200), HEX((b.ccolors || [])[i])]).filter(x => x[0]).slice(0, 10);
+  const custom = raw.map(x => x[0]), ccolors = raw.map(x => x[1]), colors = {};
+  for (const k of Object.keys(HL_DEF.show)) { const h = HEX(b.colors?.[k]); if (h) colors[k] = h; }
+  db.prepare("insert or replace into kv(k,v) values('headline_cfg',?)").run(JSON.stringify({ show, custom, colors, ccolors }));
   alog(q.user, '-', 'headline', `${custom.length} custom`); r.json({ ok: true });
 }));
 app.get('/api/rooms', auth, ok((q, r) => {
@@ -700,6 +703,7 @@ app.get('/api/panel', auth, ok((q, r) => {
   out.outgoing = db.prepare('select id,to_user,kind,status,ts from role_requests where from_user=? order by id desc limit 1').get(me) || null;
   out.incoming = db.prepare("select id,from_user,kind,ts from role_requests where to_user=? and status='pending' order by id").all(me).map(x => ({ ...x, level: lvOf(x.from_user) }));
   if (u.role === 'user') out.mentors = db.prepare("select name,role,xp from users where role in ('mentor','headmentor') and banned=0 order by name limit 200").all().map(x => ({ name: x.name, role: x.role, level: level(x.xp) }));
+  if (u.role === 'merchant') out.heads = db.prepare("select name,xp from users where role='headmentor' and banned=0 order by name limit 200").all().map(x => ({ name: x.name, level: level(x.xp) }));
   if (u.role === 'merchant') {
     const start = u.cycle_start || now, end = start + CYCLE_MS, pp = pointsOf(me, start, end), tier = tierOf(pp.points);
     const nxt = [...TIERS].reverse().find(t => pp.points < t[1]);
@@ -735,7 +739,7 @@ app.post('/api/role/request', auth, ok((q, r) => {
   if (db.prepare("select 1 from role_requests where from_user=? and status='pending'").get(me)) return bad(r, 'You already have a pending request.');
   let kind, to;
   if (role === 'user') { kind = 'merchant'; to = String(q.body?.to || ''); const t = db.prepare('select role,banned from users where name=?').get(to); if (!t || !['mentor', 'headmentor'].includes(t.role) || t.banned || to === me) return bad(r, 'Choose a valid Mentor.'); }
-  else if (role === 'merchant') { kind = 'mentor'; to = headOf(me); if (!to) return bad(r, 'You have no Head Mentor above you yet. Ask staff to assign one.'); }
+  else if (role === 'merchant') { kind = 'mentor'; to = String(q.body?.to || '') || headOf(me); const t = db.prepare('select role,banned from users where name=?').get(to); if (!to || !t || t.role !== 'headmentor' || t.banned) return bad(r, 'Choose a Head Mentor.'); }
   else if (role === 'mentor') { kind = 'head'; to = 'system'; }
   else return bad(r, 'Your role cannot send a request.');
   try { db.prepare('insert into role_requests(from_user,to_user,kind,status,ts) values(?,?,?,?,?)').run(me, to, kind, 'pending', Date.now()); } catch { return bad(r, 'You already have a pending request.'); }
@@ -2300,13 +2304,14 @@ function giftXp(name, price) {
   db.prepare('insert into gift_xp(user,u) values(?,?) on conflict(user) do update set u=excluded.u').run(name, tot % GXU);
   if (whole > 0) { addXp(name, whole); wss.clients.forEach(w => { if (w.user === name) send(w, { t: 'xp', xp: xpOf(name) }); }); }
 }
-const payGift = (from, to, gf, ctx = 'room') => { const ok = payGift0(from, to, gf, ctx); if (ok) { try { giftXp(from, gf.c); giftXp(to, gf.c); } catch (e) { console.log('[giftxp]', e.message); } } return ok; };
-const payGift0 = (from, to, gf, ctx = 'room') => db.transaction(() => {
+const payGift = (from, to, gf, ctx = 'room', room = '') => { const ok = payGift0(from, to, gf, ctx, room); if (ok) { try { giftXp(from, gf.c); giftXp(to, gf.c); } catch (e) { console.log('[giftxp]', e.message); } } return ok; };
+const payGift0 = (from, to, gf, ctx = 'room', room = '') => db.transaction(() => {
+  const where = ctx === 'dm' ? ' · Private chat' : room ? ' · Room: ' + String(room).slice(0, 40) : '';
   if (!db.prepare('update users set coins=coins-? where name=? and coins>=?').run(gf.c, from, gf.c).changes) return false;
   const rc = gf.r ?? Math.floor(gf.c / 2);
   db.prepare('update users set coins=coins+? where name=?').run(rc, to);
   db.prepare('insert into gift_inv(user,gift,n) values(?,?,1) on conflict(user,gift) do update set n=n+1').run(to, gf.key || gf.n.toLowerCase());
-  const tx = addTx(from, ctx === 'shower' ? 'gs' : 'gift', `Sent ${gf.n} to ${to}`, -gf.c); addTx(to, 'gift', ctx === 'shower' ? `${gf.n} gift shower from ${from}` : `${gf.n} from ${from}`, rc); setImmediate(() => notify(to, 'rewards', `${from} sent you ${gf.n} (+${rc.toLocaleString()} coins)`));
+  const tx = addTx(from, ctx === 'shower' ? 'gs' : 'gift', `Sent ${gf.n} to ${to}${where}`, -gf.c); addTx(to, 'gift', (ctx === 'shower' ? `${gf.n} gift shower from ${from}` : `${gf.n} from ${from}`) + where, rc); setImmediate(() => notify(to, 'rewards', `${from} sent you ${gf.n} (+${rc.toLocaleString()} coins)`));
   const isMig = String(gf.key || gf.n || '').toLowerCase() === 'migmeet' || String(gf.n || '').toLowerCase() === 'migmeet';
   if (isMig) mev(from, 'dm_gift');   // the "Send migmeet gifts" task counts the migmeet gift wherever it is sent
   if (ctx !== 'dm') { mev(from, 'gift_sent'); mev(to, 'gift_recv'); }
@@ -2321,7 +2326,7 @@ function giftOne(ws, to, key, note = '') {
   if (!to || to === ws.user || !profile(to)) return reply(ws, 'Pick another valid user.');
   if (isBlocked(ws.user, to)) return reply(ws, "You can't gift this user.");
   if (!speakOk(ws)) return;
-  if (!payGift(ws.user, to, gf, ws.room?.startsWith('dm:') ? 'dm' : 'room')) return reply(ws, 'Not enough coins.');
+  if (!payGift(ws.user, to, gf, ws.room?.startsWith('dm:') ? 'dm' : 'room', ws.room)) return reply(ws, 'Not enough coins.');
   if (!ws.room?.startsWith('dm:')) try { contestScore(ws.room, 'gift', ws.user, { gift: gf.key, amount: gf.c }); } catch (e) { console.log('[contest]', e.message); }
   say(ws.room, ws.user, `{c:${gcol(gf)}}<<${ws.user} [${level(xpOf(ws.user))}] gives a ${gf.n} ${giftIcon(gf).trim()} to ${to} [${level(xpOf(to))}]${note ? ' -- ' + note : ''}>>`, 'gift');
   reply(ws, `Congratulations for sending gift! You have used ${gf.c} coins and your estimated remaining balance after gifting will be ${coins(ws.user)} coins.`, 'ok');
@@ -2338,7 +2343,7 @@ function shower(ws, key) {
   if (coins(ws.user) < gf.c * to.length) return reply(ws, `You need ${gf.c * to.length} coins to send ${gf.n} to ${to.length} members.`);
   showerAt.set(ws.user, Date.now());
   let sent = 0;
-  to.forEach(n => { if (payGift(ws.user, n, gf, 'shower')) try { sent++; contestScore(ws.room, 'gift', ws.user, { gift: gf.key, amount: gf.c }); } catch (e) { console.log('[contest]', e.message); } });
+  to.forEach(n => { if (payGift(ws.user, n, gf, 'shower', ws.room)) try { sent++; contestScore(ws.room, 'gift', ws.user, { gift: gf.key, amount: gf.c }); } catch (e) { console.log('[contest]', e.message); } });
   if (sent) addTx(ws.user, 'gift', `${ws.room} · ${gf.n} gift shower (${sent} members)`, -gf.c * sent);
   const shown = to.length > 8 ? to.slice(0, 8).join(', ') + ` and ${to.length - 8} others` : to.join(', ');
   say(ws.room, ws.user, `{c:${gcol(gf)}}<< 🎆 *GIFT SHOWER* ${ws.user} [${level(xpOf(ws.user))}] gives a ${gf.n} ${giftIcon(gf).trim()} to ${shown}! Hurray! >>`, 'gift');
