@@ -1457,6 +1457,8 @@ body.in #rcol{display:flex;flex-direction:column;gap:8px;grid-column:3;grid-row:
 #rcol .rh b{margin-left:6px;color:var(--ac)}
 #rcol .rbox{background:var(--sf);border:1px solid var(--ln);border-radius:16px;padding:10px;display:flex;flex-wrap:wrap;gap:10px;box-sizing:border-box}
 #rcol .rbox.col{flex-direction:column;flex-wrap:nowrap;gap:2px;padding:6px}
+#rcol .rrt{display:flex;align-items:center;justify-content:space-between;width:100%;margin-top:4px;padding:10px 12px;border-radius:14px;border:1px solid var(--ln);background:var(--sf);color:var(--tx);font:800 13px/1 inherit;letter-spacing:.04em;cursor:pointer}
+#rcol .rrs{font-size:11px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--mu);padding:6px 8px 2px}
 #rcol .rf{width:62px;text-align:center;cursor:pointer;background:none;border:0;padding:0;color:var(--tx);font:inherit}
 #rcol .rf .p{position:relative;display:inline-block}
 #rcol .rf .p i{position:absolute;right:-1px;bottom:0;width:12px;height:12px;border-radius:50%;border:2px solid var(--sf);background:#2e9d4f}
@@ -2372,7 +2374,7 @@ html[data-skin] body #hdr#hdr #top#top#top #rtabs .rt.on{background:none!importa
   <button data-b="reels" aria-label="Reels"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="5"/><path d="M3 9h18M9 3l3 6M15 3l3 6"/><path d="M10.5 12.8v4.4l3.6-2.2z" style="fill:currentColor"/></svg><span>Reels</span></button>
   <button data-b="profile" aria-label="Profile"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-7 8-7s8 2.6 8 7"/></svg><span>Profile</span></button>
 </nav>
-<aside id="rcol" aria-label="Online friends and chats"><div class="rh">Online Friends <b id="rfn">0</b></div><div class="rbox" id="rfl"></div><div class="rh">Chats</div><div class="rbox" id="rcl"></div></aside>
+<aside id="rcol" aria-label="Online friends and chats"><div class="rh">Online Friends <b id="rfn">0</b></div><div class="rbox" id="rfl"></div><div class="rh">Chats</div><div class="rbox" id="rcl"></div><div id="rrw" hidden><button type="button" id="rrt" class="rrt">Rooms <svg viewBox="0 0 24 24" width="14" height="14"><path d="M6 9l6 6 6-6" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg></button><div class="rbox col" id="rrb" hidden></div></div></aside>
 <div id="drawer"><nav id="dn"></nav><button id="dtg" type="button" aria-label="Hide or show menu"><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></button></div>
 <div id="sheet"><div id="sh"></div></div>
 
@@ -2548,8 +2550,18 @@ function drawRcol(){const c=$('rcl');if(!c||!me||EMB||innerWidth<1100)return;
   const f=$('rfl');f.className='rbox col';f.innerHTML=RFR.length?RFR.map(u=>`<div class="rfr" data-u="${esc(u.name)}"><span class="p">${av(u.name,38)}<i class="${u.presence||'online'}"></i></span><span class="t"><b>${esc(u.name)}</b><small>${esc(u.status_text||(u.presence==='away'?'Away':u.presence==='busy'?'Busy':'Online'))}</small></span>${callBtns(u.name)}</div>`).join(''):'<div class="mu2">No friends online right now.</div>';
   $('rfn').textContent=RFR.length}
 async function loadRfr(){if(!me||innerWidth<1100)return;try{const d=await api('GET','/friends');RFR=d.friends.filter(u=>u.presence&&u.presence!=='offline'&&u.presence!=='invisible');RFR.forEach(u=>ROLES[u.name]=u.role)}catch{}drawRcol()}
+let RRT=0;
+const rrHide=()=>{clearTimeout(RRT);const b=$('rrb');if(b)b.hidden=true};
+async function rrShow(){const b=$('rrb');if(!b)return;b.hidden=false;clearTimeout(RRT);RRT=setTimeout(rrHide,5000);
+  try{const rs=await api('GET','/rooms');if(!Array.isArray(rs))return;rs.forEach(x=>{RF[x.name]=x.flag||'';RLV[x.name]=x.lvl||1});
+   const TOPL=[...rs].filter(x=>x.cat!=='game').sort((a,b)=>(b.lvl||1)-(a.lvl||1)||(b.xp||0)-(a.xp||0)).slice(0,10);
+   const S=[['Top Level Rooms',TOPL],['Favorite rooms',rs.filter(x=>x.fav||x.owner===me)],['Official rooms',rs.filter(x=>x.cat==='official')],['Game rooms',rs.filter(x=>x.cat==='game')]];
+   b.innerHTML=S.map(([t,l])=>`<div class="rrs">${t} (${l.length})</div>`+(l.length?l.map(x=>`<button class="rc" data-r="${esc(x.name)}"><span class="ic">${RF[x.name]?`<img src="${esc(fu(RF[x.name]))}" alt="">`:'💬'}</span><span class="t"><b>${esc(x.name)}</b><small>${x.count||0} online · Lv ${x.lvl||1}</small></span></button>`).join(''):'<div class="mu2">No rooms</div>')).join('');
+   clearTimeout(RRT);RRT=setTimeout(rrHide,5000)}catch{}}
+$('rrt').onclick=e=>{e.stopPropagation();const b=$('rrb');if(b.hidden)rrShow();else rrHide()};
+$('rrb').onclick=()=>{clearTimeout(RRT);RRT=setTimeout(rrHide,5000)};
 $('rcol').onclick=e=>{const cb=e.target.closest('[data-call]');if(cb){callStart(cb.dataset.n,cb.dataset.call);return}const r=e.target.closest('[data-r]');if(r)return go('chat',r.dataset.r);const u=e.target.closest('[data-u]');if(u)go('profile',u.dataset.u)};
-setInterval(()=>{if(!me||EMB)return;drawRcol();if(Date.now()-RFT>30000){RFT=Date.now();loadRfr()}},2000);
+setInterval(()=>{if(!me||EMB)return;drawRcol();{const w=$('rrw');if(w){w.hidden=cur!=='home';if(w.hidden)rrHide()}}if(Date.now()-RFT>30000){RFT=Date.now();loadRfr()}},2000);
 addEventListener('resize',()=>{if(me)loadRfr()});
 
 /* ===== desktop floating chat windows: each window runs the normal chat view in its own frame ===== */
