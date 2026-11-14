@@ -3021,6 +3021,7 @@ function ldRoll(t) {
     t.msg = `${s.user} rolled ${d} — no move`; return ldHold(t);
   }
   ldArm(t); ldSync(t);
+  if (lg.length === 1) { const ref = t.last; setTimeout(() => { if (t.st === 'play' && t.last === ref && t.d === d) ldMove(t, lg[0]); }, 900); }   // only one possible move: play it automatically
 }
 // show the roll for a moment, then pass the turn (or let the same player roll again)
 function ldHold(t, retry) {
