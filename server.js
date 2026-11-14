@@ -3129,6 +3129,7 @@ function ludoAct(ws, m) {
       db.transaction(() => { for (const s of t.seats) if (!s.bot) { db.prepare('update users set coins=coins-? where name=? and coins>=?').run(t.fee, s.user, t.fee); db.prepare('insert into lc_pending values(?,?,?)').run('ludo:' + t.id, s.user, t.fee); addTx(s.user, 'game', 'Ludo: entry fee', -t.fee); s.paid = true; t.paid++; } })();
       pushCoins(...ldHumans(t).map(x => x.user));
     }
+    if (t.seats.length === 2) { const h = t.seats.find(x => x.user === t.host) || t.seats[0], o = t.seats.find(x => x !== h); o.c = (h.c + 2) % 4; }   // two players sit in opposite corners
     t.seats.sort((x, y) => x.c - y.c); t.tok = [0, 1, 2, 3].map(() => Array(t.n).fill(-1)); t.cut = [false, false, false, false]; t.ones = 0; t.st = 'play'; t.turn = 0; t.sixes = 0; t.msg = ''; ldCommit(t); ldArm(t); ldSync(t); ldCastLobby(); return;
   }
   if (t.st !== 'play') return;
