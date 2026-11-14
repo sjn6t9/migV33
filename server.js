@@ -2965,7 +2965,7 @@ function ldLegal(t) {
 }
 function ldView(t, me) {
   const s = t.st === 'play' ? ldCur(t) : null;
-  return { id: t.id, host: t.host, fee: t.fee, max: t.max, mode: t.mode, rules: t.rules, n: t.n, botLvl: t.botLvl, ctl: s ? ldCol(t) : null, priv: !!t.priv, turnS: t.turnMs / 1000, inv: t.seats.some(s => s.user === me) ? [...t.inv] : [], spec: !t.seats.some(s => s.user === me), watchers: t.spec ? t.spec.size : 0, st: t.st, seats: t.seats.map(x => ({ user: x.user, bot: !!x.bot, c: x.c, out: !!x.out })), tok: t.st === 'lobby' ? [0, 1, 2, 3].map(() => Array(t.n).fill(-1)) : t.tok, turn: s ? s.user : null, d: t.d, left: Math.max(0, (t.deadline || 0) - Date.now()), commit: t.pre ? t.pre.h : null, last: t.last || null, legal: s && s.user === me ? ldLegal(t) : [], winner: t.winner || null, pot: t.fee * t.paid, msg: t.msg || '' };
+  return { id: t.id, host: t.host, fee: t.fee, max: t.max, mode: t.mode, rules: t.rules, n: t.n, botLvl: t.botLvl, ctl: s ? ldCol(t) : null, priv: !!t.priv, turnS: t.turnMs / 1000, inv: t.seats.some(s => s.user === me) ? [...t.inv] : [], voice: [...t.voice], spec: !t.seats.some(s => s.user === me), watchers: t.spec ? t.spec.size : 0, st: t.st, seats: t.seats.map(x => ({ user: x.user, bot: !!x.bot, c: x.c, out: !!x.out })), tok: t.st === 'lobby' ? [0, 1, 2, 3].map(() => Array(t.n).fill(-1)) : t.tok, turn: s ? s.user : null, d: t.d, left: Math.max(0, (t.deadline || 0) - Date.now()), commit: t.pre ? t.pre.h : null, last: t.last || null, legal: s && s.user === me ? ldLegal(t) : [], winner: t.winner || null, pot: t.fee * t.paid, msg: t.msg || '' };
 }
 function ldSync(t) { for (const s of t.seats) if (!s.bot) for (const w of ldSocks(s.user)) send(w, { t: 'ludo', a: 'table', table: ldView(t, s.user) }); for (const u of t.spec || []) for (const w of ldSocks(u)) send(w, { t: 'ludo', a: 'table', table: ldView(t, u) }); }
 const ldWatching = u => [...LUDO.values()].find(t => t.spec && t.spec.has(u));
@@ -3064,6 +3064,7 @@ function ldForfeit(t, s, why) {
   if (ldCur(t) === s) { t.turn = (t.turn + t.seats.length - 1) % t.seats.length; ldNext(t, false); } else ldSync(t);
 }
 function ldLeave(user) {
+  for (const x of LUDO.values()) if (x.voice && x.voice.delete(user)) setImmediate(() => ldSync(x));
   const w0 = ldWatching(user); if (w0) { w0.spec.delete(user); for (const w of ldSocks(user)) send(w, { t: 'ludo', a: 'left' }); }
   const t = ldOf(user); if (!t) return;
   const s = t.seats.find(x => x.user === user);
@@ -3089,7 +3090,7 @@ function ludoAct(ws, m) {
   if (a === 'create') {
     if (t0) return ldErr(ws, 'You are already at a table'); const fee = +m.fee | 0, max = mode0(m), turn = LD_TURNS.includes(+m.turn) ? +m.turn : 25, mode = m.mode === 'team' ? 'team' : 'classic';
     if (!LD_FEES.includes(fee)) return ldErr(ws, 'Invalid entry'); if (fee && coins(u) < fee) return ldErr(ws, 'Not enough coins for this entry');
-    const t = { id: String(++ludoSeq), spec: new Set(), host: u, fee, max, priv: !!m.priv, mode, turnMs: turn * 1000, inv: new Set(), st: 'lobby', seats: [{ user: u, c: 0 }], tok: [0, 1, 2, 3].map(() => [-1, -1, -1, -1]), n: 4, botLvl: 'hard', rules: { ...LD_RULES }, cut: [false, false, false, false], ones: 0, turn: 0, d: null, paid: 0, sixes: 0 };
+    const t = { id: String(++ludoSeq), spec: new Set(), voice: new Set(), chat: [], host: u, fee, max, priv: !!m.priv, mode, turnMs: turn * 1000, inv: new Set(), st: 'lobby', seats: [{ user: u, c: 0 }], tok: [0, 1, 2, 3].map(() => [-1, -1, -1, -1]), n: 4, botLvl: 'hard', rules: { ...LD_RULES }, cut: [false, false, false, false], ones: 0, turn: 0, d: null, paid: 0, sixes: 0 };
     LUDO.set(t.id, t); t.timer = setTimeout(() => { if (t.st !== 'lobby') return; for (const x of ldHumans(t)) for (const w of ldSocks(x.user)) send(w, { t: 'ludo', a: 'left', why: 'Table closed (idle for 10 minutes)' }); ldDrop(t); }, 600000); ldSync(t); ldCastLobby(); return;
   }
   if (a === 'join') {
@@ -3099,6 +3100,21 @@ function ludoAct(ws, m) {
     const used = new Set(t.seats.map(x => x.c)), c = [0, 2, 1, 3].find(x => !used.has(x)); t.seats.push({ user: u, c }); ldSync(t); ldCastLobby(); return;
   }
   if (a === 'leave') return ldLeave(u);
+  const tt = t0 || ldWatching(u);
+  if (a === 'chat' || a === 'vjoin' || a === 'vleave' || a === 'vsig' || a === 'chatlog') {
+    if (!tt) return;
+    const mem = [...tt.seats.filter(x => !x.bot && !x.gone).map(x => x.user), ...tt.spec];
+    if (a === 'chatlog') return send(ws, { t: 'ludo', a: 'chatlog', items: tt.chat });
+    if (a === 'chat') {
+      const text = String(m.text || '').replace(/\s+/g, ' ').trim().slice(0, 200); if (!text) return;
+      if (Date.now() - (ws._ldc || 0) < 600) return; ws._ldc = Date.now();
+      const o = { from: u, text, ts: Date.now() }; tt.chat.push(o); if (tt.chat.length > 50) tt.chat.shift();
+      for (const x of mem) for (const w of ldSocks(x)) send(w, { t: 'ludo', a: 'chat', ...o }); return;
+    }
+    if (a === 'vjoin') { tt.voice.add(u); ldSync(tt); return; }
+    if (a === 'vleave') { tt.voice.delete(u); ldSync(tt); return; }
+    if (a === 'vsig') { const to = String(m.to || ''); if (!mem.includes(to) || !tt.voice.has(u) || !tt.voice.has(to)) return; for (const w of ldSocks(to)) send(w, { t: 'ludo', a: 'vsig', from: u, data: m.data }); return; }
+  }
   if (!t0) return ldErr(ws, 'You are not at a table');
   const t = t0;
   if (a === 'invite') {
@@ -3148,6 +3164,7 @@ function closeWs(ws) {
     const upd = () => { if (hasSock(u0)) return; online(); [...new Set(rooms0)].filter(x => !x.startsWith('dm:')).forEach(castRoster); };
     setImmediate(upd); if (!ws._bye) setTimeout(upd, AWAY_MS + 1e3);
   }
+  try { if (ws.user && !hasSock(ws.user)) for (const x of LUDO.values()) if (x.voice && x.voice.delete(ws.user)) ldSync(x); } catch {}
   try { if (ws.user && !hasSock(ws.user)) { const lt = ldOf(ws.user); if (lt && lt.st === 'lobby') ldLeave(ws.user); } } catch {}
   try { for (const c of [...calls.values()]) if (c.fromWs === ws || c.toWs === ws) callEnd(c, c.state === 'ring' ? 'cancelled' : 'dropped', ws.user); } catch {}
   // an explicit exit (tab closed / Leave) leaves at once; a dropped connection (app minimised, bad network) keeps the room for a grace period
