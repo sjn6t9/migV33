@@ -1215,6 +1215,36 @@ html[data-skin=navy][data-theme] #sug button{display:flex!important;align-items:
 #f #t{min-width:0;flex:1}
 html[data-skin=navy][data-theme] #f#f#f#f#f#f#f#f#f#f #phb,html[data-skin=navy][data-theme] #f#f#f#f#f#f#f#f#f#f #emb,html[data-skin=navy][data-theme] #f#f#f#f#f#f#f#f#f#f #mic{padding:0!important;width:38px!important;height:38px!important}
 @keyframes tstin{from{opacity:0;transform:translate(-50%,-10px) scale(.96)}to{opacity:1;transform:translate(-50%,0) scale(1)}}
+/* Level-reward dialog */
+.lrw{position:fixed;inset:0;z-index:100001;display:grid;place-items:center;padding:20px;background:rgba(10,14,30,.5);opacity:0;transition:opacity .25s}
+.lrw.in{opacity:1}
+.lrc{width:min(340px,100%);border-radius:30px;overflow:hidden;background:#fff;color:#1b2433;box-shadow:0 24px 60px rgba(10,14,40,.45);transform:translateY(24px) scale(.94);transition:transform .45s cubic-bezier(.2,1.25,.3,1)}
+.lrw.in .lrc{transform:none}
+.lrh{position:relative;display:flex;flex-direction:column;align-items:center;gap:10px;padding:26px 16px 20px;color:#fff;background:linear-gradient(160deg,#f7621e,#e8431a 55%,#d6342f);overflow:hidden}
+.lrh b{font-size:23px;font-weight:900;letter-spacing:.2px}
+.lrp{width:62px;height:62px;display:grid;place-items:center;border-radius:50%;background:rgba(255,255,255,.2);box-shadow:inset 0 0 0 1.5px rgba(255,255,255,.55)}
+.lrp .ei-s{width:34px;height:34px;stroke:#fff;stroke-width:1.8}
+.lrs{position:absolute;inset:0;background:radial-gradient(circle at 20% 20%,rgba(255,255,255,.28),transparent 40%),radial-gradient(circle at 85% 80%,rgba(255,255,255,.18),transparent 35%);pointer-events:none}
+.lrb{padding:20px 20px 22px;text-align:center}
+.lrb p{margin:0 0 14px;font-size:18px;font-weight:800}
+.lrr{display:flex;align-items:center;gap:12px;padding:10px 14px;border-radius:18px;background:#f1f3f8;font-weight:700;font-size:16px}
+.lrr b{margin-left:auto;color:#e0392f;font-size:17px}
+.lrl{flex:none;width:40px;height:40px;display:grid;place-items:center;border-radius:50%;background:#fde7e4}
+.lrt{display:flex;align-items:center;justify-content:center;gap:10px;margin:16px 0 18px;font-size:30px;font-weight:900;color:#e0392f}
+.lrt svg{width:34px;height:34px;fill:#e0392f;stroke:#fff;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.lrk{width:100%;border:0;border-radius:99px;padding:15px;font-size:17px;font-weight:800;color:#fff;cursor:pointer;background:linear-gradient(180deg,#ee4a3e,#d6342f);box-shadow:0 6px 16px rgba(214,52,47,.4)}
+.lrk:active{transform:scale(.98)}
+html[data-theme=dark] .lrc{background:#16203a;color:#eaf1ff;box-shadow:0 24px 60px rgba(0,0,0,.65),inset 0 0 0 1px rgba(255,255,255,.12)}
+html[data-theme=dark] .lrr{background:rgba(255,255,255,.08)}html[data-theme=dark] .lrl{background:rgba(255,255,255,.1)}
+html[data-theme=dark] .lrt,html[data-theme=dark] .lrr b{color:#ffb84a}html[data-theme=dark] .lrt svg{fill:#ffb84a;stroke:#16203a}
+html[data-skin=clear][data-look=glass] .lrw{background:rgba(70,50,140,.35);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px)}
+html[data-skin=clear][data-look=glass] .lrc{background:linear-gradient(135deg,rgba(255,255,255,.92),rgba(255,236,255,.7))!important;-webkit-backdrop-filter:blur(28px) saturate(190%);backdrop-filter:blur(28px) saturate(190%);color:#1b1736;box-shadow:inset 2px 2px 2px rgba(255,255,255,.95),inset -2px -2px 3px rgba(255,255,255,.55),inset 0 0 28px rgba(255,255,255,.38),0 0 0 1.5px rgba(255,255,255,.6),0 24px 60px rgba(110,80,220,.4)}
+html[data-skin=clear][data-look=glass] .lrh{background:linear-gradient(150deg,#8fdcff,#a98bff 50%,#ff8fd8)}
+html[data-skin=clear][data-look=glass] .lrr{background:rgba(255,255,255,.65);box-shadow:inset 0 0 0 1px rgba(255,255,255,.95)}
+html[data-skin=clear][data-look=glass] .lrl{background:linear-gradient(145deg,#fff,rgba(214,226,255,.7))}
+html[data-skin=clear][data-look=glass] .lrr b,html[data-skin=clear][data-look=glass] .lrt{color:#6a45ff}
+html[data-skin=clear][data-look=glass] .lrt svg{fill:#7c5cff;stroke:#fff}
+html[data-skin=clear][data-look=glass] body .lrw .lrk{color:#fff!important;border:0!important;background:linear-gradient(180deg,#34344a,#0d0d14)!important;box-shadow:0 8px 20px rgba(20,16,50,.4),inset 0 1px 0 rgba(255,255,255,.25)}
 /* Level-up banner */
 .lvb{position:fixed;left:50%;top:max(14px,env(safe-area-inset-top));z-index:100000;width:min(440px,calc(100vw - 24px));display:flex;align-items:center;gap:14px;padding:12px 18px 12px 12px;border-radius:30px;background:rgba(255,255,255,.96);color:#1b2433;box-shadow:0 14px 40px rgba(20,30,70,.3),0 2px 8px rgba(20,30,70,.15),inset 0 0 0 1px rgba(255,255,255,.9);transform:translate(-50%,-140%);opacity:0;transition:transform .5s cubic-bezier(.2,1.2,.3,1),opacity .3s;cursor:pointer;overflow:hidden}
 .lvb.in{transform:translate(-50%,0);opacity:1}.lvb.out{transform:translate(-50%,-140%);opacity:0}
@@ -2463,6 +2493,13 @@ const setFs=k=>{try{localStorage.fs=k}catch(e){}const f={s:.88,m:1,l:1.18}[k]||1
 try{setFs(localStorage.fs||'m')}catch(e){}
 const tok=()=>localStorage.tk||sessionStorage.tk;
 const isOff=()=>!!(localStorage.tk?localStorage.off:sessionStorage.off);
+const lvReward=(L,rw)=>{document.querySelectorAll('.lrw').forEach(x=>x.remove());const d=document.createElement('div');d.className='lrw';d.setAttribute('role','dialog');d.setAttribute('aria-label','Level Reward');
+ const n=(+rw).toLocaleString();
+ d.innerHTML=`<div class="lrc"><div class="lrh"><span class="lrp">${EIS.party}</span><b>Level Reward!</b><i class="lrs"></i></div>
+ <div class="lrb"><p>You reached Level ${L}!</p><div class="lrr"><span class="lrl">${lvi(L,32)}</span><span>Level ${L}</span><b>+${n}</b></div>
+ <div class="lrt"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v10M9.3 9.6h4.2a1.7 1.7 0 010 3.4h-3a1.7 1.7 0 000 3.4h4.2"/></svg>${n} coins</div>
+ <button type="button" class="lrk">Claim Reward</button></div></div>`;
+ document.body.append(d);requestAnimationFrame(()=>d.classList.add('in'));const out=()=>{d.classList.remove('in');setTimeout(()=>d.remove(),300)};d.querySelector('.lrk').onclick=out;d.onclick=e=>{if(e.target===d)out()}};
 const lvBanner=(L,rw)=>{document.querySelectorAll('.lvb').forEach(x=>x.remove());const d=document.createElement('div');d.className='lvb';d.setAttribute('role','status');
  d.innerHTML=`<span class="lvi-w">${lvi(L,46)}<i></i></span><div class="lvt"><b>Level Up!</b><span>You reached Level ${L}</span>${rw?`<em><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8"/><path d="M12 8v8M9.5 10.5h4a1.5 1.5 0 010 3h-3"/></svg>+${(+rw).toLocaleString()} coins</em>`:''}</div>`;
  document.body.append(d);requestAnimationFrame(()=>d.classList.add('in'));const out=()=>{d.classList.remove('in');d.classList.add('out');setTimeout(()=>d.remove(),400)};d.onclick=out;setTimeout(out,4800)};
@@ -2561,7 +2598,7 @@ async function on(m){
   if(m.t==='mail'){setMailN(m.n);menuPing('mail','New mail from '+m.from,m.subject||'');toast(`📧 New mail from ${m.from}: ${m.subject}`);if(cur==='mail'&&!MOPEN)V.mail()}
   if(m.t==='roomcfg'&&m.room===room&&RI){const ch=(RI.descr||'')!==m.descr;Object.assign(RI,{descr:m.descr,minlv:m.minlv,mods:m.mods,supers:m.supers});if(ch&&m.descr&&$('log'))L(m.room[0].toUpperCase()+m.room.slice(1),`📝 ${esc(m.descr)}`)}
   if(m.t==='notif'){NUN=m.unread||0;paintBell();menuPing(notifItem(m.grp,m.text),'Migv33',m.text);if(cur==='notifs')V.notifs(window._ng);else toast('🔔 '+m.text)}
-  if(m.t==='levelup'){ST.xp=Math.max(ST.xp||0,CUM[m.level]);lvBanner(m.level,m.reward)}
+  if(m.t==='levelup'){ST.xp=Math.max(ST.xp||0,CUM[m.level]);lvBanner(m.level,m.reward);if(m.reward>0)setTimeout(()=>lvReward(m.level,m.reward),700)}
   if(m.t==='ucol'){if(m.hex)UCOL[m.user]=m.hex;else delete UCOL[m.user];if(cur==='colors')try{V.colors()}catch{}else if(cur==='mycolors'&&m.user===me)try{V.mycolors()}catch{}}
   if(m.t==='ufx'){if(m.shadow)UFX[m.user]=m.shadow;else delete UFX[m.user];if(cur==='fxshop')try{V.fxshop()}catch{}}
   if(m.t==='emos'){setCE(m.list);if(cur==='home')try{loadFeed()}catch{}}
