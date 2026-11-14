@@ -1239,6 +1239,14 @@ html body #top .rbub i,html body .rbub.hg i{position:absolute!important;left:6.5
 html body .rbub{width:23px!important;height:22px!important}
 html body #rtabs .rt.on .rbub{width:21px!important;height:20px!important}
 html body #rtabs .rt.on .rbub,html body #rtabs .rt.on .rbub>svg{flex:none}
+/* minimised room buttons (dock): picture fills the whole circle; bubble / game icon scaled to fill it */
+html body .wp .wi .rbub{width:100%!important;height:100%!important}
+html body .wp .wi .rbub>svg{transform:scale(1.04);stroke-width:1.5!important}
+html body .wp .wi .rbub i{display:grid!important;background:none!important;border:0!important;border-radius:0!important;z-index:1;color:inherit;font-size:inherit}
+html body .wp .wi .rbub.hg i{left:27%!important;top:18%!important;width:46%!important;height:46%!important}
+html body .wp .wi .rbub.hg i svg{width:100%!important;height:100%!important;stroke-width:1.7!important}
+html body .wp .wi .rbub i.fe{font-size:20px!important;left:20%!important;top:16%!important;width:60%!important;height:50%!important}
+html body .wp .wi img.wf{width:100%;height:100%;object-fit:cover;border-radius:50%;display:block}
 /* Badges & Achievements + Currently in */
 .bgh{display:flex;justify-content:space-between;align-items:baseline;margin:16px 6px 8px;font-size:17px;font-weight:800}.bgh span{font-size:14px;font-weight:700;color:var(--mu)}
 .bgg{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
@@ -2709,7 +2717,7 @@ function wDock(){let d=$('wdock');if(!d){d=document.createElement('div');d.id='w
     const cc=e.target.closest('[data-wc]');if(cc){callStart(cc.dataset.wu,cc.dataset.wc);return}
     const m=e.target.closest('[data-wm]');if(m){const w=WINS.find(v=>v.r===m.dataset.wm);if(w){w.min=true;wLayout();wSave()}return}
     const p=e.target.closest('[data-wp]');if(p)openWin(p.dataset.wp)}}return d}
-function wIcon(r,sz){const dm=r.startsWith('dm:');return dm?av(rtitle(r),sz):rbub(r)}
+function wIcon(r,sz){const dm=r.startsWith('dm:');if(dm)return av(rtitle(r),sz);const f=sz>=40&&RF[r]?fu(RF[r]):'';return f?`<img class="wf" src="${esc(f)}" alt="">`:rbub(r)}
 function wFlags(){api('GET','/rooms').then(rs=>{rs.forEach(x=>{RF[x.name]=x.flag||'';RLV[x.name]=x.lvl||1;RG[x.name]=x.cat==='game'});WINS.forEach(w=>{const i=w.el&&w.el.querySelector('.wi');if(i)i.innerHTML=wIcon(w.r,26)});wLayout()}).catch(()=>{})}
 function openWin(r){if(EMB||!r||innerWidth<1000)return;if(!r.startsWith('dm:')&&!(r in RF)&&!window._wfl){window._wfl=1;setTimeout(()=>{window._wfl=0},3000);wFlags()}
   let w=WINS.find(x=>x.r===r);
