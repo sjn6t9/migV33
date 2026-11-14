@@ -2923,6 +2923,8 @@ function onWsMessage(ws, raw) {
 // The server owns the dice and the board. Before every roll it publishes sha256(secret:dice); the secret and dice are revealed with the roll so anyone can verify the result was fixed beforehand.
 const LUDO = new Map(); let ludoSeq = 0;
 const LD_START = [0, 13, 26, 39], LD_SAFE = new Set([0, 13, 26, 39, 8, 21, 34, 47]), LD_FEES = [0, 50, 100, 500, 1000], LD_TURNS = [15, 25, 40, 60];
+const LD_RULES = { startAt: 6, sixAgain: true, sixOut: true, safe: true, oneCut: false, oneSkip: false, sixOut3: false, sixSkip: true, capAgain: true, homeAgain: true, mustCutHome: false, mustCut: false, mustOut: false, barrier: false };
+const ldRules = (cur, inp) => { const r = { ...cur }; if (inp && typeof inp === 'object') { for (const k of Object.keys(LD_RULES)) if (k in inp) r[k] = k === 'startAt' ? (+inp[k] === 1 ? 1 : 6) : !!inp[k]; } return r; };
 const ldAbs = (c, rel) => (LD_START[c] + rel) % 52;
 const ldSocks = u => [...wss.clients].filter(w => w.user === u && w.readyState === 1);
 const ldOf = u => [...LUDO.values()].find(t => t.seats.some(s => s.user === u && !s.gone));
@@ -2932,15 +2934,38 @@ const ldCur = t => t.seats[t.turn];
 const ldMate = c => (c + 2) % 4;
 // Team Up: once a player has all four tokens home, they move their teammate's tokens instead
 function ldCol(t) { const s = ldCur(t); if (t.mode === 'team' && t.tok[s.c].every(p => p === 56) && t.seats.some(x => x.c === ldMate(s.c) && !x.out)) return ldMate(s.c); return s.c; }
+const ldFoe = (t, col, o) => o.c !== col && !o.out && !(t.mode === 'team' && o.c === ldMate(col));
+const ldSafeAt = (t, a) => LD_START.includes(a) || (t.rules.safe && LD_SAFE.has(a));
+function ldCapN(t, col, np) { // how many opposing tokens would be cut by landing on relative cell np
+  if (np > 50) return 0; const a = ldAbs(col, np); if (ldSafeAt(t, a)) return 0; let n = 0;
+  for (const o of t.seats) if (ldFoe(t, col, o)) for (const q of t.tok[o.c]) if (q >= 0 && q <= 50 && ldAbs(o.c, q) === a) n++;
+  return n;
+}
+function ldBlocked(t, col, p, np) { // a barrier = two tokens of one colour on the same cell
+  for (let r = p === -1 ? 0 : p + 1; r <= Math.min(np, 50); r++) {
+    const a = ldAbs(col, r);
+    for (const o of t.seats) if (ldFoe(t, col, o) && t.tok[o.c].filter(q => q >= 0 && q <= 50 && ldAbs(o.c, q) === a).length >= 2) return true;
+  }
+  return false;
+}
 function ldLegal(t) {
-  const d = t.d, tk = t.tok[ldCol(t)], out = [];
+  const d = t.d, col = ldCol(t), tk = t.tok[col], R = t.rules; let out = [];
   if (!d) return out;
-  tk.forEach((p, k) => { if (p === -1 ? d === 6 : (p < 56 && p + d <= 56)) out.push(k); });
+  const outRoll = d === R.startAt || (d === 6 && R.sixOut);
+  tk.forEach((p, k) => {
+    let np;
+    if (p === -1) { if (!outRoll) return; np = 0; } else { if (p === 56) return; np = p + d; if (np > 56) return; }
+    if (np > 50 && p <= 50 && R.mustCutHome && !t.cut[col]) return;
+    if (R.barrier && ldBlocked(t, col, p, np)) return;
+    out.push(k);
+  });
+  if (R.mustCut) { const c = out.filter(k => ldCapN(t, col, tk[k] === -1 ? 0 : tk[k] + d) > 0); if (c.length) out = c; }
+  if (R.mustOut && outRoll) { const o = out.filter(k => tk[k] === -1); if (o.length) out = o; }
   return out;
 }
 function ldView(t, me) {
   const s = t.st === 'play' ? ldCur(t) : null;
-  return { id: t.id, host: t.host, fee: t.fee, max: t.max, mode: t.mode, ctl: s ? ldCol(t) : null, priv: !!t.priv, turnS: t.turnMs / 1000, inv: t.host === me ? [...t.inv] : [], st: t.st, seats: t.seats.map(x => ({ user: x.user, bot: !!x.bot, c: x.c, out: !!x.out })), tok: t.tok, turn: s ? s.user : null, d: t.d, left: Math.max(0, (t.deadline || 0) - Date.now()), commit: t.pre ? t.pre.h : null, last: t.last || null, legal: s && s.user === me ? ldLegal(t) : [], winner: t.winner || null, pot: t.fee * t.paid, msg: t.msg || '' };
+  return { id: t.id, host: t.host, fee: t.fee, max: t.max, mode: t.mode, rules: t.rules, n: t.n, botLvl: t.botLvl, ctl: s ? ldCol(t) : null, priv: !!t.priv, turnS: t.turnMs / 1000, inv: t.host === me ? [...t.inv] : [], st: t.st, seats: t.seats.map(x => ({ user: x.user, bot: !!x.bot, c: x.c, out: !!x.out })), tok: t.st === 'lobby' ? [0, 1, 2, 3].map(() => Array(t.n).fill(-1)) : t.tok, turn: s ? s.user : null, d: t.d, left: Math.max(0, (t.deadline || 0) - Date.now()), commit: t.pre ? t.pre.h : null, last: t.last || null, legal: s && s.user === me ? ldLegal(t) : [], winner: t.winner || null, pot: t.fee * t.paid, msg: t.msg || '' };
 }
 function ldSync(t) { for (const s of t.seats) if (!s.bot) for (const w of ldSocks(s.user)) send(w, { t: 'ludo', a: 'table', table: ldView(t, s.user) }); }
 function ldLobby() { return [...LUDO.values()].filter(t => t.st === 'lobby' && !t.priv).map(t => ({ id: t.id, host: t.host, fee: t.fee, max: t.max, mode: t.mode, n: t.seats.length, names: t.seats.map(s => s.user) })); }
@@ -2948,7 +2973,7 @@ function ldCastLobby() { const l = ldLobby(); for (const w of wss.clients) if (w
 function ldDrop(t) { clearTimeout(t.timer); LUDO.delete(t.id); ldCastLobby(); }
 function ldErr(ws, error) { send(ws, { t: 'ludo', a: 'err', error }); }
 function ldNext(t, again) {
-  if (again) { t.sixes = t.sixes || 0; } else { t.sixes = 0; let n = t.turn; for (let i = 0; i < t.seats.length; i++) { n = (n + 1) % t.seats.length; if (!t.seats[n].out) break; } t.turn = n; }
+  if (again) { t.sixes = t.sixes || 0; } else { t.sixes = 0; t.ones = 0; let n = t.turn; for (let i = 0; i < t.seats.length; i++) { n = (n + 1) % t.seats.length; if (!t.seats[n].out) break; } t.turn = n; }
   t.tries = 0; t.d = null; t.msg = ''; ldCommit(t); ldArm(t); ldSync(t);
 }
 function ldArm(t) {
@@ -2965,25 +2990,36 @@ function ldAuto(t) {
 }
 function ldPick(t) {
   const s = ldCur(t), col = ldCol(t), tk = t.tok[col], lg = ldLegal(t); let best = lg[0], bs = -1;
+  if (s.bot && t.botLvl === 'easy') return lg[crypto.randomInt(lg.length)];
   for (const k of lg) {
     const p = tk[k], np = p === -1 ? 0 : p + t.d; let sc = np;
     if (np === 56) sc += 200; else if (p === -1) sc += 60;
-    if (np <= 50) { const a = ldAbs(col, np); for (const o of t.seats) if (!o.out && o.c !== col && !(t.mode === 'team' && o.c === ldMate(col))) for (const q of t.tok[o.c]) if (q >= 0 && q <= 50 && ldAbs(o.c, q) === a && !LD_SAFE.has(a)) sc += 120; if (LD_SAFE.has(a)) sc += 15; }
+    sc += ldCapN(t, col, np) * 120; if (np <= 50 && ldSafeAt(t, ldAbs(col, np))) sc += 15;
     if (sc > bs) { bs = sc; best = k; }
   }
   return best;
 }
 function ldRoll(t) {
-  const s = ldCur(t); if (t.d != null) return;
-  const d = t.pre.d; t.last = { user: s.user, d, s: t.pre.s, h: t.pre.h }; t.d = d; t.sixes = d === 6 ? (t.sixes || 0) + 1 : 0;
+  const s = ldCur(t), R = t.rules; if (t.d != null) return;
+  const d = t.pre.d; t.last = { user: s.user, d, s: t.pre.s, h: t.pre.h }; t.d = d;
+  t.sixes = d === 6 ? (t.sixes || 0) + 1 : 0; t.ones = d === 1 ? (t.ones || 0) + 1 : 0;
+  const col = ldCol(t);
+  if (t.sixes >= 3) {
+    if (R.sixOut3) { const k = t.tok[col].indexOf(-1); if (k >= 0) t.tok[col][k] = 0; t.msg = `${s.user} rolled three 6s — a coin comes out`; return ldHold(t); }
+    if (R.sixSkip) { t.msg = `${s.user} rolled three 6s in a row — turn lost`; return ldHold(t); }
+  }
+  if (t.ones >= 3) {
+    t.ones = 0;
+    if (R.oneCut) { let bk = -1, bp = -1; t.tok[col].forEach((p, k) => { if (p >= 0 && p <= 50 && p > bp) { bp = p; bk = k; } }); if (bk >= 0) { t.tok[col][bk] = -1; t.msg = `${s.user} rolled three 1s — a coin goes back`; } }
+    if (R.oneSkip) { t.msg = `${s.user} rolled three 1s in a row — turn lost`; return ldHold(t); }
+  }
   const lg = ldLegal(t);
-  if (t.sixes >= 3) { t.msg = `${s.user} rolled three 6s in a row — turn lost`; return ldHold(t); }
   if (!lg.length) {
-    const tc = t.tok[ldCol(t)], yard = tc.every(p => p === -1 || p === 56);
-    if (yard && d !== 6 && (t.tries || 0) < 2 && tc.some(p => p === -1)) { t.tries = (t.tries || 0) + 1; t.msg = `${s.user} rolled ${d} — try ${t.tries + 1} of 3`; return ldHold(t, true); }
+    const tc = t.tok[col], yard = tc.every(p => p === -1 || p === 56);
+    if (yard && !(d === R.startAt || (d === 6 && R.sixOut)) && (t.tries || 0) < 2 && tc.some(p => p === -1)) { t.tries = (t.tries || 0) + 1; t.msg = `${s.user} rolled ${d} — try ${t.tries + 1} of 3`; return ldHold(t, true); }
     t.msg = `${s.user} rolled ${d} — no move`; return ldHold(t);
   }
-  t.msg = ''; ldArm(t); ldSync(t);
+  ldArm(t); ldSync(t);
 }
 // show the roll for a moment, then pass the turn (or let the same player roll again)
 function ldHold(t, retry) {
@@ -2992,14 +3028,15 @@ function ldHold(t, retry) {
 }
 function ldMove(t, k) {
   const s = ldCur(t), lg = ldLegal(t); if (t.d == null || !lg.includes(k)) return;
-  const col = ldCol(t), tk = t.tok[col], d = t.d, p = tk[k], np = p === -1 ? 0 : p + d; tk[k] = np; let cap = false;
+  const R = t.rules, col = ldCol(t), tk = t.tok[col], d = t.d, p = tk[k], np = p === -1 ? 0 : p + d; let cap = false;
   if (np <= 50) {
     const a = ldAbs(col, np);
-    if (!LD_SAFE.has(a)) for (const o of t.seats) if (!o.out && o.c !== col && !(t.mode === 'team' && o.c === ldMate(col))) t.tok[o.c].forEach((q, i) => { if (q >= 0 && q <= 50 && ldAbs(o.c, q) === a) { t.tok[o.c][i] = -1; cap = true; } });
+    if (!ldSafeAt(t, a)) for (const o of t.seats) if (ldFoe(t, col, o)) t.tok[o.c].forEach((q, i) => { if (q >= 0 && q <= 50 && ldAbs(o.c, q) === a) { t.tok[o.c][i] = -1; cap = true; } });
   }
+  tk[k] = np; if (cap) t.cut[col] = true;
   t.msg = cap ? `${s.user} captured a token!` : np === 56 ? `${s.user} brought a token home` : '';
   if (t.mode === 'team' ? (tk.every(x => x === 56) && t.tok[ldMate(col)].every(x => x === 56)) : tk.every(x => x === 56)) return ldWin(t, s);
-  const extra = d === 6 || cap || np === 56;
+  const extra = (d === 6 && R.sixAgain) || (cap && R.capAgain) || (np === 56 && R.homeAgain);
   if (extra) { t.d = null; t.tries = 0; ldCommit(t); ldArm(t); ldSync(t); } else ldNext(t, false);
 }
 function ldWin(t, s) {
@@ -3016,7 +3053,7 @@ function ldWin(t, s) {
   ldSync(t); ldCastLobby(); t.timer = setTimeout(() => ldDrop(t), 120000);
 }
 function ldForfeit(t, s, why) {
-  s.out = true; t.tok[s.c] = [-1, -1, -1, -1]; t.msg = `${s.user} ${why || 'left the game'}`;
+  s.out = true; t.tok[s.c] = Array(t.n).fill(-1); t.msg = `${s.user} ${why || 'left the game'}`;
   const live = t.seats.filter(x => !x.out);
   if (!live.some(x => !x.bot)) { // nobody human left
     const refund = t.fee > 0 && t.paid > 0; if (refund) { lcRefundRoom('ludo:' + t.id); pushCoins(...t.seats.filter(x => !x.bot).map(x => x.user)); }
@@ -3045,7 +3082,7 @@ function ludoAct(ws, m) {
   if (a === 'create') {
     if (t0) return ldErr(ws, 'You are already at a table'); const fee = +m.fee | 0, max = mode0(m), turn = LD_TURNS.includes(+m.turn) ? +m.turn : 25, mode = m.mode === 'team' ? 'team' : 'classic';
     if (!LD_FEES.includes(fee)) return ldErr(ws, 'Invalid entry'); if (fee && coins(u) < fee) return ldErr(ws, 'Not enough coins for this entry');
-    const t = { id: String(++ludoSeq), host: u, fee, max, priv: !!m.priv, mode, turnMs: turn * 1000, inv: new Set(), st: 'lobby', seats: [{ user: u, c: 0 }], tok: [0, 1, 2, 3].map(() => [-1, -1, -1, -1]), turn: 0, d: null, paid: 0, sixes: 0 };
+    const t = { id: String(++ludoSeq), host: u, fee, max, priv: !!m.priv, mode, turnMs: turn * 1000, inv: new Set(), st: 'lobby', seats: [{ user: u, c: 0 }], tok: [0, 1, 2, 3].map(() => [-1, -1, -1, -1]), n: 4, botLvl: 'hard', rules: { ...LD_RULES }, cut: [false, false, false, false], ones: 0, turn: 0, d: null, paid: 0, sixes: 0 };
     LUDO.set(t.id, t); t.timer = setTimeout(() => { if (t.st !== 'lobby') return; for (const x of ldHumans(t)) for (const w of ldSocks(x.user)) send(w, { t: 'ludo', a: 'left', why: 'Table closed (idle for 10 minutes)' }); ldDrop(t); }, 600000); ldSync(t); ldCastLobby(); return;
   }
   if (a === 'join') {
@@ -3069,7 +3106,7 @@ function ludoAct(ws, m) {
   if (a === 'kick') { if (t.host !== u || t.st !== 'lobby') return; const x = t.seats.find(y => y.c === +m.c && y.user !== u); if (!x) return; t.seats = t.seats.filter(y => y !== x); if (!x.bot) { t.inv.delete(x.user); for (const w of ldSocks(x.user)) send(w, { t: 'ludo', a: 'left', why: 'The host removed you from the table' }); } ldSync(t); ldCastLobby(); return; }
   if (a === 'set') {
     if (t.host !== u || t.st !== 'lobby') return; const mode = m.mode === 'team' ? 'team' : 'classic', max = mode === 'team' ? 4 : ([2, 3, 4].includes(+m.max) ? +m.max : t.max), turn = LD_TURNS.includes(+m.turn) ? +m.turn : t.turnMs / 1000;
-    if (max < t.seats.length) return ldErr(ws, 'Remove a player first'); t.mode = mode; t.max = max; t.turnMs = turn * 1000; ldSync(t); ldCastLobby(); return;
+    if (max < t.seats.length) return ldErr(ws, 'Remove a player first'); t.mode = mode; t.max = max; if (m.n !== undefined) t.n = Math.min(4, Math.max(1, +m.n | 0 || 4)); if (m.botLvl) t.botLvl = m.botLvl === 'easy' ? 'easy' : 'hard'; if (m.rules) t.rules = ldRules(t.rules, m.rules); t.turnMs = turn * 1000; ldSync(t); ldCastLobby(); return;
   }
   if (a === 'bot') {
     if (t.host !== u || t.st !== 'lobby') return; if (t.fee) return ldErr(ws, 'Bots can only play free tables'); if (t.seats.length >= t.max) return;
@@ -3085,7 +3122,7 @@ function ludoAct(ws, m) {
       db.transaction(() => { for (const s of t.seats) if (!s.bot) { db.prepare('update users set coins=coins-? where name=? and coins>=?').run(t.fee, s.user, t.fee); db.prepare('insert into lc_pending values(?,?,?)').run('ludo:' + t.id, s.user, t.fee); addTx(s.user, 'game', 'Ludo: entry fee', -t.fee); s.paid = true; t.paid++; } })();
       pushCoins(...ldHumans(t).map(x => x.user));
     }
-    t.seats.sort((x, y) => x.c - y.c); t.st = 'play'; t.turn = 0; t.sixes = 0; t.msg = ''; ldCommit(t); ldArm(t); ldSync(t); ldCastLobby(); return;
+    t.seats.sort((x, y) => x.c - y.c); t.tok = [0, 1, 2, 3].map(() => Array(t.n).fill(-1)); t.cut = [false, false, false, false]; t.ones = 0; t.st = 'play'; t.turn = 0; t.sixes = 0; t.msg = ''; ldCommit(t); ldArm(t); ldSync(t); ldCastLobby(); return;
   }
   if (t.st !== 'play') return;
   const s = ldCur(t); if (s.user !== u) return; s.miss = 0;
