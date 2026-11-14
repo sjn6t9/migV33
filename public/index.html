@@ -2462,6 +2462,10 @@ html[data-theme=dark] .xpl{background:rgba(255,255,255,.1)!important;box-shadow:
 .ldctl{margin-top:10px;padding:12px;border-radius:14px;background:var(--sf);border:1px solid var(--ln);display:flex;flex-direction:column;gap:10px}.ldrow{display:flex;align-items:center;gap:12px}.ldrow .g{flex:1}.ldturn{font-weight:800;font-size:16px}.ldbt{display:flex;gap:8px;flex-wrap:wrap}
 .ldd{width:54px;height:54px;border-radius:12px;background:#fff;border:2px solid #cfd6e2;display:grid;grid-template-columns:repeat(3,1fr);grid-template-rows:repeat(3,1fr);padding:7px;gap:2px;flex:none;box-shadow:0 3px 8px rgba(0,0,0,.18);animation:ldr .45s}.ldd i{border-radius:50%}.ldd i.on{background:#1b2230}.ldd b{grid-column:1/4;grid-row:1/4;display:grid;place-items:center;font-size:22px;color:#9aa4b2}@keyframes ldr{0%{transform:rotate(-200deg) scale(.5)}100%{transform:none}}
 .ldrl{padding:13px;font-size:16px;font-weight:800;border-radius:12px}.ldtm{height:6px;border-radius:99px;background:var(--sf2);overflow:hidden}.ldtm i{display:block;height:100%;width:100%;background:linear-gradient(90deg,#f7931e,#e8431a);transition:width .25s linear}.ldsm{font-size:12px}.ldsm code{font-size:11px}.ldok{color:var(--ok)}
+
+.fzpv{display:flex;gap:10px;align-items:flex-start;font-size:13px;cursor:pointer}.fzpv input{margin-top:3px;width:18px;height:18px;flex:none}.fzrl{margin:0;padding-left:18px;font-size:13px;color:var(--mu);display:flex;flex-direction:column;gap:4px}
+.ldinv{display:flex;flex-direction:column;gap:8px;padding-top:10px;border-top:1px solid var(--ln)}.ldif{display:flex;gap:8px}.ldif input{flex:1;min-width:0}.ldfr{display:flex;flex-direction:column;gap:6px;max-height:190px;overflow:auto}.ldf{display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:10px;background:var(--sf2)}.ldf span{flex:1;font-weight:600;font-size:14px;overflow:hidden;text-overflow:ellipsis}.ldf button{padding:6px 12px;font-size:12px}
+.ldpop{position:fixed;left:12px;right:12px;top:14px;z-index:99999;max-width:420px;margin:0 auto;padding:14px;border-radius:16px;background:var(--sf);color:var(--tx);border:1px solid var(--ac);box-shadow:0 12px 34px rgba(0,0,0,.4);display:flex;flex-direction:column;gap:10px;animation:ldr .35s}
 .ldwin{font-size:22px;font-weight:800;text-align:center}
 </style>
 </head>
@@ -4477,7 +4481,7 @@ async function adminAnnounce(){
   $('view').onclick=async e=>{const b=e.target.closest('[data-del]');if(b){try{await api('DELETE','/admin/announcements/'+b.dataset.del);adminAnnounce()}catch(er){fail(er)}}}}
 /* ---------- Fun Zone: standalone games (Ludo multiplayer) ---------- */
 const FZ={mode:'multi',game:null,snd:(()=>{try{return localStorage.fzs!=='0'}catch{return true}})()};
-const LD={list:[],live:0,table:null,svg:null,tid:null,sig:'',dl:0,fee:0,max:4,iv:0,got:false,vf:'',lv:0};
+const LD={list:[],live:0,table:null,svg:null,tid:null,sig:'',dl:0,fee:0,max:4,turn:25,priv:false,rules:false,fr:null,iv:0,got:false,vf:'',lv:0};
 const LDT=[[6,1],[6,2],[6,3],[6,4],[6,5],[5,6],[4,6],[3,6],[2,6],[1,6],[0,6],[0,7],[0,8],[1,8],[2,8],[3,8],[4,8],[5,8],[6,9],[6,10],[6,11],[6,12],[6,13],[6,14],[7,14],[8,14],[8,13],[8,12],[8,11],[8,10],[8,9],[9,8],[10,8],[11,8],[12,8],[13,8],[14,8],[14,7],[14,6],[13,6],[12,6],[11,6],[10,6],[9,6],[8,5],[8,4],[8,3],[8,2],[8,1],[8,0],[7,0],[6,0]];
 const LDS=[0,13,26,39],LDSAFE=[8,21,34,47],LDC=['#e5483b','#2fa84f','#f2b731','#2f7fe0'],LDN=['Red','Green','Yellow','Blue'];
 const LDH=[
@@ -4508,23 +4512,30 @@ function ldPaint(){
   if(!t){
     if(!FZ.game){el.innerHTML=`<button class="fzg" data-g="ludo" type="button"><span class="fzgi">${EIS.dice}</span><span class="g"><b>Ludo</b><span class="mu">2–4 players · live table · server-rolled dice</span></span><span class="fzgc">Play ›</span></button>`;return}
     const L=LD.list;el.innerHTML=`<div class="fzbk"><button type="button" id="fzback" class="o">‹ Games</button><b>Ludo lobby</b><span class="mu">${LD.live} in progress</span></div>
-    <div class="card fzcr"><b>Create a table</b><div class="mu">Entry</div><div class="fzseg" id="fzfee">${[0,50,100,500,1000].map(f=>`<span role="button" data-f="${f}"${LD.fee===f?' class="on"':''}>${f?f:'Free'}</span>`).join('')}</div><div class="mu">Players</div><div class="fzseg" id="fzmax">${[2,4].map(n=>`<span role="button" data-m="${n}"${LD.max===n?' class="on"':''}>${n}</span>`).join('')}</div><button id="fzmk" type="button">Create table</button></div>
+    <div class="card fzcr"><b>Create a table</b><div class="mu">Entry</div><div class="fzseg" id="fzfee">${[0,50,100,500,1000].map(f=>`<span role="button" data-f="${f}"${LD.fee===f?' class="on"':''}>${f?f:'Free'}</span>`).join('')}</div><div class="mu">Players</div><div class="fzseg" id="fzmax">${[2,3,4].map(n=>`<span role="button" data-m="${n}"${LD.max===n?' class="on"':''}>${n}</span>`).join('')}</div><div class="mu">Turn timer</div><div class="fzseg" id="fztn">${[15,25,40,60].map(n=>`<span role="button" data-tn="${n}"${LD.turn===n?' class="on"':''}>${n}s</span>`).join('')}</div><label class="fzpv"><input type="checkbox" id="fzpv"${LD.priv?' checked':''}><span><b>Private table</b><span class="mu"> — hidden from the lobby, only invited players can join</span></span></label><div class="ldbt"><button id="fzmk" type="button">${LD.priv?'Create private table':'Create table'}</button><button type="button" class="o" id="fzru">${LD.rules?'Hide rules':'Rules'}</button></div>${LD.rules?`<ul class="fzrl"><li>Roll a 6 to bring a token out of the yard.</li><li>A 6, a capture or reaching home gives another roll; three 6s in a row lose the turn.</li><li>Tokens on star or start cells cannot be captured.</li><li>An exact roll is needed to reach home.</li><li>Entry coins are held when the host starts; the winner takes the whole pot. Free tables cost nothing.</li><li>Inactive for 3 turns = removed from the game.</li></ul>`:''}</div>
     <div class="fzh2">Open tables</div>${L.length?L.map(x=>`<div class="card fzrow"><div class="g"><b>${esc(x.host)}'s table</b><div class="mu">${x.fee?x.fee+' coins entry':'Free'} · ${x.n}/${x.max} players</div></div><button type="button" data-j="${x.id}"${x.n>=x.max?' disabled':''}>Join</button></div>`).join(''):`<div class="card mu" style="text-align:center">No open tables yet — create one and invite friends.</div>`}`;return}
   const me0=me,my=t.turn===me0&&t.st==='play',host=t.host===me0,seat=t.seats.find(s=>s.user===me0);
   const keep=LD.svg&&LD.tid===t.id;
-  el.innerHTML=`<div class="fzbk"><button type="button" id="ldlv" class="o">${t.st==='play'?'Forfeit':'Leave'}</button><b>Ludo · Table ${esc(t.id)}</b><span class="chip">${t.fee?t.fee+' coins':'Free'}</span>${t.fee&&t.pot?`<span class="chip pot">Pot ${t.pot}</span>`:''}</div>
+  el.innerHTML=`<div class="fzbk"><button type="button" id="ldlv" class="o">${t.st==='play'?'Forfeit':'Leave'}</button><b>Ludo · Table ${esc(t.id)}</b><span class="chip">${t.fee?t.fee+' coins':'Free'}</span>${t.priv?'<span class="chip">Private</span>':''}${t.fee&&t.pot?`<span class="chip pot">Pot ${t.pot}</span>`:''}</div>
   <div class="ldw"><div id="ldbw" class="ldbw"></div>
   <div class="ldside"><div class="ldseats">${t.seats.map(s=>`<div class="lds${s.user===t.turn&&t.st==='play'?' on':''}${s.out?' out':''}"><i style="background:${LDC[s.c]}"></i><span>${esc(s.user)}${s.user===me0?' (you)':''}${s.user===t.host?' ★':''}${s.bot?' · bot':''}</span></div>`).join('')}${t.st==='lobby'?Array.from({length:t.max-t.seats.length},()=>`<div class="lds empty"><i></i><span>Waiting…</span></div>`).join(''):''}</div>
-  <div class="ldctl">${t.st==='lobby'?`<div class="mu">${seat?`You are ${LDN[seat.c]}. `:''}Waiting for players${t.fee?` — ${t.fee} coins entry is charged when the host starts`:''}.</div><div class="ldbt">${host?`<button type="button" id="ldst"${t.seats.length<2?' disabled':''}>Start game</button>`:''}${host&&!t.fee&&t.seats.length<t.max?`<button type="button" class="o" id="ldbot">Add bot</button>`:''}</div>`
+  <div class="ldctl">${t.st==='lobby'?`<div class="mu">${seat?`You are ${LDN[seat.c]}. `:''}Waiting for players${t.fee?` — ${t.fee} coins entry is charged when the host starts`:''}.</div><div class="ldbt">${host?`<button type="button" id="ldst"${t.seats.length<2?' disabled':''}>Start game</button>`:''}${host&&!t.fee&&t.seats.length<t.max?`<button type="button" class="o" id="ldbot">Add bot</button>`:''}</div>${host&&t.seats.length<t.max?ldInv(t):''}<div class="mu">Turn timer: ${t.turnS}s</div>`
   :t.st==='end'?`<div class="ldwin">${t.winner===me0?'🏆 You win!':esc(t.winner||'')+' wins!'}</div>${t.fee&&t.winner===me0?`<div class="mu">+${t.pot} coins</div>`:''}<div class="ldbt"><button type="button" id="ldlv2">Back to lobby</button></div>`
   :`<div class="ldrow">${ldDie(t.d,t.d?'':'idle')}<div class="g"><div class="ldturn">${my?'Your turn':esc(t.turn||'')+"'s turn"}</div><div class="mu" id="ldmsg">${esc(t.msg||(my?(t.d?'Tap a glowing token':'Roll the dice'):''))}</div></div></div>
   ${my&&t.d==null?`<button type="button" id="ldrl" class="ldrl">Roll dice</button>`:''}<div class="ldtm"><i id="ldtb"></i></div><div class="mu ldsm"><span id="ldtm"></span> · Commitment <code>${esc((t.commit||'').slice(0,12))}…</code> <span id="ldvf"></span></div>`}</div></div></div>`;
   const bw=$('ldbw');if(!keep){LD.svg=document.createElement('div');LD.svg.innerHTML=ldBoard();LD.svg=LD.svg.firstChild;LD.tid=t.id}bw.appendChild(LD.svg);ldPlace(t,me0);
+  if(t.st==='lobby'&&host&&!LD.fr){LD.fr=[];api('GET','/friends').then(d=>{LD.fr=d.friends||[];if(LD.table&&LD.table.st==='lobby')ldPaint()}).catch(()=>{})}
   ldVfy(t);if(LD.iv)clearInterval(LD.iv);LD.iv=setInterval(ldTick,250);ldTick()}
+function ldInv(t){const taken=new Set(t.seats.map(s=>s.user)),inv=new Set(t.inv||[]);
+  const fr=(LD.fr||[]).filter(u=>!taken.has(u.name)).sort((a,b)=>(b.presence&&b.presence!=='offline'?1:0)-(a.presence&&a.presence!=='offline'?1:0));
+  return `<div class="ldinv"><b>Invite players</b><form id="ldif" class="ldif"><input id="ldiu" maxlength="20" placeholder="Username" autocomplete="off" aria-label="Username to invite"><button type="submit">Invite</button></form>${fr.length?`<div class="mu">Friends</div><div class="ldfr">${fr.slice(0,12).map(u=>`<div class="ldf"><i class="dot ${u.presence&&u.presence!=='offline'?(u.presence==='away'?'away':'online'):'offline'}"></i><span>${esc(u.name)}</span><button type="button" class="o" data-iv="${esc(u.name)}"${inv.has(u.name)?' disabled':''}>${inv.has(u.name)?'Invited':'Invite'}</button></div>`).join('')}</div>`:''}</div>`}
+function ldPop(m){if(document.getElementById('ldpop'))return;const d=document.createElement('div');d.id='ldpop';d.className='ldpop';d.innerHTML=`<div><b>${esc(m.from)}</b> invited you to play Ludo<div class="mu">${m.fee?m.fee+' coins entry':'Free'} · up to ${m.max} players</div></div><div class="ldbt"><button type="button" id="ldpj">Join</button><button type="button" class="o" id="ldpx">Decline</button></div>`;document.body.append(d);const x=()=>d.remove();d.querySelector('#ldpx').onclick=x;d.querySelector('#ldpj').onclick=()=>{x();if(LD.table){toast('You are already at a table',true);return}FZ.game='ludo';FZ.mode='multi';go('funzone');setTimeout(()=>tx({t:'ludo',a:'join',id:m.id}),400)};setTimeout(x,60000);fzBeep('turn')}
 function ldVfy(t){const l=t.last;if(!l||!$('ldvf'))return;ldVerify(l).then(r=>{const e=$('ldvf');if(e)e.innerHTML=r==='ok'?`<b class="ldok">✔ roll ${l.d} verified</b>`:r==='bad'?'<b class="bad">✖ mismatch</b>':''})}
 function ldTick(){const e=$('ldtm');if(!e||!LD.table||LD.table.st!=='play'){clearInterval(LD.iv);LD.iv=0;return}const r=Math.max(0,LD.dl-Date.now());e.textContent=Math.ceil(r/1000)+'s';const b=$('ldtb');if(b)b.style.width=Math.min(100,r/250)+'%'}
 function ludoOn(m){
   if(m.a==='lobby'){LD.got=true;LD.list=m.list||[];LD.live=m.live|0;if(cur==='funzone'&&!LD.table)ldPaint();return}
+  if(m.a==='ok'){toast(m.msg||'Done');return}
+  if(m.a==='invite'){ldPop(m);return}
   if(m.a==='err'){toast(m.error||'Could not do that',true);return}
   if(m.a==='left'){LD.table=null;LD.tid=null;LD.svg=null;if(m.why)toast(m.why,true);if(cur==='funzone')ldPaint();return}
   if(m.a==='table'){const t=m.table,old=LD.table;LD.table=t;LD.dl=Date.now()+t.left;FZ.game='ludo';
@@ -4540,14 +4551,18 @@ V.funzone=()=>{
   <div id="fzp" class="fzp"></div></div>`);
   const root=$('view');
   const paint=()=>{root.querySelectorAll('#fzmode span').forEach(s=>s.classList.toggle('on',s.dataset.m===FZ.mode));if(FZ.mode==='single'){if(LD.iv){clearInterval(LD.iv);LD.iv=0}$('fzp').innerHTML=`<div class="card mu" style="text-align:center;padding:26px 14px"><div style="font-size:15px;color:var(--tx);font-weight:700;margin-bottom:4px">Single player games are coming soon</div>Multiplayer Ludo is live — switch to Multiplayer to play.</div>`}else ldPaint()};
-  root.onclick=e=>{const T=e.target.closest('[data-m],[data-g],[data-f],[data-j],#fzsn,#fzback,#fzmk,#ldst,#ldbot,#ldrl,#ldlv,#ldlv2,.ltk.lg'),q=T&&T.closest('#fzmode')?T:null;if(!T)return;
+  root.onclick=e=>{const T=e.target.closest('[data-m],[data-g],[data-f],[data-j],#fzsn,#fzback,#fzmk,#ldst,#ldbot,#fzru,#fzpv,[data-tn],[data-iv],#ldrl,#ldlv,#ldlv2,.ltk.lg'),q=T&&T.closest('#fzmode')?T:null;if(!T)return;
     if(q){FZ.mode=T.dataset.m;paint();return}
     if(T.id==='fzsn'){FZ.snd=!FZ.snd;try{localStorage.fzs=FZ.snd?'1':'0'}catch{}V.funzone();return}
     if(T.dataset.g){FZ.game=T.dataset.g;tx({t:'ludo',a:'sub'});ldPaint();return}
     if(T.id==='fzback'){FZ.game=null;ldPaint();return}
     if(T.dataset.f!==undefined&&T.closest('#fzfee')){LD.fee=+T.dataset.f;ldPaint();return}
     if(T.dataset.m&&T.closest('#fzmax')){LD.max=+T.dataset.m;ldPaint();return}
-    if(T.id==='fzmk'){tx({t:'ludo',a:'create',fee:LD.fee,max:LD.max});return}
+    if(T.id==='fzru'){LD.rules=!LD.rules;ldPaint();return}
+    if(T.id==='fzpv'){LD.priv=T.checked;ldPaint();return}
+    if(T.dataset.tn){LD.turn=+T.dataset.tn;ldPaint();return}
+    if(T.dataset.iv){tx({t:'ludo',a:'invite',to:T.dataset.iv});return}
+    if(T.id==='fzmk'){tx({t:'ludo',a:'create',fee:LD.fee,max:LD.max,turn:LD.turn,priv:LD.priv});return}
     if(T.dataset.j){tx({t:'ludo',a:'join',id:T.dataset.j});return}
     if(T.id==='ldst'){tx({t:'ludo',a:'start'});return}
     if(T.id==='ldbot'){tx({t:'ludo',a:'bot'});return}
@@ -4555,6 +4570,7 @@ V.funzone=()=>{
     if(T.id==='ldlv'){const p=LD.table&&LD.table.st==='play';if(p&&!T.dataset.sure){T.dataset.sure=1;T.textContent='Tap again to forfeit';setTimeout(()=>{try{delete T.dataset.sure;T.textContent='Forfeit'}catch{}},2500);return}tx({t:'ludo',a:'leave'});return}
     if(T.id==='ldlv2'){tx({t:'ludo',a:'leave'});return}
     if(T.classList.contains('ltk')){tx({t:'ludo',a:'move',k:+T.dataset.k});return}};
+  root.onsubmit=e=>{if(e.target.id==='ldif'){e.preventDefault();const v=$('ldiu').value.trim();if(v){tx({t:'ludo',a:'invite',to:v});$('ldiu').value=''}}};
   LD.got=false;const sub=()=>{if(cur!=='funzone')return;tx({t:'ludo',a:'sub'});if(!LD.got)setTimeout(sub,1500)};sub();paint()};
 V.spin=async()=>{const d=await api('GET','/spin');const n=d.prizes.length;
   const COL=['#f59e0b','#fb7185','#8b5cf6','#06b6d4','#22c55e'],R=150,C=160,pt=(a,r)=>{const t=a*Math.PI/180;return[(C+r*Math.sin(t)).toFixed(2),(C-r*Math.cos(t)).toFixed(2)]};

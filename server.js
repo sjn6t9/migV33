@@ -2922,7 +2922,7 @@ function onWsMessage(ws, raw) {
 // ---------- Fun Zone: Ludo (server-authoritative multiplayer) ----------
 // The server owns the dice and the board. Before every roll it publishes sha256(secret:dice); the secret and dice are revealed with the roll so anyone can verify the result was fixed beforehand.
 const LUDO = new Map(); let ludoSeq = 0;
-const LD_START = [0, 13, 26, 39], LD_SAFE = new Set([0, 13, 26, 39, 8, 21, 34, 47]), LD_FEES = [0, 50, 100, 500, 1000], LD_TURN_MS = 25000;
+const LD_START = [0, 13, 26, 39], LD_SAFE = new Set([0, 13, 26, 39, 8, 21, 34, 47]), LD_FEES = [0, 50, 100, 500, 1000], LD_TURNS = [15, 25, 40, 60];
 const ldAbs = (c, rel) => (LD_START[c] + rel) % 52;
 const ldSocks = u => [...wss.clients].filter(w => w.user === u && w.readyState === 1);
 const ldOf = u => [...LUDO.values()].find(t => t.seats.some(s => s.user === u && !s.gone));
@@ -2937,10 +2937,10 @@ function ldLegal(t) {
 }
 function ldView(t, me) {
   const s = t.st === 'play' ? ldCur(t) : null;
-  return { id: t.id, host: t.host, fee: t.fee, max: t.max, st: t.st, seats: t.seats.map(x => ({ user: x.user, bot: !!x.bot, c: x.c, out: !!x.out })), tok: t.tok, turn: s ? s.user : null, d: t.d, left: Math.max(0, (t.deadline || 0) - Date.now()), commit: t.pre ? t.pre.h : null, last: t.last || null, legal: s && s.user === me ? ldLegal(t) : [], winner: t.winner || null, pot: t.fee * t.paid, msg: t.msg || '' };
+  return { id: t.id, host: t.host, fee: t.fee, max: t.max, priv: !!t.priv, turnS: t.turnMs / 1000, inv: t.host === me ? [...t.inv] : [], st: t.st, seats: t.seats.map(x => ({ user: x.user, bot: !!x.bot, c: x.c, out: !!x.out })), tok: t.tok, turn: s ? s.user : null, d: t.d, left: Math.max(0, (t.deadline || 0) - Date.now()), commit: t.pre ? t.pre.h : null, last: t.last || null, legal: s && s.user === me ? ldLegal(t) : [], winner: t.winner || null, pot: t.fee * t.paid, msg: t.msg || '' };
 }
 function ldSync(t) { for (const s of t.seats) if (!s.bot) for (const w of ldSocks(s.user)) send(w, { t: 'ludo', a: 'table', table: ldView(t, s.user) }); }
-function ldLobby() { return [...LUDO.values()].filter(t => t.st === 'lobby').map(t => ({ id: t.id, host: t.host, fee: t.fee, max: t.max, n: t.seats.length, names: t.seats.map(s => s.user) })); }
+function ldLobby() { return [...LUDO.values()].filter(t => t.st === 'lobby' && !t.priv).map(t => ({ id: t.id, host: t.host, fee: t.fee, max: t.max, n: t.seats.length, names: t.seats.map(s => s.user) })); }
 function ldCastLobby() { const l = ldLobby(); for (const w of wss.clients) if (w._lud && w.readyState === 1) send(w, { t: 'ludo', a: 'lobby', list: l, live: [...LUDO.values()].filter(t => t.st === 'play').length }); }
 function ldDrop(t) { clearTimeout(t.timer); LUDO.delete(t.id); ldCastLobby(); }
 function ldErr(ws, error) { send(ws, { t: 'ludo', a: 'err', error }); }
@@ -2950,9 +2950,9 @@ function ldNext(t, again) {
 }
 function ldArm(t) {
   clearTimeout(t.timer); if (t.st !== 'play') return;
-  const s = ldCur(t), fast = s.bot || !hasSock(s.user);
-  t.deadline = Date.now() + (fast ? 1200 : LD_TURN_MS);
-  t.timer = setTimeout(() => ldAuto(t), fast ? 1200 : LD_TURN_MS);
+  const s = ldCur(t), fast = s.bot || !hasSock(s.user), ms = fast ? 1200 : t.turnMs;
+  t.deadline = Date.now() + ms;
+  t.timer = setTimeout(() => ldAuto(t), ms);
 }
 function ldAuto(t) {
   if (t.st !== 'play') return;
@@ -3037,20 +3037,28 @@ function ludoAct(ws, m) {
   if (a === 'sub') { ws._lud = true; send(ws, { t: 'ludo', a: 'lobby', list: ldLobby(), live: [...LUDO.values()].filter(t => t.st === 'play').length }); if (t0) send(ws, { t: 'ludo', a: 'table', table: ldView(t0, u) }); return; }
   if (a === 'unsub') { ws._lud = false; return; }
   if (a === 'create') {
-    if (t0) return ldErr(ws, 'You are already at a table'); const fee = +m.fee | 0, max = +m.max === 2 ? 2 : 4;
+    if (t0) return ldErr(ws, 'You are already at a table'); const fee = +m.fee | 0, max = [2, 3, 4].includes(+m.max) ? +m.max : 4, turn = LD_TURNS.includes(+m.turn) ? +m.turn : 25;
     if (!LD_FEES.includes(fee)) return ldErr(ws, 'Invalid entry'); if (fee && coins(u) < fee) return ldErr(ws, 'Not enough coins for this entry');
-    const t = { id: String(++ludoSeq), host: u, fee, max, st: 'lobby', seats: [{ user: u, c: 0 }], tok: [0, 1, 2, 3].map(() => [-1, -1, -1, -1]), turn: 0, d: null, paid: 0, sixes: 0 };
-    LUDO.set(t.id, t); ldSync(t); ldCastLobby(); return;
+    const t = { id: String(++ludoSeq), host: u, fee, max, priv: !!m.priv, turnMs: turn * 1000, inv: new Set(), st: 'lobby', seats: [{ user: u, c: 0 }], tok: [0, 1, 2, 3].map(() => [-1, -1, -1, -1]), turn: 0, d: null, paid: 0, sixes: 0 };
+    LUDO.set(t.id, t); t.timer = setTimeout(() => { if (t.st !== 'lobby') return; for (const x of ldHumans(t)) for (const w of ldSocks(x.user)) send(w, { t: 'ludo', a: 'left', why: 'Table closed (idle for 10 minutes)' }); ldDrop(t); }, 600000); ldSync(t); ldCastLobby(); return;
   }
   if (a === 'join') {
     if (t0) return ldErr(ws, 'You are already at a table'); const t = LUDO.get(String(m.id));
-    if (!t || t.st !== 'lobby') return ldErr(ws, 'This table is no longer open'); if (t.seats.length >= t.max) return ldErr(ws, 'Table is full');
+    if (!t || t.st !== 'lobby') return ldErr(ws, 'This table is no longer open'); if (t.priv && !t.inv.has(u)) return ldErr(ws, 'This table is invite-only'); if (t.seats.length >= t.max) return ldErr(ws, 'Table is full');
     if (t.fee && coins(u) < t.fee) return ldErr(ws, 'Not enough coins for this entry');
     const used = new Set(t.seats.map(x => x.c)), c = [0, 2, 1, 3].find(x => !used.has(x)); t.seats.push({ user: u, c }); ldSync(t); ldCastLobby(); return;
   }
   if (a === 'leave') return ldLeave(u);
   if (!t0) return ldErr(ws, 'You are not at a table');
   const t = t0;
+  if (a === 'invite') {
+    if (t.host !== u || t.st !== 'lobby') return; const to = String(m.to || '').trim(); const row = db.prepare('select name from users where name=? collate nocase').get(to);
+    if (!row) return ldErr(ws, 'No such user'); const n = row.name; if (n === u || t.seats.some(x => x.user === n)) return ldErr(ws, 'Already at this table');
+    if (db.prepare('select 1 from blocks where (a=? and b=?) or (a=? and b=?)').get(u, n, n, u)) return ldErr(ws, 'You cannot invite this user');
+    if (t.seats.length >= t.max) return ldErr(ws, 'Table is full');
+    t.inv.add(n); for (const w of ldSocks(n)) send(w, { t: 'ludo', a: 'invite', id: t.id, from: u, fee: t.fee, max: t.max });
+    notify(n, 'game', `${u} invited you to play Ludo${t.fee ? ' (' + t.fee + ' coins entry)' : ''}`, ''); ldSync(t); send(ws, { t: 'ludo', a: 'ok', msg: 'Invitation sent to ' + n }); return;
+  }
   if (a === 'bot') {
     if (t.host !== u || t.st !== 'lobby') return; if (t.fee) return ldErr(ws, 'Bots can only play free tables'); if (t.seats.length >= t.max) return;
     const used = new Set(t.seats.map(x => x.c)), c = [0, 2, 1, 3].find(x => !used.has(x)); let n = 1; while (t.seats.some(x => x.user === 'Bot ' + n)) n++;
