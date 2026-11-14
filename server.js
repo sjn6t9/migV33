@@ -375,12 +375,40 @@ app.put('/api/me', auth, ok((q, r) => {
   r.json(profile(q.user));
 }));
 db.exec('create table if not exists footprints(owner text, visitor text, ts int, primary key(owner,visitor))');
+// ---- Badges & Achievements: level badges 1-300, social badges and activity achievements ----
+db.exec('create index if not exists msgs_user on msgs(user)');
+const LVL_BADGES = [[1, 'Newcomer', 'egg', 'Join Migv33'], [5, 'Explorer', 'compass', 'Reach level 5'], [10, 'Rising Star', 'star', 'Reach level 10'], [15, 'Regular', 'chat', 'Reach level 15'], [25, 'Veteran', 'medal', 'Reach level 25'], [40, 'Elite', 'shield', 'Reach level 40'], [50, 'Legend', 'crown', 'Reach level 50'], [75, 'Champion', 'trophy', 'Reach level 75'], [100, 'Master', 'gem', 'Reach level 100'], [150, 'Grandmaster', 'bolt', 'Reach level 150'], [200, 'Hero', 'fire', 'Reach level 200'], [250, 'Mythic', 'sparkle', 'Reach level 250'], [300, 'Immortal', 'send', 'Reach level 300']];
+const SOC_BADGES = [['friends', 10, 'Friendly', 'users', 'Make 10 friends'], ['friends', 50, 'Socialite', 'users', 'Make 50 friends'], ['followers', 100, 'Popular', 'heart', 'Get 100 followers'], ['followers', 500, 'Celebrity', 'sparkle', 'Get 500 followers']];
+const ACHV = [['giftsSent', 1, 'First Gift', 'gift', 'Send your first gift'], ['giftsSent', 50, 'Generous', 'gift', 'Send 50 gifts'], ['giftsSent', 500, 'Big Spender', 'coin', 'Send 500 gifts'],
+  ['giftsRecv', 10, 'Well Gifted', 'heart', 'Receive 10 gifts'], ['giftsRecv', 100, 'Gift Magnet', 'gift', 'Receive 100 gifts'],
+  ['posts', 1, 'First Post', 'pencil', 'Write your first post'], ['posts', 10, 'Storyteller', 'doc', 'Write 10 posts'], ['posts', 100, 'Prolific', 'doc', 'Write 100 posts'],
+  ['footprints', 100, 'Eye Magnet', 'eye', 'Get 100 profile visitors'], ['footprints', 500, 'Famous', 'eye', 'Get 500 profile visitors'],
+  ['chats', 100, 'Chatterbox', 'chat', 'Send 100 chat messages'], ['chats', 1000, 'Talkative', 'chat', 'Send 1,000 chat messages'],
+  ['games', 10, 'Player', 'game', 'Play 10 games'], ['games', 100, 'Gamer', 'game', 'Play 100 games'], ['games', 1000, 'Game Master', 'dice', 'Play 1,000 games'],
+  ['reels', 1, 'Reel Star', 'clap', 'Upload your first reel'], ['reels', 10, 'Director', 'clap', 'Upload 10 reels'], ['rooms', 1, 'Room Builder', 'home', 'Create a chat room']];
+function achvOf(n, p, st) {
+  const c = (sql, ...a) => { try { return db.prepare(sql).get(...a).c || 0; } catch { return 0; } };
+  const lv = p.level || 1, v = { ...st, friends: c("select count(*) c from friends where status='accepted' and (a=? or b=?)", n, n), chats: c("select count(*) c from msgs where user=? and kind='msg'", n), reels: c('select count(*) c from reels where user=?', n), rooms: c('select count(*) c from rooms where owner=?', n) };
+  const mk = (k, name, icon, desc, cur, max) => ({ k, name, icon, desc, cur: Math.min(cur, max), max, earned: cur >= max });
+  const badges = [...LVL_BADGES.map(([m, nm, ic, d]) => mk('lv' + m, nm, ic, d, lv, m)), ...SOC_BADGES.map(([f, m, nm, ic, d]) => mk('s_' + nm, nm, ic, d, v[f] || 0, m))];
+  const achievements = ACHV.map(([f, m, nm, ic, d]) => mk('a_' + nm, nm, ic, d, v[f] || 0, m));
+  return { badges, achievements };
+}
 function userStats(n, p) {
   const c = (sql, ...a) => db.prepare(sql).get(...a).c || 0;
-  const badges = (db.prepare('select verified from users where name=?').get(n)?.verified ? 1 : 0) + (p.role && p.role !== 'user' ? 1 : 0) + [10, 25, 50, 100, 200, 300, 500, 1000].filter(x => p.level >= x).length + (c('select count(*) c from posts where user=?', n) >= 1 ? 1 : 0);
+  const base = {
+    followers: c('select count(*) c from friends where b=?', n), footprints: c('select count(*) c from footprints where owner=?', n),
+    posts: c('select count(*) c from posts where user=?', n), giftsSent: c("select count(*) c from txs where user=? and kind='gift' and amount<0", n), giftsRecv: Math.max(c("select count(*) c from txs where user=? and kind='gift' and amount>0", n), c('select coalesce(sum(n),0) c from gift_inv where user=?', n)), games: c("select count(*) c from mevents where user=? and k='game'", n) };
+  const A = achvOf(n, p, base), badges = (db.prepare('select verified from users where name=?').get(n)?.verified ? 1 : 0) + (p.role && p.role !== 'user' ? 1 : 0) + A.badges.filter(x => x.earned).length + A.achievements.filter(x => x.earned).length;
   return { followers: c('select count(*) c from friends where b=?', n), following: c('select count(*) c from friends where a=?', n), footprints: c('select count(*) c from footprints where owner=?', n), badges,
     posts: c('select count(*) c from posts where user=?', n), giftsSent: c("select count(*) c from txs where user=? and kind='gift' and amount<0", n), giftsRecv: Math.max(c("select count(*) c from txs where user=? and kind='gift' and amount>0", n), c('select coalesce(sum(n),0) c from gift_inv where user=?', n)), games: c("select count(*) c from mevents where user=? and k='game'", n) };
 }
+app.get('/api/users/:n/achievements', auth, ok((q, r) => {
+  const n = String(q.params.n || '').replace(/[^A-Za-z0-9._-]/g, '').slice(0, 20), p = profile(n); if (!p) return bad(r, 'User not found', 404);
+  const c = (sql, ...a) => db.prepare(sql).get(...a).c || 0;
+  const st = { followers: c('select count(*) c from friends where b=?', n), footprints: c('select count(*) c from footprints where owner=?', n), posts: c('select count(*) c from posts where user=?', n), giftsSent: c("select count(*) c from txs where user=? and kind='gift' and amount<0", n), giftsRecv: Math.max(c("select count(*) c from txs where user=? and kind='gift' and amount>0", n), c('select coalesce(sum(n),0) c from gift_inv where user=?', n)), games: c("select count(*) c from mevents where user=? and k='game'", n) };
+  r.json({ user: n, level: p.level, ...achvOf(n, p, st) });
+}));
 // Detail lists behind the profile stat tiles (visible to every visitor)
 app.get('/api/users/:n/list/:k', auth, ok((q, r) => {
   const n = String(q.params.n || '').replace(/[^A-Za-z0-9._-]/g, '').slice(0, 20), k = q.params.k;
@@ -407,9 +435,14 @@ app.get('/api/users/:n/list/:k', auth, ok((q, r) => {
 app.get('/api/users/:n', auth, ok((q, r) => {
   const p = profile(q.params.n); if (!p) return bad(r, 'User not found', 404);
   delete p.coins;   // coin balances are private: profiles never show them
-  if (p.name !== q.user) db.prepare('insert into footprints(owner,visitor,ts) values(?,?,?) on conflict(owner,visitor) do update set ts=excluded.ts').run(p.name, q.user, Date.now());
+  if (p.name !== q.user) {
+    const prev = db.prepare('select ts from footprints where owner=? and visitor=?').get(p.name, q.user);
+    db.prepare('insert into footprints(owner,visitor,ts) values(?,?,?) on conflict(owner,visitor) do update set ts=excluded.ts').run(p.name, q.user, Date.now());
+    if (!prev || Date.now() - prev.ts > 6 * 3600e3) notify(p.name, 'social', `${q.user} viewed your profile`, 'user:' + q.user);   // one alert per visitor per 6 hours
+  }
+  const inRoom = (() => { if (p.presence === 'offline') return null; const rm = curRoom(p.name); return rm && roomOk(rm) ? { name: rm, count: roomNames(rm).size } : null; })();
   const fc = db.prepare("select count(*) c from friends where status='accepted' and (a=? or b=?)").get(p.name, p.name).c;
-  r.json({ ...p, gifts: db.prepare('select gift,n from gift_inv where user=? order by n desc').all(p.name).map(x => { const g = allGiftsAny(x.gift); return g && { key: x.gift, n: x.n, name: g.n, e: g.e, img: g.img }; }).filter(Boolean), friends: fc, stats: userStats(p.name, p), state: q.user === p.name ? 'me' : fstate(q.user, p.name) });
+  r.json({ ...p, gifts: db.prepare('select gift,n from gift_inv where user=? order by n desc').all(p.name).map(x => { const g = allGiftsAny(x.gift); return g && { key: x.gift, n: x.n, name: g.n, e: g.e, img: g.img }; }).filter(Boolean), friends: fc, inRoom, stats: userStats(p.name, p), state: q.user === p.name ? 'me' : fstate(q.user, p.name) });
 }));
 app.post('/api/push/sub', auth, ok((q, r) => { if (!PUSH.save(q.user, q.body)) return bad(r, 'Bad subscription'); r.json({ ok: true }); }));
 app.post('/api/push/test', auth, ok(async (q, r) => {
