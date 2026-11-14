@@ -2965,12 +2965,13 @@ function ldLegal(t) {
 }
 function ldView(t, me) {
   const s = t.st === 'play' ? ldCur(t) : null;
-  return { id: t.id, host: t.host, fee: t.fee, max: t.max, mode: t.mode, rules: t.rules, n: t.n, botLvl: t.botLvl, ctl: s ? ldCol(t) : null, priv: !!t.priv, turnS: t.turnMs / 1000, inv: t.host === me ? [...t.inv] : [], st: t.st, seats: t.seats.map(x => ({ user: x.user, bot: !!x.bot, c: x.c, out: !!x.out })), tok: t.st === 'lobby' ? [0, 1, 2, 3].map(() => Array(t.n).fill(-1)) : t.tok, turn: s ? s.user : null, d: t.d, left: Math.max(0, (t.deadline || 0) - Date.now()), commit: t.pre ? t.pre.h : null, last: t.last || null, legal: s && s.user === me ? ldLegal(t) : [], winner: t.winner || null, pot: t.fee * t.paid, msg: t.msg || '' };
+  return { id: t.id, host: t.host, fee: t.fee, max: t.max, mode: t.mode, rules: t.rules, n: t.n, botLvl: t.botLvl, ctl: s ? ldCol(t) : null, priv: !!t.priv, turnS: t.turnMs / 1000, inv: t.seats.some(s => s.user === me) ? [...t.inv] : [], spec: !t.seats.some(s => s.user === me), watchers: t.spec ? t.spec.size : 0, st: t.st, seats: t.seats.map(x => ({ user: x.user, bot: !!x.bot, c: x.c, out: !!x.out })), tok: t.st === 'lobby' ? [0, 1, 2, 3].map(() => Array(t.n).fill(-1)) : t.tok, turn: s ? s.user : null, d: t.d, left: Math.max(0, (t.deadline || 0) - Date.now()), commit: t.pre ? t.pre.h : null, last: t.last || null, legal: s && s.user === me ? ldLegal(t) : [], winner: t.winner || null, pot: t.fee * t.paid, msg: t.msg || '' };
 }
-function ldSync(t) { for (const s of t.seats) if (!s.bot) for (const w of ldSocks(s.user)) send(w, { t: 'ludo', a: 'table', table: ldView(t, s.user) }); }
-function ldLobby() { return [...LUDO.values()].filter(t => t.st === 'lobby' && !t.priv).map(t => ({ id: t.id, host: t.host, fee: t.fee, max: t.max, mode: t.mode, n: t.seats.length, names: t.seats.map(s => s.user) })); }
+function ldSync(t) { for (const s of t.seats) if (!s.bot) for (const w of ldSocks(s.user)) send(w, { t: 'ludo', a: 'table', table: ldView(t, s.user) }); for (const u of t.spec || []) for (const w of ldSocks(u)) send(w, { t: 'ludo', a: 'table', table: ldView(t, u) }); }
+const ldWatching = u => [...LUDO.values()].find(t => t.spec && t.spec.has(u));
+function ldLobby() { return [...LUDO.values()].filter(t => (t.st === 'lobby' || t.st === 'play') && !t.priv).map(t => ({ id: t.id, host: t.host, fee: t.fee, max: t.max, mode: t.mode, st: t.st, n: t.seats.length, names: t.seats.map(s => s.user) })); }
 function ldCastLobby() { const l = ldLobby(); for (const w of wss.clients) if (w._lud && w.readyState === 1) send(w, { t: 'ludo', a: 'lobby', list: l, live: [...LUDO.values()].filter(t => t.st === 'play').length }); }
-function ldDrop(t) { clearTimeout(t.timer); LUDO.delete(t.id); ldCastLobby(); }
+function ldDrop(t) { for (const u of t.spec || []) for (const w of ldSocks(u)) send(w, { t: 'ludo', a: 'left', why: 'The game has ended' }); clearTimeout(t.timer); LUDO.delete(t.id); ldCastLobby(); }
 function ldErr(ws, error) { send(ws, { t: 'ludo', a: 'err', error }); }
 function ldNext(t, again) {
   if (again) { t.sixes = t.sixes || 0; } else { t.sixes = 0; t.ones = 0; let n = t.turn; for (let i = 0; i < t.seats.length; i++) { n = (n + 1) % t.seats.length; if (!t.seats[n].out) break; } t.turn = n; }
@@ -3063,6 +3064,7 @@ function ldForfeit(t, s, why) {
   if (ldCur(t) === s) { t.turn = (t.turn + t.seats.length - 1) % t.seats.length; ldNext(t, false); } else ldSync(t);
 }
 function ldLeave(user) {
+  const w0 = ldWatching(user); if (w0) { w0.spec.delete(user); for (const w of ldSocks(user)) send(w, { t: 'ludo', a: 'left' }); }
   const t = ldOf(user); if (!t) return;
   const s = t.seats.find(x => x.user === user);
   if (t.st === 'lobby') {
@@ -3077,12 +3079,17 @@ function ldLeave(user) {
 const mode0 = m => m.mode === 'team' ? 4 : ([2, 3, 4].includes(+m.max) ? +m.max : 4);
 function ludoAct(ws, m) {
   const u = ws.user; if (!u) return; const a = String(m.a || ''), t0 = ldOf(u);
-  if (a === 'sub') { ws._lud = true; send(ws, { t: 'ludo', a: 'lobby', list: ldLobby(), live: [...LUDO.values()].filter(t => t.st === 'play').length }); if (t0) send(ws, { t: 'ludo', a: 'table', table: ldView(t0, u) }); return; }
+  if (a === 'watch') {
+    const t = LUDO.get(String(m.id)); if (!t || t.st === 'lobby') return ldErr(ws, 'This game is not running'); if (t0) return ldErr(ws, 'You are already at a table');
+    if (t.priv && !t.inv.has(u)) return ldErr(ws, 'This table is private'); if (t.spec.size >= 20) return ldErr(ws, 'Too many spectators');
+    const o = ldWatching(u); if (o) o.spec.delete(u); t.spec.add(u); ldSync(t); return;
+  }
+  if (a === 'sub') { ws._lud = true; send(ws, { t: 'ludo', a: 'lobby', list: ldLobby(), live: [...LUDO.values()].filter(t => t.st === 'play').length }); const tw = t0 || ldWatching(u); if (tw) send(ws, { t: 'ludo', a: 'table', table: ldView(tw, u) }); return; }
   if (a === 'unsub') { ws._lud = false; return; }
   if (a === 'create') {
     if (t0) return ldErr(ws, 'You are already at a table'); const fee = +m.fee | 0, max = mode0(m), turn = LD_TURNS.includes(+m.turn) ? +m.turn : 25, mode = m.mode === 'team' ? 'team' : 'classic';
     if (!LD_FEES.includes(fee)) return ldErr(ws, 'Invalid entry'); if (fee && coins(u) < fee) return ldErr(ws, 'Not enough coins for this entry');
-    const t = { id: String(++ludoSeq), host: u, fee, max, priv: !!m.priv, mode, turnMs: turn * 1000, inv: new Set(), st: 'lobby', seats: [{ user: u, c: 0 }], tok: [0, 1, 2, 3].map(() => [-1, -1, -1, -1]), n: 4, botLvl: 'hard', rules: { ...LD_RULES }, cut: [false, false, false, false], ones: 0, turn: 0, d: null, paid: 0, sixes: 0 };
+    const t = { id: String(++ludoSeq), spec: new Set(), host: u, fee, max, priv: !!m.priv, mode, turnMs: turn * 1000, inv: new Set(), st: 'lobby', seats: [{ user: u, c: 0 }], tok: [0, 1, 2, 3].map(() => [-1, -1, -1, -1]), n: 4, botLvl: 'hard', rules: { ...LD_RULES }, cut: [false, false, false, false], ones: 0, turn: 0, d: null, paid: 0, sixes: 0 };
     LUDO.set(t.id, t); t.timer = setTimeout(() => { if (t.st !== 'lobby') return; for (const x of ldHumans(t)) for (const w of ldSocks(x.user)) send(w, { t: 'ludo', a: 'left', why: 'Table closed (idle for 10 minutes)' }); ldDrop(t); }, 600000); ldSync(t); ldCastLobby(); return;
   }
   if (a === 'join') {
@@ -3095,12 +3102,12 @@ function ludoAct(ws, m) {
   if (!t0) return ldErr(ws, 'You are not at a table');
   const t = t0;
   if (a === 'invite') {
-    if (t.host !== u || t.st !== 'lobby') return; const to = String(m.to || '').trim(); const row = db.prepare('select name from users where name=? collate nocase').get(to);
+    if (t.st === 'end' || (t.st === 'lobby' && t.host !== u)) return; const to = String(m.to || '').trim(); const row = db.prepare('select name from users where name=? collate nocase').get(to);
     if (!row) return ldErr(ws, 'No such user'); const n = row.name; if (n === u || t.seats.some(x => x.user === n)) return ldErr(ws, 'Already at this table');
     if (db.prepare('select 1 from blocks where (a=? and b=?) or (a=? and b=?)').get(u, n, n, u)) return ldErr(ws, 'You cannot invite this user');
-    if (t.seats.length >= t.max) return ldErr(ws, 'Table is full');
-    t.inv.add(n); for (const w of ldSocks(n)) send(w, { t: 'ludo', a: 'invite', id: t.id, from: u, fee: t.fee, max: t.max });
-    notify(n, 'game', `${u} invited you to play Ludo${t.fee ? ' (' + t.fee + ' coins entry)' : ''}`, ''); ldSync(t); send(ws, { t: 'ludo', a: 'ok', msg: 'Invitation sent to ' + n }); return;
+    if (t.st === 'lobby' && t.seats.length >= t.max) return ldErr(ws, 'Table is full');
+    const watch = t.st === 'play'; t.inv.add(n); for (const w of ldSocks(n)) send(w, { t: 'ludo', a: 'invite', id: t.id, from: u, fee: t.fee, max: t.max, watch });
+    notify(n, 'game', t.st === 'play' ? `${u} invited you to watch a Ludo game` : `${u} invited you to play Ludo${t.fee ? ' (' + t.fee + ' coins entry)' : ''}`, ''); ldSync(t); send(ws, { t: 'ludo', a: 'ok', msg: 'Invitation sent to ' + n }); return;
   }
   if (a === 'color') { if (t.st !== 'lobby') return; const c = +m.c, me = t.seats.find(x => x.user === u); if (![0, 1, 2, 3].includes(c) || t.seats.some(x => x.c === c)) return ldErr(ws, 'That colour is taken'); me.c = c; ldSync(t); return; }
   if (a === 'kick') { if (t.host !== u || t.st !== 'lobby') return; const x = t.seats.find(y => y.c === +m.c && y.user !== u); if (!x) return; t.seats = t.seats.filter(y => y !== x); if (!x.bot) { t.inv.delete(x.user); for (const w of ldSocks(x.user)) send(w, { t: 'ludo', a: 'left', why: 'The host removed you from the table' }); } ldSync(t); ldCastLobby(); return; }
