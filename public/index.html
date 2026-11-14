@@ -1215,6 +1215,15 @@ html[data-skin=navy][data-theme] #sug button{display:flex!important;align-items:
 #f #t{min-width:0;flex:1}
 html[data-skin=navy][data-theme] #f#f#f#f#f#f#f#f#f#f #phb,html[data-skin=navy][data-theme] #f#f#f#f#f#f#f#f#f#f #emb,html[data-skin=navy][data-theme] #f#f#f#f#f#f#f#f#f#f #mic{padding:0!important;width:38px!important;height:38px!important}
 @keyframes tstin{from{opacity:0;transform:translate(-50%,-10px) scale(.96)}to{opacity:1;transform:translate(-50%,0) scale(1)}}
+/* room icon = speech bubble outline with the flag / game icon inside */
+.rbub{position:relative;display:inline-block;width:30px;height:28px;flex:none}
+.rbub>svg{position:absolute;inset:0;width:100%;height:100%;fill:none;stroke:currentColor;stroke-width:2.2;stroke-linejoin:round;stroke-linecap:round;display:block}
+#rtabs .rt.mini .rbub>svg{display:block;width:100%;height:100%}
+.rbub i{position:absolute;left:7.5px;top:7.5px;width:15px;height:9.5px;display:grid;place-items:center;font-style:normal;overflow:hidden;border-radius:3px}
+.rbub i img{width:100%;height:100%;object-fit:cover;display:block;border-radius:3px}
+.rbub i.fe{font-size:11px;line-height:1}
+.rbub.hg i{overflow:visible}.rbub.hg i .ei-s{width:13px;height:13px;stroke-width:2.2}
+.wf .rbub,.wi .rbub{width:26px;height:24px}.wi .rbub i{left:5.5px;top:5.5px;width:15px;height:10px}
 /* Badges & Achievements + Currently in */
 .bgh{display:flex;justify-content:space-between;align-items:baseline;margin:16px 6px 8px;font-size:17px;font-weight:800}.bgh span{font-size:14px;font-weight:700;color:var(--mu)}
 .bgg{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
@@ -2665,7 +2674,7 @@ async function loadRfr(){if(!me||innerWidth<1100)return;try{const d=await api('G
 let RRT=0,RRH=0;const RRC={'Top Level Rooms':1,'Favorite rooms':1,'Official rooms':1,'Game rooms':1};
 const rrHide=()=>{clearTimeout(RRT);const b=$('rrb');if(b)b.hidden=true};let RRM=0,RRL=0;const rrArm=()=>{return;clearTimeout(RRT);if(RRH)return;RRT=setTimeout(()=>{if(!RRH)rrHide()},5000)};
 async function rrShow(){const b=$('rrb');if(!b)return;b.hidden=false;rrArm();
-  try{const rs=await api('GET','/rooms');if(!Array.isArray(rs))return;rs.forEach(x=>{RF[x.name]=x.flag||'';RLV[x.name]=x.lvl||1});
+  try{const rs=await api('GET','/rooms');if(!Array.isArray(rs))return;rs.forEach(x=>{RF[x.name]=x.flag||'';RLV[x.name]=x.lvl||1;RG[x.name]=x.cat==='game'});
    const TOPL=[...rs].filter(x=>x.cat!=='game').sort((a,b)=>(b.lvl||1)-(a.lvl||1)||(b.xp||0)-(a.xp||0)).slice(0,10);
    const S=[['Top Level Rooms',TOPL,'#e8431a'],['Favorite rooms',rs.filter(x=>x.fav||x.owner===me),'#f7931e'],['Official rooms',rs.filter(x=>x.cat==='official'),'#4aa8e8'],['Game rooms',rs.filter(x=>x.cat==='game'),'#9b59d0']];
    b.innerHTML=S.map(([t,l,c])=>`<button type="button" class="rrs${RRC[t]?' cl':''}" style="--c:${c}" data-sec="${t}">${t} (${l.length})<svg viewBox="0 0 24 24" width="12" height="12"><path d="M6 9l6 6 6-6" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg></button><div class="rrl"${RRC[t]?' hidden':''}>`+(l.length?l.map(x=>`<button class="rc" data-r="${esc(x.name)}"><span class="ic">${RF[x.name]?`<img src="${esc(fu(RF[x.name]))}" alt="">`:'💬'}</span><span class="t"><b>${esc(x.name)}</b><small>${x.count||0} online · Lv ${x.lvl||1}</small></span></button>`).join(''):'<div class="mu2">No rooms</div>')+'</div>').join('');
@@ -2685,8 +2694,8 @@ function wDock(){let d=$('wdock');if(!d){d=document.createElement('div');d.id='w
     const cc=e.target.closest('[data-wc]');if(cc){callStart(cc.dataset.wu,cc.dataset.wc);return}
     const m=e.target.closest('[data-wm]');if(m){const w=WINS.find(v=>v.r===m.dataset.wm);if(w){w.min=true;wLayout();wSave()}return}
     const p=e.target.closest('[data-wp]');if(p)openWin(p.dataset.wp)}}return d}
-function wIcon(r,sz){const dm=r.startsWith('dm:'),f=!dm&&RF[r]?fu(RF[r]):'';return dm?av(rtitle(r),sz):f?`<img class="wf" src="${esc(f)}" alt="">${RLV[r]?`<b class="rlv">${RLV[r]}</b>`:''}`:'<span class="wf">💬</span>'}
-function wFlags(){api('GET','/rooms').then(rs=>{rs.forEach(x=>{RF[x.name]=x.flag||'';RLV[x.name]=x.lvl||1});WINS.forEach(w=>{const i=w.el&&w.el.querySelector('.wi');if(i)i.innerHTML=wIcon(w.r,26)});wLayout()}).catch(()=>{})}
+function wIcon(r,sz){const dm=r.startsWith('dm:'),f=!dm&&RF[r]?fu(RF[r]):'';return dm?av(rtitle(r),sz):f?`<img class="wf" src="${esc(f)}" alt="">${RLV[r]?`<b class="rlv">${RLV[r]}</b>`:''}`:rbub(r)}
+function wFlags(){api('GET','/rooms').then(rs=>{rs.forEach(x=>{RF[x.name]=x.flag||'';RLV[x.name]=x.lvl||1;RG[x.name]=x.cat==='game'});WINS.forEach(w=>{const i=w.el&&w.el.querySelector('.wi');if(i)i.innerHTML=wIcon(w.r,26)});wLayout()}).catch(()=>{})}
 function openWin(r){if(EMB||!r||innerWidth<1000)return;if(!r.startsWith('dm:')&&!(r in RF)&&!window._wfl){window._wfl=1;setTimeout(()=>{window._wfl=0},3000);wFlags()}
   let w=WINS.find(x=>x.r===r);
   if(!w){const el=document.createElement('section');el.className='cw';el.innerHTML=`<header><span class="wi">${wIcon(r,26)}</span><b>${esc(rtitle(r))}</b>${r.startsWith('dm:')?`<button type="button" data-wc="audio" data-wu="${esc(rtitle(r))}" aria-label="Audio call"><svg viewBox="0 0 24 24"><path d="M5 4h4l2 5-2.5 1.5a11 11 0 005 5L15 13l5 2v4a2 2 0 01-2 2A16 16 0 013 6a2 2 0 012-2z"/></svg></button><button type="button" data-wc="video" data-wu="${esc(rtitle(r))}" aria-label="Video call"><svg viewBox="0 0 24 24"><rect x="3" y="6" width="12" height="12" rx="2"/><path d="M15 10l6-3v10l-6-3z"/></svg></button>`:''}<button type="button" data-wm="${esc(r)}" aria-label="Minimize"><svg viewBox="0 0 24 24"><path d="M6 17h12"/></svg></button><button type="button" data-wx="${esc(r)}" aria-label="Close"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button></header><iframe title="${esc(rtitle(r))}" allow="microphone; autoplay; clipboard-write" src="${esc(location.pathname)}?w=${encodeURIComponent(r)}"></iframe>`;
@@ -2713,7 +2722,7 @@ function wLayout(){const d=wDock();if(EMB||innerWidth<1000||!me){d.style.display
   try{drawRcol()}catch{}wTabs()}
 function wTabs(){const t=$('rtabs');if(!t||EMB||innerWidth<1000)return;
   t.innerHTML=WINS.map(w=>{const x=w.r,vis=w.el&&w.el.classList.contains('vis');if(vis)return `<button class="rt on" data-wt="${esc(x)}" title="${esc(rtitle(x))}">${x.startsWith('dm:')?'':rfl(x)}${esc(rtitle(x))}</button>`;
-    return `<button class="rt mini${w.n?' has':''}" data-wt="${esc(x)}" title="${esc(rtitle(x))}" aria-label="${esc(rtitle(x))}${w.n?' — '+w.n+' new':''}">${RF[x]?rfl(x).replace('class="flg rfl"','class="flg rfl rfm"').replace('<img','<span class="rf"><img')+'</span>':(x.startsWith('dm:')?'<span class="rf">'+av(rtitle(x),20)+'</span>':'<svg viewBox="0 0 24 24" width="18" height="18"><path d="M4 5h16v11H9l-5 4z" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"/></svg>')}${w.n?`<b class="ub">${w.n>9?'9+':w.n}</b>`:''}</button>`}).join('');
+    return `<button class="rt mini${w.n?' has':''}" data-wt="${esc(x)}" title="${esc(rtitle(x))}" aria-label="${esc(rtitle(x))}${w.n?' — '+w.n+' new':''}">${x.startsWith('dm:')?'<span class="rf">'+av(rtitle(x),20)+'</span>':rbub(x)}${w.n?`<b class="ub">${w.n>9?'9+':w.n}</b>`:''}</button>`}).join('');
   t.onclick=e=>{const b=e.target.closest('[data-wt]');if(b)openWin(b.dataset.wt)}}
 let WMODE=innerWidth>=1000?'d':'m';
 function wSwitch(){if(EMB||!me)return;const m=innerWidth>=1000?'d':'m';if(m===WMODE)return;WMODE=m;
@@ -3584,7 +3593,7 @@ V.mailc=async a=>{MOPEN=true;const pre=a||{};let att=[],busy=0;
     const b=$('msend');b.disabled=true;try{await api('POST','/mail',{to,subject:$('msb').value.trim(),body:$('mbd').value.trim(),atts:att.map(x=>x.url)});toast('Mail sent ✓');MBOX='sent';go('mail')}catch(er){fail(er);b.disabled=false}};
   if(pre.to)$('mbd').focus()}
 let ROD=null,RFRESH=0;
-V.rooms=async()=>{const rs=await api('GET','/rooms');rs.forEach(x=>{RF[x.name]=x.flag||'';RLV[x.name]=x.lvl||1});
+V.rooms=async()=>{const rs=await api('GET','/rooms');rs.forEach(x=>{RF[x.name]=x.flag||'';RLV[x.name]=x.lvl||1;RG[x.name]=x.cat==='game'});
   const q=($('rq')?.value||'').toLowerCase();
   const RT=(()=>{try{return JSON.parse(localStorage.roomTime||'{}')}catch{return{}}})();rs.sort((a,b)=>b.count-a.count||(RT[b.name]||0)-(RT[a.name]||0)||a.name.localeCompare(b.name));if(!ROD||RFRESH){ROD={};rs.forEach((x,i)=>ROD[x.name]=i);RFRESH=0}else{let n=rs.length;rs.sort((a,b)=>(ROD[a.name]??(ROD[a.name]=n++))-(ROD[b.name]??(ROD[b.name]=n++)))}const TOPL=[...rs].filter(x=>x.cat!=='game').sort((a,b)=>(b.lvl||1)-(a.lvl||1)||(b.xp||0)-(a.xp||0)||a.name.localeCompare(b.name)).slice(0,8);
   const S=[['Top Level Rooms','#e8431a',TOPL],['Favorite rooms','#f7931e',rs.filter(x=>x.fav||x.owner===me)],['Official rooms','#4aa8e8',rs.filter(x=>x.cat==='official')],['Game rooms','#9b59d0',rs.filter(x=>x.cat==='game')],['Your & community rooms','#2e9d4f',rs.filter(x=>x.cat==='user'&&x.owner!==me)]];
@@ -3603,6 +3612,10 @@ V.rooms=async()=>{const rs=await api('GET','/rooms');rs.forEach(x=>{RF[x.name]=x
   $('view').onclick=async e=>{const f=e.target.closest('[data-f]');if(f){await api('POST',`/rooms/${encodeURIComponent(f.dataset.f)}/fav`);return V.rooms()}
     const r=e.target.closest('[data-r]');if(r)return go('chat',r.dataset.r);const s=e.target.closest('[data-s]');if(s){const d=document.querySelector(`#view [data-sec="${s.dataset.s}"]`);d.style.display=d.style.display==='none'?'':'none';s.classList.toggle('cl',d.style.display==='none');(window.RCOL=window.RCOL||{})[s.dataset.s]=d.style.display==='none'}}};
 /* ---------- chat ---------- */
+const RG={};   // game rooms
+const rgIc=x=>{const n=String(x).toLowerCase();return EIS[/dice/.test(n)?'dice':/cricket/.test(n)?'bat':/low ?card|teen ?patti|uno|card/.test(n)?'cards':/royale|battle/.test(n)?'swords':'game']||EIS.game};
+const rbub=x=>{const f=RF[x]?fu(RF[x]):'',fe=!f&&(rtitle(x).match(/[\u{1F1E6}-\u{1F1FF}]{2}/u)||[])[0],gm=!f&&!fe&&RG[x];
+ return `<span class="rbub${f?' hf':''}${gm?' hg':''}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v11H9l-5 4z"/></svg>${f?`<i><img src="${esc(f)}" alt=""></i>`:fe?`<i class="fe">${fe}</i>`:gm?`<i>${rgIc(x)}</i>`:''}</span>`};
 const RF={};let RFL=0;const fu=f=>!f?'':/^[a-z]{2}(-[a-z]+)?$/.test(f)?'https://flagcdn.com/w40/'+f+'.png':f;
 const RLV={};
 function rlvPaint(){try{if(cur==='chat'&&room&&!room.startsWith('dm:')&&$('stt'))$('stt').innerHTML=rfl(room)+esc(rtitle(room));drawTabs();if(typeof wLayout==='function')wLayout();
@@ -3610,7 +3623,7 @@ function rlvPaint(){try{if(cur==='chat'&&room&&!room.startsWith('dm:')&&$('stt')
 setInterval(()=>{try{if(!me||document.hidden)return;const a=document.activeElement;if(a&&/^(INPUT|TEXTAREA)$/.test(a.tagName))return;
   if(cur==='rooms')V.rooms();else if(cur==='lboard')V.lboard();else if(cur==='account')return}catch{}},20000);
 const rfl=n=>n&&n.startsWith('dm:')?`<span class="rfl rav">${av(rtitle(n),24)}</span>`:RF[n]?`<span class="rfw"><img class="flg rfl" src="${esc(fu(RF[n]))}" alt="">${RLV[n]?`<b class="rlv">${RLV[n]}</b>`:''}</span>`:'';  // private chat: the other user's profile photo instead of a flag
-async function loadRF(){try{const rs=await api('GET','/rooms');rs.forEach(x=>{RF[x.name]=x.flag||'';RLV[x.name]=x.lvl||1});const ok=new Set(rs.map(x=>x.name));const n=OPEN.length;for(let i=OPEN.length-1;i>=0;i--)if(!OPEN[i].startsWith('dm:')&&!ok.has(OPEN[i]))OPEN.splice(i,1);if(OPEN.length!==n){saveOpen();if(cur==='chat'&&room&&!OPEN.includes(room)&&!room.startsWith('dm:'))return go(OPEN.length?'chat':'rooms',OPEN[0])}drawTabs()}catch{}}
+async function loadRF(){try{const rs=await api('GET','/rooms');rs.forEach(x=>{RF[x.name]=x.flag||'';RLV[x.name]=x.lvl||1;RG[x.name]=x.cat==='game'});const ok=new Set(rs.map(x=>x.name));const n=OPEN.length;for(let i=OPEN.length-1;i>=0;i--)if(!OPEN[i].startsWith('dm:')&&!ok.has(OPEN[i]))OPEN.splice(i,1);if(OPEN.length!==n){saveOpen();if(cur==='chat'&&room&&!OPEN.includes(room)&&!room.startsWith('dm:'))return go(OPEN.length?'chat':'rooms',OPEN[0])}drawTabs()}catch{}}
 const rtitle=r=>r.startsWith('dm:')?r.slice(3).split(':').find(x=>x!==me)||'DM':r;
 const lvtag=(n,xp)=>` <span class="lvt">[${lv(xp||0)}]</span>`;
 function fitChat(){const c=$('chatbox');if(!c)return;c.style.height='';const vv=window.visualViewport,t=c.getBoundingClientRect().top,bottom=vv?vv.offsetTop+vv.height:innerHeight;c.style.height=Math.max(160,Math.floor(bottom-t-4))+'px'}
@@ -3652,7 +3665,7 @@ V.chat=async(r)=>{room=r;if(!r.startsWith('dm:'))lastRoom=r;target='';pend=null;
 /* room tabs: tap to switch, swipe left/right to move between open rooms */
 function drawTabs(){const t=$('rtabs');if(!t)return;if(!EMB&&innerWidth>=1000)return wTabs();if(cur==='chat'&&DC.has(room)&&!$('dcbar'))mountDC(room,AL.has(room)?'Disconnected from <b>'+esc(rtitle(room))+'</b>':null);if(!RFL){RFL=1;setTimeout(loadRF,0)}
   UNR[room]=0;
-  const inch=document.body.classList.contains('inchat');t.innerHTML=OPEN.map(x=>(x===room&&inch)?`<button class="rt on${DC.has(x)?' dcd':''}" data-r="${esc(x)}">${rfl(x)}${esc(rtitle(x))}</button>`:`<button class="rt mini${UNR[x]?' has':''}${DC.has(x)?' dcd':''}" data-r="${esc(x)}" title="${esc(rtitle(x))}" aria-label="${esc(rtitle(x))}${UNR[x]?' — '+UNR[x]+' new':''}">${RF[x]?rfl(x).replace('class="flg rfl"','class="flg rfl rfm"').replace('<img','<span class="rf"><img')+'</span>':''}${RF[x]?'':x.startsWith('dm:')?`<span class="rf">${av(rtitle(x),24)}</span>`:(()=>{const f=rtitle(x).match(/[\u{1F1E6}-\u{1F1FF}]{2}/u);return f?`<span class="rf">${f[0]}</span>`:'<svg viewBox="0 0 24 24" width="18" height="18"><path d="M4 5h16v11H9l-5 4z" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"/></svg>'})()}${UNR[x]?`<b class="ub">${UNR[x]>9?'9+':UNR[x]}</b>`:''}</button>`).join('');
+  const inch=document.body.classList.contains('inchat');t.innerHTML=OPEN.map(x=>(x===room&&inch)?`<button class="rt on${DC.has(x)?' dcd':''}" data-r="${esc(x)}">${rfl(x)}${esc(rtitle(x))}</button>`:`<button class="rt mini${UNR[x]?' has':''}${DC.has(x)?' dcd':''}" data-r="${esc(x)}" title="${esc(rtitle(x))}" aria-label="${esc(rtitle(x))}${UNR[x]?' — '+UNR[x]+' new':''}">${x.startsWith('dm:')?`<span class="rf">${av(rtitle(x),24)}</span>`:rbub(x)}${UNR[x]?`<b class="ub">${UNR[x]>9?'9+':UNR[x]}</b>`:''}</button>`).join('');
   t.onclick=e=>{const c=e.target.closest('[data-x]');if(c){e.stopPropagation();return closeTab(c.dataset.x)}
     if(e.target.closest('[data-add]'))return go('rooms');const b=e.target.closest('[data-r]');if(b&&(b.dataset.r!==room||cur!=='chat'))go('chat',b.dataset.r)};
   {const on=t.querySelector('.on');if(on){const l=on.offsetLeft-t.offsetLeft,w=on.offsetWidth;if(l<t.scrollLeft)t.scrollLeft=Math.max(0,l-6);else if(l+w>t.scrollLeft+t.clientWidth)t.scrollLeft=l+w-t.clientWidth+6}}}
