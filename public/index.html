@@ -1224,6 +1224,14 @@ html[data-skin=navy][data-theme] #f#f#f#f#f#f#f#f#f#f #phb,html[data-skin=navy][
 .rbub i.fe{font-size:11px;line-height:1}
 .rbub.hg i{overflow:visible}.rbub.hg i .ei-s{width:13px;height:13px;stroke-width:2.2}
 .wf .rbub,.wi .rbub{width:26px;height:24px}.wi .rbub i{left:5.5px;top:5.5px;width:15px;height:10px}
+/* bubble fit: inside the mini tab pill, open tab and window header; filled flag; no level badge */
+.rbub{width:21px;height:20px}
+.rbub>svg{overflow:visible}
+.rbub i{left:5px;top:5px;width:11px;height:8px}.rbub i.fe{font-size:9px}.rbub.hg i .ei-s{width:10px;height:10px}
+#rtabs .rt.on .rbub{width:20px;height:19px;margin-right:-1px}
+#rtabs .rt.on{gap:7px}
+.cw header .wi .rbub{width:24px;height:23px;color:#4a5572}.cw header .wi .rbub i{left:6px;top:6px;width:13px;height:9px}
+.wf .rbub,.wi .rbub{width:24px;height:23px}
 /* Badges & Achievements + Currently in */
 .bgh{display:flex;justify-content:space-between;align-items:baseline;margin:16px 6px 8px;font-size:17px;font-weight:800}.bgh span{font-size:14px;font-weight:700;color:var(--mu)}
 .bgg{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
@@ -2694,7 +2702,7 @@ function wDock(){let d=$('wdock');if(!d){d=document.createElement('div');d.id='w
     const cc=e.target.closest('[data-wc]');if(cc){callStart(cc.dataset.wu,cc.dataset.wc);return}
     const m=e.target.closest('[data-wm]');if(m){const w=WINS.find(v=>v.r===m.dataset.wm);if(w){w.min=true;wLayout();wSave()}return}
     const p=e.target.closest('[data-wp]');if(p)openWin(p.dataset.wp)}}return d}
-function wIcon(r,sz){const dm=r.startsWith('dm:'),f=!dm&&RF[r]?fu(RF[r]):'';return dm?av(rtitle(r),sz):f?`<img class="wf" src="${esc(f)}" alt="">${RLV[r]?`<b class="rlv">${RLV[r]}</b>`:''}`:rbub(r)}
+function wIcon(r,sz){const dm=r.startsWith('dm:');return dm?av(rtitle(r),sz):rbub(r)}
 function wFlags(){api('GET','/rooms').then(rs=>{rs.forEach(x=>{RF[x.name]=x.flag||'';RLV[x.name]=x.lvl||1;RG[x.name]=x.cat==='game'});WINS.forEach(w=>{const i=w.el&&w.el.querySelector('.wi');if(i)i.innerHTML=wIcon(w.r,26)});wLayout()}).catch(()=>{})}
 function openWin(r){if(EMB||!r||innerWidth<1000)return;if(!r.startsWith('dm:')&&!(r in RF)&&!window._wfl){window._wfl=1;setTimeout(()=>{window._wfl=0},3000);wFlags()}
   let w=WINS.find(x=>x.r===r);
@@ -2721,7 +2729,7 @@ function wLayout(){const d=wDock();if(EMB||innerWidth<1000||!me){d.style.display
   wp.style.display=hid.length?'':'none';
   try{drawRcol()}catch{}wTabs()}
 function wTabs(){const t=$('rtabs');if(!t||EMB||innerWidth<1000)return;
-  t.innerHTML=WINS.map(w=>{const x=w.r,vis=w.el&&w.el.classList.contains('vis');if(vis)return `<button class="rt on" data-wt="${esc(x)}" title="${esc(rtitle(x))}">${x.startsWith('dm:')?'':rfl(x)}${esc(rtitle(x))}</button>`;
+  t.innerHTML=WINS.map(w=>{const x=w.r,vis=w.el&&w.el.classList.contains('vis');if(vis)return `<button class="rt on" data-wt="${esc(x)}" title="${esc(rtitle(x))}">${x.startsWith('dm:')?'':rbub(x)}${esc(rtitle(x))}</button>`;
     return `<button class="rt mini${w.n?' has':''}" data-wt="${esc(x)}" title="${esc(rtitle(x))}" aria-label="${esc(rtitle(x))}${w.n?' — '+w.n+' new':''}">${x.startsWith('dm:')?'<span class="rf">'+av(rtitle(x),20)+'</span>':rbub(x)}${w.n?`<b class="ub">${w.n>9?'9+':w.n}</b>`:''}</button>`}).join('');
   t.onclick=e=>{const b=e.target.closest('[data-wt]');if(b)openWin(b.dataset.wt)}}
 let WMODE=innerWidth>=1000?'d':'m';
@@ -3614,8 +3622,8 @@ V.rooms=async()=>{const rs=await api('GET','/rooms');rs.forEach(x=>{RF[x.name]=x
 /* ---------- chat ---------- */
 const RG={};   // game rooms
 const rgIc=x=>{const n=String(x).toLowerCase();return EIS[/dice/.test(n)?'dice':/cricket/.test(n)?'bat':/low ?card|teen ?patti|uno|card/.test(n)?'cards':/royale|battle/.test(n)?'swords':'game']||EIS.game};
-const rbub=x=>{const f=RF[x]?fu(RF[x]):'',fe=!f&&(rtitle(x).match(/[\u{1F1E6}-\u{1F1FF}]{2}/u)||[])[0],gm=!f&&!fe&&RG[x];
- return `<span class="rbub${f?' hf':''}${gm?' hg':''}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v11H9l-5 4z"/></svg>${f?`<i><img src="${esc(f)}" alt=""></i>`:fe?`<i class="fe">${fe}</i>`:gm?`<i>${rgIc(x)}</i>`:''}</span>`};
+const rbub=x=>{const f=RF[x]?fu(RF[x]):'',fe=!f&&(rtitle(x).match(/[\u{1F1E6}-\u{1F1FF}]{2}/u)||[])[0],gm=!f&&!fe&&RG[x],P='M4 5h16v11H9l-5 4z';
+ return `<span class="rbub${f?' hf':''}${gm?' hg':''}"><svg viewBox="0 0 24 24" aria-hidden="true">${f?`<clipPath id="rbc"><path d="${P}"/></clipPath><image href="${esc(f)}" x="3" y="4" width="18" height="17" preserveAspectRatio="xMidYMid slice" clip-path="url(#rbc)"/>`:''}<path d="${P}"/></svg>${fe?`<i class="fe">${fe}</i>`:gm?`<i>${rgIc(x)}</i>`:''}</span>`};
 const RF={};let RFL=0;const fu=f=>!f?'':/^[a-z]{2}(-[a-z]+)?$/.test(f)?'https://flagcdn.com/w40/'+f+'.png':f;
 const RLV={};
 function rlvPaint(){try{if(cur==='chat'&&room&&!room.startsWith('dm:')&&$('stt'))$('stt').innerHTML=rfl(room)+esc(rtitle(room));drawTabs();if(typeof wLayout==='function')wLayout();
@@ -3665,7 +3673,7 @@ V.chat=async(r)=>{room=r;if(!r.startsWith('dm:'))lastRoom=r;target='';pend=null;
 /* room tabs: tap to switch, swipe left/right to move between open rooms */
 function drawTabs(){const t=$('rtabs');if(!t)return;if(!EMB&&innerWidth>=1000)return wTabs();if(cur==='chat'&&DC.has(room)&&!$('dcbar'))mountDC(room,AL.has(room)?'Disconnected from <b>'+esc(rtitle(room))+'</b>':null);if(!RFL){RFL=1;setTimeout(loadRF,0)}
   UNR[room]=0;
-  const inch=document.body.classList.contains('inchat');t.innerHTML=OPEN.map(x=>(x===room&&inch)?`<button class="rt on${DC.has(x)?' dcd':''}" data-r="${esc(x)}">${rfl(x)}${esc(rtitle(x))}</button>`:`<button class="rt mini${UNR[x]?' has':''}${DC.has(x)?' dcd':''}" data-r="${esc(x)}" title="${esc(rtitle(x))}" aria-label="${esc(rtitle(x))}${UNR[x]?' — '+UNR[x]+' new':''}">${x.startsWith('dm:')?`<span class="rf">${av(rtitle(x),24)}</span>`:rbub(x)}${UNR[x]?`<b class="ub">${UNR[x]>9?'9+':UNR[x]}</b>`:''}</button>`).join('');
+  const inch=document.body.classList.contains('inchat');t.innerHTML=OPEN.map(x=>(x===room&&inch)?`<button class="rt on${DC.has(x)?' dcd':''}" data-r="${esc(x)}">${x.startsWith('dm:')?rfl(x):rbub(x)}${esc(rtitle(x))}</button>`:`<button class="rt mini${UNR[x]?' has':''}${DC.has(x)?' dcd':''}" data-r="${esc(x)}" title="${esc(rtitle(x))}" aria-label="${esc(rtitle(x))}${UNR[x]?' — '+UNR[x]+' new':''}">${x.startsWith('dm:')?`<span class="rf">${av(rtitle(x),24)}</span>`:rbub(x)}${UNR[x]?`<b class="ub">${UNR[x]>9?'9+':UNR[x]}</b>`:''}</button>`).join('');
   t.onclick=e=>{const c=e.target.closest('[data-x]');if(c){e.stopPropagation();return closeTab(c.dataset.x)}
     if(e.target.closest('[data-add]'))return go('rooms');const b=e.target.closest('[data-r]');if(b&&(b.dataset.r!==room||cur!=='chat'))go('chat',b.dataset.r)};
   {const on=t.querySelector('.on');if(on){const l=on.offsetLeft-t.offsetLeft,w=on.offsetWidth;if(l<t.scrollLeft)t.scrollLeft=Math.max(0,l-6);else if(l+w>t.scrollLeft+t.clientWidth)t.scrollLeft=l+w-t.clientWidth+6}}}
