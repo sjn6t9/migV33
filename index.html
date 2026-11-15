@@ -2489,6 +2489,8 @@ html body #view .fz .fzmode{background:var(--fs)!important;border-color:var(--fl
 html body #view .fz .fzsn{background:var(--fb)!important;color:var(--ft)!important;border-color:var(--fl)!important}html body #view .fz .fzbk .chip{background:var(--fs)!important;color:var(--ft)!important;border-color:var(--fl)!important}
 html body #view .fz .fzg2 .ic{color:#fff!important}html body #view .fz .fzg2 .pl{color:#fff!important;background:rgba(10,14,40,.78)!important}
 .fzbk{flex-wrap:wrap}
+/* same button text size in every theme */
+html[data-skin][data-theme] :is(#view,#sheet,.pc) button:not(.sc):not(.mrow):not(.mfab):not(.cnt):not(.lgo):not(.tabbar *):not(.chips *):not(.mtabs *):not(.rpk *):not(.acts *):not(.box *):not(#gp *):not(#tp *):not(#rbar *):not(#tools *):not(#recbar *):not(#rtabs *):not(#emp *):not(#sug *){font-size:13px!important}
 html body #view#view .fz .ldbt:has(#ldhm){display:flex;justify-content:space-between;gap:10px}
 html body #view#view#view#view .fz .fzbk button{border:1.5px solid #000!important}html[data-theme=dark] body #view#view#view#view .fz .fzbk button{border:1.5px solid #fff!important}
 html body #view .fz :is(.rbox,.ldctl,.lds,.fzg2,.fzrow,.ldf,.ldcp,.fzbal,.ldcht .ldcl,.ldpop){background:var(--fb)!important;color:var(--ft)!important;border-color:var(--fl)}
