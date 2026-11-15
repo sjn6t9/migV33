@@ -2921,7 +2921,8 @@ function onWsMessage(ws, raw) {
 }
 // ---------- Fun Zone: Ludo (server-authoritative multiplayer) ----------
 // The server owns the dice and the board. Before every roll it publishes sha256(secret:dice); the secret and dice are revealed with the roll so anyone can verify the result was fixed beforehand.
-const LUDO = new Map(); let ludoSeq = 0; const LD_LIVES = 6;   // a missed turn costs one chance; losing all 6 loses the game
+const LUDO = new Map(); let ludoSeq = 0; const LD_LIVES = 6;
+const LD_INVT = new Map();   // user -> time of last invite (10 s cooldown)   // a missed turn costs one chance; losing all 6 loses the game
 const LD_START = [0, 13, 26, 39], LD_SAFE = new Set([0, 13, 26, 39, 8, 21, 34, 47]), LD_FEES = [0, 50, 100, 500, 1000], LD_TURNS = [15, 25, 40, 60];
 const LD_RULES = { startAt: 6, sixAgain: true, sixOut: true, safe: true, oneCut: false, oneSkip: false, sixOut3: false, sixSkip: true, capAgain: true, homeAgain: true, mustCutHome: false, mustCut: false, mustOut: false, barrier: false };
 const ldRules = (cur, inp) => { const r = { ...cur }; if (inp && typeof inp === 'object') { for (const k of Object.keys(LD_RULES)) if (k in inp) r[k] = k === 'startAt' ? (+inp[k] === 1 ? 1 : 6) : !!inp[k]; } return r; };
@@ -3168,11 +3169,13 @@ function ludoAct(ws, m) {
   if (!t0) return ldErr(ws, 'You are not at a table');
   const t = t0;
   if (a === 'invite') {
-    if (t.st === 'end' || (t.st === 'lobby' && t.host !== u)) return; const to = String(m.to || '').trim(); const row = db.prepare('select name from users where name=? collate nocase').get(to);
+    if (t.st === 'end' || (t.st === 'lobby' && t.host !== u)) return;
+    { const wait = Math.ceil(((LD_INVT.get(u) || 0) + 10000 - Date.now()) / 1000); if (wait > 0) return ldErr(ws, `Please wait ${wait}s before sending another invite`); }
+    const to = String(m.to || '').trim(); const row = db.prepare('select name from users where name=? collate nocase').get(to);
     if (!row) return ldErr(ws, 'No such user'); const n = row.name; if (n === u || t.seats.some(x => x.user === n)) return ldErr(ws, 'Already at this table');
     if (db.prepare('select 1 from blocks where (a=? and b=?) or (a=? and b=?)').get(u, n, n, u)) return ldErr(ws, 'You cannot invite this user');
     if (t.st === 'lobby' && t.seats.length >= t.max) return ldErr(ws, 'Table is full');
-    const join = t.st === 'play' && t.mode === 'classic' && t.seats.length < 4, watch = t.st === 'play' && !join; t.inv.add(n); for (const w of ldSocks(n)) send(w, { t: 'ludo', a: 'invite', id: t.id, from: u, fee: t.fee, max: t.st === 'play' ? 4 : t.max, watch, join });
+    LD_INVT.set(u, Date.now()); const join = t.st === 'play' && t.mode === 'classic' && t.seats.length < 4, watch = t.st === 'play' && !join; t.inv.add(n); for (const w of ldSocks(n)) send(w, { t: 'ludo', a: 'invite', id: t.id, from: u, fee: t.fee, max: t.st === 'play' ? 4 : t.max, watch, join });
     notify(n, 'game', join ? `${u} invited you to join a running Ludo game${t.fee ? ' (' + t.fee + ' coins entry)' : ''}` : t.st === 'play' ? `${u} invited you to watch a Ludo game` : `${u} invited you to play Ludo${t.fee ? ' (' + t.fee + ' coins entry)' : ''}`, ''); ldSync(t); send(ws, { t: 'ludo', a: 'ok', msg: 'Invitation sent to ' + n }); return;
   }
   if (a === 'color') { if (t.st !== 'lobby') return; const c = +m.c, me = t.seats.find(x => x.user === u); if (![0, 1, 2, 3].includes(c) || t.seats.some(x => x.c === c)) return ldErr(ws, 'That colour is taken'); me.c = c; ldSync(t); return; }
