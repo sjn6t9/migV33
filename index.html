@@ -4254,7 +4254,7 @@ V.admin=async(name)=>{
   ${dr.length?`<h2>Delete account requests <span class="lv">${dr.length}</span></h2>`+dr.map(x=>`<div class="card row"><div class="g"><b>${esc(x.user)}</b><div class="mu">Level ${x.level} · ${new Date(x.ts).toLocaleDateString()} · wants to delete the account</div></div><button class="o" data-dr="${x.id}" data-ac="1">Accept</button><button data-dr="${x.id}" data-ac="0">Reject</button></div>`).join(''):''}
   ${rq.length?`<h2>Head Mentor requests <span class="lv">${rq.length}</span></h2>`+rq.map(x=>`<div class="card row"><div class="g"><b>${esc(x.from_user)}</b><div class="mu">Mentor · Level ${x.level} · ${new Date(x.ts).toLocaleDateString()}</div></div><button class="o" data-rq="${x.id}" data-ac="1">Accept</button><button data-rq="${x.id}" data-ac="0">Reject</button></div>`).join(''):''}
   <h2>Users <span class="lv">${us.length}</span></h2>
-  ${us.map(u=>`<div class="card row" data-u="${esc(u.name)}" style="cursor:pointer"><div class="g"><b style="color:${nc(u.name)}">${esc(u.name)}</b> ${rt(u.role,u.name)} ${u.banned?'<span class="neg">🚫 banned</span>':''}<div class="mu">${lvi(u.level,16)} Level ${u.level} · ${u.unlimited?'∞':u.coins} coins${u.email?' · '+esc(u.email):''}</div></div><span class="mu">Edit ›</span></div>`).join('')||'<div class="card mu">No users found.</div>'}
+  ${us.map(u=>`<div class="card row" data-u="${esc(u.name)}" style="cursor:pointer"><div class="g"><b style="color:${nc(u.name)}">${esc(u.name)}</b> ${rt(u.role,u.name)} ${u.banned?'<span class="neg">🚫 banned</span>':''}<div class="mu">${lvi(u.level,16)} Level ${u.level} · ${u.unlimited?'∞':u.coins} coins${u.email?' · '+esc(u.email):''}${u.last_ip?' · IP '+esc(u.last_ip):''}</div></div><span class="mu">Edit ›</span></div>`).join('')||'<div class="card mu">No users found.</div>'}
   <h2>Recent staff actions</h2>
   ${lg.map(x=>`<div class="card"><b>${esc(x.action)}</b> · ${esc(x.target)}<div class="mu">by ${esc(x.staff)} · ${new Date(x.ts).toLocaleString()}${x.detail?' · '+esc(x.detail):''}</div></div>`).join('')||'<div class="card mu">No actions yet.</div>'}`);
   $('aq').onsubmit=e=>{e.preventDefault();window.AQ=$('aqi').value.trim();V.admin()};
@@ -4304,13 +4304,15 @@ async function adminUser(name){
     pin_set:{pin:v('mp')},parent:{parent:v('pa')},tag:{by:v('tb')},pin_reset:{},role:{role:b.dataset.r||v('ro')},ban:{reason:v('br')},unban:{}}[a];
     if(['ban','pin_reset','secq_reset','password'].includes(a)&&!confirm('Are you sure?'))return;
     try{const r=await api('POST','/admin/users/'+encodeURIComponent(name)+'/edit',{action:a,...P});toast('Saved ✔');go('admin',a==='rename'?r.name:name)}catch(er){fail(er)}};
-  const track=async()=>{const bx=$('atk');if(!bx)return;let t;try{t=await api('GET','/admin/users/'+encodeURIComponent(name)+'/track')}catch(er){bx.innerHTML='<b>🛰️ Tracking</b><div class="mu">'+esc(er.message||'Could not load')+'</div>';return}
+  const track=async()=>{const bx=$('atk');if(!bx)return;let t;try{t=await api('GET','/admin/users/'+encodeURIComponent(name)+'/track')}catch(er){bx.innerHTML='<b>🛰️ Tracking</b><div class="mu">Could not load tracking ('+esc(er.message||'error')+'). If the server was not restarted after the update, restart it: systemctl restart migv33</div>';return}
     const dt=x=>x?new Date(x).toLocaleString():'—',cn_=t.counts||{};
     bx.innerHTML=`<b>🛰️ Tracking</b>
     <div class="mu">${t.online?'🟢 Online now'+(t.room?' · in '+esc(t.room):''):'⚪ Offline'} · Last seen: ${dt(t.lastSeen)}</div>
     <div class="mu">Joined: ${dt(t.joined)}</div>
+    <div class="mu">Your IP now: <b class="tip">${esc(t.myIp||'—')}</b></div>
     <div class="mu">First seen IP: <b class="tip">${esc(t.regIp||'—')}</b> · Last IP: <b class="tip">${esc(t.lastIp||'—')}</b></div>
     <div class="mu">Messages ${cn_.messages||0} · Posts ${cn_.posts||0} · Comments ${cn_.comments||0} · Reels ${cn_.reels||0} · Friends ${cn_.friends||0} · Transactions ${cn_.transactions||0}</div>
+    ${t.lastIp&&!t.ips.some(x=>x.ip===t.lastIp&&x.banned)?`<button type="button" class="o" data-ipb="${esc(t.lastIp)}" style="margin-top:6px">Block last IP (${esc(t.lastIp)})</button>`:''}
     ${t.linked.length?`<div class="mu" style="margin-top:6px">⚠ Other accounts on the same IP(s):</div><div class="tlk">${t.linked.map(n=>`<button type="button" data-u2="${esc(n)}">${esc(n)}</button>`).join('')}</div>`:''}
     <div class="mu" style="margin-top:8px">IP addresses (${t.ips.length})</div>
     ${t.ips.map(x=>`<div class="tipr"><div class="g"><b class="tip">${esc(x.ip)}</b>${x.banned?'<div class="neg"><b>BLOCKED</b></div>':''}<div class="mu">${esc(uaShort(x.ua))} · ${x.hits} visit${x.hits===1?'':'s'} · ${esc(x.via||'')}</div><div class="mu">First ${dt(x.first)} · Last ${dt(x.last)}</div>${x.others.length?`<div class="mu">Also used by: ${x.others.map(n=>esc(n)).join(', ')}</div>`:''}</div>${x.banned?`<button type="button" class="o" data-ipu="${esc(x.ip)}">Unblock</button>`:`<button type="button" class="o" data-ipb="${esc(x.ip)}">Block IP</button>`}</div>`).join('')||'<div class="mu">No IP recorded yet. It is saved the next time this user opens the app.</div>'}`};

@@ -1241,7 +1241,7 @@ app.get('/api/admin/countries', auth, ok((q, r) => r.json(COUNTRIES)));
 app.get('/api/admin/users', auth, ok((q, r) => {
   if (roleOf(q.user) !== 'staff') return bad(r, 'Only staff can use the admin panel', 403);
   const s = String(q.query.q || '').replace(/[%_\\]/g, '').slice(0, 40);
-  const rows = db.prepare("select name,role,xp,coins,banned,email,full_name,verified from users where name like '%'||@s||'%' or email like '%'||@s||'%' or full_name like '%'||@s||'%' or mobile like '%'||@s||'%' or name in (select user from user_ips where ip=@s) order by banned desc, case role when 'staff' then 0 when 'admin' then 1 else 2 end, name limit 60").all({ s });
+  const rows = db.prepare("select name,role,xp,coins,banned,email,full_name,verified,last_ip from users where name like '%'||@s||'%' or email like '%'||@s||'%' or full_name like '%'||@s||'%' or mobile like '%'||@s||'%' or name in (select user from user_ips where ip=@s) order by banned desc, case role when 'staff' then 0 when 'admin' then 1 else 2 end, name limit 60").all({ s });
   r.json(rows.map(u => ({ ...u, level: level(u.xp), unlimited: isMain(u.name) })));
 }));
 app.get('/api/admin/log', auth, ok((q, r) => {
@@ -1251,12 +1251,14 @@ app.get('/api/admin/log', auth, ok((q, r) => {
 app.get('/api/admin/users/:n/track', auth, ok((q, r) => {
   if (!staffOnly(q, r)) return;
   const u = db.prepare('select * from users where name=?').get(q.params.n); if (!u) return bad(r, 'User not found', 404);
+  for (const w of wss.clients) if (w.user === u.name && w.ip) { ipSeen.delete(u.name + '|' + w.ip); trackIp(u.name, w.ip, w.ua, 'ws'); }   // online right now: record the live connection's IP
   const ips = db.prepare('select ip,first,last,hits,ua,via from user_ips where user=? order by last desc limit 100').all(u.name).map(x => ({
     ...x, banned: IPB.has(x.ip), others: db.prepare('select user from user_ips where ip=? and user!=? order by last desc limit 12').all(x.ip, u.name).map(z => z.user) }));
   const linked = [...new Set(ips.flatMap(x => x.others))];
   const c = (sql, ...a) => { try { return db.prepare(sql).get(...a).n; } catch { return 0; } };
   let online = false; for (const w of wss.clients) if (w.user === u.name) { online = true; break; }
-  r.json({ name: u.name, online, room: online ? curRoom(u.name) : '', regIp: u.reg_ip || '', lastIp: u.last_ip || '', lastSeen: u.last_seen || 0, joined: u.joined || 0, presence: u.presence,
+  const uf = db.prepare('select reg_ip,last_ip,last_seen from users where name=?').get(u.name);
+  r.json({ myIp: cip(q), name: u.name, online, room: online ? curRoom(u.name) : '', regIp: uf.reg_ip || '', lastIp: uf.last_ip || '', lastSeen: uf.last_seen || 0, joined: u.joined || 0, presence: u.presence,
     ips, linked, banned: !!u.banned, ban_reason: u.ban_reason || '',
     counts: { messages: c('select count(*) n from msgs where user=?', u.name), posts: c('select count(*) n from posts where user=?', u.name), comments: c('select count(*) n from comments where user=?', u.name),
       transactions: c('select count(*) n from txs where user=?', u.name), friends: c("select count(*) n from friends where status='accepted' and (a=? or b=?)", u.name, u.name), reels: c('select count(*) n from reels where user=?', u.name) } });
