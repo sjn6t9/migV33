@@ -2983,7 +2983,7 @@ function ldDrop(t) { for (const x of t.seats) if (!x.bot) for (const w of ldSock
 function ldErr(ws, error) { send(ws, { t: 'ludo', a: 'err', error }); }
 function ldNext(t, again) {
   if (again) { t.sixes = t.sixes || 0; } else { t.sixes = 0; t.ones = 0; let n = t.turn; for (let i = 0; i < t.seats.length; i++) { n = (n + 1) % t.seats.length; if (!t.seats[n].out) break; } t.turn = n; }
-  t.tries = 0; t.d = null; t.msg = ''; ldCommit(t); ldArm(t); ldSync(t);
+  t.tries = 0; t.hold = false; t.d = null; t.msg = ''; ldCommit(t); ldArm(t); ldSync(t);
 }
 function ldArm(t) {
   clearTimeout(t.timer); if (t.st !== 'play') return;
@@ -2995,6 +2995,7 @@ function ldAuto(t) {
   if (t.st !== 'play') return;
   const s = ldCur(t);
   if (!s.bot) { s.miss = (s.miss || 0) + 1; if (s.miss >= LD_LIVES) return ldForfeit(t, s, 'ran out of all ' + LD_LIVES + ' chances'); }
+  if (!s.bot) { t.msg = `${s.user} missed a turn (${Math.max(0, LD_LIVES - s.miss)} of ${LD_LIVES} chances left)`; t.d = null; t.hold = true; return ldHold(t); }   // a miss only costs a chance: no automatic roll or move
   if (t.d == null) ldRoll(t); else ldMove(t, ldPick(t));
 }
 function ldPick(t) {
@@ -3204,7 +3205,7 @@ function ludoAct(ws, m) {
     t.seats.sort((x, y) => x.c - y.c); t.tok = [0, 1, 2, 3].map(() => Array(t.n).fill(-1)); t.cut = [false, false, false, false]; t.ones = 0; t.st = 'play'; t.turn = 0; t.sixes = 0; t.msg = ''; ldCommit(t); ldArm(t); ldSync(t); ldCastLobby(); return;
   }
   if (t.st !== 'play') return;
-  const s = ldCur(t); if (s.user !== u) return;
+  const s = ldCur(t); if (s.user !== u || t.hold) return;
   if (a === 'roll') return ldRoll(t);
   if (a === 'move') return ldMove(t, +m.k);
 }
