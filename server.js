@@ -440,9 +440,10 @@ app.get('/api/users/:n', auth, ok((q, r) => {
     db.prepare('insert into footprints(owner,visitor,ts) values(?,?,?) on conflict(owner,visitor) do update set ts=excluded.ts').run(p.name, q.user, Date.now());
     if (!prev || Date.now() - prev.ts > 6 * 3600e3) notify(p.name, 'social', `${q.user} viewed your profile`, 'user:' + q.user);   // one alert per visitor per 6 hours
   }
+  const inRooms = (() => { if (p.presence === 'offline') return []; const set = new Set(); for (const [rm, ws] of members) if (rm && !/^dm:/.test(rm) && [...ws].some(w => w.user === p.name)) set.add(rm); for (const w of wss.clients) if (w.user === p.name && w.tabs) for (const rm of w.tabs) if (rm && !/^dm:/.test(rm)) set.add(rm); return [...set].filter(roomOk).map(rm => ({ name: rm, count: roomNames(rm).size })); })();
   const inRoom = (() => { if (p.presence === 'offline') return null; const rm = curRoom(p.name); return rm && roomOk(rm) ? { name: rm, count: roomNames(rm).size } : null; })();
   const fc = db.prepare("select count(*) c from friends where status='accepted' and (a=? or b=?)").get(p.name, p.name).c;
-  r.json({ ...p, gifts: db.prepare('select gift,n from gift_inv where user=? order by n desc').all(p.name).map(x => { const g = allGiftsAny(x.gift); return g && { key: x.gift, n: x.n, name: g.n, e: g.e, img: g.img }; }).filter(Boolean), friends: fc, inRoom, stats: userStats(p.name, p), state: q.user === p.name ? 'me' : fstate(q.user, p.name) });
+  r.json({ ...p, gifts: db.prepare('select gift,n from gift_inv where user=? order by n desc').all(p.name).map(x => { const g = allGiftsAny(x.gift); return g && { key: x.gift, n: x.n, name: g.n, e: g.e, img: g.img }; }).filter(Boolean), friends: fc, inRoom, inRooms, stats: userStats(p.name, p), state: q.user === p.name ? 'me' : fstate(q.user, p.name) });
 }));
 app.post('/api/push/sub', auth, ok((q, r) => { if (!PUSH.save(q.user, q.body)) return bad(r, 'Bad subscription'); r.json({ ok: true }); }));
 app.post('/api/push/test', auth, ok(async (q, r) => {
