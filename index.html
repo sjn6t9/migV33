@@ -2611,6 +2611,14 @@ html body #view#view#view#view#view #chatbox #f#f#f#f#f#f#f#f#f#f#f#f :is(#mic,#
 html body #view#view#view#view#view #chatbox #f#f#f#f#f#f#f#f#f#f#f#f #snd svg{fill:#fff!important}
 html body #view#view#view#view#view #chatbox #f#f#f#f#f#f#f#f#f#f#f#f input#t:placeholder-shown~#snd{display:none!important}
 html body #view#view#view#view#view #chatbox #f#f#f#f#f#f#f#f#f#f#f#f input#t:not(:placeholder-shown)~:is(#mic,#phb){display:none!important}
+
+/* chat view looks the same in every theme (navy style) */
+html[data-skin]:not([data-skin=navy]) body #view#view #log,html[data-skin]:not([data-skin=navy]) body #view#view #log.light,html[data-skin]:not([data-skin=navy]) body #view#view #log.navy,html[data-skin]:not([data-skin=navy]) body #view#view #log.dark{background:#0f1a2b!important;color:#f2f6ff!important;--nm-admin:#f37124;--nm-staff:#68bd45;--nm-mentor:#f5434a;--nm-headmentor:#1fb5b2;--nm-merchant:#9b82d8;--nm-vip:#f6d05f;--nm-user:#6db3ff;border:1px solid rgba(255,255,255,.3)!important}
+html[data-skin]:not([data-skin=navy]) body #view#view #log .b,html[data-skin]:not([data-skin=navy]) body #view#view #log .g2{background:#0f1a2b!important;border:1px solid rgba(255,255,255,.3)!important;color:#f2f6ff!important;box-shadow:inset 1.5px 1.5px 1px rgba(255,255,255,.35),inset -1px -1px 1px rgba(255,255,255,.1)!important;backdrop-filter:none!important;-webkit-backdrop-filter:none!important}
+html[data-skin]:not([data-skin=navy]) body #view#view #log .b.mine{background:rgba(80,190,120,.32)!important}
+html[data-skin]:not([data-skin=navy]) body #view#view #log .b.game{color:#9cc0ff!important}
+html[data-skin]:not([data-skin=navy]) body #view#view #log .inf,html[data-skin]:not([data-skin=navy]) body #view#view #log .inf.ok,html[data-skin]:not([data-skin=navy]) body #view#view #log .emo,html[data-skin]:not([data-skin=navy]) body #view#view #log .nt{color:#f2f6ff!important}
+html[data-skin]:not([data-skin=navy]) body #view#view #log .bts{color:#f2f6ff!important}
 </style>
 </head>
 <body>
