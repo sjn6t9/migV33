@@ -2965,15 +2965,16 @@ function ldLegal(t) {
 }
 function ldView(t, me) {
   const s = t.st === 'play' ? ldCur(t) : null;
-  return { id: t.id, host: t.host, fee: t.fee, max: t.max, mode: t.mode, rules: t.rules, n: t.n, botLvl: t.botLvl, ctl: s ? ldCol(t) : null, priv: !!t.priv, turnS: t.turnMs / 1000, inv: t.seats.some(s => s.user === me) ? [...t.inv] : [], voice: [...t.voice], spec: !t.seats.some(s => s.user === me), watchers: t.spec ? t.spec.size : 0, st: t.st, seats: t.seats.filter(x => !x.gone).map(x => ({ user: x.user, bot: !!x.bot, c: x.c, out: !!x.out })), tok: t.st === 'lobby' ? [0, 1, 2, 3].map(() => Array(t.n).fill(-1)) : t.tok, turn: s ? s.user : null, d: t.d, left: Math.max(0, (t.deadline || 0) - Date.now()), commit: t.pre ? t.pre.h : null, last: t.last || null, legal: s && s.user === me ? ldLegal(t) : [], winner: t.winner || null, pot: t.fee * t.paid, msg: t.msg || '' };
+  return { id: t.id, host: t.host, fee: t.fee, max: t.max, mode: t.mode, rules: t.rules, n: t.n, botLvl: t.botLvl, ctl: s ? ldCol(t) : null, priv: !!t.priv, turnS: t.turnMs / 1000, inv: t.seats.some(s => s.user === me) ? [...t.inv] : [], voice: [...t.voice], spec: !t.seats.some(s => s.user === me), watchers: t.spec ? t.spec.size : 0, ready: t.st === 'end' ? [...(t.ready || [])] : [], st: t.st, seats: t.seats.filter(x => !x.gone).map(x => ({ user: x.user, bot: !!x.bot, c: x.c, out: !!x.out })), tok: t.st === 'lobby' ? [0, 1, 2, 3].map(() => Array(t.n).fill(-1)) : t.tok, turn: s ? s.user : null, d: t.d, left: Math.max(0, (t.deadline || 0) - Date.now()), commit: t.pre ? t.pre.h : null, last: t.last || null, legal: s && s.user === me ? ldLegal(t) : [], winner: t.winner || null, pot: t.fee * t.paid, msg: t.msg || '' };
 }
 function ldSync(t) { for (const s of t.seats) if (!s.bot) for (const w of ldSocks(s.user)) send(w, { t: 'ludo', a: 'table', table: ldView(t, s.user) }); for (const u of t.spec || []) for (const w of ldSocks(u)) send(w, { t: 'ludo', a: 'table', table: ldView(t, u) }); }
 const ldWatching = u => [...LUDO.values()].find(t => t.spec && t.spec.has(u));
 function ldLobby() { return [...LUDO.values()].filter(t => (t.st === 'lobby' || t.st === 'play') && !t.priv).map(t => ({ id: t.id, host: t.host, fee: t.fee, max: t.max, mode: t.mode, st: t.st, n: t.seats.length, names: t.seats.map(s => s.user) })); }
 function ldCastLobby() { const l = ldLobby(); for (const w of wss.clients) if (w._lud && w.readyState === 1) send(w, { t: 'ludo', a: 'lobby', list: l, live: [...LUDO.values()].filter(t => t.st === 'play').length }); }
 function ldLobbyTimer(t) { clearTimeout(t.timer); t.timer = setTimeout(() => { if (t.st !== 'lobby') return; for (const x of ldHumans(t)) for (const w of ldSocks(x.user)) send(w, { t: 'ludo', a: 'left', why: 'Table closed (idle for 10 minutes)' }); ldDrop(t); }, 600000); }
+const ldAllReady = t => t.st === 'end' && t.ready && t.ready.size > 0 && ldHumans(t).every(x => t.ready.has(x.user));
 function ldReset(t) {   // Play Again: same table, same settings, back to the lobby
-  clearTimeout(t.timer); t.seats = t.seats.filter(s => !s.gone); for (const s of t.seats) { s.out = false; s.miss = 0; s.paid = false; }
+  clearTimeout(t.timer); t.ready = new Set(); t.seats = t.seats.filter(s => !s.gone); for (const s of t.seats) { s.out = false; s.miss = 0; s.paid = false; }
   t.st = 'lobby'; t.tok = [0, 1, 2, 3].map(() => Array(t.n).fill(-1)); t.cut = [false, false, false, false]; t.d = null; t.last = null; t.winner = null; t.msg = ''; t.pre = null; t.paid = 0; t.sixes = 0; t.ones = 0; t.tries = 0; t.turn = 0;
   if (!t.seats.some(s => s.user === t.host && !s.bot)) { const h = ldHumans(t)[0]; if (h) t.host = h.user; }
   ldLobbyTimer(t); ldSync(t); ldCastLobby();
@@ -3049,7 +3050,7 @@ function ldMove(t, k) {
   if (extra) { t.d = null; t.tries = 0; ldCommit(t); ldArm(t); ldSync(t); } else ldNext(t, false);
 }
 function ldWin(t, s) {
-  clearTimeout(t.timer); t.st = 'end'; t.d = null;
+  clearTimeout(t.timer); t.st = 'end'; t.d = null; t.ready = new Set();
   const wn = t.mode === 'team' ? t.seats.filter(x => x.c === s.c || x.c === ldMate(s.c)) : [s]; t.winner = wn.map(x => x.user).join(' & '); t.msg = `${t.winner} ${wn.length > 1 ? 'win' : 'wins'}!`;
   if (t.fee > 0 && t.paid > 0) {
     const pot = t.fee * t.paid, names = ldHumans(t).map(x => x.user).concat(t.seats.filter(x => x.gone && x.paid).map(x => x.user));
@@ -3082,7 +3083,7 @@ function ldLeave(user) {
     if (t.host === user) t.host = ldHumans(t)[0].user;
     ldSync(t); ldCastLobby();
   } else if (t.st === 'play') { s.gone = true; for (const w of ldSocks(user)) send(w, { t: 'ludo', a: 'left' }); ldForfeit(t, s, 'left the game'); ldCastLobby(); }
-  else { s.gone = true; if (!ldHumans(t).length) return ldDrop(t); ldSync(t); }
+  else { s.gone = true; if (t.ready) t.ready.delete(user); if (!ldHumans(t).length) return ldDrop(t); if (ldAllReady(t)) return ldReset(t); ldSync(t); }
   for (const w of ldSocks(user)) send(w, { t: 'ludo', a: 'left' });
 }
 const mode0 = m => m.mode === 'team' ? 4 : ([2, 3, 4].includes(+m.max) ? +m.max : 4);
@@ -3153,7 +3154,7 @@ function ludoAct(ws, m) {
     if (t.seats.length !== 4 || t.seats.some(x => x.gone || x.out)) return ldErr(ws, 'Team Up needs 4 active players');
     t.mode = 'team'; t.msg = 'Team Up: Red + Yellow vs Green + Blue'; ldSync(t); ldCastLobby(); return;
   }
-  if (a === 'again') { if (t.st === 'end') ldReset(t); return; }
+  if (a === 'again') { if (t.st !== 'end') return; if (!t.ready) t.ready = new Set(); t.ready.add(u); if (ldAllReady(t)) ldReset(t); else ldSync(t); return; }
   if (a === 'bot') {
     if (t.host !== u || t.st !== 'lobby') return; if (t.fee) return ldErr(ws, 'Bots can only play free tables'); if (t.seats.length >= t.max) return;
     const used = new Set(t.seats.map(x => x.c)), c = (m.c !== undefined && [0, 1, 2, 3].includes(+m.c) && !used.has(+m.c)) ? +m.c : [0, 2, 1, 3].find(x => !used.has(x)); let n = 1; while (t.seats.some(x => x.user === 'Bot ' + n)) n++;
