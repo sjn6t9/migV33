@@ -3025,7 +3025,6 @@ function ldRoll(t) {
   const lg = ldLegal(t);
   if (!lg.length) {
     const tc = t.tok[col], yard = tc.every(p => p === -1 || p === 56);
-    if (yard && !(d === R.startAt || (d === 6 && R.sixOut)) && (t.tries || 0) < 2 && tc.some(p => p === -1)) { t.tries = (t.tries || 0) + 1; t.msg = `${s.user} rolled ${d} — try ${t.tries + 1} of 3`; return ldHold(t, true); }
     t.msg = `${s.user} rolled ${d} — no move`; return ldHold(t);
   }
   ldArm(t); ldSync(t);
