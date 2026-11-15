@@ -2612,13 +2612,18 @@ html body #view#view#view#view#view #chatbox #f#f#f#f#f#f#f#f#f#f#f#f #snd svg{f
 html body #view#view#view#view#view #chatbox #f#f#f#f#f#f#f#f#f#f#f#f input#t:placeholder-shown~#snd{display:none!important}
 html body #view#view#view#view#view #chatbox #f#f#f#f#f#f#f#f#f#f#f#f input#t:not(:placeholder-shown)~:is(#mic,#phb){display:none!important}
 
-/* chat view looks the same in every theme (navy style) */
-html[data-skin]:not([data-skin=navy]) body #view#view #log,html[data-skin]:not([data-skin=navy]) body #view#view #log.light,html[data-skin]:not([data-skin=navy]) body #view#view #log.navy,html[data-skin]:not([data-skin=navy]) body #view#view #log.dark{background:#0f1a2b!important;color:#f2f6ff!important;--nm-admin:#f37124;--nm-staff:#68bd45;--nm-mentor:#f5434a;--nm-headmentor:#1fb5b2;--nm-merchant:#9b82d8;--nm-vip:#f6d05f;--nm-user:#6db3ff;border:1px solid rgba(255,255,255,.3)!important}
-html[data-skin]:not([data-skin=navy]) body #view#view #log .b,html[data-skin]:not([data-skin=navy]) body #view#view #log .g2{background:#0f1a2b!important;border:1px solid rgba(255,255,255,.3)!important;color:#f2f6ff!important;box-shadow:inset 1.5px 1.5px 1px rgba(255,255,255,.35),inset -1px -1px 1px rgba(255,255,255,.1)!important;backdrop-filter:none!important;-webkit-backdrop-filter:none!important}
-html[data-skin]:not([data-skin=navy]) body #view#view #log .b.mine{background:rgba(80,190,120,.32)!important}
-html[data-skin]:not([data-skin=navy]) body #view#view #log .b.game{color:#9cc0ff!important}
-html[data-skin]:not([data-skin=navy]) body #view#view #log .inf,html[data-skin]:not([data-skin=navy]) body #view#view #log .inf.ok,html[data-skin]:not([data-skin=navy]) body #view#view #log .emo,html[data-skin]:not([data-skin=navy]) body #view#view #log .nt{color:#f2f6ff!important}
-html[data-skin]:not([data-skin=navy]) body #view#view #log .bts{color:#f2f6ff!important}
+/* chat view follows the theme: dark themes -> navy panel + light text, light theme -> light panel + dark text */
+html[data-theme=dark] body #view#view #log,html[data-theme=dark] body #view#view #log.light,html[data-theme=dark] body #view#view #log.navy,html[data-theme=dark] body #view#view #log.dark{background:#0f1a2b!important;color:#f2f6ff!important;--nm-admin:#f37124;--nm-staff:#68bd45;--nm-mentor:#f5434a;--nm-headmentor:#1fb5b2;--nm-merchant:#9b82d8;--nm-vip:#f6d05f;--nm-user:#6db3ff;border:1px solid rgba(255,255,255,.3)!important}
+html[data-theme=dark] body #view#view #log .b,html[data-theme=dark] body #view#view #log .g2{background:#0f1a2b!important;border:1px solid rgba(255,255,255,.3)!important;color:#f2f6ff!important;box-shadow:inset 1.5px 1.5px 1px rgba(255,255,255,.35),inset -1px -1px 1px rgba(255,255,255,.1)!important;backdrop-filter:none!important;-webkit-backdrop-filter:none!important}
+html[data-theme=dark] body #view#view #log .b.mine{background:rgba(80,190,120,.32)!important}
+html[data-theme=dark] body #view#view #log .b.game{color:#9cc0ff!important}
+html[data-theme=dark] body #view#view #log :is(.inf,.inf.ok,.emo,.nt,.bts){color:#f2f6ff!important}
+html[data-theme=light] body #view#view #log,html[data-theme=light] body #view#view #log.light,html[data-theme=light] body #view#view #log.navy,html[data-theme=light] body #view#view #log.dark{background:#f3f6fc!important;color:#101828!important;border:1px solid rgba(20,40,80,.14)!important;box-shadow:0 4px 18px rgba(20,40,80,.1)!important}
+html[data-theme=light] body #view#view #log .b,html[data-theme=light] body #view#view #log .g2{background:#fff!important;border:1px solid rgba(20,40,80,.14)!important;color:#101828!important;box-shadow:0 1px 4px rgba(20,40,80,.08)!important;backdrop-filter:none!important}
+html[data-theme=light] body #view#view #log .b.mine{background:#dcf4e4!important;border-color:rgba(46,157,79,.4)!important}
+html[data-theme=light] body #view#view #log :is(.inf,.inf.ok,.emo,.nt,.bts){color:#2a3340!important}
+/* chat log spans the full screen width and sits right under the top bar */
+html body #view#view#view #chatbox #log{margin:0 -8px!important;border-radius:0 0 22px 22px!important;border-left:0!important;border-right:0!important;flex:1!important}
 </style>
 </head>
 <body>
