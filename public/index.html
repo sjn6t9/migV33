@@ -2592,6 +2592,25 @@ html body #view#view#view#view .fz .ldcb button.ldsb{color:#000!important;backgr
 .ldpn.me{animation:ldfl2 .6s ease-in-out infinite alternate;transform-box:fill-box;transform-origin:center}
 @keyframes ldfl2{from{opacity:.45}to{opacity:1;filter:drop-shadow(0 0 .25px #ffb52e)}}
 .ldpn.me .lddr{stroke:#ffb52e;stroke-width:.14}
+
+/* Chat composer: emoji · text · photo · mic/send round button */
+html body #view#view#view#view#view #chatbox #f#f#f#f#f#f#f#f#f#f#f#f{display:flex!important;align-items:center;gap:4px!important;padding:6px 7px!important;border-radius:99px!important;background:#fff!important;border:1px solid rgba(20,40,80,.12)!important;box-shadow:0 2px 12px rgba(20,40,80,.12)!important}
+html[data-theme=dark] body #view#view#view#view#view #chatbox #f#f#f#f#f#f#f#f#f#f#f#f{background:#1d2535!important;border:1px solid rgba(255,255,255,.14)!important;box-shadow:0 2px 14px rgba(0,0,0,.35)!important}
+html body #view#view#view#view#view #chatbox #f#f#f#f#f#f#f#f#f#f#f#f input#t{outline:0!important;flex:1;min-width:0;background:transparent!important;border:0!important;box-shadow:none!important;border-radius:0!important;padding:8px 4px!important;font-size:16px!important;color:#101828!important;order:2}
+html[data-theme=dark] body #view#view#view#view#view #chatbox #f#f#f#f#f#f#f#f#f#f#f#f input#t{color:#f2f6ff!important}
+html body #view#view#view#view#view #chatbox #f#f#f#f#f#f#f#f#f#f#f#f input#t:focus{outline:0!important;box-shadow:none!important;border:0!important}
+html body #view#view#view#view#view #chatbox #f#f#f#f#f#f#f#f#f#f#f#f input#t::placeholder{color:#7b8698!important}
+html body #view#view#view#view#view #chatbox #f#f#f#f#f#f#f#f#f#f#f#f #emb{order:1}html body #view#view#view#view#view #chatbox #f#f#f#f#f#f#f#f#f#f#f#f #phb{order:3}html body #view#view#view#view#view #chatbox #f#f#f#f#f#f#f#f#f#f#f#f #mic{order:4}html body #view#view#view#view#view #chatbox #f#f#f#f#f#f#f#f#f#f#f#f #snd{order:4}
+html body #view#view#view#view#view #chatbox #f#f#f#f#f#f#f#f#f#f#f#f :is(#emb,#phb){display:grid!important;place-items:center;width:38px!important;height:38px!important;min-width:0!important;padding:0!important;border-radius:50%!important;background:transparent!important;border:0!important;box-shadow:none!important;color:#6b778a!important;flex:none}
+html body #view#view#view#view#view #chatbox #f#f#f#f#f#f#f#f#f#f#f#f :is(#emb,#phb) svg{width:24px!important;height:24px!important;stroke:#6b778a!important;fill:none!important;stroke-width:1.8!important}
+html body #view#view#view#view#view #chatbox #f#f#f#f#f#f#f#f#f#f#f#f #emb svg circle:nth-of-type(n+2){fill:#6b778a!important;stroke:none!important}
+html[data-theme=dark] body #view#view#view#view#view #chatbox #f#f#f#f#f#f#f#f#f#f#f#f :is(#emb,#phb) svg{stroke:#a9b4c8!important}html[data-theme=dark] body #view#view#view#view#view #chatbox #f#f#f#f#f#f#f#f#f#f#f#f #emb svg circle:nth-of-type(n+2){fill:#a9b4c8!important}
+html body #view#view#view#view#view #chatbox #f#f#f#f#f#f#f#f#f#f#f#f :is(#mic,#snd){display:grid!important;place-items:center;width:42px!important;height:42px!important;min-width:0!important;padding:0!important;border-radius:50%!important;background:#3a7bd5!important;border:0!important;box-shadow:none!important;flex:none;color:#fff!important}
+html[data-theme=dark] body #view#view#view#view#view #chatbox #f#f#f#f#f#f#f#f#f#f#f#f :is(#mic,#snd){background:#5288e0!important}
+html body #view#view#view#view#view #chatbox #f#f#f#f#f#f#f#f#f#f#f#f :is(#mic,#snd) svg{width:22px!important;height:22px!important;stroke:#fff!important;fill:none!important;stroke-width:2!important;stroke-linejoin:round}
+html body #view#view#view#view#view #chatbox #f#f#f#f#f#f#f#f#f#f#f#f #snd svg{fill:#fff!important}
+html body #view#view#view#view#view #chatbox #f#f#f#f#f#f#f#f#f#f#f#f input#t:placeholder-shown~#snd{display:none!important}
+html body #view#view#view#view#view #chatbox #f#f#f#f#f#f#f#f#f#f#f#f input#t:not(:placeholder-shown)~#mic{display:none!important}
 </style>
 </head>
 <body>
@@ -3817,7 +3836,7 @@ V.chat=async(r)=>{room=r;if(!r.startsWith('dm:'))lastRoom=r;target='';pend=null;
   view(`<div id="chatbox"><div id="rbw" class="hid${dm?' dmb':''}"><div class="rbi"><div id="rbar"></div></div></div><button type="button" id="rbt" aria-label="${dm?'Hide or show the chat bar':'Hide or show the room bar'}"><svg viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg></button>
    <div id="log" class="${localStorage.cbg||'light'}"></div>${dm?'':'<div id="tp" aria-label="Teen Patti Gold table"></div><div id="gp" aria-label="Game table"></div>'}<div id="uno" class="card" style="display:none"></div>
    <div class="row mu" id="tools" style="flex-wrap:wrap"><span id="to"></span></div>
-   <form id="f" class="row"><button type="button" id="phb" aria-label="Send a photo"><svg viewBox="0 0 24 24"><path d="M4 8h3l1.6-2.2h6.8L17 8h3v11H4z"/><circle cx="12" cy="13.2" r="3.4"/></svg></button><button type="button" id="emb" aria-label="Emoticons"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M8 14.2c1 1.4 2.4 2.1 4 2.1s3-.7 4-2.1"/><circle cx="9" cy="9.8" r=".6"/><circle cx="15" cy="9.8" r=".6"/></svg></button><input id="t" placeholder="Message…" autocomplete="off" maxlength="500"><button type="button" id="mic" aria-label="Record a voice note"><svg viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5.5 11.5a6.5 6.5 0 0013 0M12 18v3"/></svg></button><button class="o">Send</button></form>
+   <form id="f" class="row"><button type="button" id="emb" aria-label="Emoticons"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M8 14.2c1 1.4 2.4 2.1 4 2.1s3-.7 4-2.1"/><circle cx="9" cy="9.8" r=".6"/><circle cx="15" cy="9.8" r=".6"/></svg></button><input id="t" placeholder="Type a message…" autocomplete="off" maxlength="500"><button type="button" id="phb" aria-label="Send a photo"><svg viewBox="0 0 24 24"><path d="M4 8h3l1.6-2.2h6.8L17 8h3v11H4z"/><circle cx="12" cy="13.2" r="3.4"/></svg></button><button type="button" id="mic" aria-label="Record a voice note"><svg viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5.5 11.5a6.5 6.5 0 0013 0M12 18v3"/></svg></button><button class="o" id="snd" aria-label="Send"><svg viewBox="0 0 24 24"><path d="M21 3L3 10.5l6.5 2.3L12 19.5l2.2-5.3z"/><path d="M9.5 12.8L21 3"/></svg></button></form>
    <div id="recbar" class="row" hidden><button type="button" id="rcx" aria-label="Cancel recording">✕</button><span class="rdot"></span><b id="rect">0:00</b><span class="mu g">Recording…</span><button type="button" class="o" id="rcs">Send ➤</button></div><input type="file" id="pfile" accept="image/*" hidden></div>`);
   try{placeHdr(false)}catch{}
   document.querySelectorAll('#hdr #rbw,#hdr #rbt').forEach(n=>n.remove());
