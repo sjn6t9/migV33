@@ -4630,7 +4630,7 @@ const ldXY0=(c,p,k)=>{let r;if(p===-1){const y=LDY[c];r=[y[0]+(k%2?4:2),y[1]+(k>
 const ldXY=(c,p,k)=>{const[x,y]=ldXY0(c,p,k),a=(LD.rot||0)*Math.PI/180,dx=x-7.5,dy=y-7.5;return[7.5+dx*Math.cos(a)-dy*Math.sin(a),7.5+dx*Math.sin(a)+dy*Math.cos(a)]};
 const ldPin=col=>`<path d="M0 .34C-.12 .1 -.34 -.05 -.34 -.26a.34.34 0 1 1 .68 0C.34 -.05 .12 .1 0 .34z" class="ldpb"/><circle cy="-.27" r=".19" fill="${col}" class="ldpd"/>`;
 const ldPips2=(d,col,sh)=>`<g${sh?' class="ldrol"':''}>${ldPipXY[d].map(q=>`<circle cx="${q[0]*1.15}" cy="${q[1]*1.15}" r=".2" fill="${col}" stroke="rgba(0,0,0,.35)" stroke-width=".03"/>`).join('')}</g>`;
-function ldDieRoll(){const d=$('lddie');if(!d)return;d.classList.add('rolling');clearInterval(LD.dri);clearTimeout(LD.rto);LD.dri=setInterval(()=>{const p=$('lddp');if(p&&LD.pd==null)p.innerHTML=ldPips2(1+Math.floor(Math.random()*6),LD.dc||'#444',0)},85);LD.rto=setTimeout(()=>{clearInterval(LD.dri);LD.dri=0;const e=$('lddie');if(e)e.classList.remove('rolling');},900)}
+function ldDieRoll(){const d=$('lddie');if(!d)return;d.classList.add('rolling');clearInterval(LD.dri);clearTimeout(LD.rto);LD.dri=setInterval(()=>{const p=$('lddp');if(p)p.innerHTML=ldPips2(1+Math.floor(Math.random()*6),LD.dc||'#444',0)},85);LD.rto=setTimeout(()=>{clearInterval(LD.dri);LD.dri=0;const e=$('lddie');if(e)e.classList.remove('rolling');const q=$('lddp');if(q&&LD.pd)q.innerHTML=ldPips2(LD.pd,LD.dc||'#444',1);},900)}
 const ldPipXY={1:[[0,0]],2:[[-.34,-.34],[.34,.34]],3:[[-.34,-.34],[0,0],[.34,.34]],4:[[-.34,-.34],[.34,-.34],[-.34,.34],[.34,.34]],5:[[-.34,-.34],[.34,-.34],[0,0],[-.34,.34],[.34,.34]],6:[[-.34,-.38],[.34,-.38],[-.34,0],[.34,0],[-.34,.38],[.34,.38]]};
 function ldBoard(){
   let s=`<svg id="ldsvg" viewBox="0 0 15 18" role="img" aria-label="Ludo board"><rect width="15" height="18" class="ldbg0"/><g transform="rotate(${LD.rot||0} 7.5 7.5)">`;
@@ -4665,7 +4665,7 @@ function ldPlace(t,me){
   const st=document.getElementById('ldstars');if(st)st.style.display=t.rules&&t.rules.safe===false?'none':'';
   const die=document.getElementById('lddie'),cur=t.st==='play'?t.seats.find(s=>s.user===t.turn):null;
   if(die){die.style.display=cur?'':'none';if(cur){document.getElementById('lddr').setAttribute('fill','#fff');die.classList.toggle('me',!!(my&&t.d==null));if(t.d&&LD.pd==null&&!die.classList.contains('rolling'))ldDieRoll();LD.pd=t.d==null?null:t.d;
-    LD.dc=LDC[cur.c];if(!(LD.dri&&t.d==null))document.getElementById('lddp').innerHTML=t.d?ldPips2(t.d,LDC[cur.c],1):(my?`<text class="ldtp" transform="scale(.01)" text-anchor="middle" dominant-baseline="middle" style="fill:${LDC[cur.c]}">TAP</text>`:'')}}}
+    LD.dc=LDC[cur.c];if(!LD.dri)document.getElementById('lddp').innerHTML=t.d?ldPips2(t.d,LDC[cur.c],1):(my?`<text class="ldtp" transform="scale(.01)" text-anchor="middle" dominant-baseline="middle" style="fill:${LDC[cur.c]}">TAP</text>`:'')}}}
 const ldPips={1:[4],2:[0,8],3:[0,4,8],4:[0,2,6,8],5:[0,2,4,6,8],6:[0,2,3,5,6,8]};
 const ldDie=(d,cls='')=>`<div class="ldd ${cls}">${d?Array.from({length:9},(_,i)=>`<i${ldPips[d].includes(i)?' class="on"':''}></i>`).join(''):'<b>?</b>'}</div>`;
 async function ldVerify(l){if(!l||!window.crypto?.subtle)return'';try{const b=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(l.s+':'+l.d));return[...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,'0')).join('')===l.h?'ok':'bad'}catch{return''}}
