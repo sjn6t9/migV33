@@ -3071,8 +3071,29 @@ function ldForfeit(t, s, why) {
   if (live.length === 1 || (t.mode === 'team' && live.every(x => x.c % 2 === live[0].c % 2))) return ldWin(t, live[0]);
   if (ldCur(t) === s) { t.turn = (t.turn + t.seats.length - 1) % t.seats.length; ldNext(t, false); } else ldSync(t);
 }
+// Live voice costs LD_VOICE_RATE coins per second for each person in it (voice MESSAGES are free).
+const LD_VOICE_RATE = 5;
+function ldVoiceOff(t, u, reason) {
+  if (!t.voice.delete(u)) return false;
+  const paid = (t.vacc && t.vacc[u]) || 0; if (t.vacc) delete t.vacc[u];
+  if (paid) { try { addTx(u, 'game', `Ludo live voice (${Math.round(paid / LD_VOICE_RATE)}s)`, -paid); } catch {} }
+  if (reason) for (const w of ldSocks(u)) send(w, { t: 'ludo', a: 'vstop', reason });
+  if (!t.voice.size && t.vt) { clearInterval(t.vt); t.vt = null; }
+  return true;
+}
+function ldVoiceTick(t) {
+  if (LUDO.get(t.id) !== t) { for (const u of [...t.voice]) ldVoiceOff(t, u); clearInterval(t.vt); t.vt = null; return; }
+  t.vacc = t.vacc || {}; const paid = [], out = [];
+  for (const u of [...t.voice]) {
+    const ok = db.prepare('update users set coins=coins-? where name=? and coins>=?').run(LD_VOICE_RATE, u, LD_VOICE_RATE).changes;
+    if (ok) { t.vacc[u] = (t.vacc[u] || 0) + LD_VOICE_RATE; paid.push(u); } else out.push(u);
+  }
+  if (paid.length) pushCoins(...paid);
+  for (const u of out) ldVoiceOff(t, u, 'Live voice stopped: you ran out of coins');
+  if (out.length) { ldSync(t); pushCoins(...out); }
+}
 function ldLeave(user) {
-  for (const x of LUDO.values()) if (x.voice && x.voice.delete(user)) setImmediate(() => ldSync(x));
+  for (const x of LUDO.values()) if (x.voice && ldVoiceOff(x, user)) setImmediate(() => ldSync(x));
   const w0 = ldWatching(user); if (w0) { w0.spec.delete(user); for (const w of ldSocks(user)) send(w, { t: 'ludo', a: 'left' }); }
   const t = ldOf(user); if (!t) return;
   const s = t.seats.find(x => x.user === user);
@@ -3118,7 +3139,7 @@ function ludoAct(ws, m) {
   }
   if (a === 'leave') return ldLeave(u);
   const tt = t0 || ldWatching(u);
-  if (a === 'chat' || a === 'vjoin' || a === 'vleave' || a === 'vsig' || a === 'chatlog') {
+  if (a === 'chat' || a === 'vmsg' || a === 'vjoin' || a === 'vleave' || a === 'vsig' || a === 'chatlog') {
     if (!tt) return;
     const mem = [...tt.seats.filter(x => !x.bot && !x.gone).map(x => x.user), ...tt.spec];
     if (a === 'chatlog') return send(ws, { t: 'ludo', a: 'chatlog', items: tt.chat });
@@ -3128,8 +3149,19 @@ function ludoAct(ws, m) {
       const o = { from: u, text, ts: Date.now() }; tt.chat.push(o); if (tt.chat.length > 50) tt.chat.shift();
       for (const x of mem) for (const w of ldSocks(x)) send(w, { t: 'ludo', a: 'chat', ...o }); return;
     }
-    if (a === 'vjoin') { tt.voice.add(u); ldSync(tt); return; }
-    if (a === 'vleave') { tt.voice.delete(u); ldSync(tt); return; }
+    if (a === 'vjoin') {
+      if (coins(u) < LD_VOICE_RATE) return ldErr(ws, `Live voice costs ${LD_VOICE_RATE} coins per second — you don't have enough coins`);
+      tt.voice.add(u); if (!tt.vt) tt.vt = setInterval(() => ldVoiceTick(tt), 1000); ldSync(tt); return;
+    }
+    if (a === 'vleave') { ldVoiceOff(tt, u); ldSync(tt); return; }
+    if (a === 'vmsg') {   // voice message: free, delivered to everyone at the table (they auto-play it)
+      const au = String(m.audio || ''); if (au.length > 420000 || !/^data:audio\/(webm|ogg|mp4|mpeg|wav|aac|x-m4a)(;codecs=[a-z0-9.,-]+)?;base64,[A-Za-z0-9+\/=]+$/i.test(au)) return ldErr(ws, 'That voice message could not be sent');
+      if (Date.now() - (ws._ldv || 0) < 1200) return; ws._ldv = Date.now();
+      const o = { from: u, text: '', vm: 1, dur: Math.max(1, Math.min(30, Math.round(+m.dur || 1))), ts: Date.now(), id: Date.now() + '' + Math.floor(Math.random() * 1000) };
+      tt.chat.push({ ...o, audio: au }); if (tt.chat.length > 50) tt.chat.shift();
+      const keep = tt.chat.filter(x => x.audio); if (keep.length > 6) for (const x of keep.slice(0, keep.length - 6)) delete x.audio;
+      for (const x of mem) for (const w of ldSocks(x)) send(w, { t: 'ludo', a: 'chat', ...o, audio: au }); return;
+    }
     if (a === 'vsig') { const to = String(m.to || ''); if (!mem.includes(to) || !tt.voice.has(u) || !tt.voice.has(to)) return; for (const w of ldSocks(to)) send(w, { t: 'ludo', a: 'vsig', from: u, data: m.data }); return; }
   }
   if (!t0) return ldErr(ws, 'You are not at a table');
@@ -3187,7 +3219,7 @@ function closeWs(ws) {
     const upd = () => { if (hasSock(u0)) return; online(); [...new Set(rooms0)].filter(x => !x.startsWith('dm:')).forEach(castRoster); };
     setImmediate(upd); if (!ws._bye) setTimeout(upd, AWAY_MS + 1e3);
   }
-  try { if (ws.user && !hasSock(ws.user)) for (const x of LUDO.values()) if (x.voice && x.voice.delete(ws.user)) ldSync(x); } catch {}
+  try { if (ws.user && !hasSock(ws.user)) for (const x of LUDO.values()) if (x.voice && ldVoiceOff(x, ws.user)) ldSync(x); } catch {}
   try { if (ws.user && !hasSock(ws.user)) { const lt = ldOf(ws.user); if (lt && lt.st === 'lobby') ldLeave(ws.user); } } catch {}
   try { for (const c of [...calls.values()]) if (c.fromWs === ws || c.toWs === ws) callEnd(c, c.state === 'ring' ? 'cancelled' : 'dropped', ws.user); } catch {}
   // an explicit exit (tab closed / Leave) leaves at once; a dropped connection (app minimised, bad network) keeps the room for a grace period
