@@ -3103,6 +3103,15 @@ function ludoAct(ws, m) {
   }
   if (a === 'join') {
     if (t0) return ldErr(ws, 'You are already at a table'); const t = LUDO.get(String(m.id));
+    if (t && t.st === 'play') {   // invited into a running game: the table grows to 4 seats
+      if (!t.inv.has(u)) return ldErr(ws, 'You need an invitation to join a running game');
+      const used = new Set(t.seats.map(x => x.c)), c = [1, 3, 0, 2].find(x => !used.has(x)); if (c === undefined) return ldErr(ws, 'Table is full');
+      if (t.fee && coins(u) < t.fee) return ldErr(ws, 'Not enough coins for this entry');
+      const cur = ldCur(t), seat = { user: u, c };
+      if (t.fee) { db.transaction(() => { db.prepare('update users set coins=coins-? where name=? and coins>=?').run(t.fee, u, t.fee); db.prepare('insert into lc_pending values(?,?,?)').run('ludo:' + t.id, u, t.fee); addTx(u, 'game', 'Ludo: entry fee', -t.fee); seat.paid = true; t.paid++; })(); pushCoins(u); }
+      const o = ldWatching(u); if (o) o.spec.delete(u); t.inv.delete(u); t.seats.push(seat); t.seats.sort((x, y) => x.c - y.c); t.turn = t.seats.indexOf(cur); t.max = 4; t.msg = u + ' joined as ' + ['Red', 'Green', 'Yellow', 'Blue'][c];
+      ldSync(t); ldCastLobby(); return;
+    }
     if (!t || t.st !== 'lobby') return ldErr(ws, 'This table is no longer open'); if (t.priv && !t.inv.has(u)) return ldErr(ws, 'This table is invite-only'); if (t.seats.length >= t.max) return ldErr(ws, 'Table is full');
     if (t.fee && coins(u) < t.fee) return ldErr(ws, 'Not enough coins for this entry');
     const used = new Set(t.seats.map(x => x.c)), c = [0, 2, 1, 3].find(x => !used.has(x)); t.seats.push({ user: u, c }); ldSync(t); ldCastLobby(); return;
@@ -3130,14 +3139,19 @@ function ludoAct(ws, m) {
     if (!row) return ldErr(ws, 'No such user'); const n = row.name; if (n === u || t.seats.some(x => x.user === n)) return ldErr(ws, 'Already at this table');
     if (db.prepare('select 1 from blocks where (a=? and b=?) or (a=? and b=?)').get(u, n, n, u)) return ldErr(ws, 'You cannot invite this user');
     if (t.st === 'lobby' && t.seats.length >= t.max) return ldErr(ws, 'Table is full');
-    const watch = t.st === 'play'; t.inv.add(n); for (const w of ldSocks(n)) send(w, { t: 'ludo', a: 'invite', id: t.id, from: u, fee: t.fee, max: t.max, watch });
-    notify(n, 'game', t.st === 'play' ? `${u} invited you to watch a Ludo game` : `${u} invited you to play Ludo${t.fee ? ' (' + t.fee + ' coins entry)' : ''}`, ''); ldSync(t); send(ws, { t: 'ludo', a: 'ok', msg: 'Invitation sent to ' + n }); return;
+    const join = t.st === 'play' && t.mode === 'classic' && t.seats.length < 4, watch = t.st === 'play' && !join; t.inv.add(n); for (const w of ldSocks(n)) send(w, { t: 'ludo', a: 'invite', id: t.id, from: u, fee: t.fee, max: t.st === 'play' ? 4 : t.max, watch, join });
+    notify(n, 'game', join ? `${u} invited you to join a running Ludo game${t.fee ? ' (' + t.fee + ' coins entry)' : ''}` : t.st === 'play' ? `${u} invited you to watch a Ludo game` : `${u} invited you to play Ludo${t.fee ? ' (' + t.fee + ' coins entry)' : ''}`, ''); ldSync(t); send(ws, { t: 'ludo', a: 'ok', msg: 'Invitation sent to ' + n }); return;
   }
   if (a === 'color') { if (t.st !== 'lobby') return; const c = +m.c, me = t.seats.find(x => x.user === u); if (![0, 1, 2, 3].includes(c) || t.seats.some(x => x.c === c)) return ldErr(ws, 'That colour is taken'); me.c = c; ldSync(t); return; }
   if (a === 'kick') { if (t.host !== u || t.st !== 'lobby') return; const x = t.seats.find(y => y.c === +m.c && y.user !== u); if (!x) return; t.seats = t.seats.filter(y => y !== x); if (!x.bot) { t.inv.delete(x.user); for (const w of ldSocks(x.user)) send(w, { t: 'ludo', a: 'left', why: 'The host removed you from the table' }); } ldSync(t); ldCastLobby(); return; }
   if (a === 'set') {
     if (t.host !== u || t.st !== 'lobby') return; const mode = m.mode === 'team' ? 'team' : 'classic', max = mode === 'team' ? 4 : ([2, 3, 4].includes(+m.max) ? +m.max : t.max), turn = LD_TURNS.includes(+m.turn) ? +m.turn : t.turnMs / 1000;
     if (max < t.seats.length) return ldErr(ws, 'Remove a player first'); t.mode = mode; t.max = max; if (m.n !== undefined) t.n = Math.min(4, Math.max(1, +m.n | 0 || 4)); if (m.botLvl) t.botLvl = m.botLvl === 'easy' ? 'easy' : 'hard'; if (m.rules) t.rules = ldRules(t.rules, m.rules); t.turnMs = turn * 1000; ldSync(t); ldCastLobby(); return;
+  }
+  if (a === 'team') {   // 4 players at a running classic table can switch to Team Up (Red+Yellow vs Green+Blue)
+    const hs = t.seats.find(x => x.user === t.host); if (t.st !== 'play' || t.mode !== 'classic' || !(t.host === u || (hs && hs.gone))) return;
+    if (t.seats.length !== 4 || t.seats.some(x => x.gone || x.out)) return ldErr(ws, 'Team Up needs 4 active players');
+    t.mode = 'team'; t.msg = 'Team Up: Red + Yellow vs Green + Blue'; ldSync(t); ldCastLobby(); return;
   }
   if (a === 'again') { if (t.st === 'end') ldReset(t); return; }
   if (a === 'bot') {
