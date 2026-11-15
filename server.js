@@ -2921,7 +2921,7 @@ function onWsMessage(ws, raw) {
 }
 // ---------- Fun Zone: Ludo (server-authoritative multiplayer) ----------
 // The server owns the dice and the board. Before every roll it publishes sha256(secret:dice); the secret and dice are revealed with the roll so anyone can verify the result was fixed beforehand.
-const LUDO = new Map(); let ludoSeq = 0;
+const LUDO = new Map(); let ludoSeq = 0; const LD_LIVES = 6;   // a missed turn costs one chance; losing all 6 loses the game
 const LD_START = [0, 13, 26, 39], LD_SAFE = new Set([0, 13, 26, 39, 8, 21, 34, 47]), LD_FEES = [0, 50, 100, 500, 1000], LD_TURNS = [15, 25, 40, 60];
 const LD_RULES = { startAt: 6, sixAgain: true, sixOut: true, safe: true, oneCut: false, oneSkip: false, sixOut3: false, sixSkip: true, capAgain: true, homeAgain: true, mustCutHome: false, mustCut: false, mustOut: false, barrier: false };
 const ldRules = (cur, inp) => { const r = { ...cur }; if (inp && typeof inp === 'object') { for (const k of Object.keys(LD_RULES)) if (k in inp) r[k] = k === 'startAt' ? (+inp[k] === 1 ? 1 : 6) : !!inp[k]; } return r; };
@@ -2965,7 +2965,7 @@ function ldLegal(t) {
 }
 function ldView(t, me) {
   const s = t.st === 'play' ? ldCur(t) : null;
-  return { id: t.id, host: t.host, fee: t.fee, max: t.max, mode: t.mode, rules: t.rules, n: t.n, botLvl: t.botLvl, ctl: s ? ldCol(t) : null, priv: !!t.priv, turnS: t.turnMs / 1000, inv: t.seats.some(s => s.user === me) ? [...t.inv] : [], voice: [...t.voice], spec: !t.seats.some(s => s.user === me), watchers: t.spec ? t.spec.size : 0, ready: t.st === 'end' ? [...(t.ready || [])] : [], st: t.st, seats: t.seats.filter(x => !x.gone).map(x => ({ user: x.user, bot: !!x.bot, c: x.c, out: !!x.out })), tok: t.st === 'lobby' ? [0, 1, 2, 3].map(() => Array(t.n).fill(-1)) : t.tok, turn: s ? s.user : null, d: t.d, left: Math.max(0, (t.deadline || 0) - Date.now()), commit: t.pre ? t.pre.h : null, last: t.last || null, legal: s && s.user === me ? ldLegal(t) : [], winner: t.winner || null, pot: t.fee * t.paid, msg: t.msg || '' };
+  return { id: t.id, host: t.host, fee: t.fee, max: t.max, mode: t.mode, rules: t.rules, n: t.n, botLvl: t.botLvl, ctl: s ? ldCol(t) : null, priv: !!t.priv, turnS: t.turnMs / 1000, inv: t.seats.some(s => s.user === me) ? [...t.inv] : [], voice: [...t.voice], spec: !t.seats.some(s => s.user === me), watchers: t.spec ? t.spec.size : 0, ready: t.st === 'end' ? [...(t.ready || [])] : [], st: t.st, seats: t.seats.filter(x => !x.gone).map(x => ({ user: x.user, bot: !!x.bot, c: x.c, out: !!x.out, lives: x.bot ? LD_LIVES : Math.max(0, LD_LIVES - (x.miss || 0)) })), tok: t.st === 'lobby' ? [0, 1, 2, 3].map(() => Array(t.n).fill(-1)) : t.tok, turn: s ? s.user : null, d: t.d, left: Math.max(0, (t.deadline || 0) - Date.now()), commit: t.pre ? t.pre.h : null, last: t.last || null, legal: s && s.user === me ? ldLegal(t) : [], winner: t.winner || null, pot: t.fee * t.paid, msg: t.msg || '' };
 }
 function ldSync(t) { for (const s of t.seats) if (!s.bot) for (const w of ldSocks(s.user)) send(w, { t: 'ludo', a: 'table', table: ldView(t, s.user) }); for (const u of t.spec || []) for (const w of ldSocks(u)) send(w, { t: 'ludo', a: 'table', table: ldView(t, u) }); }
 const ldWatching = u => [...LUDO.values()].find(t => t.spec && t.spec.has(u));
@@ -2994,7 +2994,7 @@ function ldArm(t) {
 function ldAuto(t) {
   if (t.st !== 'play') return;
   const s = ldCur(t);
-  if (!s.bot) { s.miss = (s.miss || 0) + 1; if (s.miss >= 3) return ldForfeit(t, s, 'was removed for being inactive'); }
+  if (!s.bot) { s.miss = (s.miss || 0) + 1; if (s.miss >= LD_LIVES) return ldForfeit(t, s, 'ran out of all ' + LD_LIVES + ' chances'); }
   if (t.d == null) ldRoll(t); else ldMove(t, ldPick(t));
 }
 function ldPick(t) {
@@ -3173,7 +3173,7 @@ function ludoAct(ws, m) {
     t.seats.sort((x, y) => x.c - y.c); t.tok = [0, 1, 2, 3].map(() => Array(t.n).fill(-1)); t.cut = [false, false, false, false]; t.ones = 0; t.st = 'play'; t.turn = 0; t.sixes = 0; t.msg = ''; ldCommit(t); ldArm(t); ldSync(t); ldCastLobby(); return;
   }
   if (t.st !== 'play') return;
-  const s = ldCur(t); if (s.user !== u) return; s.miss = 0;
+  const s = ldCur(t); if (s.user !== u) return;
   if (a === 'roll') return ldRoll(t);
   if (a === 'move') return ldMove(t, +m.k);
 }
