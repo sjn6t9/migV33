@@ -66,6 +66,24 @@ const GIFTS = { rose: { n: 'Rose', c: 10, e: '🌹' }, heart: { n: 'Heart', c: 2
 const app = express();
 app.set('trust proxy', 1); // behind Caddy: use the real visitor IP for rate limits
 app.use(express.json());
+// ---------- IP tracking & IP blocks ----------
+db.exec(`create table if not exists user_ips(user text, ip text, first int, last int, hits int default 1, ua text default '', via text default '', primary key(user,ip));
+create index if not exists user_ips_ip on user_ips(ip);
+create table if not exists ip_bans(ip text primary key, reason text default '', by text default '', ts int)`);
+for (const a_ of ["alter table users add column reg_ip text default ''", "alter table users add column last_ip text default ''", 'alter table users add column last_seen int default 0']) { try { db.exec(a_); } catch {} }
+const IPB = new Set(db.prepare('select ip from ip_bans').all().map(x => x.ip));
+const cip = q => String(q.ip || q.socket?.remoteAddress || '').replace(/^::ffff:/, '').slice(0, 64);
+const wsIp = req => { const x = String(req.headers['x-forwarded-for'] || '').split(',').map(t => t.trim()).filter(Boolean); return String(x.length ? x[x.length - 1] : req.socket?.remoteAddress || '').replace(/^::ffff:/, '').slice(0, 64); };
+const ipSeen = new Map();
+const trackIp = (user, ip, ua, via) => {
+  if (!user || !ip) return; const k = user + '|' + ip, now = Date.now();
+  if (now - (ipSeen.get(k) || 0) < 60e3) return; ipSeen.set(k, now); if (ipSeen.size > 20000) ipSeen.clear();
+  try {
+    db.prepare('insert into user_ips(user,ip,first,last,hits,ua,via) values(?,?,?,?,1,?,?) on conflict(user,ip) do update set last=excluded.last, hits=hits+1, ua=excluded.ua').run(user, ip, now, now, String(ua || '').slice(0, 200), via || '');
+    db.prepare("update users set last_ip=?, last_seen=?, reg_ip=case when coalesce(reg_ip,'')='' then ? else reg_ip end where name=?").run(ip, now, ip, user);
+  } catch (e) { console.log('[ip]', e.message); }
+};
+app.use((q, r, next) => { if (IPB.size && IPB.has(cip(q)) && /^\/api\//.test(q.path)) return r.status(403).json({ error: 'Access from your network has been blocked by the staff.' }); next(); });
 // The GitHub repo may hold everything in one flat folder: fall back to files next to server.js
 const newest = (...fs_) => fs_.filter(f => fs.existsSync(f)).sort((a, b) => fs.statSync(b).mtimeMs - fs.statSync(a).mtimeMs)[0];
 // Version beacon: the browser polls this and reloads itself when the page or the server code changes
@@ -153,6 +171,7 @@ app.post('/api/login', (q, r) => {
   const u = db.prepare('select * from users where lower(name)=lower(?)').get(name || '');
   if (!u || !bcrypt.compareSync(pass || '', u.pass)) return bad(r, 'Wrong username or password', 401);
   if (u.banned) return bad(r, 'This account has been banned.' + (u.ban_reason ? ' Reason: ' + u.ban_reason : ''), 403);
+  trackIp(u.name, cip(q), q.headers['user-agent'], 'login');
   r.json({ token: sign(u.id, u.name) });
 });
 
@@ -237,7 +256,7 @@ const auth = (q, r, next) => {
   try { const t = jwt.verify((q.headers.authorization || '').slice(7), SECRET); u = db.prepare('select name,banned,ban_reason from users where id=?').get(t.id); } catch {}
   if (!u) return bad(r, 'Please log in again', 401);
   if (u.banned) return bad(r, 'Your account has been banned.' + (u.ban_reason ? ' Reason: ' + u.ban_reason : ''), 403);
-  q.user = u.name; next();
+  q.user = u.name; trackIp(u.name, cip(q), q.headers['user-agent'], 'api'); next();
 };
 const addTx = (user, kind, title, amount) => { const x = db.prepare('insert into txs(user,kind,title,amount,ts) values(?,?,?,?,?)').run(user, kind, title, amount, Date.now()); try { lbFromTx(user, kind, title, amount); } catch (e) { console.log('[lb]', e.message); } return x; };
 const roleOf = n => db.prepare('select role from users where name=?').get(n)?.role || 'user';
@@ -1204,7 +1223,7 @@ app.delete('/api/admin/gifts/:k', auth, ok((q, r) => {
 
 // ---------- Staff admin panel ----------
 const COUNTRIES = ['Afghanistan','Albania','Algeria','Argentina','Armenia','Australia','Austria','Azerbaijan','Bahrain','Bangladesh','Belarus','Belgium','Bhutan','Bolivia','Bosnia and Herzegovina','Brazil','Brunei','Bulgaria','Cambodia','Cameroon','Canada','Chile','China','Colombia','Costa Rica','Croatia','Cuba','Cyprus','Czech Republic','Denmark','Dominican Republic','Ecuador','Egypt','El Salvador','Estonia','Ethiopia','Finland','France','Georgia','Germany','Ghana','Greece','Guatemala','Hong Kong','Hungary','Iceland','India','Indonesia','Iran','Iraq','Ireland','Israel','Italy','Ivory Coast','Jamaica','Japan','Jordan','Kazakhstan','Kenya','Kuwait','Kyrgyzstan','Laos','Latvia','Lebanon','Libya','Lithuania','Luxembourg','Malaysia','Maldives','Malta','Mexico','Moldova','Mongolia','Morocco','Myanmar','Nepal','Netherlands','New Zealand','Nigeria','North Macedonia','Norway','Oman','Pakistan','Palestine','Panama','Paraguay','Peru','Philippines','Poland','Portugal','Qatar','Romania','Russia','Saudi Arabia','Senegal','Serbia','Singapore','Slovakia','Slovenia','Somalia','South Africa','South Korea','Spain','Sri Lanka','Sudan','Sweden','Switzerland','Syria','Taiwan','Tajikistan','Tanzania','Thailand','Tunisia','Turkey','Turkmenistan','Uganda','Ukraine','United Arab Emirates','United Kingdom','United States','Uruguay','Uzbekistan','Venezuela','Vietnam','Yemen','Zambia','Zimbabwe'];
-const RENAME_COLS = [['msgs', 'user'], ['posts', 'user'], ['comments', 'user'], ['reacts', 'user'], ['txs', 'user'], ['favs', 'user'], ['bans', 'user'], ['bans', 'by'], ['room_mods', 'user'],
+const RENAME_COLS = [['user_ips', 'user'], ['msgs', 'user'], ['posts', 'user'], ['comments', 'user'], ['reacts', 'user'], ['txs', 'user'], ['favs', 'user'], ['bans', 'user'], ['bans', 'by'], ['room_mods', 'user'],
   ['mutes', 'user'], ['tp_pending', 'user'], ['post_shares', 'user'], ['post_hidden', 'user'], ['stories', 'user'], ['story_views', 'user'], ['friends', 'a'], ['friends', 'b'], ['blocks', 'a'], ['blocks', 'b'], ['call_log', 'a'], ['call_log', 'b'], ['reels', 'user'], ['reel_likes', 'user'], ['reel_views', 'user'], ['reel_comments', 'user'], ['reel_files', 'user'], ['rooms', 'owner'], ['users', 'parent'], ['role_requests', 'from_user'], ['role_requests', 'to_user'], ['role_requests', 'decided_by'], ['tags', 'user'], ['tags', 'parent'], ['commissions', 'spender'], ['commissions', 'parent'], ['mevents', 'user'], ['payouts', 'user'], ['role_history', 'user'], ['role_history', 'by'], ['gift_inv', 'user'], ['lc_pending', 'user'], ['rb_pending', 'user']];   // room-name tables are handled by the room rename
 const alog = (staff, target, action, detail = '') => db.prepare('insert into admin_log(staff,target,action,detail,ts) values(?,?,?,?,?)').run(staff, target, action, String(detail).slice(0, 200), Date.now());
 const kickUser = (name, why) => wss.clients.forEach(w => { if (w.user === name) { send(w, { t: 'error', error: why }); try { w.close(); } catch {} } });
@@ -1222,12 +1241,46 @@ app.get('/api/admin/countries', auth, ok((q, r) => r.json(COUNTRIES)));
 app.get('/api/admin/users', auth, ok((q, r) => {
   if (roleOf(q.user) !== 'staff') return bad(r, 'Only staff can use the admin panel', 403);
   const s = String(q.query.q || '').replace(/[%_\\]/g, '').slice(0, 40);
-  const rows = db.prepare("select name,role,xp,coins,banned,email,full_name,verified from users where name like '%'||@s||'%' or email like '%'||@s||'%' or full_name like '%'||@s||'%' or mobile like '%'||@s||'%' order by banned desc, case role when 'staff' then 0 when 'admin' then 1 else 2 end, name limit 60").all({ s });
+  const rows = db.prepare("select name,role,xp,coins,banned,email,full_name,verified from users where name like '%'||@s||'%' or email like '%'||@s||'%' or full_name like '%'||@s||'%' or mobile like '%'||@s||'%' or name in (select user from user_ips where ip=@s) order by banned desc, case role when 'staff' then 0 when 'admin' then 1 else 2 end, name limit 60").all({ s });
   r.json(rows.map(u => ({ ...u, level: level(u.xp), unlimited: isMain(u.name) })));
 }));
 app.get('/api/admin/log', auth, ok((q, r) => {
   if (roleOf(q.user) !== 'staff') return bad(r, 'Only staff can use the admin panel', 403);
   r.json(db.prepare('select staff,target,action,detail,ts from admin_log order by id desc limit 40').all());
+}));
+app.get('/api/admin/users/:n/track', auth, ok((q, r) => {
+  if (!staffOnly(q, r)) return;
+  const u = db.prepare('select * from users where name=?').get(q.params.n); if (!u) return bad(r, 'User not found', 404);
+  const ips = db.prepare('select ip,first,last,hits,ua,via from user_ips where user=? order by last desc limit 100').all(u.name).map(x => ({
+    ...x, banned: IPB.has(x.ip), others: db.prepare('select user from user_ips where ip=? and user!=? order by last desc limit 12').all(x.ip, u.name).map(z => z.user) }));
+  const linked = [...new Set(ips.flatMap(x => x.others))];
+  const c = (sql, ...a) => { try { return db.prepare(sql).get(...a).n; } catch { return 0; } };
+  let online = false; for (const w of wss.clients) if (w.user === u.name) { online = true; break; }
+  r.json({ name: u.name, online, room: online ? curRoom(u.name) : '', regIp: u.reg_ip || '', lastIp: u.last_ip || '', lastSeen: u.last_seen || 0, joined: u.joined || 0, presence: u.presence,
+    ips, linked, banned: !!u.banned, ban_reason: u.ban_reason || '',
+    counts: { messages: c('select count(*) n from msgs where user=?', u.name), posts: c('select count(*) n from posts where user=?', u.name), comments: c('select count(*) n from comments where user=?', u.name),
+      transactions: c('select count(*) n from txs where user=?', u.name), friends: c("select count(*) n from friends where status='accepted' and (a=? or b=?)", u.name, u.name), reels: c('select count(*) n from reels where user=?', u.name) } });
+}));
+app.get('/api/admin/ipbans', auth, ok((q, r) => {
+  if (!staffOnly(q, r)) return;
+  r.json(db.prepare('select ip,reason,by,ts from ip_bans order by ts desc limit 300').all().map(x => ({ ...x, users: db.prepare('select user from user_ips where ip=? order by last desc limit 20').all(x.ip).map(z => z.user) })));
+}));
+const IP_RE = /^[0-9a-fA-F:.]{3,45}$/;
+app.post('/api/admin/ipban', auth, ok((q, r) => {
+  if (!staffOnly(q, r)) return;
+  const ip = String(q.body?.ip || '').trim().replace(/^::ffff:/, ''), reason = String(q.body?.reason || '').slice(0, 100);
+  if (!IP_RE.test(ip)) return bad(r, 'Enter a valid IP address');
+  if (ip === cip(q)) return bad(r, 'That is your own IP address — you would lock yourself out.');
+  const mainIp = db.prepare('select 1 from user_ips where ip=? and lower(user)=?').get(ip, STAFF_USER);
+  if (mainIp) return bad(r, 'The main staff account uses this IP, so it cannot be blocked.');
+  db.prepare('insert into ip_bans(ip,reason,by,ts) values(?,?,?,?) on conflict(ip) do update set reason=excluded.reason, by=excluded.by, ts=excluded.ts').run(ip, reason, q.user, Date.now()); IPB.add(ip);
+  let n = 0; wss.clients.forEach(w => { if (w.ip === ip) { n++; try { send(w, { t: 'error', error: 'blocked' }); w.close(); } catch {} } });
+  alog(q.user, ip, 'ip_block', reason); r.json({ ok: true, kicked: n });
+}));
+app.post('/api/admin/ipunban', auth, ok((q, r) => {
+  if (!staffOnly(q, r)) return;
+  const ip = String(q.body?.ip || '').trim(); db.prepare('delete from ip_bans where ip=?').run(ip); IPB.delete(ip);
+  alog(q.user, ip, 'ip_unblock', ''); r.json({ ok: true });
 }));
 app.get('/api/admin/users/:n', auth, ok((q, r) => { const u = staffTarget(q, r, q.params.n); if (u) r.json(adminView(u)); }));
 app.post('/api/admin/transfer', auth, ok((q, r) => {
@@ -2716,7 +2769,9 @@ setInterval(() => { try { seenUp(); } catch {} }, 1e3).unref();
 setInterval(() => { try { db.prepare('delete from room_seen where ts<?').run(Date.now() - 3600e3); db.exec('delete from room_since where not exists(select 1 from room_seen s where s.user=room_since.user and s.room=room_since.room)'); } catch {} }, 60e3).unref();
 const recentlyIn = (u, room) => db.prepare('select 1 from room_seen where user=? and room=? and ts>?').get(u, room, Date.now() - 1800e3);
 setInterval(() => { for (const w of wss.clients) { if (w._alive === false) { try { w.terminate(); } catch {} continue; } w._alive = false; try { w.ping(); } catch {} } }, 30e3).unref();
-wss.on('connection', ws => {
+wss.on('connection', (ws, req) => {
+  ws.ip = wsIp(req); ws.ua = String(req.headers['user-agent'] || '').slice(0, 200);
+  if (IPB.has(ws.ip)) { try { ws.send(JSON.stringify({ t: 'error', error: 'blocked' })); ws.close(); } catch {} return; }
   ws._alive = true; ws.on('pong', () => { ws._alive = true; }); ws.on('message', () => { ws._alive = true; });
   ws.on('message', raw => { try { onWsMessage(ws, raw); } catch (e) { console.error('[ws]', e); try { send(ws, { t: 'msg', room: ws.room, user: '', text: 'Something went wrong with that command.', kind: 'err', ts: Date.now() }); } catch {} } });
   ws.on('close', () => closeWs(ws));
@@ -2814,7 +2869,7 @@ function onWsMessage(ws, raw) {
   {
     let m; try { m = JSON.parse(raw); } catch { return; }
     if (m.t === 'auth') {
-      try { const t = jwt.verify(m.token, SECRET), u = db.prepare('select name,banned from users where id=?').get(t.id); if (!u || u.banned) throw 0; ws.user = u.name; ws.emb = !!m.emb; ws.vis = m.vis !== 0; } catch { return send(ws, { t: 'error', error: 'auth' }); }
+      try { const t = jwt.verify(m.token, SECRET), u = db.prepare('select name,banned from users where id=?').get(t.id); if (!u || u.banned) throw 0; ws.user = u.name; trackIp(u.name, ws.ip, ws.ua, 'ws'); ws.emb = !!m.emb; ws.vis = m.vis !== 0; } catch { return send(ws, { t: 'error', error: 'auth' }); }
       if (m.offline) db.prepare("update users set presence='offline' where name=?").run(ws.user);
       else db.prepare("update users set presence='online' where name=? and presence='offline'").run(ws.user);
       // The phone's connection dropped and came back (e.g. while the user was on Home/Friends): put them back in the room they were in, with the same 30-minute timer

@@ -2672,6 +2672,19 @@ html body #view#view#view .pcse{flex:none;width:34px;height:34px;min-width:0;pad
 
 html body #view#view#view#view#view#view#view#view#view#view#view#view .pcse{background:rgba(10,14,24,.72)!important;border:1px solid rgba(255,255,255,.45)!important;color:#fff!important;box-shadow:none!important;padding:0!important;display:grid!important;place-items:center!important;width:34px!important;height:34px!important;min-height:0!important;min-width:0!important}
 html body #view#view#view#view#view#view#view#view#view#view#view#view .pcse svg{stroke:#fff!important;color:#fff!important;width:17px!important;height:17px!important}
+
+/* admin tracking */
+.tip{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:14px;word-break:break-all}
+.tipr{display:flex;gap:10px;align-items:flex-start;padding:8px 0;border-top:1px solid rgba(120,130,150,.25)}
+.tipr.card{border-top:0;padding:12px}
+.tipr .g{flex:1;min-width:0}
+.tipr .o{flex:none}
+.tlk{display:flex;flex-wrap:wrap;gap:6px;margin-top:4px}
+.tlk button{padding:4px 10px;border-radius:99px;font-size:13px}
+html body #view#view#view #atk .mu,html body #view#view#view .tipr .mu{color:inherit!important;opacity:.82}
+html body #view#view#view .tipr a{color:inherit!important;text-decoration:underline;font-weight:700}
+html[data-theme=light] body #view#view#view #atk .tlk button{color:#2a3340!important}
+html body #view#view#view#view#view#view#view#view#view#view#view#view #atk .tlk button{background:rgba(10,14,24,.72)!important;color:#fff!important;border:1px solid rgba(255,255,255,.45)!important;box-shadow:none!important;padding:4px 12px!important;min-height:0!important;font-size:13px!important}
 </style>
 </head>
 <body>
@@ -4213,9 +4226,11 @@ V.admin=async(name)=>{
   if(name==='@support')return adminSupport();
   if(name==='@emo')return adminEmo();
   if(name==='@rooms')return adminRooms();
+  if(name==='@ips')return adminIps();
   if(name)return adminUser(name);
   const q=window.AQ||'';const [us,lg,rq,dr]=await Promise.all([api('GET','/admin/users?q='+encodeURIComponent(q)),api('GET','/admin/log'),api('GET','/admin/requests'),api('GET','/admin/delete-requests').catch(()=>[])]);
   view(`<div class="card"><b>🛡️ Admin Panel</b><div class="mu">Search a user, then open to edit everything about the account.</div></div>
+  <div class="card row" data-u="@ips" style="cursor:pointer"><div class="g"><b>🛰️ IP blocklist</b><div class="mu">See blocked IP addresses, block or unblock an IP. Open a user to see all their IPs</div></div><span class="mu">Open ›</span></div>
   <div class="card row" data-u="@rooms" style="cursor:pointer"><div class="g"><b>🏠 Manage rooms</b><div class="mu">Rename rooms and set how many users fit</div></div><span class="mu">Open ›</span></div>
   <div class="card row" data-u="@emo" style="cursor:pointer"><div class="g"><b>😀 Manage emoticons</b><div class="mu">Upload emoticon pictures with a shortcode for chat, posts and reactions</div></div><span class="mu">Open ›</span></div>
   <div class="card row" data-u="@support" style="cursor:pointer"><div class="g"><b>📧 Support Mail</b><div class="mu">Send and receive support@migv33.com mail</div></div><span class="mu">Open ›</span></div>
@@ -4223,7 +4238,7 @@ V.admin=async(name)=>{
   <div class="card row" data-u="@headline" style="cursor:pointer"><div class="g"><b>📰 Headlines</b><div class="mu">Choose what the Home headline bar shows and add your own news</div></div><span class="mu">Open ›</span></div>
   <div class="card row" data-u="@announce" style="cursor:pointer"><div class="g"><b>📢 Announcements</b><div class="mu">Send a pop-up message that every user sees when they open the app</div></div><span class="mu">Open ›</span></div>
   <div class="card row" data-u="@gifts" style="cursor:pointer"><div class="g"><b>🎁 Manage gifts</b><div class="mu">Upload gift icons, set price and what the receiver gets</div></div><span class="mu">Open ›</span></div>
-  <form id="aq" class="card row"><input id="aqi" placeholder="Search by ID, name, email or mobile" maxlength="40" value="${esc(q)}"><button class="o">Search</button></form>
+  <form id="aq" class="card row"><input id="aqi" placeholder="Search by ID, name, email, mobile or IP" maxlength="40" value="${esc(q)}"><button class="o">Search</button></form>
   ${dr.length?`<h2>Delete account requests <span class="lv">${dr.length}</span></h2>`+dr.map(x=>`<div class="card row"><div class="g"><b>${esc(x.user)}</b><div class="mu">Level ${x.level} · ${new Date(x.ts).toLocaleDateString()} · wants to delete the account</div></div><button class="o" data-dr="${x.id}" data-ac="1">Accept</button><button data-dr="${x.id}" data-ac="0">Reject</button></div>`).join(''):''}
   ${rq.length?`<h2>Head Mentor requests <span class="lv">${rq.length}</span></h2>`+rq.map(x=>`<div class="card row"><div class="g"><b>${esc(x.from_user)}</b><div class="mu">Mentor · Level ${x.level} · ${new Date(x.ts).toLocaleDateString()}</div></div><button class="o" data-rq="${x.id}" data-ac="1">Accept</button><button data-rq="${x.id}" data-ac="0">Reject</button></div>`).join(''):''}
   <h2>Users <span class="lv">${us.length}</span></h2>
@@ -4237,6 +4252,7 @@ async function adminUser(name){
   const main=ST.unlimited,prot=u.unlimited;
   const f=(id,label,val,extra='')=>`<label class="mu">${label}</label><input id="${id}" value="${esc(val||'')}" ${extra}>`;
   view(`<div class="card row"><button class="o" id="abk">‹ Back</button><div class="g"><b style="color:${nc(u.name)}">${esc(u.name)}</b> ${rt(u.role,u.name)} ${u.banned?'<span class="neg">🚫 banned</span>':''}<div class="mu">${lvi(u.level,16)} Level ${u.level} · ${u.xp} XP · ${u.unlimited?'∞ Unlimited':u.coins} coins</div></div></div>
+  <div class="card" id="atk"><b>🛰️ Tracking</b><div class="mu">Loading…</div></div>
   <div class="card"><b>Account</b>
     <div class="row"><input id="rn" placeholder="New user ID" maxlength="16" value="${esc(u.name)}"><button class="o" data-a="rename">Rename</button></div>
     <div class="row"><input id="aem" placeholder="Email" maxlength="100" value="${esc(u.email)}"><button class="o" data-a="email">Change email</button></div>
@@ -4275,12 +4291,36 @@ async function adminUser(name){
     pin_set:{pin:v('mp')},parent:{parent:v('pa')},tag:{by:v('tb')},pin_reset:{},role:{role:b.dataset.r||v('ro')},ban:{reason:v('br')},unban:{}}[a];
     if(['ban','pin_reset','secq_reset','password'].includes(a)&&!confirm('Are you sure?'))return;
     try{const r=await api('POST','/admin/users/'+encodeURIComponent(name)+'/edit',{action:a,...P});toast('Saved ✔');go('admin',a==='rename'?r.name:name)}catch(er){fail(er)}};
-  $('view').onclick=e=>{const b=e.target.closest('[data-a]');if(b)run(b)};
+  const track=async()=>{const bx=$('atk');if(!bx)return;let t;try{t=await api('GET','/admin/users/'+encodeURIComponent(name)+'/track')}catch(er){bx.innerHTML='<b>🛰️ Tracking</b><div class="mu">'+esc(er.message||'Could not load')+'</div>';return}
+    const dt=x=>x?new Date(x).toLocaleString():'—',cn_=t.counts||{};
+    bx.innerHTML=`<b>🛰️ Tracking</b>
+    <div class="mu">${t.online?'🟢 Online now'+(t.room?' · in '+esc(t.room):''):'⚪ Offline'} · Last seen: ${dt(t.lastSeen)}</div>
+    <div class="mu">Joined: ${dt(t.joined)}</div>
+    <div class="mu">First seen IP: <b class="tip">${esc(t.regIp||'—')}</b> · Last IP: <b class="tip">${esc(t.lastIp||'—')}</b></div>
+    <div class="mu">Messages ${cn_.messages||0} · Posts ${cn_.posts||0} · Comments ${cn_.comments||0} · Reels ${cn_.reels||0} · Friends ${cn_.friends||0} · Transactions ${cn_.transactions||0}</div>
+    ${t.linked.length?`<div class="mu" style="margin-top:6px">⚠ Other accounts on the same IP(s):</div><div class="tlk">${t.linked.map(n=>`<button type="button" data-u2="${esc(n)}">${esc(n)}</button>`).join('')}</div>`:''}
+    <div class="mu" style="margin-top:8px">IP addresses (${t.ips.length})</div>
+    ${t.ips.map(x=>`<div class="tipr"><div class="g"><b class="tip">${esc(x.ip)}</b>${x.banned?'<div class="neg"><b>BLOCKED</b></div>':''}<div class="mu">${esc(uaShort(x.ua))} · ${x.hits} visit${x.hits===1?'':'s'} · ${esc(x.via||'')}</div><div class="mu">First ${dt(x.first)} · Last ${dt(x.last)}</div>${x.others.length?`<div class="mu">Also used by: ${x.others.map(n=>esc(n)).join(', ')}</div>`:''}</div>${x.banned?`<button type="button" class="o" data-ipu="${esc(x.ip)}">Unblock</button>`:`<button type="button" class="o" data-ipb="${esc(x.ip)}">Block IP</button>`}</div>`).join('')||'<div class="mu">No IP recorded yet. It is saved the next time this user opens the app.</div>'}`};
+  track();
+  $('view').onclick=async e=>{const ib=e.target.closest('[data-ipb]');if(ib){const ip=ib.dataset.ipb,r=prompt('Block IP '+ip+'? Everyone on this IP will be locked out. Reason (optional):','');if(r===null)return;try{await api('POST','/admin/ipban',{ip,reason:r});toast('IP blocked ✔');track()}catch(er){fail(er)}return}
+    const iu=e.target.closest('[data-ipu]');if(iu){try{await api('POST','/admin/ipunban',{ip:iu.dataset.ipu});toast('IP unblocked ✔');track()}catch(er){fail(er)}return}
+    const u2=e.target.closest('[data-u2]');if(u2){go('admin',u2.dataset.u2);return}
+    const b=e.target.closest('[data-a]');if(b)run(b)};
   $('abk').onclick=()=>go('admin');
   $('atf').onclick=async()=>{try{await api('POST','/admin/transfer',{from:$('tf1').value.trim(),to:$('tf2').value.trim(),amount:$('tfa').value,mpin:$('tfp').value});toast('Transferred ✔');go('admin',name)}catch(er){fail(er)}}}
 
 
 
+function uaShort(u){u=String(u||'');if(!u)return 'Unknown device';const os=/iPhone/.test(u)?'iPhone':/iPad/.test(u)?'iPad':/Android/.test(u)?'Android':/Windows/.test(u)?'Windows':/Mac OS X/.test(u)?'Mac':/Linux/.test(u)?'Linux':'Device';const br=/Edg\//.test(u)?'Edge':/OPR\//.test(u)?'Opera':/Firefox\//.test(u)?'Firefox':/CriOS|Chrome\//.test(u)?'Chrome':/Safari\//.test(u)?'Safari':'Browser';return os+' · '+br}
+async function adminIps(){
+  const L=await api('GET','/admin/ipbans');
+  view(`<div class="card row"><button class="o" id="abk">‹ Back</button><div class="g"><b>🛰️ IP blocklist</b><div class="mu">Blocked IPs cannot use the app at all (all accounts on that IP)</div></div></div>
+  <form id="ipf" class="card" style="display:grid;gap:8px"><b>Block an IP address</b><input id="ipi" placeholder="IP address, e.g. 203.0.113.7" maxlength="45" autocomplete="off"><input id="ipr" placeholder="Reason (optional)" maxlength="100"><button class="o">Block IP</button></form>
+  <h2>Blocked IPs <span class="lv">${L.length}</span></h2>
+  ${L.map(x=>`<div class="tipr card"><div class="g"><b class="tip">${esc(x.ip)}</b><div class="mu">${x.reason?esc(x.reason)+' · ':''}by ${esc(x.by)} · ${new Date(x.ts).toLocaleString()}</div>${x.users.length?`<div class="mu">Accounts seen on this IP: ${x.users.map(n=>`<a href="#" data-u2="${esc(n)}">${esc(n)}</a>`).join(', ')}</div>`:''}</div><button type="button" class="o" data-ipu="${esc(x.ip)}">Unblock</button></div>`).join('')||'<div class="card mu">No blocked IPs.</div>'}`);
+  $('abk').onclick=()=>go('admin');
+  $('ipf').onsubmit=async e=>{e.preventDefault();try{await api('POST','/admin/ipban',{ip:$('ipi').value.trim(),reason:$('ipr').value});toast('IP blocked ✔');adminIps()}catch(er){fail(er)}};
+  $('view').onclick=async e=>{const iu=e.target.closest('[data-ipu]');if(iu){try{await api('POST','/admin/ipunban',{ip:iu.dataset.ipu});toast('IP unblocked ✔');adminIps()}catch(er){fail(er)}return}const u2=e.target.closest('[data-u2]');if(u2){e.preventDefault();go('admin',u2.dataset.u2)}}}
 async function adminRooms(){
   const rs=await api('GET','/admin/rooms');
   view(`<div class="card row"><button class="o" id="abk">‹ Back</button><div class="g"><b>🏠 Room manager</b><div class="mu">Deleting a room removes it and its chat history for good. Renaming moves everyone out of the room (they can join again). The user limit applies to new joins; 0 = no limit. Staff are never blocked by the limit.</div></div></div>
