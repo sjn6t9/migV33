@@ -2685,6 +2685,18 @@ html body #view#view#view #atk .mu,html body #view#view#view .tipr .mu{color:inh
 html body #view#view#view .tipr a{color:inherit!important;text-decoration:underline;font-weight:700}
 html[data-theme=light] body #view#view#view #atk .tlk button{color:#2a3340!important}
 html body #view#view#view#view#view#view#view#view#view#view#view#view #atk .tlk button{background:rgba(10,14,24,.72)!important;color:#fff!important;border:1px solid rgba(255,255,255,.45)!important;box-shadow:none!important;padding:4px 12px!important;min-height:0!important;font-size:13px!important}
+
+.arow{display:flex;gap:10px;align-items:flex-start;padding:8px 0;border-top:1px solid rgba(120,130,150,.25);word-break:break-word}
+.arow .g{flex:1;min-width:0}
+.adm{display:grid;gap:6px;margin-top:8px;max-height:60vh;overflow:auto}
+.amsg{padding:8px 10px;border-radius:12px;background:rgba(120,130,150,.18);word-break:break-word}
+.amsg.me{background:rgba(247,147,30,.2)}
+#aab{margin-top:8px}
+html body #view#view#view#view#view#view#view#view#view#view#view#view #aact button:not(.on){background:rgba(10,14,24,.72)!important;color:#fff!important;border:1px solid rgba(255,255,255,.45)!important;box-shadow:none!important}
+html body #view#view#view#view#view#view#view#view#view#view#view#view #aac .mu,html body #view#view#view#view#view#view#view#view#view#view#view#view #aac .amsg,html body #view#view#view#view#view#view#view#view#view#view#view#view #aac .arow{color:inherit!important}
+html body #view#view#view#view#view#view#view#view#view#view#view#view #aac .mu{opacity:.8}
+html body #view#view#view#view#view#view#view#view#view#view#view#view #aac .amsg>div,html body #view#view#view#view#view#view#view#view#view#view#view#view #aac .arow .g{color:var(--tx)!important}
+html[data-theme=dark] body #view#view#view #aac .amsg>div,html[data-theme=dark] body #view#view#view #aac .arow .g{color:#fff!important}
 </style>
 </head>
 <body>
@@ -4253,6 +4265,7 @@ async function adminUser(name){
   const f=(id,label,val,extra='')=>`<label class="mu">${label}</label><input id="${id}" value="${esc(val||'')}" ${extra}>`;
   view(`<div class="card row"><button class="o" id="abk">‹ Back</button><div class="g"><b style="color:${nc(u.name)}">${esc(u.name)}</b> ${rt(u.role,u.name)} ${u.banned?'<span class="neg">🚫 banned</span>':''}<div class="mu">${lvi(u.level,16)} Level ${u.level} · ${u.xp} XP · ${u.unlimited?'∞ Unlimited':u.coins} coins</div></div></div>
   <div class="card" id="atk"><b>🛰️ Tracking</b><div class="mu">Loading…</div></div>
+  <div class="card" id="aac"><b>📂 Activity</b><div class="chips" id="aact">${[['transfers','Coin transfers'],['coins','All coin history'],['dms','Private chats'],['mails','Mail'],['calls','Calls'],['rooms','Rooms']].map(([k,l])=>`<button type="button" data-ak="${k}">${l}</button>`).join('')}</div><div id="aab" class="mu">Choose what to see. Viewing private chats and mail is recorded in the staff log.</div></div>
   <div class="card"><b>Account</b>
     <div class="row"><input id="rn" placeholder="New user ID" maxlength="16" value="${esc(u.name)}"><button class="o" data-a="rename">Rename</button></div>
     <div class="row"><input id="aem" placeholder="Email" maxlength="100" value="${esc(u.email)}"><button class="o" data-a="email">Change email</button></div>
@@ -4302,6 +4315,18 @@ async function adminUser(name){
     <div class="mu" style="margin-top:8px">IP addresses (${t.ips.length})</div>
     ${t.ips.map(x=>`<div class="tipr"><div class="g"><b class="tip">${esc(x.ip)}</b>${x.banned?'<div class="neg"><b>BLOCKED</b></div>':''}<div class="mu">${esc(uaShort(x.ua))} · ${x.hits} visit${x.hits===1?'':'s'} · ${esc(x.via||'')}</div><div class="mu">First ${dt(x.first)} · Last ${dt(x.last)}</div>${x.others.length?`<div class="mu">Also used by: ${x.others.map(n=>esc(n)).join(', ')}</div>`:''}</div>${x.banned?`<button type="button" class="o" data-ipu="${esc(x.ip)}">Unblock</button>`:`<button type="button" class="o" data-ipb="${esc(x.ip)}">Block IP</button>`}</div>`).join('')||'<div class="mu">No IP recorded yet. It is saved the next time this user opens the app.</div>'}`};
   track();
+  const dtm=x=>x?new Date(x).toLocaleString():'—';
+  const act=async(k,w)=>{const bx=$('aab');bx.innerHTML='Loading…';document.querySelectorAll('#aact button').forEach(x=>x.classList.toggle('on',x.dataset.ak===(k==='dm'?'dms':k)));
+    let d;try{d=await api('GET','/admin/users/'+encodeURIComponent(name)+'/activity?k='+k+(w?'&with='+encodeURIComponent(w):''))}catch(er){bx.innerHTML=esc(er.message||'Could not load');return}
+    const R=d.rows||[];let h='';
+    if(k==='transfers'||k==='coins')h=R.map(x=>`<div class="arow"><div class="g">${esc(x.title)}<div class="mu">${dtm(x.ts)}${k==='coins'?' · '+esc(x.kind):''}</div></div><b class="${x.amount>0?'pos':'neg'}">${x.amount>0?'+':'−'}${Math.abs(x.amount)}</b></div>`).join('');
+    else if(k==='dms')h=R.map(x=>`<div class="arow" data-dw="${esc(x.with)}" style="cursor:pointer"><div class="g"><b>${esc(x.with)}</b><div class="mu">${x.n} message${x.n===1?'':'s'} · last ${dtm(x.last)}</div></div><span class="mu">Open ›</span></div>`).join('');
+    else if(k==='dm')h=`<div class="row"><button type="button" class="o" data-ak="dms">‹ Chats</button><b>${esc(name)} ⇄ ${esc(d.with)}</b></div><div class="adm">${R.map(x=>`<div class="amsg ${x.user===name?'me':''}"><b>${esc(x.user)}</b> <span class="mu">${dtm(x.ts)}</span><div>${esc(x.text)}</div></div>`).join('')||'<div class="mu">No messages.</div>'}</div>`;
+    else if(k==='mails')h=R.map(x=>`<div class="arow"><div class="g"><b>${esc(x.subject||'(no subject)')}</b><div class="mu">${esc(x.from_user)} → ${esc(x.to_user)} · ${dtm(x.ts)}</div><div>${esc(x.body)}</div></div></div>`).join('');
+    else if(k==='calls')h=R.map(x=>`<div class="arow"><div class="g">${esc(x.a)} → ${esc(x.b)}<div class="mu">${esc(x.kind)} · ${esc(x.status)} · ${x.dur||0}s · ${dtm(x.ts)}</div></div></div>`).join('');
+    else if(k==='rooms')h=R.map(x=>`<div class="arow"><div class="g"><b>${esc(x.room)}</b><div class="mu">${x.n} message${x.n===1?'':'s'} · last ${dtm(x.last)}</div></div></div>`).join('');
+    bx.innerHTML=h||'<div class="mu">Nothing found.</div>'};
+  $('aac').onclick=e=>{const b=e.target.closest('[data-ak]');if(b)return act(b.dataset.ak);const w=e.target.closest('[data-dw]');if(w)act('dm',w.dataset.dw)};
   $('view').onclick=async e=>{const ib=e.target.closest('[data-ipb]');if(ib){const ip=ib.dataset.ipb,r=prompt('Block IP '+ip+'? Everyone on this IP will be locked out. Reason (optional):','');if(r===null)return;try{await api('POST','/admin/ipban',{ip,reason:r});toast('IP blocked ✔');track()}catch(er){fail(er)}return}
     const iu=e.target.closest('[data-ipu]');if(iu){try{await api('POST','/admin/ipunban',{ip:iu.dataset.ipu});toast('IP unblocked ✔');track()}catch(er){fail(er)}return}
     const u2=e.target.closest('[data-u2]');if(u2){go('admin',u2.dataset.u2);return}

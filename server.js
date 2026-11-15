@@ -1261,6 +1261,32 @@ app.get('/api/admin/users/:n/track', auth, ok((q, r) => {
     counts: { messages: c('select count(*) n from msgs where user=?', u.name), posts: c('select count(*) n from posts where user=?', u.name), comments: c('select count(*) n from comments where user=?', u.name),
       transactions: c('select count(*) n from txs where user=?', u.name), friends: c("select count(*) n from friends where status='accepted' and (a=? or b=?)", u.name, u.name), reels: c('select count(*) n from reels where user=?', u.name) } });
 }));
+app.get('/api/admin/users/:n/activity', auth, ok((q, r) => {
+  if (!staffOnly(q, r)) return;
+  const u = db.prepare('select name from users where name=?').get(q.params.n); if (!u) return bad(r, 'User not found', 404);
+  const k = String(q.query.k || 'transfers');
+  if (k === 'transfers' || k === 'coins') {
+    const rows = db.prepare(k === 'transfers' ? "select kind,title,amount,ts from txs where user=? and kind='transfer' order by id desc limit 300" : 'select kind,title,amount,ts from txs where user=? order by id desc limit 300').all(u.name);
+    return r.json({ k, rows });
+  }
+  if (k === 'dms') {
+    const rows = db.prepare("select room,count(*) n,max(ts) last from msgs where room like 'dm:%' and instr(room,?)>0 group by room order by last desc limit 150").all(u.name)
+      .map(x => ({ with: x.room.slice(3).split(':').filter(t => t !== u.name).join(':') || u.name, n: x.n, last: x.last, room: x.room })).filter(x => x.room.slice(3).split(':').includes(u.name));
+    alog(q.user, u.name, 'view_private_chats', 'list'); return r.json({ k, rows });
+  }
+  if (k === 'dm') {
+    const w = String(q.query.with || '').slice(0, 40), room = 'dm:' + [u.name, w].sort().join(':');
+    const rows = db.prepare('select user,text,kind,ts from msgs where room=? order by id desc limit 300').all(room).reverse().map(x => ({ ...x, text: String(x.text).slice(0, 1500) }));
+    alog(q.user, u.name, 'view_private_chats', 'with ' + w); return r.json({ k, with: w, rows });
+  }
+  if (k === 'mails') {
+    const rows = db.prepare('select id,from_user,to_user,subject,substr(body,1,1000) body,ts from mails where from_user=? or to_user=? order by ts desc limit 150').all(u.name, u.name);
+    alog(q.user, u.name, 'view_mail', ''); return r.json({ k, rows });
+  }
+  if (k === 'calls') return r.json({ k, rows: db.prepare('select a,b,kind,status,dur,ts from call_log where a=? or b=? order by id desc limit 150').all(u.name, u.name) });
+  if (k === 'rooms') return r.json({ k, rows: db.prepare("select room,count(*) n,max(ts) last from msgs where user=? and room not like 'dm:%' group by room order by last desc limit 100").all(u.name) });
+  bad(r, 'Unknown view');
+}));
 app.get('/api/admin/ipbans', auth, ok((q, r) => {
   if (!staffOnly(q, r)) return;
   r.json(db.prepare('select ip,reason,by,ts from ip_bans order by ts desc limit 300').all().map(x => ({ ...x, users: db.prepare('select user from user_ips where ip=? order by last desc limit 20').all(x.ip).map(z => z.user) })));
