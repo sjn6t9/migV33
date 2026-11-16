@@ -2710,6 +2710,14 @@ html[data-skin=dark] body #rbt{background:#0f1a2b!important;border-bottom:1px so
 html[data-skin=clear] body #tools,html[data-skin=glass] body #tools{background:#fff!important;border:1px solid rgba(20,40,80,.14)!important;box-shadow:0 2px 8px rgba(20,40,80,.10)!important;color:#1b2740!important;backdrop-filter:none!important}
 html[data-skin=clear] body #tools button,html[data-skin=glass] body #tools button{background:#eef2fa!important;border:1px solid rgba(20,40,80,.14)!important;color:#1b2740!important;box-shadow:none!important}
 html[data-skin=clear] body #tools,html[data-skin=glass] body #tools,html[data-skin=clear] body #tools *,html[data-skin=glass] body #tools *{text-shadow:none!important}
+
+/* drawer-top gap in room window; story tile text + viewer photo */
+html.emb #rbw,html.emb #rbt{display:none!important}
+html[data-skin] body .sc .stt{position:absolute;left:8px;right:8px;top:50px;bottom:34px;z-index:1;display:grid;place-items:center;text-align:center;font:800 14px/1.25 Fredoka,"Open Sans",sans-serif;color:#fff;overflow:hidden;word-break:break-word;text-shadow:0 1px 4px #0007}
+html[data-skin] body #sv .svc>img{position:absolute!important;inset:0!important;width:100%!important;height:100%!important;object-fit:contain!important}
+html[data-skin] body #sv .svc .cap{background:linear-gradient(transparent,#000b)!important;border:0!important;border-radius:0!important;color:#fff!important;box-shadow:none!important}
+html[data-skin] body #sv .svc .stb{color:#fff!important}
+html[data-skin] body #sv .svf{background:linear-gradient(transparent,#000b)!important;border:0!important;border-radius:0!important;box-shadow:none!important}
 </style>
 </head>
 <body>
@@ -3420,7 +3428,7 @@ async function loadHeadline(){try{const h=await api('GET','/headline');if(cur!==
 async function loadStories(){let g;try{g=await api('GET','/stories')}catch{return}if(!Array.isArray(g))return;STG=g;g.forEach(x=>ROLES[x.user]=x.role);const el=$('stories');if(!el)return;
   const mine=g.find(x=>x.user===me);
   el.innerHTML=`<button class="sc mk" data-sc="new"><div class="top">${av(me,64)}</div><span class="pl">+</span><b>Create story</b></button>`+g.map((x,i)=>{const f=x.items[x.items.length-1];const bgs=f.image?`background-image:url('${esc(f.image)}');--sbg:url('${esc(f.image)}')`:`background:${SBG[f.bg]||SBG[0]};--sbg:${SBG[f.bg]||SBG[0]}`;
-    return `<button class="sc${x.unseen?'':' seen'}" data-sc="${i}" style="${bgs}"><span class="rg">${av(x.user,34)}</span><b>${x.user===me?'Your story':esc(x.user)}</b></button>`}).join('')}
+    return `<button class="sc${x.unseen?'':' seen'}" data-sc="${i}" style="${bgs}"><span class="rg">${av(x.user,34)}</span>${!f.image&&f.text?`<span class="stt">${esc(f.text.slice(0,60))}</span>`:''}<b>${x.user===me?'Your story':esc(x.user)}</b></button>`}).join('')}
 function openCreateStory(){let bg=0,img=null,mode='text';
   let draw=()=>{$('sh').innerHTML=`<h2>Create story</h2><nav class="chips"><button data-md="text" class="${mode==='text'?'on':''}">Aa Text</button><button data-md="photo" class="${mode==='photo'?'on':''}">📷 Photo</button></nav>
    <section class="spv${img?' ph':''}" style="background:${img?'#000':SBG[bg]}">${img?`<img id="spi" src="${img.url}" alt="" draggable="false">`:''}<textarea id="stx" maxlength="200" placeholder="${mode==='photo'?'Add a caption (optional)':'Start typing…'}">${esc($('stx')?.value||'')}</textarea></section>
@@ -3905,8 +3913,8 @@ V.rooms=async()=>{const rs=await api('GET','/rooms');rs.forEach(x=>{RF[x.name]=x
 /* ---------- chat ---------- */
 const RG={};   // game rooms
 const rgIc=x=>{const n=String(x).toLowerCase();return EIS[/dice/.test(n)?'dice':/cricket/.test(n)?'bat':/low ?card|teen ?patti|uno|card/.test(n)?'cards':/royale|battle/.test(n)?'swords':'game']||EIS.game};
-const rbub=x=>{const f=RF[x]?fu(RF[x]):'',fe=!f&&(rtitle(x).match(/[\u{1F1E6}-\u{1F1FF}]{2}/u)||[])[0],gm=!f&&!fe&&RG[x],P='M4 5h16v11H9l-5 4z';
- return `<span class="rbub${f?' hf':''}${gm?' hg':''}"><svg viewBox="0 0 24 24" aria-hidden="true">${f?`<clipPath id="rbc"><path d="${P}"/></clipPath><image href="${esc(f)}" x="3" y="4" width="18" height="17" preserveAspectRatio="xMidYMid slice" clip-path="url(#rbc)"/>`:''}<path d="${P}"/></svg>${fe?`<i class="fe">${fe}</i>`:gm?`<i>${rgIc(x)}</i>`:''}</span>`};
+let RBC=0;const rbub=x=>{const cid='rbc'+(++RBC),f=RF[x]?fu(RF[x]):'',fe=!f&&(rtitle(x).match(/[\u{1F1E6}-\u{1F1FF}]{2}/u)||[])[0],gm=!f&&!fe&&RG[x],P='M4 5h16v11H9l-5 4z';
+ return `<span class="rbub${f?' hf':''}${gm?' hg':''}"><svg viewBox="0 0 24 24" aria-hidden="true">${f?`<clipPath id="${cid}"><path d="${P}"/></clipPath><image href="${esc(f)}" x="3" y="4" width="18" height="17" preserveAspectRatio="xMidYMid slice" clip-path="url(#${cid})"/>`:''}<path d="${P}"/></svg>${fe?`<i class="fe">${fe}</i>`:gm?`<i>${rgIc(x)}</i>`:''}</span>`};
 const RF={};let RFL=0;const fu=f=>!f?'':/^[a-z]{2}(-[a-z]+)?$/.test(f)?'https://flagcdn.com/w40/'+f+'.png':f;
 const RLV={};
 function rlvPaint(){try{if(cur==='chat'&&room&&!room.startsWith('dm:')&&$('stt'))$('stt').innerHTML=rfl(room)+esc(rtitle(room));drawTabs();if(typeof wLayout==='function')wLayout();
