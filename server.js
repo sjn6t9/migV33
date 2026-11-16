@@ -3026,9 +3026,10 @@ function ldCapN(t, col, np) { // how many opposing tokens would be cut by landin
   for (const o of t.seats) if (ldFoe(t, col, o)) for (const q of t.tok[o.c]) if (q >= 0 && q <= 50 && ldAbs(o.c, q) === a) n++;
   return n;
 }
-function ldBlocked(t, col, p, np) { // a barrier = two tokens of one colour on the same cell
+function ldBlocked(t, col, p, np) { // a barrier = two tokens of one colour on the same cell (never on a safe cell / start cell)
   for (let r = p === -1 ? 0 : p + 1; r <= Math.min(np, 50); r++) {
     const a = ldAbs(col, r);
+    if (ldSafeAt(t, a)) continue;   // no barrier on a safe cell or on a start cell
     for (const o of t.seats) if (ldFoe(t, col, o) && t.tok[o.c].filter(q => q >= 0 && q <= 50 && ldAbs(o.c, q) === a).length >= 2) return true;
   }
   return false;
