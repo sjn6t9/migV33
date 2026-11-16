@@ -8,6 +8,7 @@ React 19 front end (icons from `react-icons`, all inline SVG, no PNG icons) and 
 
 | Area | Features |
 |---|---|
+| Languages & theme | Whole site in English (default), বাংলা, العربية (right-to-left), हिन्दी and Vosa Vakaviti; picker and Day/Night switch in the top bar. Translations live in `i18n/<code>.tsv` (`index|text`, `P<index>` for patterns) against `i18n/keys.json`; `npm run build` turns them into `dist/i18n/<code>.json`. Text typed in by users stays as written. |
 | Public site | Job share photocards (1080×1350 PNG) with Facebook/WhatsApp link previews at `/job/<id>`; home with search, job board with filters, job details, services, track status (passport + mobile), about, blog, contact, chat assistant, WhatsApp button |
 | Job seeker | Registration with email verification code, profile + photo + passport + CV uploads, 3-step application (job → profile → apply), BMET clearance with document uploads, clearance card download, saved jobs, job alerts |
 | Employer | Company profile and verification, post / edit / pause / close jobs (reviewed by the agency), applicants with status changes, CV download, packages |

@@ -1,3 +1,4 @@
+import { getLang } from "./i18n.js";
 // Client-side store for the MAM & MAM Overseas portal.
 // The server is the source of truth: /api/state returns what the signed-in user may see,
 // and every change goes through act() in actions.js, which returns the updated state.
@@ -51,7 +52,8 @@ export const bdtFmt = n => `BDT ${num(n)}`;
 export const rate = c => Number(S().settings.rates[c] || 0);
 export const bdtMin = j => Math.round(j.salaryMin * rate(j.currency));
 export const bdtMax = j => Math.round(j.salaryMax * rate(j.currency));
-export const fdate = iso => (iso ? new Date(iso).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" }) : "—");
+const LOCALE = { en: "en-GB", bn: "bn-BD", ar: "ar-EG", hi: "hi-IN", fj: "en-GB" };
+export const fdate = iso => (iso ? new Date(iso).toLocaleDateString(LOCALE[getLang()] || "en-GB", { day: "numeric", month: "short", year: "numeric" }) : "—");
 export const live = () => S().jobs.filter(j => j.status === "active");
 export const appsFor = jid => S().applications.filter(a => a.jobId === jid);
 export const kb = b => (b > 1048576 ? (b / 1048576).toFixed(1) + " MB" : Math.round(b / 1024) + " KB");

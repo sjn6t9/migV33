@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useSyncExternalStore } from "react";
-import { LuMenu, LuLogOut, LuLayoutDashboard, LuLogIn, LuUserPlus, LuSend, LuMailCheck, LuRefreshCw, LuDownload, LuFileText, LuKeyRound, LuWifiOff } from "react-icons/lu";
+import { LuMenu, LuMoon, LuSun, LuLanguages, LuLogOut, LuLayoutDashboard, LuLogIn, LuUserPlus, LuSend, LuMailCheck, LuRefreshCw, LuDownload, LuFileText, LuKeyRound, LuWifiOff } from "react-icons/lu";
 import { FaWhatsapp, FaFacebookF, FaYoutube, FaLinkedinIn, FaTiktok } from "react-icons/fa6";
 import { ChatWidget } from "./Chat.jsx";
 import { ShareJob } from "./Share.jsx";
@@ -9,6 +9,8 @@ import { Logo, Toast, ModalFrame, Pill, ClPipe, CardDownload, Avatar } from "./u
 import { CardAdmin, AgentDocsView } from "./dash/shared.jsx";
 import { Home, Jobs, JobDetail, Services, About, Blog, Post, Contact, Track, Setup, Team, waLink } from "./pages/Public.jsx";
 import { Dashboard } from "./dash/Dashboard.jsx";
+import { LANGS, getLang, setLang, t, onLang } from "./i18n.js";
+import { currentTheme, toggleTheme } from "./theme.js";
 
 function useHash() {
   const [h, setH] = useState(location.hash.slice(1) || "home");
@@ -21,6 +23,7 @@ function useHash() {
 
 export default function App() {
   useSyncExternalStore(subscribe, getVersion);
+  useEffect(() => onLang(() => touch()), []);
   const h = useHash();
   let page = h, arg = null;
   if (h.startsWith("job-")) { page = "job"; arg = h.slice(4); }
@@ -36,7 +39,7 @@ export default function App() {
     if (page === "job" && job(arg)) title = `${job(arg).title} in ${job(arg).city} | MAM & MAM Overseas Ltd.`;
     if (page === "post") { const p = S.posts.find(x => x.id === arg); if (p) title = `${p.title} | MAM & MAM Overseas Ltd.`; }
     if (page === "dashboard") title = "Dashboard | MAM & MAM Overseas Ltd.";
-    document.title = title;
+    document.title = t(title);
     document.querySelector('meta[name="description"]')?.setAttribute("content", seo.desc);
   });
 
@@ -64,7 +67,9 @@ function Header({ navOn }) {
   const links = [["home", "Home"], ["jobs", "Jobs"], ["services", "Services"], ["track", "Track"], ["about", "About"], ["team", "Expert Team"], ["blog", "Blog"], ["contact", "Contact"]];
   const panel = { admin: "Admin panel", staff: "Staff panel", employer: "Employer panel", agent: "Agent panel", candidate: "My dashboard" };
   return (
-    <header className="top"><div className="wrap topbar">
+    <header className="top">
+    <div className="utilbar"><div className="wrap"><span>Government licensed recruiting agency · RL 1217</span><Prefs /></div></div>
+    <div className="wrap topbar">
       <a className="logo" href="#home" aria-label="MAM & MAM Overseas Ltd. home"><Logo /><div><b>MAM &amp; MAM OVERSEAS LTD.</b><span>Recruiting Licence RL 1217</span></div></a>
       <button className="btn sm menu-btn" onClick={() => { ui.navOpen = !ui.navOpen; touch(); }} aria-label="Open menu" aria-expanded={ui.navOpen}><LuMenu /> Menu</button>
       <nav className={`main${ui.navOpen ? " open" : ""}`}>{links.map(([k, t]) => <a key={k} href={`#${k}`} className={navOn === k ? "on" : ""}>{t}</a>)}</nav>
@@ -79,6 +84,21 @@ function Header({ navOn }) {
         </>}
       </div>
     </div></header>
+  );
+}
+
+function Prefs() {
+  const [, setN] = useState(0); const dark = currentTheme() === "dark"; const l = getLang();
+  return (
+    <div className="prefs">
+      <label className="langsel" title="Language" data-notr>
+        <LuLanguages aria-hidden="true" />
+        <select value={l} aria-label="Language" onChange={async e => { const ok = await setLang(e.target.value); if (!ok) toast("The language could not be loaded. Check your connection and try again."); setN(n => n + 1); }}>
+          {LANGS.map(x => <option key={x.code} value={x.code}>{x.name}</option>)}
+        </select>
+      </label>
+      <button className="btn sm icon" onClick={() => { toggleTheme(); setN(n => n + 1); }} aria-label={dark ? "Day mode" : "Night mode"} title={dark ? "Day mode" : "Night mode"}>{dark ? <LuSun /> : <LuMoon />}</button>
+    </div>
   );
 }
 
