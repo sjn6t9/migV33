@@ -1,6 +1,8 @@
 // Inlines the esbuild output (build/main.js + build/main.css) into one dist/index.html.
 import fs from "node:fs";
 import crypto from "node:crypto";
+// static files (logo, icons, manifest) are copied as they are
+fs.cpSync("public", "dist", { recursive: true });
 // language dictionaries: i18n/keys.json + i18n/pats.json (English) and i18n/<code>.tsv ("index<TAB>translation", "P<index>" for patterns)
 const keys = JSON.parse(fs.readFileSync("i18n/keys.json", "utf8")), pats = JSON.parse(fs.readFileSync("i18n/pats.json", "utf8"));
 fs.mkdirSync("dist/i18n", { recursive: true });
@@ -28,6 +30,20 @@ const html = `<!DOCTYPE html>
 <script>try{var t=localStorage.getItem("mam_theme");if(t)document.documentElement.dataset.theme=t;var l=localStorage.getItem("mam_lang");if(l==="ar")document.documentElement.dir="rtl";}catch(e){}</script>
 <title>MAM &amp; MAM Overseas Ltd.</title>
 <meta name="description" content="MAM & MAM Overseas Ltd. — licensed recruiting agency (RL 1217). Overseas jobs in Saudi Arabia, Malaysia and Fiji.">
+<link rel="icon" href="/brand/favicon.ico" sizes="48x48">
+<link rel="icon" type="image/png" sizes="32x32" href="/brand/favicon-32.png">
+<link rel="apple-touch-icon" href="/brand/apple-touch-icon.png">
+<link rel="manifest" href="/site.webmanifest">
+<link rel="preload" as="image" href="/brand/logo-96.webp">
+<!--og--><meta property="og:type" content="website">
+<meta property="og:site_name" content="MAM &amp; MAM Overseas Ltd.">
+<meta property="og:title" content="MAM &amp; MAM Overseas Ltd. · Licensed recruiting agency RL 1217">
+<meta property="og:description" content="Overseas jobs in Saudi Arabia, Malaysia and Fiji through a government licensed recruiting agency (RL 1217).">
+<meta property="og:url" content="__ORIGIN__/">
+<meta property="og:image" content="__ORIGIN__/brand/og-image.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image"><!--/og-->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700;800&family=Hind+Siliguri:wght@400;500;600;700&family=Hind:wght@400;500;600;700&family=Noto+Kufi+Arabic:wght@400;500;600;700&display=swap" rel="stylesheet">

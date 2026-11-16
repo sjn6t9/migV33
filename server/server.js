@@ -672,7 +672,7 @@ A["admin.msg"] = async ({ id: mid, op }, u) => {
 };
 
 /* ======================= HTTP ======================= */
-const MIME = { ".html": "text/html; charset=utf-8", ".js": "text/javascript; charset=utf-8", ".css": "text/css; charset=utf-8", ".json": "application/json; charset=utf-8", ".svg": "image/svg+xml", ".ico": "image/x-icon", ".txt": "text/plain; charset=utf-8", ".webmanifest": "application/manifest+json" };
+const MIME = { ".html": "text/html; charset=utf-8", ".js": "text/javascript; charset=utf-8", ".css": "text/css; charset=utf-8", ".json": "application/json; charset=utf-8", ".svg": "image/svg+xml", ".ico": "image/x-icon", ".png": "image/png", ".webp": "image/webp", ".txt": "text/plain; charset=utf-8", ".webmanifest": "application/manifest+json" };
 const baseHeaders = { "X-Content-Type-Options": "nosniff", "Referrer-Policy": "strict-origin-when-cross-origin", "X-Frame-Options": "SAMEORIGIN" };
 
 function cookies(req) { return Object.fromEntries((req.headers.cookie || "").split(";").map(c => c.trim().split("=")).filter(p => p[0]).map(([k, ...v]) => [k, decodeURIComponent(v.join("="))])); }
@@ -737,18 +737,22 @@ async function handleApi(req, res, url) {
 
 /* /job/<id>: the address people share. Crawlers (Facebook, WhatsApp) read the Open Graph tags; browsers open the job in the app. */
 const escHtml = v => String(v ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const siteOrigin = req => `${req.headers["x-forwarded-proto"] || "http"}://${req.headers["x-forwarded-host"] || req.headers.host}`;
+/* index.html with absolute addresses in the share tags (Facebook and WhatsApp need full URLs for the logo preview) */
+function indexHtml(req) { return fs.readFileSync(path.join(STATIC_DIR, "index.html"), "utf8").replace(/__ORIGIN__/g, escHtml(siteOrigin(req))); }
 function serveJobShare(req, res, jid) {
   const idx = path.join(STATIC_DIR, "index.html"); if (!fs.existsSync(idx)) return send(res, 503, "Site files are missing.", { "Content-Type": "text/plain" });
-  let html = fs.readFileSync(idx, "utf8"); const j = job(jid);
+  let html = indexHtml(req); const j = job(jid);
   if (j && j.status === "active") {
-    const origin = `${req.headers["x-forwarded-proto"] || "http"}://${req.headers["x-forwarded-host"] || req.headers.host}`;
+    const origin = siteOrigin(req);
     const company = user(j.employerId)?.company?.name;
     const title = `${j.title} – ${j.city}, ${j.country} | MAM & MAM Overseas Ltd.`;
     const desc = `${j.currency} ${Number(j.salaryMin).toLocaleString("en-US")}–${Number(j.salaryMax).toLocaleString("en-US")}/month · ${j.vacancies} vacancies${company ? ` · ${company}` : ""}${j.deadline ? ` · Apply by ${j.deadline}` : ""}. Licensed recruiting agency RL 1217.`;
     const tags = [`<title>${escHtml(title)}</title>`, `<meta name="description" content="${escHtml(desc)}">`, `<meta property="og:type" content="website">`, `<meta property="og:site_name" content="MAM &amp; MAM Overseas Ltd.">`,
       `<meta property="og:title" content="${escHtml(title)}">`, `<meta property="og:description" content="${escHtml(desc)}">`, `<meta property="og:url" content="${escHtml(`${origin}/job/${j.id}`)}">`,
-      ...(j.card ? [`<meta property="og:image" content="${escHtml(`${origin}/api/files/${j.card.id}`)}">`, `<meta property="og:image:type" content="image/png">`, `<meta property="og:image:width" content="1080">`, `<meta property="og:image:height" content="1350">`, `<meta name="twitter:card" content="summary_large_image">`] : [])].join("\n");
-    html = html.replace(/<title>.*?<\/title>\s*<meta name="description"[^>]*>/s, tags);
+      ...(j.card ? [`<meta property="og:image" content="${escHtml(`${origin}/api/files/${j.card.id}`)}">`, `<meta property="og:image:type" content="image/png">`, `<meta property="og:image:width" content="1080">`, `<meta property="og:image:height" content="1350">`, `<meta name="twitter:card" content="summary_large_image">`]
+        : [`<meta property="og:image" content="${escHtml(`${origin}/brand/og-image.png`)}">`, `<meta property="og:image:width" content="1200">`, `<meta property="og:image:height" content="630">`, `<meta name="twitter:card" content="summary_large_image">`])].join("\n");
+    html = html.replace(/<title>.*?<\/title>\s*<meta name="description"[^>]*>/s, tags).replace(/<!--og-->[\s\S]*?<!--\/og-->/, "");
   }
   res.writeHead(200, { ...baseHeaders, "Content-Type": MIME[".html"], "Cache-Control": "no-cache" }); res.end(html);
 }
@@ -759,8 +763,9 @@ function serveStatic(req, res, url) {
   if (!file.startsWith(STATIC_DIR) || !fs.existsSync(file) || fs.statSync(file).isDirectory()) {
     const idx = path.join(STATIC_DIR, "index.html"); // single-page app
     if (!fs.existsSync(idx)) return send(res, 503, "Site files are missing. Run the build.", { "Content-Type": "text/plain" });
-    return send(res, 200, fs.readFileSync(idx), { "Content-Type": MIME[".html"], "Cache-Control": "no-cache" });
+    return send(res, 200, indexHtml(req), { "Content-Type": MIME[".html"], "Cache-Control": "no-cache" });
   }
+  if (p === "/index.html") return send(res, 200, indexHtml(req), { "Content-Type": MIME[".html"], "Cache-Control": "no-cache" });
   const ext = path.extname(file);
   res.writeHead(200, { ...baseHeaders, "Content-Type": MIME[ext] || "application/octet-stream", "Cache-Control": ext === ".html" ? "no-cache" : "public, max-age=3600" });
   fs.createReadStream(file).pipe(res);

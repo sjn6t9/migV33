@@ -37,6 +37,7 @@ async function fontsReady() {
 export async function renderJobCard(job, { company = "", settings = {}, link = "" } = {}) {
   await fontsReady();
   const c = document.createElement("canvas"); c.width = W; c.height = H;
+  const logo = await loadImage("/brand/logo-320.webp");
   const g = c.getContext("2d"); g.textBaseline = "alphabetic";
 
   /* background */
@@ -46,11 +47,11 @@ export async function renderJobCard(job, { company = "", settings = {}, link = "
   const hg = g.createLinearGradient(0, 0, W, 330); hg.addColorStop(0, "#00785a"); hg.addColorStop(0.5, GREEN); hg.addColorStop(1, GREEN_DEEP);
   g.fillStyle = hg; g.fillRect(0, 0, W, 330);
   // logo
-  roundRect(g, 64, 58, 104, 104, 22); g.fillStyle = "#ffffff"; g.fill();
-  g.fillStyle = GREEN; g.font = `800 34px ${DISPLAY}`; g.textAlign = "center"; g.fillText("M&M", 116, 118);
-  roundRect(g, 90, 132, 52, 7, 3.5); g.fillStyle = RED; g.fill();
-  g.textAlign = "left"; g.fillStyle = "#ffffff"; g.font = `800 40px ${DISPLAY}`; g.fillText("MAM & MAM OVERSEAS LTD.", 196, 102);
-  g.font = `500 28px ${BODY}`; g.fillStyle = "rgba(255,255,255,.88)"; g.fillText("Government licensed recruiting agency · RL 1217", 196, 146);
+  roundRect(g, 64, 50, 120, 120, 24); g.fillStyle = "#ffffff"; g.fill();
+  if (logo) g.drawImage(logo, 70, 56, 108, 108);
+  else { g.fillStyle = GREEN; g.font = `800 34px ${DISPLAY}`; g.textAlign = "center"; g.fillText("M&M", 124, 118); }
+  g.textAlign = "left"; g.fillStyle = "#ffffff"; g.font = `800 40px ${DISPLAY}`; g.fillText("MAM & MAM OVERSEAS LTD.", 208, 102);
+  g.font = `500 28px ${BODY}`; g.fillStyle = "rgba(255,255,255,.88)"; g.fillText("Government licensed recruiting agency · RL 1217", 208, 146);
   // hiring pill
   g.font = `800 34px ${DISPLAY}`; const hire = "WE ARE HIRING"; const hw = g.measureText(hire).width + 64;
   roundRect(g, 64, 210, hw, 70, 35); g.fillStyle = RED; g.fill();
@@ -109,4 +110,9 @@ export async function renderJobCard(job, { company = "", settings = {}, link = "
   g.fillText(contact || "এখনই আবেদন করুন · Never pay anyone outside our office", 64, fy + 166);
 
   return await new Promise((res, rej) => c.toBlob(b => (b ? res(b) : rej(new Error("Could not create the image."))), "image/png"));
+}
+
+/* the agency logo, drawn on the card (same site, so the canvas can still be saved as PNG) */
+function loadImage(src) {
+  return new Promise(res => { const i = new Image(); i.onload = () => res(i); i.onerror = () => res(null); i.src = src; setTimeout(() => res(i.complete && i.naturalWidth ? i : null), 4000); });
 }

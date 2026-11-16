@@ -108,7 +108,7 @@ function Footer() {
   return (
     <footer className="bot"><div className="wrap">
       <div className="cols">
-        <div><h4>MAM &amp; MAM OVERSEAS LTD.</h4><p className="muted">Licensed recruiting agency<br />Recruiting Licence No. <b className="num ink">RL 1217</b></p>
+        <div><Logo size={84} className="foot-logo" /><h4>MAM &amp; MAM OVERSEAS LTD.</h4><p className="muted">Licensed recruiting agency<br />Recruiting Licence No. <b className="num ink">RL 1217</b></p>
           <div className="social">{[[s.whatsapp && waLink(s.whatsapp), FaWhatsapp, "WhatsApp"], [s.social?.facebook, FaFacebookF, "Facebook"], [s.social?.youtube, FaYoutube, "YouTube"], [s.social?.linkedin, FaLinkedinIn, "LinkedIn"], [s.social?.tiktok, FaTiktok, "TikTok"]]
             .filter(([h]) => h).map(([h, I, l]) => <a key={l} href={h} target="_blank" rel="noopener noreferrer" aria-label={l} title={l}><I /></a>)}</div></div>
         <div><h4>For job seekers</h4><ul><li><a href="#jobs">Browse jobs</a></li><li><a href="#" onClick={reg("candidate")}>Create profile &amp; upload CV</a></li><li><a href="#track">Track your file</a></li><li><a href="#blog">Guides &amp; checklists</a></li></ul></div>
@@ -165,6 +165,7 @@ function Auth({ mode, role: initialRole }) {
   const tabBtn = (m, t) => <button className={mode === m ? "on" : ""} onClick={() => openModal("auth", { mode: m, role })}>{t}</button>;
   return (
     <>
+      <div className="modal-brand"><Logo size={56} /></div>
       <h3>{mode === "login" ? "Sign in" : "Create an account"}</h3>
       <div className="tabs2">{tabBtn("login", "Sign in")}{tabBtn("register", "Register")}</div>
       {mode === "login" ? (

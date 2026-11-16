@@ -15,7 +15,9 @@ function canStoreCard(j) {
   if (u.role === "staff") return !!u.perms?.includes("jobs");
   return u.role === "employer" && j.employerId === u.id;
 }
-const cardOutdated = j => !j.card || !j.cardAt || (j.updatedAt && j.updatedAt > j.cardAt);
+// cards made before the agency logo was added (CARD_DESIGN) are redrawn once
+const CARD_DESIGN = "2026-11-17T00:00:00Z";
+const cardOutdated = j => !j.card || !j.cardAt || j.cardAt < CARD_DESIGN || (j.updatedAt && j.updatedAt > j.cardAt);
 
 export async function makeCard(j) {
   return renderJobCard(j, { company: company(j), settings: store.S.settings, link: shareLink(j) });

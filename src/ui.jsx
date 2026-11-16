@@ -13,14 +13,11 @@ export const CAT_ICON = {
   "Security": LuShield, "Cleaning & Facility": LuSparkles, "Agriculture": LuWheat, "Retail & Sales": LuShoppingBag, "IT & Office": LuMonitor
 };
 
-export function Logo() {
-  return (
-    <svg width="44" height="44" viewBox="0 0 44 44" aria-hidden="true" className="logo-mark">
-      <rect x="1" y="1" width="42" height="42" rx="10" fill="#006a4e" />
-      <text x="22" y="26.5" textAnchor="middle" fontFamily="Archivo, sans-serif" fontWeight="800" fontSize="13" fill="#ffffff">M&amp;M</text>
-      <rect x="11" y="31" width="22" height="3" rx="1.5" fill="#f42a41" />
-    </svg>
-  );
+/* The agency's own logo (globe, plane and M&M), served from /brand/ */
+export function Logo({ size = 48, className = "" }) {
+  const src = size > 64 ? "/brand/logo-192.webp" : "/brand/logo-96.webp";
+  const src2 = size > 64 ? "/brand/logo-320.webp" : "/brand/logo-192.webp";
+  return <img className={`logo-mark ${className}`} src={src} srcSet={`${src} 1x, ${src2} 2x`} width={size} height={size} alt="" decoding="async" />;
 }
 
 export const Pill = ({ s }) => <span className={`pill p-${s}`}>{LABEL[s] || s}</span>;

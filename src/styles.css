@@ -473,3 +473,12 @@ img.avatar.photo{object-fit:cover;border-radius:50%;border:2px solid var(--line)
 }
 .rail button{white-space:normal;align-items:center}
 .rail-l{min-width:0}
+/* agency logo */
+.logo-mark{flex:none;display:block;border-radius:10px;background:#fff;object-fit:contain}
+:root[data-theme="dark"] .logo-mark{padding:2px}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .logo-mark{padding:2px}}
+.logo .logo-mark{width:52px;height:52px}
+.foot-logo{border-radius:14px;padding:6px;margin-bottom:10px;width:84px;height:84px}
+.modal-brand{display:flex;justify-content:center;margin:-4px 0 6px}
+.chat-h .logo-mark{width:30px;height:30px;border-radius:7px;padding:1px}
+@media (max-width:560px){.logo .logo-mark{width:44px;height:44px}}

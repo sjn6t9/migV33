@@ -12,7 +12,7 @@ import {
 } from "../store.js";
 import { apply, openModal, go, toast, formData, act } from "../actions.js";
 import { ShareButton } from "../Share.jsx";
-import { JobCard, SaveButton, Pill, Empty, Val, Md, CAT_ICON, Pipe, ClPipe, Stars, Avatar } from "../ui.jsx";
+import { JobCard, SaveButton, Pill, Empty, Val, Md, CAT_ICON, Pipe, ClPipe, Stars, Avatar , Logo } from "../ui.jsx";
 
 export const waLink = (num, text = "") => `https://wa.me/${num}${text ? `?text=${encodeURIComponent(text)}` : ""}`;
 
@@ -301,7 +301,7 @@ export function Setup({ token }) {
   return (
     <section className="sec"><div className="wrap" style={{ maxWidth: 560 }}>
       <form className="card stack12" onSubmit={submit}>
-        <div><div className="eyebrow">First-time setup</div><h1 className="h1s">Create the admin account</h1>
+        <div><Logo size={72} /><div className="eyebrow mt8">First-time setup</div><h1 className="h1s">Create the admin account</h1>
           <p className="muted mt8">This account manages the whole website. Use an email you check, and a strong password you keep private.</p></div>
         <label className="f">Your name<input type="text" name="name" required autoComplete="name" /></label>
         <label className="f">Admin email (login)<input type="email" name="email" required autoComplete="email" /></label>
