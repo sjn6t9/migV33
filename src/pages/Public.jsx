@@ -5,7 +5,7 @@ import {
   LuFileSearch, LuTicket, LuPlaneTakeoff, LuShieldCheck, LuScale, LuNetwork, LuHeadset, LuSearchCheck, LuQuote, LuBriefcase, LuLanguages
 } from "react-icons/lu";
 import { FaWhatsapp } from "react-icons/fa6";
-import { LuAward, LuUsersRound } from "react-icons/lu";
+import { LuAward, LuUsersRound, LuGlobe } from "react-icons/lu";
 import {
   store, touch, me, user, job, live, money, num, bdtMin, bdtMax, fdate, filteredJobs,
   COUNTRIES, CATS, TYPES, BENEFITS, EMPTY_FILTERS, worker, company, LABEL, TEAM_DEPTS
@@ -326,9 +326,10 @@ export function TeamCard({ m, compact }) {
         {!compact && m.years !== "" && m.years != null && <div className="tc-years"><LuAward /> {m.years}+ years in overseas recruitment</div>}
         {!compact && m.bio && <p className="muted small">{m.bio}</p>}
         {!compact && m.expertise?.length > 0 && <div className="row tight">{m.expertise.map(x => <span key={x} className="chip">{x}</span>)}</div>}
-        {!compact && (m.phone || m.whatsapp || m.email) && <div className="tc-contact">
+        {!compact && (m.phone || m.whatsapp || m.email || m.website) && <div className="tc-contact">
           {m.phone && <span className="small"><LuPhone /> {m.phone}</span>}
           {m.email && <a className="small" href={`mailto:${m.email}`}><LuMail /> {m.email}</a>}
+          {m.website && <a className="small" href={m.website} target="_blank" rel="noopener noreferrer"><LuGlobe /> {m.website.replace(/^https?:\/\//, "")}</a>}
           {m.whatsapp && <a className="btn sm wa" href={waLink(m.whatsapp, "Assalamu Alaikum, I contacted you from the MAM & MAM Overseas website.")} target="_blank" rel="noopener noreferrer"><FaWhatsapp /> WhatsApp</a>}
         </div>}
       </div>

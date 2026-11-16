@@ -67,7 +67,11 @@ try {
   const seedDir = path.join(HERE, "seed"); const list = JSON.parse(fs.readFileSync(path.join(seedDir, "team.json"), "utf8"));
   db.seeded = db.seeded || {}; let added = 0;
   for (const m of list) {
-    if (db.seeded[`team:${m.key}`]) continue;
+    if (db.seeded[`team:${m.key}`]) {
+      const x = db.team.find(y => y.name.toLowerCase() === m.name.toLowerCase());
+      if (x && m.website && x.website === undefined) { x.website = m.website; added++; }
+      continue;
+    }
     db.seeded[`team:${m.key}`] = true;
     if (db.team.some(x => x.name.toLowerCase() === m.name.toLowerCase())) continue;
     let photo = null;
@@ -78,10 +82,10 @@ try {
       photo = { id: fid, name: m.photo, size: buf.length };
     }
     db.team.push({ id: id("tm"), name: m.name, title: m.title, dept: TEAM_DEPTS.includes(m.dept) ? m.dept : TEAM_DEPTS[0], bio: m.bio || "", expertise: m.expertise || [], years: m.years ?? "",
-      phone: m.phone || "", whatsapp: m.whatsapp || "", email: m.email || "", order: m.order ?? 10, photo });
+      phone: m.phone || "", whatsapp: m.whatsapp || "", email: m.email || "", website: m.website || "", order: m.order ?? 10, photo });
     added++;
   }
-  if (added) { save(); console.log(`Added ${added} team member(s) from server/seed/team.json.`); } else if (list.length) save();
+  if (added) { save(); console.log(`Team seed applied (${added} change(s)) from server/seed/team.json.`); } else if (list.length) save();
 } catch (e) { if (e.code !== "ENOENT") console.warn("Team seed skipped:", e.message); }
 
 /* first admin account from the environment */
@@ -109,6 +113,7 @@ const numv = (v, min = 0, max = 1e9) => { const n = Number(v); return Number.isF
 const user = uid => db.users.find(u => u.id === uid);
 const job = jid => db.jobs.find(j => j.id === jid);
 const worker = wid => db.workers.find(w => w.id === wid);
+const webUrl = v => { const x = str(v, 200); if (!x) return ""; const u = /^https?:\/\//i.test(x) ? x : `https://${x}`; try { const p = new URL(u); return ["http:", "https:"].includes(p.protocol) && p.hostname.includes(".") ? p.href.replace(/\/$/, "") : ""; } catch { return ""; } };
 const emailOk = e => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e);
 function notify(uid, text) { if (uid) db.notifications.unshift({ id: id("n"), uid, text, at: now(), read: false }); if (db.notifications.length > 5000) db.notifications.length = 5000; }
 const notifyAdmins = (text, perm) => db.users.filter(x => x.role === "admin" || (perm && x.role === "staff" && x.perms?.includes(perm))).forEach(a => notify(a.id, text));
@@ -604,7 +609,8 @@ A["admin.content"] = async (d, u) => {
     must(str(d.name) && str(d.title), "Enter the name and designation.");
     const data = { name: str(d.name, 80), title: str(d.title, 80), dept: TEAM_DEPTS.includes(d.dept) ? d.dept : TEAM_DEPTS[0], bio: str(d.bio, 600),
       expertise: String(d.expertise || "").split(",").map(x => str(x, 40)).filter(Boolean).slice(0, 8), years: d.years === "" || d.years == null ? "" : numv(d.years, 0, 60),
-      phone: str(d.phone, 30), whatsapp: str(d.whatsapp, 20).replace(/\D/g, ""), email: str(d.email, 120), order: numv(d.order ?? 99, 0, 999) };
+      phone: str(d.phone, 30), whatsapp: str(d.whatsapp, 20).replace(/\D/g, ""), email: str(d.email, 120), website: webUrl(d.website), order: numv(d.order ?? 99, 0, 999) };
+    must(!str(d.website) || data.website, "Enter a valid website address, e.g. www.example.com");
     const m = d.op === "teamUpdate" ? db.team.find(x => x.id === d.id) : { id: id("tm") };
     must(m, "Team member not found.");
     if (d.file) { const ref = storeFile(d.file, u.id, { pdf: false, isPublic: true }); if (m.photo) dropFile(m.photo); data.photo = ref; }

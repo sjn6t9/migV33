@@ -115,6 +115,7 @@ export function Admin({ u }) {
           <Field label="Phone (optional)"><input type="tel" name="phone" defaultValue={editM?.phone} /></Field>
           <Field label="WhatsApp (optional)" hint="With country code, e.g. 8801XXXXXXXXX"><input type="tel" name="whatsapp" defaultValue={editM?.whatsapp} /></Field>
           <Field label="Email (optional)"><input type="email" name="email" defaultValue={editM?.email} /></Field>
+          <Field label="Website (optional)" hint="e.g. www.example.com"><input type="text" name="website" defaultValue={editM?.website} /></Field>
           <Field label="Display order" hint="Lower numbers show first"><input type="number" name="order" min="0" max="999" defaultValue={editM?.order ?? 10} /></Field>
           <Field label={editM?.photo ? "Replace photo" : "Photo (optional)"} hint="A clear, professional photo. Resized automatically."><input type="file" name="photo" accept="image/*" /></Field>
           {editM?.photo && <label className="check"><input type="checkbox" name="removePhoto" /> Remove current photo</label>}
