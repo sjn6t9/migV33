@@ -5,6 +5,7 @@ import {
 } from "react-icons/lu";
 import { store, touch, me, company, money, num, bdtMin, fdate, bdtFmt, LABEL, STAGES, CL_STAGES } from "./store.js";
 import { toggleSave, downloadFile, cardFileName } from "./actions.js";
+import { ShareButton } from "./Share.jsx";
 
 /* All icons are inline SVG React components (react-icons / Lucide). No PNG images are used anywhere. */
 export const CAT_ICON = {
@@ -77,7 +78,7 @@ export function JobCard({ j }) {
       <div className="row tight">{j.benefits.slice(0, 4).map(b => <span key={b} className="chip">{b}</span>)}</div>
       <div className="foot">
         <span className="muted small">{j.vacancies} vacancies · Deadline {fdate(j.deadline)}</span>
-        <a className="btn sm pri" href={`#job-${j.id}`}>View &amp; apply</a>
+        <div className="row tight"><ShareButton j={j} small label="" /><a className="btn sm pri" href={`#job-${j.id}`}>View &amp; apply</a></div>
       </div>
     </article>
   );
@@ -88,14 +89,14 @@ export function Toast() {
   return <div id="toast" className={t ? "show" : ""} role="status" aria-live="polite">{t}</div>;
 }
 
-export function ModalFrame({ onClose, children }) {
+export function ModalFrame({ onClose, children, wide }) {
   React.useEffect(() => {
     const k = e => e.key === "Escape" && onClose();
     document.addEventListener("keydown", k); return () => document.removeEventListener("keydown", k);
   }, [onClose]);
   return (
     <div className="modal-bg open" onMouseDown={e => e.target === e.currentTarget && onClose()}>
-      <div className="modal" role="dialog" aria-modal="true">
+      <div className={`modal${wide ? " wide" : ""}`} role="dialog" aria-modal="true">
         <button className="btn sm x" onClick={onClose} aria-label="Close"><LuX /></button>
         {children}
       </div>

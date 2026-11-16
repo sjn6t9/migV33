@@ -393,7 +393,7 @@ A["emp.jobSave"] = async (d, u) => {
   needRole(u, "employer"); const data = jobData(d);
   if (d.id) {
     const j = job(d.id); must(j && j.employerId === u.id, "Job not found.");
-    Object.assign(j, data); if (db.settings.moderation && j.status === "active") j.status = "pending";
+    Object.assign(j, data, { updatedAt: now() }); if (db.settings.moderation && j.status === "active") j.status = "pending";
     if (j.status === "pending") notifyAdmins(`Job edited, needs review: ${j.title}.`, "jobs");
     return { msg: db.settings.moderation ? "Changes saved and sent for review." : "Changes saved." };
   }
@@ -427,6 +427,17 @@ A["emp.buy"] = async ({ pkgId }, u) => {
   }
   db.orders.push({ id: id("o"), uid: u.id, name: p.name, price: p.price, posts: p.posts, featured: p.featured, status: "pending", at: now() });
   notifyAdmins(`Package request from ${u.company.name}: ${p.name}.`, "packages"); return { msg: "Package requested. Credits are added once payment is confirmed." };
+};
+
+/* share photocard (PNG made in the browser) for link previews; admin/staff with jobs permission or the job's employer */
+A["job.card"] = async ({ id: jid, file }, u) => {
+  const j = job(jid); must(j, "Job not found.");
+  must(can(u, "jobs") || (u?.role === "employer" && j.employerId === u.id), "Not allowed.", 403);
+  must(typeof file?.data === "string" && file.data.startsWith("data:image/png"), "The card must be a PNG image.");
+  const ref = storeFile({ name: `job-${j.id}.png`, data: file.data }, u.id, { pdf: false, isPublic: true });
+  if (j.card) dropFile(j.card);
+  j.card = ref; j.cardAt = now();
+  return {};
 };
 
 /* ---- agent ---- */
@@ -724,6 +735,24 @@ async function handleApi(req, res, url) {
   return send(res, 404, { error: "Not found." });
 }
 
+/* /job/<id>: the address people share. Crawlers (Facebook, WhatsApp) read the Open Graph tags; browsers open the job in the app. */
+const escHtml = v => String(v ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+function serveJobShare(req, res, jid) {
+  const idx = path.join(STATIC_DIR, "index.html"); if (!fs.existsSync(idx)) return send(res, 503, "Site files are missing.", { "Content-Type": "text/plain" });
+  let html = fs.readFileSync(idx, "utf8"); const j = job(jid);
+  if (j && j.status === "active") {
+    const origin = `${req.headers["x-forwarded-proto"] || "http"}://${req.headers["x-forwarded-host"] || req.headers.host}`;
+    const company = user(j.employerId)?.company?.name;
+    const title = `${j.title} – ${j.city}, ${j.country} | MAM & MAM Overseas Ltd.`;
+    const desc = `${j.currency} ${Number(j.salaryMin).toLocaleString("en-US")}–${Number(j.salaryMax).toLocaleString("en-US")}/month · ${j.vacancies} vacancies${company ? ` · ${company}` : ""}${j.deadline ? ` · Apply by ${j.deadline}` : ""}. Licensed recruiting agency RL 1217.`;
+    const tags = [`<title>${escHtml(title)}</title>`, `<meta name="description" content="${escHtml(desc)}">`, `<meta property="og:type" content="website">`, `<meta property="og:site_name" content="MAM &amp; MAM Overseas Ltd.">`,
+      `<meta property="og:title" content="${escHtml(title)}">`, `<meta property="og:description" content="${escHtml(desc)}">`, `<meta property="og:url" content="${escHtml(`${origin}/job/${j.id}`)}">`,
+      ...(j.card ? [`<meta property="og:image" content="${escHtml(`${origin}/api/files/${j.card.id}`)}">`, `<meta property="og:image:type" content="image/png">`, `<meta property="og:image:width" content="1080">`, `<meta property="og:image:height" content="1350">`, `<meta name="twitter:card" content="summary_large_image">`] : [])].join("\n");
+    html = html.replace(/<title>.*?<\/title>\s*<meta name="description"[^>]*>/s, tags);
+  }
+  res.writeHead(200, { ...baseHeaders, "Content-Type": MIME[".html"], "Cache-Control": "no-cache" }); res.end(html);
+}
+
 function serveStatic(req, res, url) {
   let p = decodeURIComponent(url.pathname); if (p === "/") p = "/index.html";
   const file = path.normalize(path.join(STATIC_DIR, p));
@@ -742,6 +771,7 @@ const server = http.createServer(async (req, res) => {
   try {
     if (url.pathname.startsWith("/api/")) return await handleApi(req, res, url);
     if (req.method !== "GET" && req.method !== "HEAD") return send(res, 405, { error: "Method not allowed." });
+    const m = url.pathname.match(/^\/job\/([a-z0-9]+)\/?$/i); if (m) return serveJobShare(req, res, m[1]);
     return serveStatic(req, res, url);
   } catch (e) { console.error(e); if (!res.headersSent) send(res, 500, { error: "Server error." }); }
 });

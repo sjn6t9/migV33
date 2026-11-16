@@ -9,6 +9,7 @@ import { toast, formData, setTab, openModal, confirmBox, deleteUser, act, readUp
 import { Rail, Tiles, Pill, Empty, Bars, Stars, Avatar } from "../ui.jsx";
 import { LedgerTable, StatusSelect, Field, Options } from "./shared.jsx";
 import { setClStatus } from "../actions.js";
+import { ShareButton, storeCard } from "../Share.jsx";
 
 const ui = store.ui;
 const openCl = clOpen;
@@ -210,7 +211,7 @@ export function Admin({ u }) {
   if (t === "jobs") {
     const f = ui.jobFilter;
     const L = S.jobs.filter(j => f === "all" || j.status === f).sort((a, b) => (a.status === "pending" ? -1 : 0) - (b.status === "pending" ? -1 : 0));
-    const pub = j => act("admin.job", { id: j.id, op: "publish" });
+    const pub = async j => { const r = await act("admin.job", { id: j.id, op: "publish" }); if (r) { const fresh = job(j.id); if (fresh) storeCard(fresh); } };
     const reject = j => act("admin.job", { id: j.id, op: "reject" });
     const del = j => confirmBox("Delete this job and its applications?", () => act("admin.job", { id: j.id, op: "delete" }), "Delete");
     body = <>
@@ -222,6 +223,7 @@ export function Admin({ u }) {
             <td><label className="check"><input type="checkbox" checked={j.featured} onChange={e => act("admin.job", { id: j.id, op: "feature", v: e.target.checked })} /> <span className="small">Featured</span></label></td>
             <td><div className="row tight nowrap">
               {j.status === "pending" && <><button className="btn sm pri" onClick={() => pub(j)}><LuCheck /> Approve</button><button className="btn sm danger" onClick={() => reject(j)}><LuX /> Reject</button></>}
+              {j.status === "active" && <ShareButton j={j} small />}
               {j.status === "active" && <button className="btn sm" onClick={() => act("admin.job", { id: j.id, op: "pause" })}><LuEyeOff /> Unpublish</button>}
               {["paused", "rejected", "closed"].includes(j.status) && <button className="btn sm" onClick={() => pub(j)}><LuEye /> Publish</button>}
               <button className="btn sm danger" onClick={() => del(j)} aria-label="Delete job"><LuTrash2 /></button>

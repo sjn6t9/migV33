@@ -4,6 +4,7 @@ import { store, commit, appsFor, fdate, num, unread, COUNTRIES, CATS, TYPES, BEN
 import { toast, formData, setTab, act } from "../actions.js";
 import { Rail, Tiles, Pill, Empty } from "../ui.jsx";
 import { NotifPanel, ApplicantTable, Field, Options } from "./shared.jsx";
+import { ShareButton } from "../Share.jsx";
 
 const ui = store.ui;
 
@@ -90,6 +91,7 @@ export function Employer({ u }) {
           <tr key={j.id}><td><a href={`#job-${j.id}`}>{j.title}</a><div className="muted small">{j.city}, {j.country}</div></td><td><Pill s={j.status} /></td><td className="num">{appsFor(j.id).length}</td><td>{fdate(j.deadline)}</td>
             <td><div className="row tight nowrap">
               <button className="btn sm" onClick={() => { ui.editJob = j.id; setTab("employer", "post"); }}><LuPencil /> Edit</button>
+              {j.status === "active" && <ShareButton j={j} small />}
               {j.status === "active" && <button className="btn sm" onClick={() => state(j, "paused")}><LuPause /> Pause</button>}
               {j.status === "paused" && <button className="btn sm" onClick={() => state(j, "active")}><LuPlay /> Resume</button>}
               {["active", "paused"].includes(j.status) && <button className="btn sm danger" onClick={() => state(j, "closed")}><LuCircleX /> Close</button>}

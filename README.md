@@ -8,7 +8,7 @@ React 19 front end (icons from `react-icons`, all inline SVG, no PNG icons) and 
 
 | Area | Features |
 |---|---|
-| Public site | Home with search, job board with filters, job details, services, track status (passport + mobile), about, blog, contact, chat assistant, WhatsApp button |
+| Public site | Job share photocards (1080×1350 PNG) with Facebook/WhatsApp link previews at `/job/<id>`; home with search, job board with filters, job details, services, track status (passport + mobile), about, blog, contact, chat assistant, WhatsApp button |
 | Job seeker | Registration with email verification code, profile + photo + passport + CV uploads, 3-step application (job → profile → apply), BMET clearance with document uploads, clearance card download, saved jobs, job alerts |
 | Employer | Company profile and verification, post / edit / pause / close jobs (reviewed by the agency), applicants with status changes, CV download, packages |
 | Agent | Profile with photo, NID and trade licence, workers, BMET clearance with documents, job applications for workers, air ticket requests, account statement and payment reporting, clearance card download |

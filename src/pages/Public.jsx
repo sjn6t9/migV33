@@ -11,6 +11,7 @@ import {
   COUNTRIES, CATS, TYPES, BENEFITS, EMPTY_FILTERS, worker, company, LABEL, TEAM_DEPTS
 } from "../store.js";
 import { apply, openModal, go, toast, formData, act } from "../actions.js";
+import { ShareButton } from "../Share.jsx";
 import { JobCard, SaveButton, Pill, Empty, Val, Md, CAT_ICON, Pipe, ClPipe, Stars, Avatar } from "../ui.jsx";
 
 export const waLink = (num, text = "") => `https://wa.me/${num}${text ? `?text=${encodeURIComponent(text)}` : ""}`;
@@ -171,6 +172,7 @@ export function JobDetail({ id }) {
           <table><tbody>{facts.map(([k, v]) => <tr key={k}><th>{k}</th><td>{v}</td></tr>)}</tbody></table>
           {cta}
           <SaveButton j={j} full />
+          {j.status === "active" && <ShareButton j={j} label="Share this job" />}
           <p className="muted small">Never pay anyone outside our office. Processed by MAM &amp; MAM Overseas Ltd., RL 1217.</p>
         </aside>
       </div>

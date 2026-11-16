@@ -418,3 +418,15 @@ img.avatar.photo{object-fit:cover;border-radius:50%;border:2px solid var(--line)
 .teamgrid.compact{grid-template-columns:repeat(auto-fill,minmax(220px,1fr))}
 @media (min-width:900px){.teamgrid{grid-template-columns:repeat(3,minmax(0,1fr))}.teamgrid.compact{grid-template-columns:repeat(4,minmax(0,1fr))}}
 .teamcard .tc-photo img{object-position:center top}
+
+/* ---- v7: job share photocard ---- */
+.modal.wide{max-width:900px}
+.sharebox{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(220px,.9fr);gap:20px;align-items:start}
+@media (max-width:700px){.sharebox{grid-template-columns:1fr}}
+.share-prev{background:var(--soft);border:1px solid var(--line);border-radius:12px;min-height:260px;display:grid;place-items:center;overflow:hidden}
+.share-prev img{display:block;width:100%;height:auto}
+.share-actions .btn{justify-content:flex-start}
+.btn.fb{background:#1877f2;border-color:#1877f2;color:#fff}
+.spin{animation:spin 1s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+@media (prefers-reduced-motion:reduce){.spin{animation:none}}
