@@ -62,6 +62,28 @@ function save() {
   }
 }
 
+/* team members shipped with the code (server/seed/team.json): each is added once; if the admin later deletes one it stays deleted */
+try {
+  const seedDir = path.join(HERE, "seed"); const list = JSON.parse(fs.readFileSync(path.join(seedDir, "team.json"), "utf8"));
+  db.seeded = db.seeded || {}; let added = 0;
+  for (const m of list) {
+    if (db.seeded[`team:${m.key}`]) continue;
+    db.seeded[`team:${m.key}`] = true;
+    if (db.team.some(x => x.name.toLowerCase() === m.name.toLowerCase())) continue;
+    let photo = null;
+    if (m.photo && fs.existsSync(path.join(seedDir, m.photo))) {
+      const buf = fs.readFileSync(path.join(seedDir, m.photo)); const fid = id("f");
+      fs.writeFileSync(path.join(DATA_DIR, "files", fid), buf);
+      db.files[fid] = { id: fid, owner: "seed", name: m.photo, size: buf.length, mime: "image/jpeg", public: true, at: now() };
+      photo = { id: fid, name: m.photo, size: buf.length };
+    }
+    db.team.push({ id: id("tm"), name: m.name, title: m.title, dept: TEAM_DEPTS.includes(m.dept) ? m.dept : TEAM_DEPTS[0], bio: m.bio || "", expertise: m.expertise || [], years: m.years ?? "",
+      phone: m.phone || "", whatsapp: m.whatsapp || "", email: m.email || "", order: m.order ?? 10, photo });
+    added++;
+  }
+  if (added) { save(); console.log(`Added ${added} team member(s) from server/seed/team.json.`); } else if (list.length) save();
+} catch (e) { if (e.code !== "ENOENT") console.warn("Team seed skipped:", e.message); }
+
 /* first admin account from the environment */
 if (!db.users.some(u => u.role === "admin")) {
   const email = (process.env.ADMIN_EMAIL || "").trim().toLowerCase(), pass = process.env.ADMIN_PASSWORD || "";

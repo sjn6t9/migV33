@@ -93,7 +93,7 @@ export function Home() {
       </div></section>}
       {S.team.length > 0 && <section className="sec pt0"><div className="wrap">
         <div className="sec-head"><div><div className="eyebrow">Expert team</div><h2>People who handle your file</h2></div><a className="btn" href="#team">Meet the full team</a></div>
-        <div className="grid g4">{S.team.slice(0, 4).map(m => <TeamCard key={m.id} m={m} compact />)}</div>
+        <div className="grid teamgrid compact">{S.team.slice(0, 4).map(m => <TeamCard key={m.id} m={m} compact />)}</div>
       </div></section>}
       <section className="sec pt0"><div className="wrap"><div className="card row between cta soft">
         <div className="cta-text"><div className="eyebrow">For employers</div><h2>Need workers from Bangladesh?</h2><p className="muted mt8">Post a job order, review CVs and shortlist candidates from your own panel. We handle screening, medical, visa and deployment.</p></div>
@@ -352,7 +352,7 @@ export function Team() {
       </div></section>
       <section className="sec"><div className="wrap stack">
         {depts.length > 1 && <div className="row">{[["", "All"], ...depts.map(d => [d, d])].map(([k, l]) => <button key={l} className={`btn sm${dept === k ? " pri" : ""}`} onClick={() => setDept(k)}>{l}</button>)}</div>}
-        {L.length ? <div className="grid g3">{L.map(m => <TeamCard key={m.id} m={m} />)}</div>
+        {L.length ? <div className="grid teamgrid">{L.map(m => <TeamCard key={m.id} m={m} />)}</div>
           : <Empty>Team profiles are being added. {isStaff ? <>Add them in <a href="#dashboard">Admin › Website content</a>.</> : <>Meanwhile, <a href="#contact">contact the office</a>.</>}</Empty>}
         <div className="card row between cta soft">
           <div className="cta-text"><h2>Talk to our team</h2><p className="muted mt8">Visit the office or send a message. We reply within one working day.</p></div>

@@ -414,3 +414,7 @@ img.avatar.photo{object-fit:cover;border-radius:50%;border:2px solid var(--line)
 .tc-years svg,.tc-contact svg{width:1em;height:1em;color:var(--brand)}
 .tc-contact{display:flex;flex-wrap:wrap;gap:8px 14px;align-items:center;border-top:1px solid var(--line);padding-top:10px;margin-top:2px}
 .tc-contact a,.tc-contact span{display:inline-flex;align-items:center;gap:5px}
+.teamgrid{grid-template-columns:repeat(auto-fill,minmax(270px,1fr))}
+.teamgrid.compact{grid-template-columns:repeat(auto-fill,minmax(220px,1fr))}
+@media (min-width:900px){.teamgrid{grid-template-columns:repeat(3,minmax(0,1fr))}.teamgrid.compact{grid-template-columns:repeat(4,minmax(0,1fr))}}
+.teamcard .tc-photo img{object-position:center top}
