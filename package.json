@@ -1,0 +1,22 @@
+{
+  "name": "mam-overseas-portal",
+  "version": "2.0.0",
+  "private": true,
+  "description": "MAM & MAM Overseas Ltd. (RL 1217) recruiting portal: public site, job seeker, employer, agent, staff and admin panels.",
+  "type": "module",
+  "engines": { "node": ">=18" },
+  "scripts": {
+    "start": "node server/server.js",
+    "build": "esbuild src/main.jsx --bundle --minify --jsx=automatic --define:process.env.NODE_ENV=\\\"production\\\" --outdir=build --target=es2019 && node scripts/assemble.mjs",
+    "dev": "npm run build && node server/server.js"
+  },
+  "dependencies": {
+    "nodemailer": "^6.9.14"
+  },
+  "devDependencies": {
+    "esbuild": "^0.25.0",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0",
+    "react-icons": "^5.5.0"
+  }
+}
