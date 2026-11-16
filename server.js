@@ -3036,7 +3036,12 @@ function ldBlocked(t, col, p, np) { // a barrier = two tokens of one colour on t
   for (let r = p === -1 ? 0 : p + 1; r <= Math.min(np, 50); r++) {
     const a = ldAbs(col, r);
     if (ldSafeAt(t, a)) continue;   // no barrier on a safe cell or on a start cell
-    for (const o of t.seats) if (ldFoe(t, col, o) && t.tok[o.c].filter(q => q >= 0 && q <= 50 && ldAbs(o.c, q) === a).length >= 2) return true;
+    const seen = new Set();
+    for (const o of t.seats) if (ldFoe(t, col, o)) {
+      const team = t.mode === 'team' ? [o.c, ldMate(o.c)] : [o.c], key = Math.min(...team); if (seen.has(key)) continue; seen.add(key);
+      // Team Up: one coin from each teammate on the same cell also forms a barrier
+      if (team.reduce((n, c) => n + t.tok[c].filter(q => q >= 0 && q <= 50 && ldAbs(c, q) === a).length, 0) >= 2) return true;
+    }
   }
   return false;
 }
