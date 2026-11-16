@@ -1271,6 +1271,12 @@ app.get('/api/admin/users/:n/activity', auth, ok((q, r) => {
     const rows = db.prepare(k === 'transfers' ? "select kind,title,amount,ts from txs where user=? and kind='transfer' order by id desc limit 300" : 'select kind,title,amount,ts from txs where user=? order by id desc limit 300').all(u.name);
     return r.json({ k, rows });
   }
+  if (k === 'xp') {
+    const T = { post: 'Posted', follow: 'Followed someone', comment: 'Commented', share: 'Shared a post', react: 'Reacted', game: 'Played a game', online: 'Time online' };
+    const x = db.prepare('select xp from users where name=?').get(u.name)?.xp || 0;
+    const rows = db.prepare('select kind,ref,xp,ts from xp_log where user=? order by ts desc limit 300').all(u.name).map(z => ({ title: (T[z.kind] || z.kind) + (z.ref && !['game', 'online'].includes(z.kind) ? ' · ' + String(z.ref).slice(0, 30) : ''), xp: z.xp, ts: z.ts }));
+    return r.json({ k, xp: x, level: level(x), rows });
+  }
   if (k === 'dms') {
     const rows = db.prepare("select room,count(*) n,max(ts) last from msgs where room like 'dm:%' and instr(room,?)>0 group by room order by last desc limit 150").all(u.name)
       .map(x => ({ with: x.room.slice(3).split(':').filter(t => t !== u.name).join(':') || u.name, n: x.n, last: x.last, room: x.room })).filter(x => x.room.slice(3).split(':').includes(u.name));

@@ -2697,6 +2697,8 @@ html body #view#view#view#view#view#view#view#view#view#view#view#view #aac .mu,
 html body #view#view#view#view#view#view#view#view#view#view#view#view #aac .mu{opacity:.8}
 html body #view#view#view#view#view#view#view#view#view#view#view#view #aac .amsg>div,html body #view#view#view#view#view#view#view#view#view#view#view#view #aac .arow .g{color:var(--tx)!important}
 html[data-theme=dark] body #view#view#view #aac .amsg>div,html[data-theme=dark] body #view#view#view #aac .arow .g{color:#fff!important}
+html[data-theme=light] body #view#view#view #aac .pos{color:#13692f!important;font-weight:800}
+html[data-theme=light] body #view#view#view #aac .neg{color:#b3261e!important;font-weight:800}
 </style>
 </head>
 <body>
@@ -4265,9 +4267,9 @@ async function adminUser(name){
   const f=(id,label,val,extra='')=>`<label class="mu">${label}</label><input id="${id}" value="${esc(val||'')}" ${extra}>`;
   view(`<div class="card row"><button class="o" id="abk">‹ Back</button><div class="g"><b style="color:${nc(u.name)}">${esc(u.name)}</b> ${rt(u.role,u.name)} ${u.banned?'<span class="neg">🚫 banned</span>':''}<div class="mu">${lvi(u.level,16)} Level ${u.level} · ${u.xp} XP · ${u.unlimited?'∞ Unlimited':u.coins} coins</div></div></div>
   <div class="card" id="atk"><b>🛰️ Tracking</b><div class="mu">Loading…</div></div>
-  <div class="card" id="aac"><b>📂 Activity</b><div class="chips" id="aact">${[['transfers','Coin transfers'],['coins','All coin history'],['dms','Private chats'],['mails','Mail'],['calls','Calls'],['rooms','Rooms']].map(([k,l])=>`<button type="button" data-ak="${k}">${l}</button>`).join('')}</div><div id="aab" class="mu">Choose what to see. Viewing private chats and mail is recorded in the staff log.</div></div>
+  <div class="card" id="aac"><b>📂 Activity</b><div class="chips" id="aact">${[['transfers','Coin transfers'],['coins','All coin history'],['xp','XP history'],['dms','Private chats'],['mails','Mail'],['calls','Calls'],['rooms','Rooms']].map(([k,l])=>`<button type="button" data-ak="${k}">${l}</button>`).join('')}</div><div id="aab" class="mu">Choose what to see. Viewing private chats and mail is recorded in the staff log.</div></div>
   <div class="card"><b>Account</b>
-    <div class="row"><input id="rn" placeholder="New user ID" maxlength="16" value="${esc(u.name)}"><button class="o" data-a="rename">Rename</button></div>
+    <div class="row"><input id="arn" placeholder="New user ID" maxlength="16" value="${esc(u.name)}"><button class="o" data-a="rename">Rename</button></div>
     <div class="row"><input id="aem" placeholder="Email" maxlength="100" value="${esc(u.email)}"><button class="o" data-a="email">Change email</button></div>
     <div class="row"><input id="amb" placeholder="Mobile number" maxlength="20" value="${esc(u.mobile)}"><button class="o" data-a="mobile">Save mobile</button></div>
     <div class="row"><select id="cy"><option value="">— Country —</option>${cs.map(c=>`<option${c===u.country?' selected':''}>${esc(c)}</option>`).join('')}</select><button class="o" data-a="country">Set country</button></div></div>
@@ -4298,7 +4300,7 @@ async function adminUser(name){
   <div class="card"><b>Ban</b><div class="mu">${u.banned?'Banned'+(u.ban_reason?' — '+esc(u.ban_reason):''):'Account is active'}</div>
     ${u.banned?'<button class="o" data-a="unban">Unban</button>':'<div class="row"><input id="br" placeholder="Reason (optional)" maxlength="100"><button class="o" data-a="ban">Ban</button></div>'}</div>`);
   const run=async(b)=>{const a=b.dataset.a,v=id=>$(id)?.value;const P={
-    rename:{newName:v('rn')},email:{email:v('aem')},mobile:{mobile:v('amb')},country:{country:v('cy')},level:{level:v('lv')},
+    rename:{newName:v('arn')},email:{email:v('aem')},mobile:{mobile:v('amb')},country:{country:v('cy')},level:{level:v('lv')},
     profile:{full_name:v('pf'),gender:v('pg'),bio:v('pb'),status_text:v('ps')},verify:{on:!u.verified},vip:{on:!u.vip},avatar_remove:{},
     coins:{mode:b.dataset.m,amount:v('ca')},password:{password:v('pw')},secq_set:{question:v('sq'),answer:v('sa')},secq_reset:{},
     pin_set:{pin:v('mp')},parent:{parent:v('pa')},tag:{by:v('tb')},pin_reset:{},role:{role:b.dataset.r||v('ro')},ban:{reason:v('br')},unban:{}}[a];
@@ -4321,7 +4323,8 @@ async function adminUser(name){
   const act=async(k,w)=>{const bx=$('aab');bx.innerHTML='Loading…';document.querySelectorAll('#aact button').forEach(x=>x.classList.toggle('on',x.dataset.ak===(k==='dm'?'dms':k)));
     let d;try{d=await api('GET','/admin/users/'+encodeURIComponent(name)+'/activity?k='+k+(w?'&with='+encodeURIComponent(w):''))}catch(er){bx.innerHTML=esc(er.message||'Could not load');return}
     const R=d.rows||[];let h='';
-    if(k==='transfers'||k==='coins')h=R.map(x=>`<div class="arow"><div class="g">${esc(x.title)}<div class="mu">${dtm(x.ts)}${k==='coins'?' · '+esc(x.kind):''}</div></div><b class="${x.amount>0?'pos':'neg'}">${x.amount>0?'+':'−'}${Math.abs(x.amount)}</b></div>`).join('');
+    if(k==='xp')h=`<div class="mu">Total XP: <b>${(d.xp||0).toLocaleString()}</b> · Level ${d.level||1}</div>`+R.map(x=>`<div class="arow"><div class="g">${esc(x.title)}<div class="mu">${dtm(x.ts)}</div></div><b class="pos">+${x.xp}</b></div>`).join('')+(R.length?'':'<div class="mu">No XP activity recorded yet.</div>');
+    else if(k==='transfers'||k==='coins')h=R.map(x=>`<div class="arow"><div class="g">${esc(x.title)}<div class="mu">${dtm(x.ts)}${k==='coins'?' · '+esc(x.kind):''}</div></div><b class="${x.amount>0?'pos':'neg'}">${x.amount>0?'+':'−'}${Math.abs(x.amount)}</b></div>`).join('');
     else if(k==='dms')h=R.map(x=>`<div class="arow" data-dw="${esc(x.with)}" style="cursor:pointer"><div class="g"><b>${esc(x.with)}</b><div class="mu">${x.n} message${x.n===1?'':'s'} · last ${dtm(x.last)}</div></div><span class="mu">Open ›</span></div>`).join('');
     else if(k==='dm')h=`<div class="row"><button type="button" class="o" data-ak="dms">‹ Chats</button><b>${esc(name)} ⇄ ${esc(d.with)}</b></div><div class="adm">${R.map(x=>`<div class="amsg ${x.user===name?'me':''}"><b>${esc(x.user)}</b> <span class="mu">${dtm(x.ts)}</span><div>${esc(x.text)}</div></div>`).join('')||'<div class="mu">No messages.</div>'}</div>`;
     else if(k==='mails')h=R.map(x=>`<div class="arow"><div class="g"><b>${esc(x.subject||'(no subject)')}</b><div class="mu">${esc(x.from_user)} → ${esc(x.to_user)} · ${dtm(x.ts)}</div><div>${esc(x.body)}</div></div></div>`).join('');
