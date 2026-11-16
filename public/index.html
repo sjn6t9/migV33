@@ -2699,6 +2699,17 @@ html body #view#view#view#view#view#view#view#view#view#view#view#view #aac .ams
 html[data-theme=dark] body #view#view#view #aac .amsg>div,html[data-theme=dark] body #view#view#view #aac .arow .g{color:#fff!important}
 html[data-theme=light] body #view#view#view #aac .pos{color:#13692f!important;font-weight:800}
 html[data-theme=light] body #view#view#view #aac .neg{color:#b3261e!important;font-weight:800}
+
+/* room top/bottom bars: Stonic = Night look; Day/Glass action bar light */
+html[data-skin=dark] body :is(#rbar,#tools){background:#0f1a2b!important;border:1px solid rgba(255,255,255,.3)!important;box-shadow:0 0 14px rgba(34,211,238,.10)!important;backdrop-filter:none!important;-webkit-backdrop-filter:none!important;color:#f2f6ff!important}
+html[data-skin=dark] body #rbar :is(.ib,.on1){background:#0f1a2b!important;border:1px solid rgba(255,255,255,.3)!important;box-shadow:none!important;backdrop-filter:none!important;color:#f2f6ff!important}
+html[data-skin=dark] body #rbar .on1{border:0!important;background:none!important}
+html[data-skin=dark] body #rbar svg{stroke:#dfe8ff!important}
+html[data-skin=dark] body #tools button{background:#0f1a2b!important;border:1px solid rgba(255,255,255,.3)!important;color:#f2f6ff!important;box-shadow:none!important}
+html[data-skin=dark] body #rbt{background:#0f1a2b!important;border-bottom:1px solid rgba(255,255,255,.3)!important}
+html[data-skin=clear] body #tools,html[data-skin=glass] body #tools{background:#fff!important;border:1px solid rgba(20,40,80,.14)!important;box-shadow:0 2px 8px rgba(20,40,80,.10)!important;color:#1b2740!important;backdrop-filter:none!important}
+html[data-skin=clear] body #tools button,html[data-skin=glass] body #tools button{background:#eef2fa!important;border:1px solid rgba(20,40,80,.14)!important;color:#1b2740!important;box-shadow:none!important}
+html[data-skin=clear] body #tools,html[data-skin=glass] body #tools,html[data-skin=clear] body #tools *,html[data-skin=glass] body #tools *{text-shadow:none!important}
 </style>
 </head>
 <body>
