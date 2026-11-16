@@ -13,12 +13,11 @@ export const CAT_ICON = {
 };
 
 export function Logo() {
-  // Bangladesh flag motif: bottle-green field with the red disc set toward the hoist
   return (
     <svg width="44" height="44" viewBox="0 0 44 44" aria-hidden="true" className="logo-mark">
-      <rect x="1" y="1" width="42" height="42" rx="9" fill="#006a4e" />
-      <circle cx="20" cy="22" r="14" fill="#f42a41" />
-      <text x="20" y="25.6" textAnchor="middle" fontFamily="Archivo, sans-serif" fontWeight="800" fontSize="10" fill="#ffffff">M&amp;M</text>
+      <rect x="1" y="1" width="42" height="42" rx="10" fill="#006a4e" />
+      <text x="22" y="26.5" textAnchor="middle" fontFamily="Archivo, sans-serif" fontWeight="800" fontSize="13" fill="#ffffff">M&amp;M</text>
+      <rect x="11" y="31" width="22" height="3" rx="1.5" fill="#f42a41" />
     </svg>
   );
 }
