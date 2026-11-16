@@ -6,7 +6,7 @@ import { store, subscribe, getVersion, touch, me, user, job, unread, PAGES, fdat
 import { openModal, closeModal, signOut, toast, formData, setClStatus, downloadFile, fileExt, act, afterLogin } from "./actions.js";
 import { Logo, Toast, ModalFrame, Pill, ClPipe, CardDownload, Avatar } from "./ui.jsx";
 import { CardAdmin, AgentDocsView } from "./dash/shared.jsx";
-import { Home, Jobs, JobDetail, Services, About, Blog, Post, Contact, Track, Setup, waLink } from "./pages/Public.jsx";
+import { Home, Jobs, JobDetail, Services, About, Blog, Post, Contact, Track, Setup, Team, waLink } from "./pages/Public.jsx";
 import { Dashboard } from "./dash/Dashboard.jsx";
 
 function useHash() {
@@ -30,16 +30,17 @@ export default function App() {
   // SEO: title + meta description per page (managed from Admin › SEO)
   useEffect(() => {
     const S = store.S; const key = page === "job" ? "jobs" : page === "post" ? "blog" : PAGES.includes(page) ? page : "home";
-    let title = S.seo[key].title;
+    const seo = S.seo[key] || S.seo.home || { title: "MAM & MAM Overseas Ltd.", desc: "" };
+    let title = seo.title;
     if (page === "job" && job(arg)) title = `${job(arg).title} in ${job(arg).city} | MAM & MAM Overseas Ltd.`;
     if (page === "post") { const p = S.posts.find(x => x.id === arg); if (p) title = `${p.title} | MAM & MAM Overseas Ltd.`; }
     if (page === "dashboard") title = "Dashboard | MAM & MAM Overseas Ltd.";
     document.title = title;
-    document.querySelector('meta[name="description"]')?.setAttribute("content", S.seo[key].desc);
+    document.querySelector('meta[name="description"]')?.setAttribute("content", seo.desc);
   });
 
   const body = {
-    home: <Home />, jobs: <Jobs />, services: <Services />, track: <Track />, about: <About />, blog: <Blog />, contact: <Contact />,
+    home: <Home />, jobs: <Jobs />, services: <Services />, track: <Track />, team: <Team />, about: <About />, blog: <Blog />, contact: <Contact />,
     dashboard: <Dashboard />, job: <JobDetail id={arg} />, post: <Post id={arg} />, setup: <Setup token={arg} />
   }[page];
   const navOn = page === "job" ? "jobs" : page === "post" ? "blog" : page;
@@ -59,7 +60,7 @@ export default function App() {
 
 function Header({ navOn }) {
   const u = me(); const ui = store.ui;
-  const links = [["home", "Home"], ["jobs", "Find Jobs"], ["services", "Services"], ["track", "Track Status"], ["about", "About Us"], ["blog", "Blog"], ["contact", "Contact"]];
+  const links = [["home", "Home"], ["jobs", "Jobs"], ["services", "Services"], ["track", "Track"], ["about", "About"], ["team", "Expert Team"], ["blog", "Blog"], ["contact", "Contact"]];
   const panel = { admin: "Admin panel", staff: "Staff panel", employer: "Employer panel", agent: "Agent panel", candidate: "My dashboard" };
   return (
     <header className="top"><div className="wrap topbar">
@@ -81,7 +82,7 @@ function Header({ navOn }) {
 }
 
 function Footer() {
-  const s = store.S.settings; const V = ({ v }) => (v ? v : <span className="unset">Not set yet (Admin › Settings)</span>);
+  const s = store.S.settings; const staffView = ["admin", "staff"].includes(me()?.role); const V = ({ v }) => (v ? v : <span className="unset">Not set yet (Admin › Settings)</span>);
   const reg = role => e => { e.preventDefault(); openModal("auth", { mode: "register", role }); };
   return (
     <footer className="bot"><div className="wrap">
@@ -90,9 +91,9 @@ function Footer() {
           <div className="social">{[[s.whatsapp && waLink(s.whatsapp), FaWhatsapp, "WhatsApp"], [s.social?.facebook, FaFacebookF, "Facebook"], [s.social?.youtube, FaYoutube, "YouTube"], [s.social?.linkedin, FaLinkedinIn, "LinkedIn"], [s.social?.tiktok, FaTiktok, "TikTok"]]
             .filter(([h]) => h).map(([h, I, l]) => <a key={l} href={h} target="_blank" rel="noopener noreferrer" aria-label={l} title={l}><I /></a>)}</div></div>
         <div><h4>For job seekers</h4><ul><li><a href="#jobs">Browse jobs</a></li><li><a href="#" onClick={reg("candidate")}>Create profile &amp; upload CV</a></li><li><a href="#track">Track your file</a></li><li><a href="#blog">Guides &amp; checklists</a></li></ul></div>
-        <div><h4>For employers</h4><ul><li><a href="#services">Recruitment services</a></li><li><a href="#" onClick={reg("employer")}>Register your company</a></li><li><a href="#contact">Send a demand</a></li></ul></div>
+        <div><h4>For employers</h4><ul><li><a href="#services">Recruitment services</a></li><li><a href="#team">Our expert team</a></li><li><a href="#" onClick={reg("employer")}>Register your company</a></li><li><a href="#contact">Send a demand</a></li></ul></div>
         <div><h4>For agents</h4><ul><li><a href="#" onClick={reg("agent")}>Register as an agent</a></li><li><a href="#" onClick={e => { e.preventDefault(); openModal("auth", { mode: "login" }); }}>Agent sign-in</a></li><li className="muted">BMET clearance &amp; job applications</li></ul></div>
-        <div><h4>Contact</h4><ul><li>Phone: <V v={s.phone} /></li><li>Email: <V v={s.email} /></li><li><V v={s.address} /></li><li className="muted">{s.hours}</li></ul></div>
+        <div><h4>Contact</h4><ul>{(s.phone || staffView) && <li>Phone: <V v={s.phone} /></li>}{(s.email || staffView) && <li>Email: <V v={s.email} /></li>}{(s.address || staffView) && <li><V v={s.address} /></li>}<li className="muted">{s.hours}</li><li><a href="#contact">Send us a message →</a></li></ul></div>
       </div>
       <p className="muted small mt24">© {new Date().getFullYear()} MAM &amp; MAM Overseas Ltd. · RL 1217 · All rights reserved.</p>
     </div></footer>

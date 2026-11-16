@@ -13,18 +13,20 @@ export const CAT_ICON = {
 };
 
 export function Logo() {
+  // Bangladesh flag motif: bottle-green field with the red disc set toward the hoist
   return (
     <svg width="44" height="44" viewBox="0 0 44 44" aria-hidden="true" className="logo-mark">
-      <rect x="1.5" y="1.5" width="41" height="41" rx="9" fill="var(--brand)" />
-      <rect x="5" y="5" width="34" height="34" rx="6" fill="none" stroke="var(--accent)" strokeWidth="1.5" strokeDasharray="3 2" />
-      <text x="22" y="27.5" textAnchor="middle" fontFamily="Archivo, sans-serif" fontWeight="800" fontSize="13" fill="var(--brand-ink)">M&amp;M</text>
+      <rect x="1" y="1" width="42" height="42" rx="9" fill="#006a4e" />
+      <circle cx="20" cy="22" r="14" fill="#f42a41" />
+      <text x="20" y="25.6" textAnchor="middle" fontFamily="Archivo, sans-serif" fontWeight="800" fontSize="10" fill="#ffffff">M&amp;M</text>
     </svg>
   );
 }
 
 export const Pill = ({ s }) => <span className={`pill p-${s}`}>{LABEL[s] || s}</span>;
 export const Empty = ({ children, style }) => <div className="empty" style={style}>{children}</div>;
-export const Unset = () => <span className="unset">Not set yet (Admin › Settings)</span>;
+/* empty office details: a hint for admin/staff, a plain dash for visitors */
+export const Unset = () => (["admin", "staff"].includes(me()?.role) ? <span className="unset">Not set yet (Admin › Settings)</span> : <span className="muted">—</span>);
 export const Val = ({ v }) => (v ? v : <Unset />);
 export const Count = ({ n }) => (n ? <span className="count">{n}</span> : null);
 

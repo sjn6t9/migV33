@@ -8,7 +8,8 @@ export const CL_STAGES = ["pending", "received", "sent_bmet", "section", "ad", "
 export const CARD_TYPES = ".pdf,.jpg,.jpeg,.png,.webp";
 export const CL_DOCS = ["Passport copy", "Visa copy", "Medical report", "Employment contract", "Training certificate", "Photo"];
 export const PAY_METHODS = ["bKash", "Nagad", "Rocket", "Bank transfer", "Cash at office"];
-export const PAGES = ["home", "jobs", "services", "track", "about", "blog", "contact"];
+export const PAGES = ["home", "jobs", "services", "track", "about", "team", "blog", "contact"];
+export const TEAM_DEPTS = ["Management", "Recruitment", "Visa & BMET processing", "Accounts", "Agent relations", "Customer support"];
 export const STAFF_PERMS = [["users", "Accounts"], ["jobs", "Job moderation"], ["apps", "Applications"], ["clearance", "BMET clearance"], ["tickets", "Air tickets"], ["ledger", "Agent accounts"], ["packages", "Payments & packages"], ["content", "Website content"], ["blog", "Blog"], ["seo", "SEO"], ["settings", "Site settings"], ["messages", "Messages"]];
 export const LABEL = {
   applied: "Applied", shortlisted: "Shortlisted", interview: "Interview", medical: "Medical", visa: "Visa processing", clearance: "BMET clearance", flight: "Flight booked", hired: "Hired", rejected: "Rejected",
@@ -34,7 +35,8 @@ export const INITIAL = {
       about: { title: "About Us | MAM & MAM Overseas Ltd.", desc: "About MAM & MAM Overseas Ltd., recruiting licence RL 1217." },
       blog: { title: "Blog | MAM & MAM Overseas Ltd.", desc: "Guides for workers going abroad and employers hiring from Bangladesh." },
       contact: { title: "Contact | MAM & MAM Overseas Ltd.", desc: "Contact MAM & MAM Overseas Ltd." },
-      track: { title: "Track Your File | MAM & MAM Overseas Ltd.", desc: "Check your application, BMET clearance and air ticket status with your passport and mobile number." }
+      track: { title: "Track Your File | MAM & MAM Overseas Ltd.", desc: "Check your application, BMET clearance and air ticket status with your passport and mobile number." },
+      team: { title: "Expert Team | MAM & MAM Overseas Ltd.", desc: "Meet the MAM & MAM Overseas Ltd. team handling recruitment, visa and BMET clearance for workers and employers." }
     },
     packages: [
       { id: "pk1", name: "Basic", price: 0, posts: 1, featured: 0 },

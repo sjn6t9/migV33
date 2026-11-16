@@ -4,7 +4,7 @@ import {
   LuCheck, LuX, LuTrash2, LuPencil, LuEye, LuEyeOff, LuBadgeCheck, LuRotateCcw, LuBan, LuTicket, LuUpload, LuImage, LuUserCog, LuImagePlus, LuQuote
 } from "react-icons/lu";
 import { FaWhatsapp, FaFacebookF, FaYoutube, FaLinkedinIn, FaTiktok } from "react-icons/fa6";
-import { STAFF_PERMS, store, commit, user, job, worker, company, live, money, num, fdate, bdtFmt, balanceOf, candOf, clPerson, clOpen, cardPending, now, COUNTRIES, STAGES, CL_STAGES, CL_DOCS, PAY_METHODS, PAGES, LABEL } from "../store.js";
+import { STAFF_PERMS, TEAM_DEPTS, store, commit, user, job, worker, company, live, money, num, fdate, bdtFmt, balanceOf, candOf, clPerson, clOpen, cardPending, now, COUNTRIES, STAGES, CL_STAGES, CL_DOCS, PAY_METHODS, PAGES, LABEL } from "../store.js";
 import { toast, formData, setTab, openModal, confirmBox, deleteUser, act, readUpload } from "../actions.js";
 import { Rail, Tiles, Pill, Empty, Bars, Stars, Avatar } from "../ui.jsx";
 import { LedgerTable, StatusSelect, Field, Options } from "./shared.jsx";
@@ -71,7 +71,13 @@ export function Admin({ u }) {
 
   if (t === "content") {
     const addT = e => { const [d] = formData(e); const form = e.currentTarget; act("admin.content", { op: "testimonial", ...d }).then(r => r && form.reset()); };
-    const addM = e => { const [d] = formData(e); const form = e.currentTarget; act("admin.content", { op: "team", ...d }).then(r => r && form.reset()); };
+    const editM = ui.editTeam ? S.team.find(m => m.id === ui.editTeam) : null;
+    const addM = async e => {
+      const [d, fd] = formData(e); const form = e.currentTarget; const f = fd.get("photo");
+      let file = null; if (f && f.size) { try { file = await readUpload(f, { imageMax: 900, photo: true }); } catch (err) { return toast(err.message); } }
+      const r = await act("admin.content", { op: editM ? "teamUpdate" : "team", id: editM?.id, ...d, file, removePhoto: !!d.removePhoto });
+      if (r) { if (editM) { ui.editTeam = null; commit(); } else form.reset(); }
+    };
     const addG = async e => {
       const [d, fd] = formData(e); const f = fd.get("photo"); const form = e.currentTarget;
       if (!f || !f.size) return toast("Choose a photo first.");
@@ -97,14 +103,28 @@ export function Admin({ u }) {
         {S.testimonials.map(x => <div key={x.id} className="listrow row between"><div><b>{x.name}</b> <span className="muted small">{x.role}{x.country ? ` · ${x.country}` : ""}</span> <Stars n={x.rating} /><div className="small">{x.text}</div></div><button className="btn sm danger" onClick={() => del("testimonials", x.id)} aria-label="Remove"><LuTrash2 /></button></div>)}
       </div>
       <div className="card stack">
-        <h3><LuUsers /> Our team</h3>
-        <form className="fgrid" onSubmit={addM}>
-          <Field label="Name"><input type="text" name="name" required /></Field>
-          <Field label="Designation"><input type="text" name="title" required placeholder="e.g. Managing Director" /></Field>
-          <Field label="Phone (optional)"><input type="tel" name="phone" /></Field>
-          <div className="full"><button className="btn pri" type="submit">Add team member</button></div>
+        <h3><LuUsers /> Expert team <span className="muted small fw4">· shown on the Expert Team page</span></h3>
+        <form className="fgrid" onSubmit={addM} key={editM?.id || "new"}>
+          <h4 className="full">{editM ? `Edit ${editM.name}` : "Add a team member"}</h4>
+          <Field label="Name"><input type="text" name="name" required defaultValue={editM?.name} /></Field>
+          <Field label="Designation"><input type="text" name="title" required placeholder="e.g. Managing Director" defaultValue={editM?.title} /></Field>
+          <Field label="Department"><select name="dept" defaultValue={editM?.dept || TEAM_DEPTS[0]}><Options list={TEAM_DEPTS} /></select></Field>
+          <Field label="Years of experience"><input type="number" name="years" min="0" max="60" defaultValue={editM?.years ?? ""} /></Field>
+          <Field label="Areas of expertise" hint="Separate with commas, e.g. Saudi visa, BMET clearance" full><input type="text" name="expertise" defaultValue={editM?.expertise?.join(", ")} /></Field>
+          <Field label="Short bio" full><textarea name="bio" className="short" maxLength={600} defaultValue={editM?.bio} /></Field>
+          <Field label="Phone (optional)"><input type="tel" name="phone" defaultValue={editM?.phone} /></Field>
+          <Field label="WhatsApp (optional)" hint="With country code, e.g. 8801XXXXXXXXX"><input type="tel" name="whatsapp" defaultValue={editM?.whatsapp} /></Field>
+          <Field label="Email (optional)"><input type="email" name="email" defaultValue={editM?.email} /></Field>
+          <Field label="Display order" hint="Lower numbers show first"><input type="number" name="order" min="0" max="999" defaultValue={editM?.order ?? 10} /></Field>
+          <Field label={editM?.photo ? "Replace photo" : "Photo (optional)"} hint="A clear, professional photo. Resized automatically."><input type="file" name="photo" accept="image/*" /></Field>
+          {editM?.photo && <label className="check"><input type="checkbox" name="removePhoto" /> Remove current photo</label>}
+          <div className="full row"><button className="btn pri" type="submit">{editM ? "Save changes" : "Add team member"}</button>{editM && <button className="btn" type="button" onClick={() => { ui.editTeam = null; commit(); }}>Cancel</button>}</div>
         </form>
-        <div className="grid g4">{S.team.map(m => <div key={m.id} className="card team"><Avatar name={m.name} /><div><b>{m.name}</b><div className="muted small">{m.title}</div></div><button className="btn sm link danger" onClick={() => del("team", m.id)} aria-label="Remove"><LuTrash2 /></button></div>)}</div>
+        <div className="tbl"><table><thead><tr><th>Member</th><th>Department</th><th>Order</th><th></th></tr></thead><tbody>
+          {S.team.length ? S.team.map(m => <tr key={m.id}><td><div className="row tight nowrap"><Avatar name={m.name} src={m.photo?.data} size={40} /><div><b>{m.name}</b><div className="muted small">{m.title}</div></div></div></td><td>{m.dept}</td><td className="num">{m.order ?? "—"}</td>
+            <td><div className="row tight nowrap"><button className="btn sm" onClick={() => { ui.editTeam = m.id; commit(); }}><LuPencil /> Edit</button><button className="btn sm danger" onClick={() => del("team", m.id)} aria-label={`Remove ${m.name}`}><LuTrash2 /></button></div></td></tr>)
+            : <tr><td colSpan={4}><Empty>No team members yet. The Expert Team page shows them once added.</Empty></td></tr>}
+        </tbody></table></div>
       </div>
       <div className="card stack">
         <h3><LuImagePlus /> Photo gallery</h3>

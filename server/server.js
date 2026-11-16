@@ -8,7 +8,7 @@ import fs from "node:fs";
 import path from "node:path";
 import crypto from "node:crypto";
 import { fileURLToPath } from "node:url";
-import { COUNTRIES, STAGES, CL_STAGES, STAFF_PERMS, LABEL, INITIAL } from "../src/constants.js";
+import { COUNTRIES, STAGES, CL_STAGES, STAFF_PERMS, LABEL, INITIAL, TEAM_DEPTS } from "../src/constants.js";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 loadEnv(path.join(HERE, "..", ".env"));
@@ -48,6 +48,7 @@ try { db = JSON.parse(fs.readFileSync(DB_FILE, "utf8")); } catch (e) {
   db = freshDb();
 }
 for (const [k, v] of Object.entries(freshDb())) if (db[k] === undefined) db[k] = v;
+for (const [k, v] of Object.entries(INITIAL.seo)) if (!db.seo[k]) db.seo[k] = structuredClone(v); // pages added in later versions
 
 function save() {
   const tmp = DB_FILE + ".tmp";
@@ -149,7 +150,7 @@ function viewFor(u) {
   const live = db.jobs.filter(j => j.status === "active");
   const pub = {
     v: db.v, session: u?.id || null, settings: { ...db.settings }, needsSetup: !db.users.some(x => x.role === "admin"), seo: db.seo, packages: db.packages, posts: db.posts,
-    testimonials: db.testimonials, team: db.team, gallery: db.gallery.map(g => ({ ...g, src: `/api/files/${g.fileId}` })),
+    testimonials: db.testimonials, team: [...db.team].sort((a, b) => (a.order ?? 99) - (b.order ?? 99)).map(m => ({ ...m, photo: m.photo ? { ...m.photo, data: `/api/files/${m.photo.id}` } : null })), gallery: db.gallery.map(g => ({ ...g, src: `/api/files/${g.fileId}` })),
     stats: { employers: db.users.filter(x => x.role === "employer" && x.status === "active").length, hired: db.applications.filter(a => a.status === "hired").length },
     jobs: live, applications: [], notifications: [], orders: [], messages: [], workers: [], clearances: [], ledger: [], tickets: [],
     users: db.users.filter(x => x.role === "employer" && live.some(j => j.employerId === x.id)).map(x => ({ id: x.id, role: "employer", status: x.status, company: { name: x.company?.name, verify: x.company?.verify, country: x.company?.country } }))
@@ -577,11 +578,23 @@ A["admin.orderPaid"] = async ({ id: oid }, u) => {
 A["admin.content"] = async (d, u) => {
   needPerm(u, "content");
   if (d.op === "testimonial") { must(str(d.name) && str(d.text), "Enter the name and feedback."); db.testimonials.unshift({ id: id("tm"), name: str(d.name, 80), role: str(d.role, 80), country: COUNTRIES[d.country] ? d.country : "", rating: numv(d.rating, 1, 5), text: str(d.text, 1000), at: now() }); return { msg: "Testimonial added to the home page." }; }
-  if (d.op === "team") { must(str(d.name) && str(d.title), "Enter the name and designation."); db.team.push({ id: id("tm"), name: str(d.name, 80), title: str(d.title, 80), phone: str(d.phone, 30) }); return { msg: "Team member added." }; }
+  if (d.op === "team" || d.op === "teamUpdate") {
+    must(str(d.name) && str(d.title), "Enter the name and designation.");
+    const data = { name: str(d.name, 80), title: str(d.title, 80), dept: TEAM_DEPTS.includes(d.dept) ? d.dept : TEAM_DEPTS[0], bio: str(d.bio, 600),
+      expertise: String(d.expertise || "").split(",").map(x => str(x, 40)).filter(Boolean).slice(0, 8), years: d.years === "" || d.years == null ? "" : numv(d.years, 0, 60),
+      phone: str(d.phone, 30), whatsapp: str(d.whatsapp, 20).replace(/\D/g, ""), email: str(d.email, 120), order: numv(d.order ?? 99, 0, 999) };
+    const m = d.op === "teamUpdate" ? db.team.find(x => x.id === d.id) : { id: id("tm") };
+    must(m, "Team member not found.");
+    if (d.file) { const ref = storeFile(d.file, u.id, { pdf: false, isPublic: true }); if (m.photo) dropFile(m.photo); data.photo = ref; }
+    else if (d.removePhoto && m.photo) { dropFile(m.photo); data.photo = null; }
+    Object.assign(m, data); if (d.op === "team") db.team.push(m);
+    return { msg: d.op === "team" ? "Team member added." : "Team member updated." };
+  }
   if (d.op === "gallery") { const ref = storeFile(d.file, u.id, { pdf: false, isPublic: true }); db.gallery.unshift({ id: id("g"), fileId: ref.id, caption: str(d.caption, 120), at: now() }); return { msg: "Photo added to the gallery." }; }
   if (d.op === "remove") {
     must(["testimonials", "team", "gallery"].includes(d.list), "Unknown list.");
     if (d.list === "gallery") { const g = db.gallery.find(x => x.id === d.id); if (g) dropFile({ id: g.fileId }); }
+    if (d.list === "team") { const m = db.team.find(x => x.id === d.id); if (m?.photo) dropFile(m.photo); }
     db[d.list] = db[d.list].filter(x => x.id !== d.id); return { msg: "Removed." };
   }
   throw new Fail("Unknown operation.");

@@ -5,9 +5,10 @@ import {
   LuFileSearch, LuTicket, LuPlaneTakeoff, LuShieldCheck, LuScale, LuNetwork, LuHeadset, LuSearchCheck, LuQuote, LuBriefcase, LuLanguages
 } from "react-icons/lu";
 import { FaWhatsapp } from "react-icons/fa6";
+import { LuAward, LuUsersRound } from "react-icons/lu";
 import {
   store, touch, me, user, job, live, money, num, bdtMin, bdtMax, fdate, filteredJobs,
-  COUNTRIES, CATS, TYPES, BENEFITS, EMPTY_FILTERS, worker, company, LABEL
+  COUNTRIES, CATS, TYPES, BENEFITS, EMPTY_FILTERS, worker, company, LABEL, TEAM_DEPTS
 } from "../store.js";
 import { apply, openModal, go, toast, formData, act } from "../actions.js";
 import { JobCard, SaveButton, Pill, Empty, Val, Md, CAT_ICON, Pipe, ClPipe, Stars, Avatar } from "../ui.jsx";
@@ -91,8 +92,8 @@ export function Home() {
         <div className="grid g4">{S.gallery.slice(0, 8).map(g => <figure className="gal" key={g.id}><img src={g.src} alt={g.caption} loading="lazy" /><figcaption className="small">{g.caption}</figcaption></figure>)}</div>
       </div></section>}
       {S.team.length > 0 && <section className="sec pt0"><div className="wrap">
-        <div className="eyebrow">Our team</div><h2 className="mb16">People who handle your file</h2>
-        <div className="grid g4">{S.team.map(m => <div className="card team" key={m.id}><Avatar name={m.name} /><div><b>{m.name}</b><div className="muted small">{m.title}</div>{m.phone && <div className="small">{m.phone}</div>}</div></div>)}</div>
+        <div className="sec-head"><div><div className="eyebrow">Expert team</div><h2>People who handle your file</h2></div><a className="btn" href="#team">Meet the full team</a></div>
+        <div className="grid g4">{S.team.slice(0, 4).map(m => <TeamCard key={m.id} m={m} compact />)}</div>
       </div></section>}
       <section className="sec pt0"><div className="wrap"><div className="card row between cta soft">
         <div className="cta-text"><div className="eyebrow">For employers</div><h2>Need workers from Bangladesh?</h2><p className="muted mt8">Post a job order, review CVs and shortlist candidates from your own panel. We handle screening, medical, visa and deployment.</p></div>
@@ -208,6 +209,7 @@ export function About() {
         <div className="license brandc"><LuBadgeCheck /> Recruiting Licence · <b>RL 1217</b></div>
         <OfficeTable s={s} />
         <a className="btn pri" href="#contact">Contact us</a>
+        <a className="btn" href="#team"><LuUsersRound /> Meet our expert team</a>
       </aside>
     </div></section>
   );
@@ -309,5 +311,54 @@ export function Setup({ token }) {
         <button className="btn pri" type="submit" disabled={store.ui.busy}>Create admin account</button>
       </form>
     </div></section>
+  );
+}
+
+/* ---------------- Expert Team ---------------- */
+export function TeamCard({ m, compact }) {
+  return (
+    <article className={`card teamcard${compact ? " compact" : ""}`}>
+      <div className="tc-photo">{m.photo ? <img src={m.photo.data} alt={m.name} loading="lazy" /> : <Avatar name={m.name} size={compact ? 84 : 112} />}</div>
+      <div className="tc-body">
+        <span className="tc-dept">{m.dept}</span>
+        <h3>{m.name}</h3>
+        <div className="tc-title">{m.title}</div>
+        {!compact && m.years !== "" && m.years != null && <div className="tc-years"><LuAward /> {m.years}+ years in overseas recruitment</div>}
+        {!compact && m.bio && <p className="muted small">{m.bio}</p>}
+        {!compact && m.expertise?.length > 0 && <div className="row tight">{m.expertise.map(x => <span key={x} className="chip">{x}</span>)}</div>}
+        {!compact && (m.phone || m.whatsapp || m.email) && <div className="tc-contact">
+          {m.phone && <span className="small"><LuPhone /> {m.phone}</span>}
+          {m.email && <a className="small" href={`mailto:${m.email}`}><LuMail /> {m.email}</a>}
+          {m.whatsapp && <a className="btn sm wa" href={waLink(m.whatsapp, "Assalamu Alaikum, I contacted you from the MAM & MAM Overseas website.")} target="_blank" rel="noopener noreferrer"><FaWhatsapp /> WhatsApp</a>}
+        </div>}
+      </div>
+    </article>
+  );
+}
+
+export function Team() {
+  const S = store.S; const [dept, setDept] = React.useState("");
+  const depts = TEAM_DEPTS.filter(d => S.team.some(m => m.dept === d));
+  const L = S.team.filter(m => !dept || m.dept === dept);
+  const isStaff = ["admin", "staff"].includes(me()?.role);
+  return (
+    <>
+      <section className="pagehead"><div className="wrap">
+        <div className="eyebrow light">Expert team</div>
+        <h1>The people behind every file</h1>
+        <p className="lead">Recruitment officers, visa and BMET processing staff, accounts and agent support: the MAM &amp; MAM Overseas Ltd. team working under licence RL 1217.</p>
+        {S.team.length > 0 && <div className="pagehead-stats"><span><b>{S.team.length}</b> team members</span><span><b>{depts.length}</b> departments</span>
+          {S.team.some(m => Number(m.years) > 0) && <span><b>{S.team.reduce((s, m) => s + (Number(m.years) || 0), 0)}+</b> combined years of experience</span>}</div>}
+      </div></section>
+      <section className="sec"><div className="wrap stack">
+        {depts.length > 1 && <div className="row">{[["", "All"], ...depts.map(d => [d, d])].map(([k, l]) => <button key={l} className={`btn sm${dept === k ? " pri" : ""}`} onClick={() => setDept(k)}>{l}</button>)}</div>}
+        {L.length ? <div className="grid g3">{L.map(m => <TeamCard key={m.id} m={m} />)}</div>
+          : <Empty>Team profiles are being added. {isStaff ? <>Add them in <a href="#dashboard">Admin › Website content</a>.</> : <>Meanwhile, <a href="#contact">contact the office</a>.</>}</Empty>}
+        <div className="card row between cta soft">
+          <div className="cta-text"><h2>Talk to our team</h2><p className="muted mt8">Visit the office or send a message. We reply within one working day.</p></div>
+          <div className="row"><a className="btn pri" href="#contact">Contact us</a><a className="btn" href="#jobs">See open jobs</a></div>
+        </div>
+      </div></section>
+    </>
   );
 }
