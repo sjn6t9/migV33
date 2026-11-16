@@ -4952,6 +4952,7 @@ function ludoOn(m){
     vcSync(t);
     try{const b=document.querySelector('#rtabs [data-fz]');if(b)b.classList.toggle('has',t.st==='play'&&t.turn===me&&cur!=='funzone')}catch{}
     if(cur==='funzone')ldPaint()}}
+if(!window._fze){window._fze=1;const fe=m=>{try{if(cur==='funzone'&&typeof toast==='function'){const t=String(m||'').slice(0,160);if(t&&t!==window._fzl){window._fzl=t;toast('Fun Zone error: '+t,true)}}}catch{}};addEventListener('error',e=>fe(e.message));addEventListener('unhandledrejection',e=>fe(e.reason&&e.reason.message||e.reason))}
 V.funzone=()=>{
   document.body.classList.remove('fztb');FZ.entered=true;try{drawTabs()}catch{}
   view(`<div class="fz"><div class="fzhd"><div class="g"><div class="mu" style="font-size:12px!important">Server-authoritative games with independently verifiable results.</div></div><span class="fzlive"><i></i>Live</span><button type="button" id="fzsn" class="fzsn" aria-label="Sound" aria-pressed="${FZ.snd}">${FZ.snd?'<svg viewBox="0 0 24 24"><path d="M4 9v6h4l5 4V5L8 9z"/><path d="M16 9a4 4 0 010 6M18.5 6.5a8 8 0 010 11"/></svg>':'<svg viewBox="0 0 24 24"><path d="M4 9v6h4l5 4V5L8 9z"/><path d="M17 9l5 6M22 9l-5 6"/></svg>'}</button></div>
