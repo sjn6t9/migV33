@@ -10,5 +10,16 @@
     "order": 1,
     "photo": "sujon-islam.jpg",
     "website": "https://www.sjn.bd"
+  },
+  {
+    "key": "masud-rana",
+    "name": "Masud Rana",
+    "title": "Director",
+    "dept": "Management",
+    "phone": "+880 1768-068651",
+    "whatsapp": "8801768068651",
+    "email": "mrana9767@gmail.com",
+    "order": 2,
+    "photo": "masud-rana.jpg"
   }
 ]
