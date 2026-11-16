@@ -7,7 +7,7 @@
   "engines": { "node": ">=18" },
   "scripts": {
     "start": "node server/server.js",
-    "build": "esbuild src/main.jsx --bundle --minify --jsx=automatic --define:process.env.NODE_ENV=\\\"production\\\" --outdir=build --target=es2019 && node scripts/assemble.mjs",
+    "build": "esbuild src/main.jsx --bundle --minify --jsx=automatic --define:process.env.NODE_ENV=\\\"production\\\" --external:/fonts/* --outdir=build --target=es2019 && node scripts/assemble.mjs",
     "dev": "npm run build && node server/server.js"
   },
   "dependencies": {

@@ -46,7 +46,7 @@ const html = `<!DOCTYPE html>
 <meta name="twitter:card" content="summary_large_image"><!--/og-->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700;800&family=Hind+Siliguri:wght@400;500;600;700&family=Hind:wght@400;500;600;700&family=Noto+Kufi+Arabic:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700;800&family=Hind:wght@400;500;600;700&family=Noto+Kufi+Arabic:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>${css}</style>
 </head>
 <body>

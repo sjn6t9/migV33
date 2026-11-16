@@ -1,3 +1,6 @@
+/* Bangla fonts, served from our own server (/fonts) so they load fast in Bangladesh. Used only for Bangla letters. */
+@font-face{font-family:"Noto Sans Bengali";src:url(/fonts/noto-sans-bengali.woff) format("woff");font-weight:400 700;font-style:normal;font-display:swap;unicode-range:U+0964-0965,U+0980-09FF,U+200C-200D,U+25CC}
+@font-face{font-family:"Anek Bangla";src:url(/fonts/anek-bangla.woff) format("woff");font-weight:500 800;font-style:normal;font-display:swap;unicode-range:U+0964-0965,U+0980-09FF,U+200C-200D,U+25CC}
 
 :root{
   /* Colours taken from the Bangladesh flag (green #006A4E, red #F42A41), used as an ordinary brand palette.
@@ -5,8 +8,8 @@
   --bg:#f3f7f5; --surface:#ffffff; --ink:#0f241d; --muted:#55695f; --line:#d5e3dc;
   --brand:#006a4e; --brand-ink:#ffffff; --brand-deep:#004d38; --accent:#d01c32; --accent-ink:#ffffff; --flag-red:#f42a41; --soft:#e2f0ea;
   --ok:#1f7a4d; --warn:#a86a00; --bad:#b3261e; --info:#1d5fa8; --vio:#6a3fb0;
-  --display:"Archivo","Hind Siliguri","Hind","Noto Kufi Arabic",system-ui,-apple-system,"Segoe UI",sans-serif;
-  --body:"Hind Siliguri","Hind","Noto Kufi Arabic",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --display:"Archivo","Anek Bangla","Hind","Noto Kufi Arabic",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --body:"Hind","Noto Sans Bengali","Noto Kufi Arabic",system-ui,-apple-system,"Segoe UI",sans-serif;
   --r:10px;
   color-scheme:light;
 }
@@ -482,3 +485,8 @@ img.avatar.photo{object-fit:cover;border-radius:50%;border:2px solid var(--line)
 .modal-brand{display:flex;justify-content:center;margin:-4px 0 6px}
 .chat-h .logo-mark{width:30px;height:30px;border-radius:7px;padding:1px}
 @media (max-width:560px){.logo .logo-mark{width:44px;height:44px}}
+/* Bangla: Noto Sans Bengali for text, Anek Bangla for headings and buttons */
+html[lang="bn"] body{line-height:1.7}
+html[lang="bn"] h1,html[lang="bn"] h2,html[lang="bn"] h3,html[lang="bn"] h4{line-height:1.3;letter-spacing:0}
+html[lang="bn"] .btn,html[lang="bn"] nav.main a,html[lang="bn"] .rail button,html[lang="bn"] .eyebrow,html[lang="bn"] .pill{font-family:"Anek Bangla","Hind",sans-serif;letter-spacing:0}
+html[lang="bn"] .btn{font-weight:600}
