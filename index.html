@@ -2718,6 +2718,12 @@ html[data-skin] body #sv .svc .cap{background:linear-gradient(transparent,#000b)
 html[data-skin] body #sv .svc .stb{color:#fff!important}
 html[data-skin] body #sv .svf{background:linear-gradient(transparent,#000b)!important;border:0!important;border-radius:0!important;box-shadow:none!important}
 html.emb[data-skin] body #hdr#hdr#hdr{padding:0!important;margin:0!important;min-height:0!important}
+/* Ludo seats: fixed action column so Sit/Bot, X and You line up */
+html body #view .fz .ldr .lda{flex:none;display:flex;align-items:center;justify-content:flex-end;gap:8px;width:56px;min-height:40px}
+html body #view .fz .ldr .lda.w{width:132px}
+html body #view .fz .ldr .lda .ldx{width:40px!important;height:40px!important;min-height:0!important;padding:0!important;margin:0!important;border-radius:50%!important;display:grid!important;place-items:center;font-size:18px!important;line-height:1!important}
+html body #view .fz .ldr .lda .ldyou{width:100%;text-align:center}
+html body #view#view .fz #ldefi{color:#fff!important;-webkit-text-fill-color:#fff!important;background:#0f1a2b!important;border:1px solid rgba(255,255,255,.35)!important;border-radius:12px!important;height:40px;font-weight:800!important;font-size:16px!important}
 </style>
 </head>
 <body>
@@ -4863,7 +4869,7 @@ function ldPaint(){
   const keep=LD.svg&&LD.tid===t.id,team=t.mode==='team',R=t.rules||{},spec=!!t.spec;
   const row=c=>{const x=t.seats.find(s=>s.c===c),full=t.seats.length>=t.max;
     const act=x?(x.user===me0?'<span class="ldyou">You</span>':(host?`<button type="button" class="ldx" data-kk="${c}" aria-label="Remove">✕</button>`:'')):`${seat&&!full?`<button type="button" class="o" data-sit="${c}">Sit</button>`:''}${host&&!t.fee&&!full?`<button type="button" class="o" data-bt="${c}">Bot</button>`:''}`;
-    return `<div class="ldr" style="--cc:${LDC[c]}"><div class="ldnm ${x?'on':'open'}">${x?(x.bot?'Computer · '+esc(x.user):esc(x.user))+(x.user===t.host?' ★':''):'None'}</div>${act}</div>`};
+    const wide=!full&&(!!seat||(host&&!t.fee));return `<div class="ldr" style="--cc:${LDC[c]}"><div class="ldnm ${x?'on':'open'}">${x?(x.bot?'Computer · '+esc(x.user):esc(x.user))+(x.user===t.host?' ★':''):'None'}</div><div class="lda${wide?' w':''}">${act}</div></div>`};
   const seg=(attr,vals,cur,fmt,dis)=>`<div class="fzseg">${vals.map(v=>`<span role="button" ${attr}="${v}"${cur===v?' class="on"':''}${(dis&&dis(v))||!host?' style="opacity:.45;pointer-events:none"':''}>${fmt(v)}</span>`).join('')}</div>`;
   const sec=(title,body)=>`<div class="rsec"><div class="rtab">${title}</div><div class="rbox">${body}</div></div>`;
   const ro=(k,lab,help,dim)=>`<div class="rrow${dim?' dim':''}"><span>${lab}</span>${help?`<button type="button" class="rq" data-rh="${k}" aria-label="Help">?</button>`:''}<button type="button" class="rtg ${R[k]?'yes':'no'}" data-rt="${k}"${host&&!dim?'':' disabled'} aria-label="${R[k]?'On':'Off'}">${R[k]?'✔':'✕'}</button></div>${LD.help===k&&help?`<div class="rhelp">${help}</div>`:''}`;
@@ -4897,7 +4903,7 @@ const ldRL=R=>[['sixAgain','6 also gives another turn','Rolling a 6 gives you an
 function ldCreate(){const R=LD.cfg.rules,team=LD.mode==='team',SH=LD.shw=LD.shw||{Table:true},sec=(t,b)=>`<div class="rsec${SH[t]?'':' cl'}"><div class="rhd"><div class="rtab">${t}</div><span role="button" tabindex="0" class="shw" data-shw="${t}">${SH[t]?'Hide ▴':'Show ▾'}</span></div>${SH[t]?`<div class="rbox">${b}</div>`:''}</div>`,
   sg=(attr,vals,cur,fmt)=>`<div class="fzseg">${vals.map(v=>`<span role="button" ${attr}="${v}"${cur===v?' class="on"':''}>${fmt(v)}</span>`).join('')}</div>`,rw=(l,b)=>`<div class="rrow"><span>${l}</span>${b}</div>`,
   tg=(attr,k,on)=>`<button type="button" class="rtg ${on?'yes':'no'}" ${attr}="${k}" aria-label="${on?'On':'Off'}">${on?'✔':'✕'}</button>`;
-  return `<div class="ldlb">${sec('Table',rw('Entry',sg('data-ef',[0,50,100,500,1000],LD.fee,v=>v||'Free'))+rw('Game',sg('data-cm',['classic','team'],LD.mode,v=>v==='team'?'Team Up':'Classic'))+(team?rw('Players','<b>4 · 2 vs 2</b>'):rw('Players',sg('data-pm',[2,3,4],LD.max,v=>v+'P')))+rw('Private table <span class="mu">(invite only)</span>',tg('data-cpv','1',LD.priv)))}
+  return `<div class="ldlb">${sec('Table',rw('Entry',`<div class="fzseg">${[0,50,100,500,1000].map(v=>`<span role="button" data-ef="${v}"${!LD.feeC&&LD.fee===v?' class="on"':''}>${v||'Free'}</span>`).join('')}<span role="button" data-efc="1"${LD.feeC?' class="on"':''}>Custom</span></div>`)+(LD.feeC?`<div class="rrow"><span>Custom entry <span class="mu">(1 – 100000 coins)</span></span><input id="ldefi" type="number" inputmode="numeric" min="1" max="100000" step="1" value="${LD.fee>0?LD.fee:''}" placeholder="coins" style="width:110px;text-align:center"></div>`:'')+rw('Game',sg('data-cm',['classic','team'],LD.mode,v=>v==='team'?'Team Up':'Classic'))+(team?rw('Players','<b>4 · 2 vs 2</b>'):rw('Players',sg('data-pm',[2,3,4],LD.max,v=>v+'P')))+rw('Private table <span class="mu">(invite only)</span>',tg('data-cpv','1',LD.priv)))}
   ${sec('Options',rw('Coins',sg('data-kn',[1,2,3,4],LD.cfg.n,v=>v))+rw('Bot level',sg('data-kb',['easy','hard'],LD.cfg.botLvl,v=>v==='easy'?'Easy':'Hard'))+rw('Turn timer',sg('data-tn',[15,25,40,60],LD.turn,v=>v+'s'))+`<div class="rrow"><span>Coin speed</span><input type="range" id="ldspd" min="1" max="5" value="${LD.spd||3}"></div>`)}
   ${sec('Game Rules',rw('Start coins at',sg('data-crs',[1,6],R.startAt,v=>'Roll '+v))+ldRL(R).map(r=>`<div class="rrow${r[3]?' dim':''}"><span>${r[1]}</span>${r[2]?`<button type="button" class="rq" data-rh="${r[0]}" aria-label="Help">?</button>`:''}${tg(r[3]?'data-x':'data-crt',r[0],R[r[0]])}</div>${LD.help===r[0]&&r[2]?`<div class="rhelp">${r[2]}</div>`:''}`).join(''))}
   <div class="ldbt c"><button id="fzmk" type="button">${LD.priv?'Create private table':'Create table'}</button></div><div class="mu">Next step: pick colours, invite players and press Play.</div></div>`}
@@ -4935,7 +4941,7 @@ function vcSync(t){if(!VC.on)return;const l=t.voice||[];if(VC.pending&&l.include
 function ldVfy(t){const l=t.last;if(!l||!$('ldvf'))return;ldVerify(l).then(r=>{const e=$('ldvf');if(e)e.innerHTML=r==='ok'?`<b class="ldok">✔ roll ${l.d} verified</b>`:r==='bad'?'<b class="bad">✖ mismatch</b>':''})}
 function ldTick(){const e=$('ldtm');if(!e||!LD.table||LD.table.st!=='play'){clearInterval(LD.iv);LD.iv=0;return}const r=Math.max(0,LD.dl-Date.now());e.textContent=Math.ceil(r/1000)+'s';const b=$('ldtb');if(b)b.style.width=Math.min(100,r/250)+'%'}
 function ludoOn(m){
-  if(m.a==='lobby'){LD.got=true;LD.list=m.list||[];LD.live=m.live|0;if(cur==='funzone'&&!LD.table)ldPaint();return}
+  if(m.a==='lobby'){LD.got=true;LD.list=m.list||[];LD.live=m.live|0;if(cur==='funzone'&&!LD.table&&!(document.activeElement&&document.activeElement.id==='ldefi'))ldPaint();return}
   if(m.a==='ok'){toast(m.msg||'Done');return}
   if(m.a==='invite'){ldPop(m);return}
   if(m.a==='err'){toast(m.error||'Could not do that',true);return}
@@ -4963,7 +4969,8 @@ V.funzone=()=>{
   <div id="fzp" class="fzp"></div></div>`);
   const root=$('view');
   const paint=()=>{root.querySelectorAll('#fzmode span').forEach(s=>s.classList.toggle('on',s.dataset.m===FZ.mode));if(FZ.mode==='single'){if(LD.iv){clearInterval(LD.iv);LD.iv=0}$('fzp').innerHTML=`<div class="card mu" style="text-align:center;padding:26px 14px"><div style="font-size:15px;color:var(--tx);font-weight:700;margin-bottom:4px">Single player games are coming soon</div>Multiplayer Ludo is live — switch to Multiplayer to play.</div>`}else ldPaint()};
-  root.onclick=e=>{const T=e.target.closest('[data-shw],[data-vp],#ldvmb,[data-emo],#ldemb,[data-m],[data-g],[data-f],[data-j],#fzsn,#fzback,#fzmk,#ldst,#ldbot,[data-ef],[data-pm],[data-kn],[data-kb],[data-cpv],[data-crs],[data-crt],#ldag,#ldhm,[data-w],[data-snd],[data-vj],[data-vl],[data-vm],#fzru,#fzpv,[data-tn],[data-rt],[data-rs],[data-rh],[data-cn],[data-bl],[data-iv],[data-sit],[data-bt],[data-kk],[data-sm],[data-sp],[data-st],[data-cm],.ldpn.me,#ldrl,#ldlv,#ldlv2,#ldmore,#ldchb,#ldshx,#ldtu,#ldfrb,.ldiv summary,.ltk.lg'),q=T&&T.closest('#fzmode')?T:null;if(!T)return;
+  root.oninput=e=>{if(e.target.id==='ldefi'){const v=Math.floor(+e.target.value);LD.fee=v>0?Math.min(v,100000):0}};
+  root.onclick=e=>{const T=e.target.closest('[data-shw],[data-vp],#ldvmb,[data-emo],#ldemb,[data-m],[data-g],[data-f],[data-j],#fzsn,#fzback,#fzmk,#ldst,#ldbot,[data-ef],[data-efc],[data-pm],[data-kn],[data-kb],[data-cpv],[data-crs],[data-crt],#ldag,#ldhm,[data-w],[data-snd],[data-vj],[data-vl],[data-vm],#fzru,#fzpv,[data-tn],[data-rt],[data-rs],[data-rh],[data-cn],[data-bl],[data-iv],[data-sit],[data-bt],[data-kk],[data-sm],[data-sp],[data-st],[data-cm],.ldpn.me,#ldrl,#ldlv,#ldlv2,#ldmore,#ldchb,#ldshx,#ldtu,#ldfrb,.ldiv summary,.ltk.lg'),q=T&&T.closest('#fzmode')?T:null;if(!T)return;
     if(q){FZ.mode=T.dataset.m;paint();return}
     if(T.id==='fzsn'){FZ.snd=!FZ.snd;try{localStorage.fzs=FZ.snd?'1':'0'}catch{}V.funzone();return}
     if(T.dataset.g){FZ.game=T.dataset.g;tx({t:'ludo',a:'sub'});ldPaint();return}
@@ -4972,7 +4979,8 @@ V.funzone=()=>{
     if(T.dataset.m&&T.closest('#fzmax')){LD.max=+T.dataset.m;ldPaint();return}
     const tb=LD.table,setT=o=>tx({t:'ludo',a:'set',max:tb.max,mode:tb.mode,turn:tb.turnS,n:tb.n,botLvl:tb.botLvl,...o});
     if(T.dataset.shw){LD.shw=LD.shw||{};LD.shw[T.dataset.shw]=!LD.shw[T.dataset.shw];ldPaint();return}
-    if(T.dataset.ef!==undefined){LD.fee=+T.dataset.ef;ldPaint();return}
+    if(T.dataset.efc!==undefined){LD.feeC=true;if(![0,50,100,500,1000].includes(LD.fee)&&LD.fee>0){}else LD.fee=100;ldPaint();return}
+    if(T.dataset.ef!==undefined){LD.feeC=false;LD.fee=+T.dataset.ef;ldPaint();return}
     if(T.dataset.pm){LD.max=+T.dataset.pm;ldPaint();return}
     if(T.dataset.kn){LD.cfg.n=+T.dataset.kn;ldPaint();return}
     if(T.dataset.kb){LD.cfg.botLvl=T.dataset.kb;ldPaint();return}
@@ -4998,7 +5006,7 @@ V.funzone=()=>{
     if(T.id==='fzpv'){LD.priv=T.checked;ldPaint();return}
     if(T.dataset.tn){LD.turn=+T.dataset.tn;ldPaint();return}
     if(T.dataset.iv){tx({t:'ludo',a:'invite',to:T.dataset.iv});return}
-    if(T.id==='fzmk'){tx({t:'ludo',a:'create',fee:LD.fee,max:LD.mode==='team'?4:LD.max,mode:LD.mode,turn:LD.turn,priv:LD.priv,n:LD.cfg.n,botLvl:LD.cfg.botLvl,rules:LD.cfg.rules});return}
+    if(T.id==='fzmk'){if(LD.feeC){const v=Math.floor(+LD.fee);if(!(v>=1&&v<=100000)){toast('Enter an entry between 1 and 100000 coins',true);return}LD.fee=v}tx({t:'ludo',a:'create',fee:LD.fee,max:LD.mode==='team'?4:LD.max,mode:LD.mode,turn:LD.turn,priv:LD.priv,n:LD.cfg.n,botLvl:LD.cfg.botLvl,rules:LD.cfg.rules});return}
     if(T.dataset.vj){vcJoin();return}
     if(T.dataset.vl){vcStop(true);ldPaint();return}
     if(T.dataset.vm){VC.muted=!VC.muted;try{VC.stream.getAudioTracks().forEach(x=>x.enabled=!VC.muted)}catch{}ldPaint();return}

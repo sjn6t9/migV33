@@ -3211,7 +3211,7 @@ function ludoAct(ws, m) {
   if (a === 'unsub') { ws._lud = false; return; }
   if (a === 'create') {
     if (t0) return ldErr(ws, 'You are already at a table'); const fee = +m.fee | 0, max = mode0(m), turn = LD_TURNS.includes(+m.turn) ? +m.turn : 25, mode = m.mode === 'team' ? 'team' : 'classic';
-    if (!LD_FEES.includes(fee)) return ldErr(ws, 'Invalid entry'); if (fee && coins(u) < fee) return ldErr(ws, 'Not enough coins for this entry');
+    if (!(fee === 0 || (fee >= 1 && fee <= 100000))) return ldErr(ws, 'Invalid entry'); if (fee && coins(u) < fee) return ldErr(ws, 'Not enough coins for this entry');
     const t = { id: String(++ludoSeq), spec: new Set(), voice: new Set(), chat: [], host: u, fee, max, priv: !!m.priv, mode, turnMs: turn * 1000, inv: new Set(), st: 'lobby', seats: [{ user: u, c: 0 }], tok: [0, 1, 2, 3].map(() => [-1, -1, -1, -1]), n: Math.min(4, Math.max(1, +m.n | 0 || 4)), botLvl: m.botLvl === 'easy' ? 'easy' : 'hard', rules: ldRules(LD_RULES, m.rules), cut: [false, false, false, false], ones: 0, turn: 0, d: null, paid: 0, sixes: 0 };
     LUDO.set(t.id, t); ldLobbyTimer(t); ldSync(t); ldCastLobby(); return;
   }
