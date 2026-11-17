@@ -165,7 +165,7 @@ export function JobDetail({ id }) {
           {j.status !== "active" && <div className="notice mb14">Status: <Pill s={j.status} /> — not visible to the public.</div>}
           {j.featured && <div className="badge-feat">Featured</div>}
           <h1 className="h1s">{j.title}</h1>
-          <p className="muted mt8">{c.name} {c.verify === "verified" && <Pill s="verified" />}</p>
+          <p className="muted mt8">{c.name || j.employerName} {c.verify === "verified" && <Pill s="verified" />}</p>
           <div className="sal num big mt14">{money(j.salaryMin, j.currency)} – {num(j.salaryMax)} <span className="muted small sal-sub">per month · ≈ BDT {num(bdtMin(j))} – {num(bdtMax(j))}</span></div>
           <h3 className="sub">Job description</h3><p>{j.description}</p>
           <h3 className="sub">Requirements</h3><p>{j.requirements}</p>

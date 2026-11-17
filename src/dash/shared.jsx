@@ -1,6 +1,6 @@
 import React from "react";
 import { LuEye, LuCheck, LuX, LuTrash2, LuUpload, LuSend, LuDownload, LuCamera, LuFileText, LuIdCard, LuFileBadge } from "react-icons/lu";
-import { store, num, fdate, kb, bdtFmt, candOf, clPerson, job, STAGES, LABEL, CARD_TYPES } from "../store.js";
+import { store, num, fdate, kb, bdtFmt, candOf, clPerson, job, STAGES, LABEL, CARD_TYPES, COUNTRIES, CATS, TYPES, BENEFITS } from "../store.js";
 import { openModal, setAppStatus, confirmPayment, confirmBox, toast, downloadFile, cardFileName, formData, act } from "../actions.js";
 import { Pill, Empty, Avatar } from "../ui.jsx";
 import { readUpload, fileExt } from "../actions.js";
@@ -153,4 +153,26 @@ export function AgentDocsView({ u }) {
           {f && <button className="btn sm" onClick={() => downloadFile(f.data, `${label.replace(/\s+/g, "-")}-${(u.agent?.business || "agent").replace(/[^\w-]/g, "")}.${fileExt(f)}`)}><LuDownload /> Download</button>}</div>); })}</div>
     </>
   );
+}
+
+/* the job fields shared by the employer's and the admin's job forms */
+export const blankJob = (country = "Saudi Arabia", category = "Construction") => ({ title: "", city: "", salaryMin: "", salaryMax: "", description: "", requirements: "", benefits: [], type: "Contract", contract: 2, experience: 0, vacancies: 10, age: "21–40", country, category, deadline: new Date(Date.now() + 30 * 864e5).toISOString().slice(0, 10) });
+export function JobFields({ j }) {
+  return <>
+    <Field label="Job title"><input type="text" name="title" defaultValue={j.title} required /></Field>
+    <Field label="Industry"><select name="category" defaultValue={j.category}><Options list={CATS} /></select></Field>
+    <Field label="Country"><select name="country" defaultValue={j.country}><Options list={Object.keys(COUNTRIES)} /></select></Field>
+    <Field label="City"><input type="text" name="city" defaultValue={j.city} required /></Field>
+    <Field label="Salary from (local currency / month)"><input type="number" name="salaryMin" min="0" defaultValue={j.salaryMin} required /></Field>
+    <Field label="Salary to"><input type="number" name="salaryMax" min="0" defaultValue={j.salaryMax} required /></Field>
+    <Field label="Job type"><select name="type" defaultValue={j.type}><Options list={TYPES} /></select></Field>
+    <Field label="Minimum experience (years)"><input type="number" name="experience" min="0" defaultValue={j.experience} /></Field>
+    <Field label="Contract length (years)"><input type="number" name="contract" min="1" defaultValue={j.contract} /></Field>
+    <Field label="Vacancies"><input type="number" name="vacancies" min="1" defaultValue={j.vacancies} /></Field>
+    <Field label="Age limit"><input type="text" name="age" defaultValue={j.age} /></Field>
+    <Field label="Application deadline"><input type="date" name="deadline" defaultValue={j.deadline} /></Field>
+    <fieldset className="plain full"><legend className="small b">Benefits</legend><div className="row">{BENEFITS.map(b => <label key={b} className="check"><input type="checkbox" name="benefits" value={b} defaultChecked={j.benefits.includes(b)} /> {b}</label>)}</div></fieldset>
+    <Field label="Job description" full><textarea name="description" defaultValue={j.description} required /></Field>
+    <Field label="Requirements" full><textarea name="requirements" defaultValue={j.requirements} /></Field>
+  </>;
 }

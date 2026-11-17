@@ -45,7 +45,7 @@ export const me = () => (S().session ? S().users.find(u => u.id === S().session)
 export const user = id => S().users.find(u => u.id === id);
 export const job = id => S().jobs.find(j => j.id === id);
 export const worker = id => S().workers.find(w => w.id === id);
-export const company = j => user(j.employerId)?.company?.name || "Employer";
+export const company = j => user(j.employerId)?.company?.name || j.employerName || "Employer";
 export const money = (n, c) => `${c} ${Number(n).toLocaleString("en-US")}`;
 export const num = n => Number(n || 0).toLocaleString("en-US");
 export const bdtFmt = n => `BDT ${num(n)}`;

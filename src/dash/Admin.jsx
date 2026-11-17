@@ -1,13 +1,13 @@
 import React from "react";
 import {
   LuLayoutDashboard, LuUsers, LuBriefcase, LuFileText, LuStamp, LuWallet, LuPackage, LuNewspaper, LuSearch, LuSettings, LuMessageSquare,
-  LuCheck, LuX, LuTrash2, LuPencil, LuEye, LuEyeOff, LuBadgeCheck, LuRotateCcw, LuBan, LuTicket, LuUpload, LuImage, LuUserCog, LuImagePlus, LuQuote, LuGalleryHorizontal, LuArrowUp, LuArrowDown, LuTimer
+  LuCheck, LuX, LuTrash2, LuPencil, LuEye, LuEyeOff, LuBadgeCheck, LuRotateCcw, LuBan, LuTicket, LuUpload, LuImage, LuUserCog, LuImagePlus, LuQuote, LuGalleryHorizontal, LuArrowUp, LuArrowDown, LuTimer, LuPlus
 } from "react-icons/lu";
 import { FaWhatsapp, FaFacebookF, FaYoutube, FaLinkedinIn, FaTiktok } from "react-icons/fa6";
 import { STAFF_PERMS, TEAM_DEPTS, store, commit, user, job, worker, company, live, money, num, fdate, bdtFmt, balanceOf, candOf, clPerson, clOpen, cardPending, now, COUNTRIES, STAGES, CL_STAGES, CL_DOCS, PAY_METHODS, PAGES, LABEL } from "../store.js";
 import { toast, formData, setTab, openModal, confirmBox, deleteUser, act, readUpload, compressImage } from "../actions.js";
 import { Rail, Tiles, Pill, Empty, Bars, Stars, Avatar } from "../ui.jsx";
-import { LedgerTable, StatusSelect, Field, Options } from "./shared.jsx";
+import { LedgerTable, StatusSelect, Field, Options, JobFields, blankJob } from "./shared.jsx";
 import { setClStatus } from "../actions.js";
 import { ShareButton, storeCard } from "../Share.jsx";
 
@@ -208,14 +208,15 @@ export function Admin({ u }) {
     </>;
   }
 
-  if (t === "jobs") {
+  if (t === "jobs" && ui.adminJob) body = <AdminJobForm />;
+  else if (t === "jobs") {
     const f = ui.jobFilter;
     const L = S.jobs.filter(j => f === "all" || j.status === f).sort((a, b) => (a.status === "pending" ? -1 : 0) - (b.status === "pending" ? -1 : 0));
     const pub = async j => { const r = await act("admin.job", { id: j.id, op: "publish" }); if (r) { const fresh = job(j.id); if (fresh) storeCard(fresh); } };
     const reject = j => act("admin.job", { id: j.id, op: "reject" });
     const del = j => confirmBox("Delete this job and its applications?", () => act("admin.job", { id: j.id, op: "delete" }), "Delete");
     body = <>
-      <h2>Job circular moderation</h2>
+      <div className="row between"><h2>Job circulars</h2><button className="btn pri" onClick={() => { ui.adminJob = "new"; commit(); }}><LuPlus /> Post a job</button></div>
       <FilterButtons cur={f} onPick={k => { ui.jobFilter = k; commit(); }} items={["all", "pending", "active", "paused", "closed", "rejected"].map(k => [k, k[0].toUpperCase() + k.slice(1), k === "all" ? S.jobs.length : S.jobs.filter(j => j.status === k).length])} />
       <div className="tbl"><table><thead><tr><th>Job</th><th>Employer</th><th>Salary</th><th>Status</th><th>Featured</th><th>Actions</th></tr></thead><tbody>
         {L.length ? L.map(j => (
@@ -223,6 +224,7 @@ export function Admin({ u }) {
             <td><label className="check"><input type="checkbox" checked={j.featured} onChange={e => act("admin.job", { id: j.id, op: "feature", v: e.target.checked })} /> <span className="small">Featured</span></label></td>
             <td><div className="row tight nowrap">
               {j.status === "pending" && <><button className="btn sm pri" onClick={() => pub(j)}><LuCheck /> Approve</button><button className="btn sm danger" onClick={() => reject(j)}><LuX /> Reject</button></>}
+              <button className="btn sm" onClick={() => { ui.adminJob = j.id; commit(); }}><LuPencil /> Edit</button>
               {j.status === "active" && <ShareButton j={j} small />}
               {j.status === "active" && <button className="btn sm" onClick={() => act("admin.job", { id: j.id, op: "pause" })}><LuEyeOff /> Unpublish</button>}
               {["paused", "rejected", "closed"].includes(j.status) && <button className="btn sm" onClick={() => pub(j)}><LuEye /> Publish</button>}
@@ -469,5 +471,34 @@ function SlidesAdmin() {
         </figcaption>
       </figure>))}</div>
       : <Empty>No pictures in the slideshow. The home page shows a plain green banner until you add one.</Empty>}
+  </>;
+}
+
+/* Admin / staff: post a job for any employer (registered or not) or edit any job */
+const AGENCY = "MAM & MAM Overseas Ltd.";
+function AdminJobForm() {
+  const S = store.S; const editing = ui.adminJob !== "new" ? S.jobs.find(x => x.id === ui.adminJob) : null;
+  const j = editing || blankJob();
+  const employers = S.users.filter(x => x.role === "employer").map(x => [x.id, x.company?.name || x.name]);
+  const [emp, setEmp] = React.useState(editing ? (editing.employerId || "") : "");
+  const close = () => { ui.adminJob = null; commit(); };
+  const submit = async e => {
+    const [d, fd] = formData(e);
+    if (Number(d.salaryMax) < Number(d.salaryMin)) return toast("“Salary to” must be equal to or higher than “Salary from”.");
+    const r = await act("admin.jobSave", { ...d, id: editing?.id, employerId: emp, benefits: fd.getAll("benefits"), publish: !!d.publish, featured: !!d.featured });
+    if (r) { const fresh = editing ? job(editing.id) : store.S.jobs.find(x => x.id === r.jobId); if (fresh?.status === "active") storeCard(fresh); close(); }
+  };
+  return <>
+    <div className="row between"><h2>{editing ? "Edit job" : "Post a new job"}</h2><button className="btn" onClick={close}><LuX /> Cancel</button></div>
+    {editing && <p className="muted small">Changes go live straight away. {editing.employerId ? "The employer is told that the agency updated the job." : ""}</p>}
+    <form className="card fgrid" onSubmit={submit} key={editing?.id || "new"}>
+      <Field label="Employer" hint="Pick a registered employer, or type the company name for an employer without an account">
+        <select value={emp} onChange={e => setEmp(e.target.value)}><option value="">Not registered (type the name)</option>{employers.map(([v, l]) => <option key={v} value={v}>{l}</option>)}</select></Field>
+      {!emp ? <Field label="Employer / company name"><input type="text" name="employerName" defaultValue={editing?.employerName || AGENCY} maxLength={120} required /></Field> : <div />}
+      <JobFields j={j} />
+      {!editing && <label className="check full"><input type="checkbox" name="publish" defaultChecked /> Publish now (otherwise saved as unpublished)</label>}
+      <label className="check full"><input type="checkbox" name="featured" defaultChecked={!!j.featured} /> Featured job (shown first on the home page)</label>
+      <div className="full row"><button className="btn pri" type="submit">{editing ? "Save changes" : "Post job"}</button><button className="btn" type="button" onClick={close}>Cancel</button></div>
+    </form>
   </>;
 }

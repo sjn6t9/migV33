@@ -415,6 +415,23 @@ A["emp.jobSave"] = async (d, u) => {
   notifyAdmins(`New job submitted for review: ${nj.title} by ${u.company.name}.`, "jobs");
   return { msg: db.settings.moderation ? "Job submitted. It goes live after the agency approves it." : "Job is live." };
 };
+/* admin / staff with the jobs permission: post a job for any employer or edit any job; goes live without review */
+A["admin.jobSave"] = async (d, u) => {
+  needPerm(u, "jobs"); const data = jobData(d);
+  let employerId = null, employerName = "";
+  if (d.employerId) { const e = user(d.employerId); must(e && e.role === "employer", "Choose an employer from the list."); employerId = e.id; }
+  else { employerName = str(d.employerName, 120); must(employerName.length >= 2, "Enter the employer or company name."); }
+  if (d.id) {
+    const j = job(d.id); must(j, "Job not found.");
+    const before = j.employerId; Object.assign(j, data, { employerId, employerName, featured: !!d.featured, updatedAt: now() });
+    if (before && before === employerId) notify(before, `The agency updated your job “${j.title}”.`);
+    return { msg: "Changes saved.", jobId: j.id };
+  }
+  const nj = { id: id("j"), employerId, employerName, ...data, featured: !!d.featured, status: "pending", created: now(), postedBy: u.id };
+  db.jobs.push(nj);
+  if (d.publish) { publishJob(nj); return { msg: "Job is live.", jobId: nj.id }; }
+  nj.status = "paused"; return { msg: "Job saved as unpublished. Publish it from the list when ready.", jobId: nj.id };
+};
 A["emp.jobState"] = async ({ id: jid, v }, u) => {
   must(u?.role === "employer", "Not allowed.", 403); const j = job(jid); must(j && j.employerId === u.id, "Job not found.");
   if (v === "reopen") { must(j.status === "closed", "Only closed jobs can be reopened."); j.status = db.settings.moderation ? "pending" : "active"; return { msg: db.settings.moderation ? "Sent for review before going live again." : "Job is live again." }; }
@@ -779,7 +796,7 @@ function serveJobShare(req, res, jid) {
   let html = indexHtml(req); const j = job(jid);
   if (j && j.status === "active") {
     const origin = siteOrigin(req);
-    const company = user(j.employerId)?.company?.name;
+    const company = user(j.employerId)?.company?.name || j.employerName;
     const title = `${j.title} – ${j.city}, ${j.country} | MAM & MAM Overseas Ltd.`;
     const desc = `${j.currency} ${Number(j.salaryMin).toLocaleString("en-US")}–${Number(j.salaryMax).toLocaleString("en-US")}/month · ${j.vacancies} vacancies${company ? ` · ${company}` : ""}${j.deadline ? ` · Apply by ${j.deadline}` : ""}. Licensed recruiting agency RL 1217.`;
     const tags = [`<title>${escHtml(title)}</title>`, `<meta name="description" content="${escHtml(desc)}">`, `<meta property="og:type" content="website">`, `<meta property="og:site_name" content="MAM &amp; MAM Overseas Ltd.">`,

@@ -3,7 +3,7 @@ import { LuLayoutDashboard, LuBuilding2, LuPlus, LuBriefcase, LuUsers, LuPackage
 import { store, commit, appsFor, fdate, num, unread, COUNTRIES, CATS, TYPES, BENEFITS, STAGES, LABEL } from "../store.js";
 import { toast, formData, setTab, act } from "../actions.js";
 import { Rail, Tiles, Pill, Empty } from "../ui.jsx";
-import { NotifPanel, ApplicantTable, Field, Options } from "./shared.jsx";
+import { NotifPanel, ApplicantTable, Field, Options, JobFields, blankJob } from "./shared.jsx";
 import { ShareButton } from "../Share.jsx";
 
 const ui = store.ui;
@@ -47,7 +47,7 @@ export function Employer({ u }) {
 
   if (t === "post") {
     const e0 = ui.editJob ? S.jobs.find(j => j.id === ui.editJob) : null;
-    const j = e0 || { title: "", city: "", salaryMin: "", salaryMax: "", description: "", requirements: "", benefits: [], type: "Contract", contract: 2, experience: 0, vacancies: 10, age: "21–40", country: c.country || "Saudi Arabia", category: c.industry || "Construction", deadline: new Date(Date.now() + 30 * 864e5).toISOString().slice(0, 10) };
+    const j = e0 || blankJob(c.country || "Saudi Arabia", c.industry || "Construction");
     const noCredit = S.settings.paidPosting && !e0 && (u.credits || 0) < 1;
     const submit = async e => {
       const [d, fd] = formData(e);
@@ -61,21 +61,7 @@ export function Employer({ u }) {
       {noCredit && <div className="notice">You have no job post credits. <button className="btn link sm" onClick={() => setTab("employer", "package")}>Buy a package</button></div>}
       {S.settings.moderation && <p className="muted small">New and edited jobs are reviewed by the agency before they go live.</p>}
       <form className="card fgrid" onSubmit={submit} key={e0?.id || "new"}>
-        <Field label="Job title"><input type="text" name="title" defaultValue={j.title} required /></Field>
-        <Field label="Industry"><select name="category" defaultValue={j.category}><Options list={CATS} /></select></Field>
-        <Field label="Country"><select name="country" defaultValue={j.country}><Options list={Object.keys(COUNTRIES)} /></select></Field>
-        <Field label="City"><input type="text" name="city" defaultValue={j.city} required /></Field>
-        <Field label="Salary from (local currency / month)"><input type="number" name="salaryMin" min="0" defaultValue={j.salaryMin} required /></Field>
-        <Field label="Salary to"><input type="number" name="salaryMax" min="0" defaultValue={j.salaryMax} required /></Field>
-        <Field label="Job type"><select name="type" defaultValue={j.type}><Options list={TYPES} /></select></Field>
-        <Field label="Minimum experience (years)"><input type="number" name="experience" min="0" defaultValue={j.experience} /></Field>
-        <Field label="Contract length (years)"><input type="number" name="contract" min="1" defaultValue={j.contract} /></Field>
-        <Field label="Vacancies"><input type="number" name="vacancies" min="1" defaultValue={j.vacancies} /></Field>
-        <Field label="Age limit"><input type="text" name="age" defaultValue={j.age} /></Field>
-        <Field label="Application deadline"><input type="date" name="deadline" defaultValue={j.deadline} /></Field>
-        <fieldset className="plain full"><legend className="small b">Benefits</legend><div className="row">{BENEFITS.map(b => <label key={b} className="check"><input type="checkbox" name="benefits" value={b} defaultChecked={j.benefits.includes(b)} /> {b}</label>)}</div></fieldset>
-        <Field label="Job description" full><textarea name="description" defaultValue={j.description} required /></Field>
-        <Field label="Requirements" full><textarea name="requirements" defaultValue={j.requirements} /></Field>
+        <JobFields j={j} />
         <div className="full row"><button className="btn pri" type="submit" disabled={u.status !== "active" || noCredit}>{e0 ? "Save changes" : "Submit job"}</button>
           {e0 && <button className="btn" type="button" onClick={() => { ui.editJob = null; setTab("employer", "jobs"); }}>Cancel</button>}</div>
       </form>
