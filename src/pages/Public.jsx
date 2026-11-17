@@ -97,7 +97,7 @@ export function Home() {
       </div></section>}
       {S.team.length > 0 && <section className="sec pt0"><div className="wrap">
         <div className="sec-head"><div><div className="eyebrow">Expert team</div><h2>People who handle your file</h2></div><a className="btn" href="#team">Meet the full team</a></div>
-        <div className="grid teamgrid compact">{S.team.slice(0, 4).map(m => <TeamCard key={m.id} m={m} compact />)}</div>
+        <TeamCarousel list={S.team} compact />
       </div></section>}
       <section className="sec pt0"><div className="wrap"><div className="card row between cta soft">
         <div className="cta-text"><div className="eyebrow">For employers</div><h2>Need workers from Bangladesh?</h2><p className="muted mt8">Post a job order, review CVs and shortlist candidates from your own panel. We handle screening, medical, visa and deployment.</p></div>
@@ -320,25 +320,70 @@ export function Setup({ token }) {
 }
 
 /* ---------------- Expert Team ---------------- */
+/* one team member: same-size portrait photo, name, designation and contact buttons */
 export function TeamCard({ m, compact }) {
+  const contacts = [
+    m.phone && { href: `tel:${m.phone.replace(/[^\d+]/g, "")}`, icon: <LuPhone />, label: `Call ${m.name}` },
+    m.whatsapp && { href: waLink(m.whatsapp, "Assalamu Alaikum, I contacted you from the MAM & MAM Overseas website."), icon: <FaWhatsapp />, label: `WhatsApp ${m.name}`, cls: " wa", ext: true },
+    m.email && { href: `mailto:${m.email}`, icon: <LuMail />, label: `Email ${m.name}` },
+    m.website && { href: m.website, icon: <LuGlobe />, label: `Website of ${m.name}`, ext: true },
+  ].filter(Boolean);
   return (
-    <article className={`card teamcard${compact ? " compact" : ""}`}>
-      <div className="tc-photo">{m.photo ? <img src={m.photo.data} alt={m.name} loading="lazy" /> : <Avatar name={m.name} size={compact ? 84 : 112} />}</div>
+    <article className={`teamcard${compact ? " compact" : ""}`}>
+      <div className={`tc-photo${m.photo ? " pic" : ""}`}>
+        {m.photo ? <img src={m.photo.data} alt={m.name} loading="lazy" decoding="async" /> : <div className="tc-ph"><Avatar name={m.name} size={compact ? 96 : 120} /></div>}
+        {m.dept && <span className="tc-dept">{m.dept}</span>}
+      </div>
       <div className="tc-body">
-        <span className="tc-dept">{m.dept}</span>
         <h3>{m.name}</h3>
         <div className="tc-title">{m.title}</div>
-        {!compact && m.years !== "" && m.years != null && <div className="tc-years"><LuAward /> {m.years}+ years in overseas recruitment</div>}
-        {!compact && m.bio && <p className="muted small">{m.bio}</p>}
-        {!compact && m.expertise?.length > 0 && <div className="row tight">{m.expertise.map(x => <span key={x} className="chip">{x}</span>)}</div>}
-        {!compact && (m.phone || m.whatsapp || m.email || m.website) && <div className="tc-contact">
-          {m.phone && <span className="small"><LuPhone /> {m.phone}</span>}
-          {m.email && <a className="small" href={`mailto:${m.email}`}><LuMail /> {m.email}</a>}
-          {m.website && <a className="small" href={m.website} target="_blank" rel="noopener noreferrer"><LuGlobe /> {m.website.replace(/^https?:\/\//, "")}</a>}
-          {m.whatsapp && <a className="btn sm wa" href={waLink(m.whatsapp, "Assalamu Alaikum, I contacted you from the MAM & MAM Overseas website.")} target="_blank" rel="noopener noreferrer"><FaWhatsapp /> WhatsApp</a>}
-        </div>}
+        {!compact && m.years !== "" && m.years != null && Number(m.years) > 0 && <div className="tc-years"><LuAward /> {m.years}+ years in overseas recruitment</div>}
+        {!compact && m.bio && <p className="tc-bio muted small">{m.bio}</p>}
+        {!compact && m.expertise?.length > 0 && <div className="row tight tc-exp">{m.expertise.slice(0, 4).map(x => <span key={x} className="chip">{x}</span>)}</div>}
+        {contacts.length > 0 && <div className="tc-contact">{contacts.map(c => <a key={c.label} className={`tc-ic${c.cls || ""}`} href={c.href} aria-label={c.label} title={c.label} {...(c.ext ? { target: "_blank", rel: "noopener noreferrer" } : {})}>{c.icon}</a>)}</div>}
       </div>
     </article>
+  );
+}
+
+/* team members in a sliding row: arrows, dots, swipe, and it moves on by itself */
+export function TeamCarousel({ list, compact }) {
+  const ref = React.useRef(null);
+  const [page, setPage] = React.useState(0); const [pages, setPages] = React.useState(1); const [paused, setPaused] = React.useState(false);
+  const rtl = () => document.documentElement.dir === "rtl";
+  const measure = () => {
+    const el = ref.current; if (!el) return;
+    const card = el.firstElementChild; const step = card ? card.getBoundingClientRect().width + 20 : el.clientWidth;
+    const per = Math.max(1, Math.round((el.clientWidth + 20) / step));
+    setPages(Math.max(1, Math.ceil(list.length / per)));
+    const p = Math.round(Math.abs(el.scrollLeft) / Math.max(1, el.clientWidth + 20 - 1));
+    setPage(Math.abs(el.scrollLeft) + el.clientWidth >= el.scrollWidth - 4 ? Math.max(1, Math.ceil(list.length / per)) - 1 : p);
+  };
+  const goPage = p => { const el = ref.current; if (!el) return; el.scrollTo({ left: (rtl() ? -1 : 1) * p * (el.clientWidth + 20), behavior: "smooth" }); };
+  const step = d => {
+    const el = ref.current; if (!el) return;
+    const atEnd = Math.abs(el.scrollLeft) + el.clientWidth >= el.scrollWidth - 4, atStart = Math.abs(el.scrollLeft) < 4;
+    if (d > 0 && atEnd) return el.scrollTo({ left: 0, behavior: "smooth" });
+    if (d < 0 && atStart) return el.scrollTo({ left: (rtl() ? -1 : 1) * el.scrollWidth, behavior: "smooth" });
+    const card = el.firstElementChild; const w = card ? card.getBoundingClientRect().width + 20 : el.clientWidth;
+    el.scrollBy({ left: (rtl() ? -1 : 1) * d * w, behavior: "smooth" });
+  };
+  React.useEffect(() => { measure(); const r = () => measure(); addEventListener("resize", r); return () => removeEventListener("resize", r); }, [list.length]);
+  React.useEffect(() => {
+    const reduce = typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (paused || reduce || pages < 2) return;
+    const t = setInterval(() => { if (!document.hidden) step(1); }, 4500); return () => clearInterval(t);
+  }, [paused, pages]);
+  return (
+    <div className={`teamcar${compact ? " compact" : ""}`} role="region" aria-roledescription="carousel" aria-label="Team members"
+      onMouseEnter={() => setPaused(true)} onMouseLeave={() => setPaused(false)} onFocus={() => setPaused(true)} onBlur={() => setPaused(false)} onTouchStart={() => setPaused(true)}>
+      <div className="tcar-track" ref={ref} onScroll={measure}>{list.map(m => <TeamCard key={m.id} m={m} compact={compact} />)}</div>
+      {pages > 1 && <div className="tcar-ctl">
+        <button type="button" className="tcar-arrow" aria-label="Previous team members" onClick={() => step(-1)}><LuChevronLeft /></button>
+        <div className="tcar-dots">{Array.from({ length: pages }, (_, k) => <button key={k} type="button" className={k === page ? "on" : ""} aria-label={`Page ${k + 1}`} aria-current={k === page} onClick={() => goPage(k)} />)}</div>
+        <button type="button" className="tcar-arrow" aria-label="Next team members" onClick={() => step(1)}><LuChevronRight /></button>
+      </div>}
+    </div>
   );
 }
 
@@ -358,7 +403,7 @@ export function Team() {
       </div></section>
       <section className="sec"><div className="wrap stack">
         {depts.length > 1 && <div className="row">{[["", "All"], ...depts.map(d => [d, d])].map(([k, l]) => <button key={l} className={`btn sm${dept === k ? " pri" : ""}`} onClick={() => setDept(k)}>{l}</button>)}</div>}
-        {L.length ? <div className="grid teamgrid">{L.map(m => <TeamCard key={m.id} m={m} />)}</div>
+        {L.length ? <TeamCarousel key={dept} list={L} />
           : <Empty>Team profiles are being added. {isStaff ? <>Add them in <a href="#dashboard">Admin › Website content</a>.</> : <>Meanwhile, <a href="#contact">contact the office</a>.</>}</Empty>}
         <div className="card row between cta soft">
           <div className="cta-text"><h2>Talk to our team</h2><p className="muted mt8">Visit the office or send a message. We reply within one working day.</p></div>
