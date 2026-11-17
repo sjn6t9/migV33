@@ -2,8 +2,9 @@
 export const COUNTRIES = { "Saudi Arabia": "SAR", "Malaysia": "MYR", "Fiji": "FJD" };
 /* countries where wages are quoted per hour (the rest per month) */
 export const HOURLY = ["Fiji"];
-/* hours used to compare an hourly wage with monthly ones (48 hours a week) */
-export const HOURS_PER_MONTH = 208;
+/* hourly jobs: 8 working hours a day, one weekly day off (6 days a week ≈ 26 working days a month) */
+export const HOURS_PER_DAY = 8, WORK_DAYS_PER_MONTH = 26;
+export const HOURS_PER_MONTH = HOURS_PER_DAY * WORK_DAYS_PER_MONTH;
 export const CATS = ["Construction", "Hospitality", "Driving & Transport", "Manufacturing", "Healthcare", "Security", "Cleaning & Facility", "Agriculture", "Retail & Sales", "IT & Office"];
 export const TYPES = ["Contract", "Full-time", "Part-time"];
 export const BENEFITS = ["Food", "Accommodation", "Transport", "Medical insurance", "Air ticket", "Overtime"];

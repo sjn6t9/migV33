@@ -1,5 +1,5 @@
 // Draws a 1080×1350 PNG "photocard" for a job post (Facebook / Instagram portrait size), in the site's colours.
-import { COUNTRIES } from "./constants.js";
+import { COUNTRIES, HOURS_PER_DAY, WORK_DAYS_PER_MONTH, HOURS_PER_MONTH } from "./constants.js";
 
 const W = 1080, H = 1350;
 const GREEN = "#006a4e", GREEN_DEEP = "#004d38", RED = "#d01c32", INK = "#0f241d", MUTED = "#55695f", SOFT = "#e2f0ea", LINE = "#d5e3dc";
@@ -72,9 +72,16 @@ export async function renderJobCard(job, { company = "", settings = {}, link = "
   y += 40; roundRect(g, inX, y, inW, 150, 20); g.fillStyle = SOFT; g.fill();
   g.fillStyle = MUTED; g.font = `600 26px ${BODY}`; g.fillText(job.period === "hour" ? "HOURLY WAGE" : "MONTHLY SALARY", inX + 34, y + 46);
   const cur = job.currency || COUNTRIES[job.country] || "";
-  g.fillStyle = GREEN; g.font = `800 56px ${DISPLAY}`; const sal = `${cur} ${fmt(job.salaryMin)} – ${fmt(job.salaryMax)}${job.period === "hour" ? " /hr" : ""}`; g.fillText(sal, inX + 34, y + 112);
+  g.fillStyle = GREEN; g.font = `800 ${job.period === "hour" ? 50 : 56}px ${DISPLAY}`; const sal = `${cur} ${fmt(job.salaryMin)} – ${fmt(job.salaryMax)}${job.period === "hour" ? " /hr" : ""}`; g.fillText(sal, inX + 34, y + 112);
   const rate = Number(settings.rates?.[cur] || 0);
-  if (rate) { g.font = `600 28px ${BODY}`; g.fillStyle = MUTED; const bdt = `≈ BDT ${fmt(Math.round(job.salaryMin * rate))}+${job.period === "hour" ? " /hr" : ""}`; const sw = g.measureText(bdt).width; g.fillText(bdt, inX + inW - 34 - sw, y + 110); }
+  if (rate && job.period === "hour") {
+    // hourly wage shown as monthly money in BDT: 8 hours a day, 26 working days (one day off a week)
+    const m1 = Math.round(job.salaryMin * rate * HOURS_PER_MONTH), m2 = Math.round(job.salaryMax * rate * HOURS_PER_MONTH);
+    const right = inX + inW - 34;
+    g.font = `600 22px ${BODY}`; g.fillStyle = MUTED; const l1 = "MONTHLY IN BDT"; g.fillText(l1, right - g.measureText(l1).width, y + 46);
+    g.font = `800 34px ${DISPLAY}`; g.fillStyle = INK; const l2 = m1 === m2 ? `≈ ${fmt(m1)}` : `≈ ${fmt(m1)} – ${fmt(m2)}`; g.fillText(l2, right - g.measureText(l2).width, y + 92);
+    g.font = `500 21px ${BODY}`; g.fillStyle = MUTED; const l3 = `${HOURS_PER_DAY} hrs/day · ${WORK_DAYS_PER_MONTH} days/month`; g.fillText(l3, right - g.measureText(l3).width, y + 126);
+  } else if (rate) { g.font = `600 28px ${BODY}`; g.fillStyle = MUTED; const bdt = `≈ BDT ${fmt(Math.round(job.salaryMin * rate))}+`; const sw = g.measureText(bdt).width; g.fillText(bdt, inX + inW - 34 - sw, y + 110); }
   y += 150;
   // facts grid (3 × 2)
   const facts = [["Job type", job.type || "—"], ["Contract", job.contract ? `${job.contract} year${job.contract > 1 ? "s" : ""}` : "—"], ["Experience", job.experience ? `${job.experience}+ years` : "Not required"],

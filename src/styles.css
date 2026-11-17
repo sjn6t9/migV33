@@ -571,3 +571,4 @@ html[lang="bn"] .btn{font-weight:600}
 [dir="rtl"] .util-l .num{direction:ltr;unicode-bidi:isolate}
 @media (max-width:900px){.util-l .util-mail{display:none}}
 @media (max-width:560px){.util-l a~.util-lic{display:none}}
+.sal-month{margin-top:6px;font-weight:600;color:var(--ink);font-size:15px}
