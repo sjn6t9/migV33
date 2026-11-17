@@ -1,5 +1,6 @@
 /* Bangla fonts, served from our own server (/fonts) so they load fast in Bangladesh. Used only for Bangla letters. */
 @font-face{font-family:"Noto Sans Bengali";src:url(/fonts/noto-sans-bengali.woff) format("woff");font-weight:400 700;font-style:normal;font-display:swap;unicode-range:U+0964-0965,U+0980-09FF,U+200C-200D,U+25CC}
+@font-face{font-family:"Inter";src:url(/fonts/inter.woff) format("woff");font-weight:400 800;font-style:normal;font-display:swap;unicode-range:U+0020-007E,U+00A0-017F,U+2009,U+2013-2014,U+2018-2019,U+201C-201D,U+2022,U+2026,U+2039-203A,U+202F,U+20AC,U+2122,U+2190,U+2192,U+2212,U+2248}
 @font-face{font-family:"Anek Bangla";src:url(/fonts/anek-bangla.woff) format("woff");font-weight:500 800;font-style:normal;font-display:swap;unicode-range:U+0964-0965,U+0980-09FF,U+200C-200D,U+25CC}
 
 :root{
@@ -8,8 +9,8 @@
   --bg:#f3f7f5; --surface:#ffffff; --ink:#0f241d; --muted:#55695f; --line:#d5e3dc;
   --brand:#006a4e; --brand-ink:#ffffff; --brand-deep:#004d38; --accent:#d01c32; --accent-ink:#ffffff; --flag-red:#f42a41; --soft:#e2f0ea;
   --ok:#1f7a4d; --warn:#a86a00; --bad:#b3261e; --info:#1d5fa8; --vio:#6a3fb0;
-  --display:"Archivo","Anek Bangla","Hind","Noto Kufi Arabic",system-ui,-apple-system,"Segoe UI",sans-serif;
-  --body:"Hind","Noto Sans Bengali","Noto Kufi Arabic",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --display:"Inter","Anek Bangla","Hind","Noto Kufi Arabic",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --body:"Inter","Noto Sans Bengali","Hind","Noto Kufi Arabic",system-ui,-apple-system,"Segoe UI",sans-serif;
   --r:10px;
   color-scheme:light;
 }
@@ -30,7 +31,7 @@
 *{box-sizing:border-box}
 html,body{margin:0}
 body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:16px;line-height:1.55}
-h1,h2,h3,h4{font-family:var(--display);line-height:1.15;margin:0;text-wrap:balance;letter-spacing:-.01em}
+h1,h2,h3,h4{font-family:var(--display);line-height:1.15;margin:0;text-wrap:balance;letter-spacing:-.02em}
 h1{font-size:clamp(28px,5vw,46px);font-weight:800}
 h2{font-size:clamp(22px,3vw,30px);font-weight:700}
 h3{font-size:19px;font-weight:700}
@@ -512,7 +513,7 @@ img.avatar.photo{object-fit:cover;border-radius:50%;border:2px solid var(--line)
 /* Bangla: Noto Sans Bengali for text, Anek Bangla for headings and buttons */
 html[lang="bn"] body{line-height:1.7}
 html[lang="bn"] h1,html[lang="bn"] h2,html[lang="bn"] h3,html[lang="bn"] h4{line-height:1.3;letter-spacing:0}
-html[lang="bn"] .btn,html[lang="bn"] nav.main a,html[lang="bn"] .rail button,html[lang="bn"] .eyebrow,html[lang="bn"] .pill{font-family:"Anek Bangla","Hind",sans-serif;letter-spacing:0}
+html[lang="bn"] .btn,html[lang="bn"] nav.main a,html[lang="bn"] .rail button,html[lang="bn"] .eyebrow,html[lang="bn"] .pill{font-family:"Inter","Anek Bangla",sans-serif;letter-spacing:0}
 html[lang="bn"] .btn{font-weight:600}
 /* ---- home page slideshow ---- */
 .hero.has-slides{background:#0b2a20;min-height:clamp(540px,78vh,820px);display:flex;align-items:center;padding:72px 0 92px;isolation:isolate}

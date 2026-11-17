@@ -16,7 +16,7 @@ function canStoreCard(j) {
   return u.role === "employer" && j.employerId === u.id;
 }
 // cards made before the agency logo was added (CARD_DESIGN) are redrawn once
-const CARD_DESIGN = "2026-11-17T13:23:00Z";
+const CARD_DESIGN = "2026-11-17T16:58:00Z";
 const cardOutdated = j => !j.card || !j.cardAt || j.cardAt < CARD_DESIGN || (j.updatedAt && j.updatedAt > j.cardAt);
 
 export async function makeCard(j) {

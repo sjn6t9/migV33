@@ -3,7 +3,7 @@ import { COUNTRIES, HOURS_PER_DAY, WORK_DAYS_PER_MONTH, HOURS_PER_MONTH } from "
 
 const W = 1080, H = 1350;
 const GREEN = "#006a4e", GREEN_DEEP = "#004d38", RED = "#d01c32", INK = "#0f241d", MUTED = "#55695f", SOFT = "#e2f0ea", LINE = "#d5e3dc";
-const DISPLAY = "Archivo, 'Anek Bangla', Arial, sans-serif", BODY = "Hind, 'Noto Sans Bengali', Archivo, Arial, sans-serif";
+const DISPLAY = "Inter, 'Anek Bangla', Arial, sans-serif", BODY = "Inter, 'Noto Sans Bengali', Arial, sans-serif";
 
 const fmt = n => Number(n || 0).toLocaleString("en-US");
 const fdate = iso => (iso ? new Date(iso).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" }) : "Open");
@@ -24,7 +24,7 @@ function fitText(g, text, weight, family, size, min, maxW, maxLines) {
 
 async function fontsReady() {
   try {
-    await Promise.all(["800 80px Archivo", "700 40px Archivo", "600 30px Hind", "400 30px Hind", "700 30px Hind", "500 28px Hind"].map(f => document.fonts.load(f)).concat(["400 26px 'Noto Sans Bengali'", "600 26px 'Noto Sans Bengali'"].map(f => document.fonts.load(f, "এখনই আবেদন করুন"))));
+    await Promise.all(["800 80px Inter", "700 40px Inter", "600 30px Inter", "400 30px Inter", "700 30px Inter", "500 28px Inter"].map(f => document.fonts.load(f)).concat(["400 26px 'Noto Sans Bengali'", "600 26px 'Noto Sans Bengali'"].map(f => document.fonts.load(f, "এখনই আবেদন করুন"))));
     await document.fonts.ready;
   } catch { /* fall back to system fonts */ }
 }

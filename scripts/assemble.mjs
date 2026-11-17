@@ -35,6 +35,7 @@ const html = `<!DOCTYPE html>
 <link rel="apple-touch-icon" href="/brand/apple-touch-icon.png">
 <link rel="manifest" href="/site.webmanifest">
 <link rel="preload" as="image" href="/brand/logo-96.webp">
+<link rel="preload" as="font" type="font/woff" href="/fonts/inter.woff" crossorigin>
 <!--og--><meta property="og:type" content="website">
 <meta property="og:site_name" content="MAM &amp; MAM Overseas Ltd.">
 <meta property="og:title" content="MAM &amp; MAM Overseas Ltd. · Licensed recruiting agency RL 1217">
@@ -46,7 +47,7 @@ const html = `<!DOCTYPE html>
 <meta name="twitter:card" content="summary_large_image"><!--/og-->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700;800&family=Hind:wght@400;500;600;700&family=Noto+Kufi+Arabic:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Hind:wght@400;500;600;700&family=Noto+Kufi+Arabic:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>${css}</style>
 </head>
 <body>

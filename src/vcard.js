@@ -5,8 +5,8 @@ import { translatorFor, LANGS } from "./i18n.js";
 
 const W = 1050, H = 600;
 const GREEN = "#006a4e", DEEP = "#004d38", RED = "#d01c32", INK = "#14231d", MUTED = "#5b6b64";
-const DISPLAY = "Archivo, 'Anek Bangla', 'Noto Kufi Arabic', Hind, Arial, sans-serif";
-const BODY = "Hind, 'Noto Sans Bengali', 'Noto Kufi Arabic', Arial, sans-serif";
+const DISPLAY = "Inter, 'Anek Bangla', 'Noto Kufi Arabic', Hind, Arial, sans-serif";
+const BODY = "Inter, 'Noto Sans Bengali', 'Noto Kufi Arabic', Hind, Arial, sans-serif";
 
 function loadImg(src) {
   return new Promise(res => { if (!src) return res(null); const i = new Image(); i.onload = () => res(i); i.onerror = () => res(null); i.src = src; });
@@ -21,7 +21,7 @@ function svgImg(svg, color) {
 }
 async function fontsReady() {
   if (!document.fonts?.load) return;
-  const tries = [["800 40px Archivo", "MAM"], ["600 30px Hind", "Mobile"], ["700 30px Hind", "हिन्दी"], ["600 30px 'Noto Sans Bengali'", "বাংলা"],
+  const tries = [["800 40px Inter", "MAM"], ["700 30px Inter", "Mobile"], ["600 30px Inter", "Mobile"], ["500 30px Inter", "Mobile"], ["600 30px Hind", "हिन्दी"], ["700 30px Hind", "हिन्दी"], ["600 30px 'Noto Sans Bengali'", "বাংলা"],
     ["700 30px 'Anek Bangla'", "বাংলা"], ["600 30px 'Noto Kufi Arabic'", "العربية"]];
   await Promise.race([Promise.all(tries.map(([f, t]) => document.fonts.load(f, t).catch(() => null))), new Promise(r => setTimeout(r, 2500))]);
 }
@@ -108,7 +108,7 @@ export async function drawVisitingCard(m, { lang = "en", side = "front", setting
     if (iconImgs[k]) g.drawImage(iconImgs[k], ix + 11, y + 11, 22, 22);
     const vx = rtl ? W - L - 60 : L + 60, vw = areaW - 60;
     g.fillStyle = MUTED; g.font = `600 17px ${BODY}`; g.fillText(label, vx, y + 15);
-    g.fillStyle = INK; fit(g, value, vw, 25, 600, k === "phone" || k === "whatsapp" ? "Hind, Arial, sans-serif" : BODY);
+    g.fillStyle = INK; fit(g, value, vw, 25, 600, k === "phone" || k === "whatsapp" ? "Inter, Arial, sans-serif" : BODY);
     g.fillText(clip(g, value, vw), vx, y + 44);
     y += step;
   }
