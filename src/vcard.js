@@ -68,14 +68,23 @@ export async function drawVisitingCard(m, { lang = "en", side = "front", setting
   const bg = g.createLinearGradient(bx, 0, bx + BW, H); bg.addColorStop(0, GREEN); bg.addColorStop(1, DEEP); g.fillStyle = bg; g.fillRect(bx, 0, BW, H);
   g.fillStyle = RED; g.fillRect(rtl ? bx : BW - 8, 0, 8, H);
   const cx = bx + BW / 2;
-  rr(g, cx - 92, 70, 184, 184, 30); g.fillStyle = "#fff"; g.fill(); if (logo) g.drawImage(logo, cx - 82, 80, 164, 164);
+  rr(g, cx - 66, 30, 132, 132, 24); g.fillStyle = "#fff"; g.fill(); if (logo) g.drawImage(logo, cx - 58, 38, 116, 116);
   g.textAlign = "center"; g.fillStyle = "#fff";
-  fit(g, "MAM & MAM", BW - 50, 40, 800, DISPLAY); g.fillText("MAM & MAM", cx, 312);
-  fit(g, "OVERSEAS LTD.", BW - 50, 30, 700, DISPLAY); g.fillText("OVERSEAS LTD.", cx, 350);
-  g.globalAlpha = .9; fit(g, t("Government licensed recruiting agency"), BW - 50, 19, 500, BODY);
-  const tag = t("Government licensed recruiting agency"); g.fillText(clip(g, tag, BW - 40), cx, 400); g.globalAlpha = 1;
-  g.font = `700 22px ${BODY}`; g.fillText("RL 1217", cx, 438);
-  g.font = `500 19px ${BODY}`; g.globalAlpha = .85; g.fillText(clip(g, site, BW - 40), cx, 540); g.globalAlpha = 1;
+  fit(g, "MAM & MAM", BW - 50, 34, 800, DISPLAY); g.fillText("MAM & MAM", cx, 204);
+  fit(g, "OVERSEAS LTD.", BW - 50, 25, 700, DISPLAY); g.fillText("OVERSEAS LTD.", cx, 234);
+  g.globalAlpha = .9; fit(g, t("Government licensed recruiting agency"), BW - 50, 16, 500, BODY);
+  const tag = t("Government licensed recruiting agency"); g.fillText(clip(g, tag, BW - 40), cx, 262); g.globalAlpha = 1;
+  g.font = `700 19px ${BODY}`; g.fillText("RL 1217", cx, 290);
+  // QR code (opens this member's verification page), between RL 1217 and the website
+  const code = memberCode(m);
+  if (verifyUrl) {
+    const QS = 150, qx = cx - QS / 2, qy = 310;
+    rr(g, qx - 6, qy - 6, QS + 12, QS + 12, 12); g.fillStyle = "#fff"; g.fill();
+    drawQR(g, verifyUrl, qx, qy, QS, INK);
+    g.fillStyle = "#fff"; fit(g, t("Scan to verify"), BW - 60, 15, 600, BODY); g.fillText(t("Scan to verify"), cx, qy + QS + 30);
+    if (code) { g.globalAlpha = .9; g.font = `600 13px Inter, Arial, sans-serif`; g.fillText(`ID ${code}`, cx, qy + QS + 50); g.globalAlpha = 1; }
+  }
+  g.font = `500 16px ${BODY}`; g.globalAlpha = .85; g.fillText(clip(g, site, BW - 40), cx, 572); g.globalAlpha = 1;
 
   // person
   const L = BW + 52, R = W - 48, areaW = R - L;
@@ -103,22 +112,12 @@ export async function drawVisitingCard(m, { lang = "en", side = "front", setting
     settings.address && ["pin", t("Office"), settings.address],
   ].filter(Boolean).slice(0, 5);
   const iconImgs = {}; for (const k of ["phone", "whatsapp", "mail", "globe", "pin"]) iconImgs[k] = await svgImg(icons[k], "#ffffff");
-  // QR code that opens this member's verification page
-  const QS = 150; const code = memberCode(m);
-  if (verifyUrl) {
-    const qx = X(R - QS, QS), qy = H - 10 - QS - (code ? 76 : 48);
-    drawQR(g, verifyUrl, qx, qy, QS, INK);
-    g.strokeStyle = "#d9e3de"; g.lineWidth = 2; rr(g, qx - 1, qy - 1, QS + 2, QS + 2, 6); g.stroke();
-    g.save(); g.textAlign = "center"; g.fillStyle = GREEN; fit(g, t("Scan to verify"), QS + 30, 17, 700, BODY); g.fillText(t("Scan to verify"), qx + QS / 2, qy + QS + 24);
-    if (code) { g.fillStyle = INK; fit(g, `ID ${code}`, QS + 40, 22, 800, "Inter, Arial, sans-serif"); g.fillText(`ID ${code}`, qx + QS / 2, qy + QS + 52); }
-    g.restore();
-  }
   let y = 252; const step = rows.length > 4 ? 64 : 72;
   for (const [k, label, value] of rows) {
     const ix = X(L, 44);
     g.fillStyle = k === "whatsapp" ? "#1a9e52" : GREEN; g.beginPath(); g.arc(ix + 22, y + 22, 22, 0, Math.PI * 2); g.fill();
     if (iconImgs[k]) g.drawImage(iconImgs[k], ix + 11, y + 11, 22, 22);
-    const vx = rtl ? W - L - 60 : L + 60, vw = areaW - 60 - (verifyUrl ? QS + 24 : 0);
+    const vx = rtl ? W - L - 60 : L + 60, vw = areaW - 60;
     g.fillStyle = MUTED; g.font = `600 17px ${BODY}`; g.fillText(label, vx, y + 15);
     g.fillStyle = INK; fit(g, value, vw, 25, 600, k === "phone" || k === "whatsapp" ? "Inter, Arial, sans-serif" : BODY);
     g.fillText(clip(g, value, vw), vx, y + 44);
