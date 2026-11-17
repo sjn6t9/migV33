@@ -220,7 +220,7 @@ export function Admin({ u }) {
       <FilterButtons cur={f} onPick={k => { ui.jobFilter = k; commit(); }} items={["all", "pending", "active", "paused", "closed", "rejected"].map(k => [k, k[0].toUpperCase() + k.slice(1), k === "all" ? S.jobs.length : S.jobs.filter(j => j.status === k).length])} />
       <div className="tbl"><table><thead><tr><th>Job</th><th>Employer</th><th>Salary</th><th>Status</th><th>Featured</th><th>Actions</th></tr></thead><tbody>
         {L.length ? L.map(j => (
-          <tr key={j.id}><td><a href={`#job-${j.id}`}>{j.title}</a><div className="muted small">{j.city}, {j.country} · {fdate(j.created)}</div></td><td>{company(j)}</td><td className="num">{money(j.salaryMin, j.currency)}</td><td><Pill s={j.status} /></td>
+          <tr key={j.id}><td><a href={`#job-${j.id}`}>{j.title}</a><div className="muted small">{j.city}, {j.country} · {fdate(j.created)}</div></td><td>{company(j) || "—"}</td><td className="num">{money(j.salaryMin, j.currency)}{j.period === "hour" ? " /hr" : ""}</td><td><Pill s={j.status} /></td>
             <td><label className="check"><input type="checkbox" checked={j.featured} onChange={e => act("admin.job", { id: j.id, op: "feature", v: e.target.checked })} /> <span className="small">Featured</span></label></td>
             <td><div className="row tight nowrap">
               {j.status === "pending" && <><button className="btn sm pri" onClick={() => pub(j)}><LuCheck /> Approve</button><button className="btn sm danger" onClick={() => reject(j)}><LuX /> Reject</button></>}
@@ -475,7 +475,6 @@ function SlidesAdmin() {
 }
 
 /* Admin / staff: post a job for any employer (registered or not) or edit any job */
-const AGENCY = "MAM & MAM Overseas Ltd.";
 function AdminJobForm() {
   const S = store.S; const editing = ui.adminJob !== "new" ? S.jobs.find(x => x.id === ui.adminJob) : null;
   const j = editing || blankJob();
@@ -494,7 +493,7 @@ function AdminJobForm() {
     <form className="card fgrid" onSubmit={submit} key={editing?.id || "new"}>
       <Field label="Employer" hint="Pick a registered employer, or type the company name for an employer without an account">
         <select value={emp} onChange={e => setEmp(e.target.value)}><option value="">Not registered (type the name)</option>{employers.map(([v, l]) => <option key={v} value={v}>{l}</option>)}</select></Field>
-      {!emp ? <Field label="Employer / company name"><input type="text" name="employerName" defaultValue={editing?.employerName || AGENCY} maxLength={120} required /></Field> : <div />}
+      {!emp ? <Field label="Employer / company name (optional)" hint="Leave empty to post without showing an employer name"><input type="text" name="employerName" defaultValue={editing?.employerName || ""} maxLength={120} /></Field> : <div />}
       <JobFields j={j} />
       {!editing && <label className="check full"><input type="checkbox" name="publish" defaultChecked /> Publish now (otherwise saved as unpublished)</label>}
       <label className="check full"><input type="checkbox" name="featured" defaultChecked={!!j.featured} /> Featured job (shown first on the home page)</label>

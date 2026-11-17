@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from "react";
 import { LuMessageCircle, LuX, LuSendHorizontal } from "react-icons/lu";
 import { Logo } from "./ui.jsx";
 import { FaWhatsapp } from "react-icons/fa6";
-import { store, live, money, num, company, COUNTRIES } from "./store.js";
+import { store, live, money, num, company, COUNTRIES , HOURLY } from "./store.js";
 import { waLink } from "./pages/Public.jsx";
 
 /* Rule-based help assistant. It answers from the site's own live data (jobs, salaries, countries, contact settings);
@@ -26,7 +26,7 @@ function answer(topic) {
       return { text: `We have ${L.length} open job circular${L.length > 1 ? "s" : ""}. Some of them:`, links: L.slice(0, 4).map(j => [`${j.title}, ${j.city} (${money(j.salaryMin, j.currency)}+)`, `#job-${j.id}`]).concat([["See all jobs", "#jobs"]]) };
     case "salary": {
       const by = {}; L.forEach(j => { (by[j.country] = by[j.country] || []).push(j); });
-      const lines = Object.entries(by).map(([c, js]) => `${c}: ${money(Math.min(...js.map(j => j.salaryMin)), COUNTRIES[c])} – ${num(Math.max(...js.map(j => j.salaryMax)))} per month`);
+      const lines = Object.entries(by).map(([c, js]) => `${c}: ${money(Math.min(...js.map(j => j.salaryMin)), COUNTRIES[c])} – ${num(Math.max(...js.map(j => j.salaryMax)))} ${HOURLY.includes(c) ? "per hour" : "per month"}`);
       return { text: lines.length ? `Monthly salary ranges in our current circulars:\n${lines.join("\n")}\nEach job page also shows the approximate amount in BDT.` : "No open circulars right now, so there are no salary figures to show." };
     }
     case "countries": {

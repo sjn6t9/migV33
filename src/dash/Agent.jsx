@@ -164,7 +164,7 @@ export function Agent({ u }) {
       <h2>Apply workers to a job</h2>{banner}
       {L.length && W.length ? (
         <form className="card stack" onSubmit={submit} key={sel + A.length}>
-          <Field label="Job"><select value={sel} onChange={e => { ui.agentJob = e.target.value; commit(); }}>{L.map(j => <option key={j.id} value={j.id}>{j.title} · {j.city}, {j.country} · {money(j.salaryMin, j.currency)}+</option>)}</select></Field>
+          <Field label="Job"><select value={sel} onChange={e => { ui.agentJob = e.target.value; commit(); }}>{L.map(j => <option key={j.id} value={j.id}>{j.title} · {j.city}, {j.country} · {money(j.salaryMin, j.currency)}+{j.period === "hour" ? " /hr" : ""}</option>)}</select></Field>
           <fieldset className="plain"><legend className="small b">Select workers</legend><div className="grid checkgrid wide">
             {W.map(w => <label key={w.id} className={`check${already.has(w.id) ? " dim" : ""}`}><input type="checkbox" name="workers" value={w.id} disabled={already.has(w.id)} /> {w.name} <span className="muted small">{w.trade}{already.has(w.id) ? " · already applied" : ""}</span></label>)}
           </div></fieldset>

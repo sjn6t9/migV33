@@ -70,11 +70,11 @@ export async function renderJobCard(job, { company = "", settings = {}, link = "
   if (company) { y += 46; g.font = `500 30px ${BODY}`; g.fillStyle = MUTED; g.fillText(lines(g, company, inW, 1)[0], inX, y); }
   // salary
   y += 40; roundRect(g, inX, y, inW, 150, 20); g.fillStyle = SOFT; g.fill();
-  g.fillStyle = MUTED; g.font = `600 26px ${BODY}`; g.fillText("MONTHLY SALARY", inX + 34, y + 46);
+  g.fillStyle = MUTED; g.font = `600 26px ${BODY}`; g.fillText(job.period === "hour" ? "HOURLY WAGE" : "MONTHLY SALARY", inX + 34, y + 46);
   const cur = job.currency || COUNTRIES[job.country] || "";
-  g.fillStyle = GREEN; g.font = `800 56px ${DISPLAY}`; const sal = `${cur} ${fmt(job.salaryMin)} – ${fmt(job.salaryMax)}`; g.fillText(sal, inX + 34, y + 112);
+  g.fillStyle = GREEN; g.font = `800 56px ${DISPLAY}`; const sal = `${cur} ${fmt(job.salaryMin)} – ${fmt(job.salaryMax)}${job.period === "hour" ? " /hr" : ""}`; g.fillText(sal, inX + 34, y + 112);
   const rate = Number(settings.rates?.[cur] || 0);
-  if (rate) { g.font = `600 28px ${BODY}`; g.fillStyle = MUTED; const bdt = `≈ BDT ${fmt(Math.round(job.salaryMin * rate))}+`; const sw = g.measureText(bdt).width; g.fillText(bdt, inX + inW - 34 - sw, y + 110); }
+  if (rate) { g.font = `600 28px ${BODY}`; g.fillStyle = MUTED; const bdt = `≈ BDT ${fmt(Math.round(job.salaryMin * rate))}+${job.period === "hour" ? " /hr" : ""}`; const sw = g.measureText(bdt).width; g.fillText(bdt, inX + inW - 34 - sw, y + 110); }
   y += 150;
   // facts grid (3 × 2)
   const facts = [["Job type", job.type || "—"], ["Contract", job.contract ? `${job.contract} year${job.contract > 1 ? "s" : ""}` : "—"], ["Experience", job.experience ? `${job.experience}+ years` : "Not required"],

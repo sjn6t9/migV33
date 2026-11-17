@@ -4,7 +4,7 @@ import { getLang } from "./i18n.js";
 // and every change goes through act() in actions.js, which returns the updated state.
 
 export * from "./constants.js";
-import { INITIAL } from "./constants.js";
+import { INITIAL, HOURS_PER_MONTH } from "./constants.js";
 
 export const now = () => new Date().toISOString();
 export const uid = p => p + Math.random().toString(36).slice(2, 9);
@@ -45,13 +45,18 @@ export const me = () => (S().session ? S().users.find(u => u.id === S().session)
 export const user = id => S().users.find(u => u.id === id);
 export const job = id => S().jobs.find(j => j.id === id);
 export const worker = id => S().workers.find(w => w.id === id);
-export const company = j => user(j.employerId)?.company?.name || j.employerName || "Employer";
+export const company = j => user(j.employerId)?.company?.name || j.employerName || (j.employerId ? "Employer" : "");
 export const money = (n, c) => `${c} ${Number(n).toLocaleString("en-US")}`;
 export const num = n => Number(n || 0).toLocaleString("en-US");
 export const bdtFmt = n => `BDT ${num(n)}`;
 export const rate = c => Number(S().settings.rates[c] || 0);
 export const bdtMin = j => Math.round(j.salaryMin * rate(j.currency));
 export const bdtMax = j => Math.round(j.salaryMax * rate(j.currency));
+/* hourly (Fiji) or monthly pay */
+export const isHourly = j => j?.period === "hour";
+export const perShort = j => (isHourly(j) ? "/hour" : "/month");
+/* BDT per month, for filtering and sorting hourly and monthly jobs together */
+export const bdtMonthly = j => bdtMax(j) * (isHourly(j) ? HOURS_PER_MONTH : 1);
 const LOCALE = { en: "en-GB", bn: "bn-BD", ar: "ar-EG", hi: "hi-IN", fj: "en-GB" };
 export const fdate = iso => (iso ? new Date(iso).toLocaleDateString(LOCALE[getLang()] || "en-GB", { day: "numeric", month: "short", year: "numeric" }) : "—");
 export const live = () => S().jobs.filter(j => j.status === "active");
@@ -91,9 +96,9 @@ export function filteredJobs(F) {
     (!q || [j.title, j.category, j.city, j.country, company(j)].join(" ").toLowerCase().includes(q)) &&
     (!F.country || j.country === F.country) && (!F.cat || j.category === F.cat) && (!F.type || j.type === F.type) &&
     (F.exp === "" || j.experience <= Number(F.exp)) &&
-    (!F.minBdt || bdtMax(j) >= Number(F.minBdt)) &&
+    (!F.minBdt || bdtMonthly(j) >= Number(F.minBdt)) &&
     F.benefits.every(b => j.benefits.includes(b)));
-  if (F.sort === "sal") L.sort((a, b) => bdtMax(b) - bdtMax(a));
+  if (F.sort === "sal") L.sort((a, b) => bdtMonthly(b) - bdtMonthly(a));
   else if (F.sort === "dead") L.sort((a, b) => a.deadline.localeCompare(b.deadline));
   else L.sort((a, b) => b.featured - a.featured || b.created.localeCompare(a.created));
   return L;

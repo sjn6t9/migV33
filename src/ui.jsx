@@ -3,7 +3,7 @@ import {
   LuBookmark, LuBookmarkCheck, LuMapPin, LuClock, LuBriefcase, LuX, LuHardHat, LuHotel, LuTruck, LuFactory,
   LuHeartPulse, LuShield, LuSparkles, LuWheat, LuShoppingBag, LuMonitor, LuStar, LuDownload, LuBadgeCheck
 } from "react-icons/lu";
-import { store, touch, me, company, money, num, bdtMin, fdate, bdtFmt, LABEL, STAGES, CL_STAGES } from "./store.js";
+import { store, touch, me, company, money, num, bdtMin, isHourly, fdate, bdtFmt, LABEL, STAGES, CL_STAGES } from "./store.js";
 import { toggleSave, downloadFile, cardFileName } from "./actions.js";
 import { ShareButton } from "./Share.jsx";
 
@@ -65,7 +65,7 @@ export function JobCard({ j }) {
       </div>
       <div className="sal num">
         {money(j.salaryMin, j.currency)}–{num(j.salaryMax)}
-        <span className="muted small sal-sub"> /month · ≈ BDT {num(bdtMin(j))}+</span>
+        <span className="muted small sal-sub"> {isHourly(j) ? "/hour · ≈ BDT" : "/month · ≈ BDT"} {num(bdtMin(j))}+</span>
       </div>
       <div className="meta">
         <span><LuMapPin /> {j.city}, {j.country}</span>

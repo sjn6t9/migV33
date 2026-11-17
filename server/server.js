@@ -8,7 +8,7 @@ import fs from "node:fs";
 import path from "node:path";
 import crypto from "node:crypto";
 import { fileURLToPath } from "node:url";
-import { COUNTRIES, STAGES, CL_STAGES, STAFF_PERMS, LABEL, INITIAL, TEAM_DEPTS } from "../src/constants.js";
+import { COUNTRIES, HOURLY, STAGES, CL_STAGES, STAFF_PERMS, LABEL, INITIAL, TEAM_DEPTS } from "../src/constants.js";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 loadEnv(path.join(HERE, "..", ".env"));
@@ -62,6 +62,8 @@ function save() {
   }
 }
 
+/* Fiji wages are hourly: mark Fiji jobs whose amounts already look hourly (others keep monthly until edited) */
+for (const j of db.jobs) if (!j.period) j.period = HOURLY.includes(j.country) && Number(j.salaryMax) <= 500 ? "hour" : "month";
 /* home page slideshow: the pictures shipped in dist/scenery are the starting list; after that the admin manages it */
 if (!Array.isArray(db.scenery)) {
   try { db.scenery = JSON.parse(fs.readFileSync(path.join(HERE, "seed", "scenery.json"), "utf8")).map(x => ({ id: id("sc"), builtin: x.name, alt: x.alt, pos: x.pos || "50% 50%", hidden: false })); }
@@ -386,14 +388,17 @@ A["cand.clearance"] = async (d, u) => {
 const jobData = d => {
   must(COUNTRIES[d.country], "Choose a country."); must(str(d.title).length >= 2 && str(d.city).length >= 1, "Enter the job title and city.");
   const min = numv(d.salaryMin), max = numv(d.salaryMax); must(max >= min, "“Salary to” must be equal to or higher than “Salary from”.");
-  return { title: str(d.title, 120), category: str(d.category, 60), country: d.country, city: str(d.city, 80), salaryMin: min, salaryMax: max, currency: COUNTRIES[d.country], type: str(d.type, 30),
+  const period = HOURLY.includes(d.country) ? "hour" : "month";
+  must(period === "month" || max <= 500, "Fiji wages are per hour: enter the pay for one hour, e.g. 5.5 to 6.5 FJD.");
+  must(min > 0, "Enter the salary.");
+  return { title: str(d.title, 120), category: str(d.category, 60), country: d.country, city: str(d.city, 80), salaryMin: Math.round(min * 100) / 100, salaryMax: Math.round(max * 100) / 100, period, currency: COUNTRIES[d.country], type: str(d.type, 30),
     experience: numv(d.experience, 0, 50), contract: numv(d.contract, 1, 10), vacancies: numv(d.vacancies, 1, 10000), age: str(d.age, 20), deadline: str(d.deadline, 10),
     benefits: (d.benefits || []).map(x => str(x, 40)).slice(0, 10), description: str(d.description, 5000), requirements: str(d.requirements, 3000) };
 };
 function publishJob(j) {
   const was = j.status; j.status = "active"; notify(j.employerId, `Your job “${j.title}” is now live.`);
   if (was === "pending") db.users.filter(c => c.role === "candidate" && c.alerts?.on && (!c.alerts.cats.length || c.alerts.cats.includes(j.category)) && (!c.alerts.countries.length || c.alerts.countries.includes(j.country)))
-    .forEach(c => notify(c.id, `Job alert: ${j.title} in ${j.city}, ${j.country} (${j.currency} ${Number(j.salaryMin).toLocaleString("en-US")}+).`));
+    .forEach(c => notify(c.id, `Job alert: ${j.title} in ${j.city}, ${j.country} (${j.currency} ${Number(j.salaryMin).toLocaleString("en-US")}+${j.period === "hour" ? "/hour" : ""}).`));
 }
 A["emp.company"] = async (d, u) => {
   must(u?.role === "employer", "Not allowed.", 403);
@@ -420,7 +425,7 @@ A["admin.jobSave"] = async (d, u) => {
   needPerm(u, "jobs"); const data = jobData(d);
   let employerId = null, employerName = "";
   if (d.employerId) { const e = user(d.employerId); must(e && e.role === "employer", "Choose an employer from the list."); employerId = e.id; }
-  else { employerName = str(d.employerName, 120); must(employerName.length >= 2, "Enter the employer or company name."); }
+  else employerName = str(d.employerName, 120);
   if (d.id) {
     const j = job(d.id); must(j, "Job not found.");
     const before = j.employerId; Object.assign(j, data, { employerId, employerName, featured: !!d.featured, updatedAt: now() });
@@ -798,7 +803,7 @@ function serveJobShare(req, res, jid) {
     const origin = siteOrigin(req);
     const company = user(j.employerId)?.company?.name || j.employerName;
     const title = `${j.title} – ${j.city}, ${j.country} | MAM & MAM Overseas Ltd.`;
-    const desc = `${j.currency} ${Number(j.salaryMin).toLocaleString("en-US")}–${Number(j.salaryMax).toLocaleString("en-US")}/month · ${j.vacancies} vacancies${company ? ` · ${company}` : ""}${j.deadline ? ` · Apply by ${j.deadline}` : ""}. Licensed recruiting agency RL 1217.`;
+    const desc = `${j.currency} ${Number(j.salaryMin).toLocaleString("en-US")}–${Number(j.salaryMax).toLocaleString("en-US")}/${j.period === "hour" ? "hour" : "month"} · ${j.vacancies} vacancies${company ? ` · ${company}` : ""}${j.deadline ? ` · Apply by ${j.deadline}` : ""}. Licensed recruiting agency RL 1217.`;
     const tags = [`<title>${escHtml(title)}</title>`, `<meta name="description" content="${escHtml(desc)}">`, `<meta property="og:type" content="website">`, `<meta property="og:site_name" content="MAM &amp; MAM Overseas Ltd.">`,
       `<meta property="og:title" content="${escHtml(title)}">`, `<meta property="og:description" content="${escHtml(desc)}">`, `<meta property="og:url" content="${escHtml(`${origin}/job/${j.id}`)}">`,
       ...(j.card ? [`<meta property="og:image" content="${escHtml(`${origin}/api/files/${j.card.id}`)}">`, `<meta property="og:image:type" content="image/png">`, `<meta property="og:image:width" content="1080">`, `<meta property="og:image:height" content="1350">`, `<meta name="twitter:card" content="summary_large_image">`]

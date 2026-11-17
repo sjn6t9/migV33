@@ -3,7 +3,7 @@ import {
   LuLayoutDashboard, LuUser, LuFileText, LuBookmark, LuBell, LuMail, LuUpload, LuTrash2, LuStamp, LuSend, LuEye,
   LuCamera, LuDownload, LuCircleCheck, LuCircle, LuArrowLeft, LuArrowRight, LuMapPin, LuBriefcase, LuSearch
 } from "react-icons/lu";
-import { store, commit, job, live, company, money, fdate, kb, completeness, unread, COUNTRIES, CATS } from "../store.js";
+import { store, commit, job, live, company, money, isHourly, fdate, kb, completeness, unread, COUNTRIES, CATS } from "../store.js";
 import { toast, formData, withdraw, setTab, openModal, readUpload, downloadFile, fileExt, act, DOC_TYPES } from "../actions.js";
 import { Rail, Tiles, Pipe, ClPipe, Pill, Empty, JobCard, CardDownload, Avatar } from "../ui.jsx";
 import { NotifPanel, Field, Options } from "./shared.jsx";
@@ -110,8 +110,8 @@ function ApplyFlow({ u, apps }) {
         const done = applied.has(x.id);
         return <label key={x.id} className={`jobpick${st.jobId === x.id ? " on" : ""}${done ? " dim" : ""}`}>
           <input type="radio" name="job" checked={st.jobId === x.id} disabled={done} onChange={() => set({ jobId: x.id })} />
-          <div className="grow"><b>{x.title}</b> <span className="muted small">· {company(x)}</span>
-            <div className="meta"><span><LuMapPin /> {x.city}, {x.country}</span><span><LuBriefcase /> {x.type} · {x.contract} yr</span><span className="sal-inline">{money(x.salaryMin, x.currency)}+ /month</span></div></div>
+          <div className="grow"><b>{x.title}</b> {company(x) ? <span className="muted small">· {company(x)}</span> : null}
+            <div className="meta"><span><LuMapPin /> {x.city}, {x.country}</span><span><LuBriefcase /> {x.type} · {x.contract} yr</span><span className="sal-inline">{money(x.salaryMin, x.currency)}+ {isHourly(x) ? "/hour" : "/month"}</span></div></div>
           {done ? <span className="pill p-applied">Applied</span> : <a href={`#job-${x.id}`} className="small" onClick={e => e.stopPropagation()}>Details</a>}
         </label>;
       }) : <Empty>No jobs match. Clear the search.</Empty>}</div>
@@ -121,7 +121,7 @@ function ApplyFlow({ u, apps }) {
   if (!j || j.status !== "active") return <div className="card stack"><Stepper /><div className="notice">This job is no longer open.</div><button className="btn" onClick={() => set({ step: 1, jobId: "" })}><LuArrowLeft /> Choose another job</button></div>;
   if (applied.has(j.id)) return <div className="card stack"><Stepper /><div className="notice ok">You already applied for {j.title}.</div><button className="btn" onClick={() => set({ step: 1, jobId: "" })}>Apply for another job</button></div>;
 
-  const JobLine = () => <div className="notice row between"><span>Applying for <b>{j.title}</b> · {company(j)} · {j.city}, {j.country} · {money(j.salaryMin, j.currency)}+</span><button className="btn sm link" onClick={() => set({ step: 1 })}>Change job</button></div>;
+  const JobLine = () => <div className="notice row between"><span>Applying for <b>{j.title}</b>{company(j) ? <> · {company(j)}</> : null} · {j.city}, {j.country} · {money(j.salaryMin, j.currency)}+</span><button className="btn sm link" onClick={() => set({ step: 1 })}>Change job</button></div>;
   if (st.step === 2) return <div className="stack">
     <div className="card stack"><Stepper /><h3>Step 2 · Update your profile</h3><JobLine />
       <div className="checklist">{checks.map(([l, ok]) => <span key={l} className={ok ? "ok" : ""}>{ok ? <LuCircleCheck /> : <LuCircle />} {l}</span>)}</div></div>
