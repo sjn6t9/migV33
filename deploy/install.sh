@@ -1,7 +1,10 @@
 #!/bin/bash
 # MAM & MAM Overseas portal: installer / updater for an Ubuntu VPS (run as root).
 #
-#   curl -fsSL https://raw.githubusercontent.com/sjn6t9/migV33/mam-overseas/deploy/install.sh | bash -s -- mam.migv33.tech
+#   curl -fsSL https://raw.githubusercontent.com/sjn6t9/migV33/mam-overseas/deploy/install.sh | bash -s -- mamandmam.bd www.mamandmam.bd
+#
+# The first name is the main domain. Once it has HTTPS, every other name that reaches the app
+# (www., the old mam.migv33.tech) is redirected to it, keeping the page path.
 #
 # What it does (safe to run again):
 #   1. installs Node.js 22 and git if missing
@@ -14,6 +17,7 @@
 set -euo pipefail
 
 DOMAIN="${1:-mam.migv33.tech}"
+NAMES="${*:-$DOMAIN}"   # all names for this site, main domain first
 REPO="${REPO:-https://github.com/sjn6t9/migV33.git}"
 BRANCH="${BRANCH:-mam-overseas}"
 APP=/opt/mam-overseas
@@ -112,7 +116,15 @@ systemctl restart $SVC
 sleep 2
 curl -sf "http://127.0.0.1:$PORT/api/health" >/dev/null && echo "app is running on 127.0.0.1:$PORT" || { journalctl -u $SVC -n 30 --no-pager; echo "The app did not start."; exit 1; }
 
-say "5/6 Web server for $DOMAIN"
+say "5/6 Web server for $NAMES"
+HTTPS_OK=0; DNS_OK=1
+# HTTPS needs every name to point at this server first
+MYIP=$(curl -s4 --max-time 8 https://api.ipify.org || hostname -I | awk '{print $1}')
+for n in $NAMES; do
+  got=$(getent ahostsv4 "$n" | awk '{print $1; exit}' || true)
+  if [ "$got" = "$MYIP" ]; then echo "$n -> $MYIP (ok)"
+  else DNS_OK=0; warn "$n points to '${got:-nothing}', not to this server ($MYIP). Add an A record for $n with the value $MYIP at your domain registrar, wait until it works, then run this installer again."; fi
+done
 STAMP=$(date +%Y%m%d%H%M%S)
 if systemctl is-active --quiet caddy; then
   CF=$(systemctl cat caddy 2>/dev/null | grep -oE -- '--config [^ ]+' | head -1 | cut -d' ' -f2); CF=${CF:-/etc/caddy/Caddyfile}
@@ -121,8 +133,8 @@ if systemctl is-active --quiet caddy; then
     echo "$DOMAIN is already in the Caddyfile; leaving it as it is."
   else
     cp "$CF" "$CF.bak.$STAMP"
-    printf '\n%s {\n\tencode gzip\n\trequest_body {\n\t\tmax_size 30MB\n\t}\n\treverse_proxy 127.0.0.1:%s\n}\n' "$DOMAIN" "$PORT" >> "$CF"
-    if caddy validate --config "$CF" --adapter caddyfile >/dev/null 2>&1; then systemctl reload caddy; echo "Added $DOMAIN to Caddy (HTTPS is automatic)."
+    printf '\n%s {\n\tencode gzip\n\trequest_body {\n\t\tmax_size 30MB\n\t}\n\treverse_proxy 127.0.0.1:%s\n}\n' "$(echo $NAMES | sed 's/ /, /g')" "$PORT" >> "$CF"
+    if caddy validate --config "$CF" --adapter caddyfile >/dev/null 2>&1; then systemctl reload caddy; echo "Added $NAMES to Caddy (HTTPS is automatic)."
     else cp "$CF.bak.$STAMP" "$CF"; warn "Caddy rejected the new block; the old Caddyfile was restored. Nothing else changed."; exit 1; fi
   fi
 elif systemctl is-active --quiet nginx; then
@@ -134,7 +146,7 @@ elif systemctl is-active --quiet nginx; then
 server {
     listen 80;
     listen [::]:80;
-    server_name $DOMAIN;
+    server_name $NAMES;
     client_max_body_size 30m;
     location / {
         proxy_pass http://127.0.0.1:$PORT;
@@ -151,19 +163,25 @@ EOF
   fi
   if nginx -t >/dev/null 2>&1; then systemctl reload nginx; echo "Added $DOMAIN to nginx."
   else rm -f "/etc/nginx/sites-enabled/$DOMAIN"; [ -f "$NC.bak.$STAMP" ] && cp "$NC.bak.$STAMP" "$NC" || rm -f "$NC"; nginx -t; warn "nginx rejected the new site; it was removed again. Nothing else changed."; exit 1; fi
-  if ! grep -q "listen 443" "$NC"; then
+  if ! grep -q "listen 443" "$NC" && [ "$DNS_OK" = 1 ]; then
     command -v certbot >/dev/null 2>&1 || apt-get install -y certbot python3-certbot-nginx >/dev/null
     ok=0
     for i in 1 2 3 4 5 6; do
-      if certbot --nginx -d "$DOMAIN" --non-interactive --agree-tos --register-unsafely-without-email --redirect >/tmp/certbot.log 2>&1; then ok=1; break; fi
+      if certbot --nginx $(for n in $NAMES; do printf -- '-d %s ' "$n"; done) --non-interactive --agree-tos --register-unsafely-without-email --redirect >/tmp/certbot.log 2>&1; then ok=1; break; fi
       echo "HTTPS certificate not issued yet (DNS may still be spreading); retrying in 30 s ($i/6)"; sleep 30
     done
-    [ $ok = 1 ] && echo "HTTPS is on for $DOMAIN." || { tail -n 15 /tmp/certbot.log; warn "HTTPS could not be set up yet. The site works on http://$DOMAIN; run this installer again later to add HTTPS."; }
-  fi
+    [ $ok = 1 ] && { echo "HTTPS is on for $NAMES."; HTTPS_OK=1; } || { tail -n 15 /tmp/certbot.log; warn "HTTPS could not be set up yet. The site works on http://$DOMAIN; run this installer again later to add HTTPS."; }
+  elif grep -q "listen 443" "$NC"; then HTTPS_OK=1; fi
 else
   warn "Neither nginx nor Caddy is running. Programs listening on ports 80/443:"
   ss -ltnp | grep -E ':(80|443) ' || true
   warn "The app is running on 127.0.0.1:$PORT. Point your web server for $DOMAIN to it, then open the link below."
+fi
+
+# make the new domain the main one: all other names are redirected to it
+if [ "$DNS_OK" = 1 ] && { [ "$HTTPS_OK" = 1 ] || systemctl is-active --quiet caddy; }; then
+  if grep -q '^CANONICAL_HOST=' "$ENVF"; then sed -i "s/^CANONICAL_HOST=.*/CANONICAL_HOST=$DOMAIN/" "$ENVF"; else echo "CANONICAL_HOST=$DOMAIN" >> "$ENVF"; fi
+  systemctl restart $SVC; echo "Main domain: https://$DOMAIN (other names redirect here)"
 fi
 
 say "6/6 Done"

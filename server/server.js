@@ -832,6 +832,12 @@ const server = http.createServer(async (req, res) => {
   try {
     if (url.pathname.startsWith("/api/")) return await handleApi(req, res, url);
     if (req.method !== "GET" && req.method !== "HEAD") return send(res, 405, { error: "Method not allowed." });
+    /* main domain: visitors on any other name (old domain, www.) are sent there with the same path */
+    const canon = (process.env.CANONICAL_HOST || "").trim().toLowerCase();
+    if (canon) {
+      const h = String(req.headers["x-forwarded-host"] || req.headers.host || "").split(",")[0].trim().replace(/:\d+$/, "").toLowerCase();
+      if (h && h !== canon && h !== "localhost" && !/^[\d.]+$/.test(h) && !h.startsWith("[")) { res.writeHead(301, { Location: `https://${canon}${req.url}`, "Cache-Control": "max-age=3600" }); return res.end(); }
+    }
     const m = url.pathname.match(/^\/job\/([a-z0-9]+)\/?$/i); if (m) return serveJobShare(req, res, m[1]);
     return serveStatic(req, res, url);
   } catch (e) { console.error(e); if (!res.headersSent) send(res, 500, { error: "Server error." }); }

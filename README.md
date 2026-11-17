@@ -28,10 +28,10 @@ React 19 front end (icons from `react-icons`, all inline SVG, no PNG icons) and 
 ## Install on the VPS (Ubuntu, as root)
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/sjn6t9/migV33/mam-overseas/deploy/install.sh | bash -s -- mam.migv33.tech
+curl -fsSL https://raw.githubusercontent.com/sjn6t9/migV33/mam-overseas/deploy/install.sh | bash -s -- mamandmam.bd www.mamandmam.bd
 ```
 
-The installer prints a one-time link (`https://mam.migv33.tech/#setup-…`) to create the admin account. It runs again safely to repair or update. After that the server checks GitHub every 2 minutes and updates itself.
+The installer prints a one-time link (`https://mamandmam.bd/#setup-…`) to create the admin account. It runs again safely to repair or update. After that the server checks GitHub every 2 minutes and updates itself.
 
 Useful commands on the server:
 
