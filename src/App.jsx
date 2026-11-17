@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useSyncExternalStore } from "react";
-import { LuMenu, LuMoon, LuSun, LuLanguages, LuLogOut, LuLayoutDashboard, LuLogIn, LuUserPlus, LuSend, LuMailCheck, LuRefreshCw, LuDownload, LuFileText, LuKeyRound, LuWifiOff } from "react-icons/lu";
+import { LuMenu, LuMoon, LuSun, LuLanguages, LuLogOut, LuLayoutDashboard, LuLogIn, LuUserPlus, LuSend, LuMailCheck, LuRefreshCw, LuDownload, LuFileText, LuKeyRound, LuWifiOff, LuPhone, LuMail } from "react-icons/lu";
 import { FaWhatsapp, FaFacebookF, FaYoutube, FaLinkedinIn, FaTiktok } from "react-icons/fa6";
 import { ChatWidget } from "./Chat.jsx";
 import { ShareJob } from "./Share.jsx";
@@ -68,7 +68,10 @@ function Header({ navOn }) {
   const panel = { admin: "Admin panel", staff: "Staff panel", employer: "Employer panel", agent: "Agent panel", candidate: "My dashboard" };
   return (
     <header className="top">
-    <div className="utilbar"><div className="wrap"><span>Government licensed recruiting agency · RL 1217</span><Prefs /></div></div>
+    <div className="utilbar"><div className="wrap"><div className="util-l">
+      {store.S.settings.phone ? <a href={`tel:${store.S.settings.phone.replace(/[^\d+]/g, "")}`}><LuPhone /> <span className="num">{store.S.settings.phone}</span></a> : null}
+      {store.S.settings.email ? <a className="util-mail" href={`mailto:${store.S.settings.email}`}><LuMail /> {store.S.settings.email}</a> : null}
+      <span className="util-lic">Government licensed recruiting agency · RL 1217</span></div><Prefs /></div></div>
     <div className="wrap topbar">
       <a className="logo" href="#home" aria-label="MAM & MAM Overseas Ltd. home"><Logo /><div><b>MAM &amp; MAM OVERSEAS LTD.</b><span>Recruiting Licence RL 1217</span></div></a>
       <button className="btn sm menu-btn" onClick={() => { ui.navOpen = !ui.navOpen; touch(); }} aria-label="Open menu" aria-expanded={ui.navOpen}><LuMenu /> Menu</button>

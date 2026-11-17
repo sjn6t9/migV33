@@ -62,6 +62,11 @@ function save() {
   }
 }
 
+/* home page slideshow: the pictures shipped in dist/scenery are the starting list; after that the admin manages it */
+if (!Array.isArray(db.scenery)) {
+  try { db.scenery = JSON.parse(fs.readFileSync(path.join(HERE, "seed", "scenery.json"), "utf8")).map(x => ({ id: id("sc"), builtin: x.name, alt: x.alt, pos: x.pos || "50% 50%", hidden: false })); }
+  catch { db.scenery = []; }
+}
 /* team members shipped with the code (server/seed/team.json): each is added once; if the admin later deletes one it stays deleted */
 try {
   const seedDir = path.join(HERE, "seed"); const list = JSON.parse(fs.readFileSync(path.join(seedDir, "team.json"), "utf8"));
@@ -161,6 +166,13 @@ function mayRead(u, f) {
   }
   return false;
 }
+/* slideshow pictures as the browser needs them; visitors only get the ones that are switched on */
+function sceneryView(u) {
+  return (db.scenery || []).filter(x => !x.hidden || can(u, "content")).map(x => x.builtin
+    ? { id: x.id, alt: x.alt, pos: x.pos, hidden: !!x.hidden, builtin: true, src: `/scenery/${x.builtin}-1280.webp`, srcSet: `/scenery/${x.builtin}-768.webp 768w, /scenery/${x.builtin}-1280.webp 1280w, /scenery/${x.builtin}-1920.webp 1920w` }
+    : { id: x.id, alt: x.alt, pos: x.pos, hidden: !!x.hidden, src: `/api/files/${x.big}`, srcSet: x.small ? `/api/files/${x.small} 960w, /api/files/${x.big} 1920w` : "" });
+}
+const POS = ["50% 50%", "50% 25%", "50% 75%", "25% 50%", "75% 50%"];
 const fileRef = r => (r && r.id ? { id: r.id, name: r.name, size: r.size, data: `/api/files/${r.id}` } : r || null);
 
 /* ======================= state sent to the browser ======================= */
@@ -177,7 +189,7 @@ function viewFor(u) {
   const live = db.jobs.filter(j => j.status === "active");
   const pub = {
     v: db.v, session: u?.id || null, settings: { ...db.settings }, needsSetup: !db.users.some(x => x.role === "admin"), seo: db.seo, packages: db.packages, posts: db.posts,
-    testimonials: db.testimonials, team: [...db.team].sort((a, b) => (a.order ?? 99) - (b.order ?? 99)).map(m => ({ ...m, photo: m.photo ? { ...m.photo, data: `/api/files/${m.photo.id}` } : null })), gallery: db.gallery.map(g => ({ ...g, src: `/api/files/${g.fileId}` })),
+    testimonials: db.testimonials, team: [...db.team].sort((a, b) => (a.order ?? 99) - (b.order ?? 99)).map(m => ({ ...m, photo: m.photo ? { ...m.photo, data: `/api/files/${m.photo.id}` } : null })), gallery: db.gallery.map(g => ({ ...g, src: `/api/files/${g.fileId}` })), scenery: sceneryView(u),
     stats: { employers: db.users.filter(x => x.role === "employer" && x.status === "active").length, hired: db.applications.filter(a => a.status === "hired").length },
     jobs: live, applications: [], notifications: [], orders: [], messages: [], workers: [], clearances: [], ledger: [], tickets: [],
     users: db.users.filter(x => x.role === "employer" && live.some(j => j.employerId === x.id)).map(x => ({ id: x.id, role: "employer", status: x.status, company: { name: x.company?.name, verify: x.company?.verify, country: x.company?.country } }))
@@ -659,10 +671,32 @@ A["admin.post"] = async (d, u) => {
 A["admin.seo"] = async ({ seo }, u) => { needPerm(u, "seo"); for (const k of Object.keys(db.seo)) if (seo?.[k]) db.seo[k] = { title: str(seo[k].title, 120), desc: str(seo[k].desc, 300) }; return { msg: "SEO settings saved." }; };
 A["admin.settings"] = async (d, u) => {
   needPerm(u, "settings"); const s = db.settings;
+  must(!str(d.email) || emailOk(str(d.email)), "Enter a valid office email, e.g. info@yourdomain.com");
+  for (const k of ["facebook", "youtube", "linkedin", "tiktok"]) must(!str(d[k]) || webUrl(d[k]), { facebook: "Enter a valid Facebook link, e.g. facebook.com/yourpage", youtube: "Enter a valid YouTube link, e.g. youtube.com/@yourchannel", linkedin: "Enter a valid LinkedIn link, e.g. linkedin.com/company/yourpage", tiktok: "Enter a valid TikTok link, e.g. tiktok.com/@yourpage" }[k]);
   Object.assign(s, { phone: str(d.phone, 40), email: str(d.email, 200), address: str(d.address, 300), hours: str(d.hours, 120), moderation: !!d.moderation, clearanceFee: numv(d.clearanceFee, 0, 1e7),
-    whatsapp: str(d.whatsapp, 20).replace(/\D/g, ""), social: { facebook: str(d.facebook, 300), youtube: str(d.youtube, 300), linkedin: str(d.linkedin, 300), tiktok: str(d.tiktok, 300) } });
+    whatsapp: str(d.whatsapp, 20).replace(/\D/g, ""), social: { facebook: webUrl(d.facebook), youtube: webUrl(d.youtube), linkedin: webUrl(d.linkedin), tiktok: webUrl(d.tiktok) } });
   s.rates = { ...s.rates }; for (const c of Object.values(COUNTRIES)) s.rates[c] = numv(d.rates?.[c], 0, 100000);
   return { msg: "Settings saved." };
+};
+A["admin.scenery"] = async (d, u) => {
+  needPerm(u, "content"); const L = db.scenery; const x = d.id ? L.find(y => y.id === d.id) : null;
+  if (d.op === "add") {
+    must(L.length < 40, "The slideshow can have up to 40 pictures. Remove one first.");
+    const big = storeFile(d.big, u.id, { pdf: false, isPublic: true }); const small = d.small ? storeFile(d.small, u.id, { pdf: false, isPublic: true }) : null;
+    L.unshift({ id: id("sc"), big: big.id, small: small?.id || null, alt: str(d.alt, 140) || "Picture of Bangladesh", pos: POS.includes(d.pos) ? d.pos : POS[0], hidden: false, at: now() });
+    return { msg: "Picture added to the slideshow." };
+  }
+  if (d.op === "speed") { db.settings.slideSec = numv(d.sec, 3, 30); return { msg: "Slideshow speed saved." }; }
+  if (d.op === "reset") {
+    const names = JSON.parse(fs.readFileSync(path.join(HERE, "seed", "scenery.json"), "utf8"));
+    for (const n of names) if (!L.some(y => y.builtin === n.name)) L.push({ id: id("sc"), builtin: n.name, alt: n.alt, pos: n.pos || POS[0], hidden: false });
+    L.forEach(y => { if (y.builtin) y.hidden = false; }); return { msg: "The original pictures are back in the slideshow." };
+  }
+  must(x, "Picture not found.");
+  if (d.op === "update") { x.alt = str(d.alt, 140) || x.alt; if (d.pos && (POS.includes(d.pos) || /^\d{1,3}% \d{1,3}%$/.test(d.pos))) x.pos = d.pos; if (d.hidden !== undefined) x.hidden = !!d.hidden; return { msg: "Picture updated." }; }
+  if (d.op === "move") { const i = L.indexOf(x), j = i + (d.dir < 0 ? -1 : 1); if (j >= 0 && j < L.length) [L[i], L[j]] = [L[j], L[i]]; return {}; }
+  if (d.op === "delete") { if (!x.builtin) { dropFile({ id: x.big }); if (x.small) dropFile({ id: x.small }); } db.scenery = L.filter(y => y !== x); return { msg: "Picture removed from the slideshow." }; }
+  throw new Fail("Unknown operation.");
 };
 A["admin.msg"] = async ({ id: mid, op }, u) => {
   needPerm(u, "messages");

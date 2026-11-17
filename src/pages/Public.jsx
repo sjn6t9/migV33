@@ -22,6 +22,8 @@ const setF = patch => { ui.F = { ...ui.F, ...patch }; touch(); };
 
 /* ---------------- Home ---------------- */
 export function Home() {
+  const slides = store.loaded ? (store.S.scenery || []).filter(x => !x.hidden)
+    : SCENES.map(x => ({ id: x.name, alt: x.alt, pos: x.pos, src: `/scenery/${x.name}-1280.webp`, srcSet: `/scenery/${x.name}-768.webp 768w, /scenery/${x.name}-1280.webp 1280w, /scenery/${x.name}-1920.webp 1920w` }));
   const S = store.S; const L = live();
   const countries = [...new Set(L.map(j => j.country))];
   const feat = L.filter(j => j.featured).slice(0, 6);
@@ -46,7 +48,7 @@ export function Home() {
   ];
   return (
     <>
-      <section className="hero has-slides"><HeroSlides /><div className="wrap">
+      <section className={`hero${slides.length ? " has-slides" : ""}`}>{slides.length > 0 && <HeroSlides list={slides} sec={store.S.settings.slideSec} />}<div className="wrap">
         <div className="license"><LuBadgeCheck /> Government-licensed recruiting agency · <b>RL 1217</b></div>
         <h1>Overseas jobs with a licensed agency handling every step</h1>
         <p className="lead">Search open job circulars, apply with one click, and follow your application from shortlist to visa and departure.</p>
@@ -368,35 +370,35 @@ export function Team() {
 }
 
 /* Home page slideshow: pictures fill the top section, crossfade every few seconds, and scale with the window */
-function HeroSlides() {
-  const N = SCENES.length;
+function HeroSlides({ list, sec }) {
+  const N = list.length; const SCENES = list;
   const [i, setI] = React.useState(0);
   const [paused, setPaused] = React.useState(false);
   const [seen, setSeen] = React.useState(() => new Set([0, 1]));
   const tx = React.useRef(null);
   const reduce = typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches;
   const go = n => setI(((n % N) + N) % N);
-  React.useEffect(() => { setSeen(s => (s.has(i) && s.has((i + 1) % N) ? s : new Set([...s, i, (i + 1) % N]))); }, [i]);
+  React.useEffect(() => { if (i >= N) { setI(0); return; } setSeen(s => (s.has(i) && s.has((i + 1) % N) ? s : new Set([...s, i, (i + 1) % N]))); }, [i]);
   React.useEffect(() => {
     if (paused || reduce) return;
-    const t = setTimeout(() => { if (!document.hidden) go(i + 1); else setI(n => n); }, 6500);
+    const t = setTimeout(() => { if (!document.hidden) go(i + 1); else setI(n => n); }, Math.max(3, Number(sec) || 6.5) * 1000);
     return () => clearTimeout(t);
-  }, [i, paused]);
+  }, [i, paused, N, sec]);
   return (
     <div className="slides" role="region" aria-roledescription="carousel" aria-label="Scenes from Bangladesh"
       onMouseEnter={() => setPaused(true)} onMouseLeave={() => setPaused(false)}
       onTouchStart={e => { tx.current = e.touches[0].clientX; }}
       onTouchEnd={e => { const d = e.changedTouches[0].clientX - (tx.current ?? 0); if (Math.abs(d) > 45) go(i + (d < 0 ? 1 : -1)); tx.current = null; }}>
       {SCENES.map((s, k) => (
-        <div key={s.name} className={"slide" + (k === i ? " on" : "")} aria-hidden={k !== i}>
-          {seen.has(k) && <img src={`/scenery/${s.name}-1280.webp`} srcSet={`/scenery/${s.name}-768.webp 768w, /scenery/${s.name}-1280.webp 1280w, /scenery/${s.name}-1920.webp 1920w`}
+        <div key={s.id} className={"slide" + (k === i ? " on" : "")} aria-hidden={k !== i}>
+          {seen.has(k) && <img src={s.src} srcSet={s.srcSet || undefined}
             sizes="100vw" alt={s.alt} style={{ objectPosition: s.pos }} decoding="async" fetchpriority={k === 0 ? "high" : "auto"} draggable="false" />}
         </div>
       ))}
       <div className="slides-shade" />
       <div className="slides-ctl" onFocus={() => setPaused(true)} onBlur={() => setPaused(false)}>
         <button type="button" className="sl-arrow" aria-label="Previous picture" onClick={() => go(i - 1)}><LuChevronLeft /></button>
-        <div className="sl-dots">{SCENES.map((s, k) => <button key={s.name} type="button" className={k === i ? "on" : ""} aria-label={`Picture ${k + 1}`} aria-current={k === i} onClick={() => go(k)} />)}</div>
+        <div className="sl-dots">{SCENES.map((s, k) => <button key={s.id} type="button" className={k === i ? "on" : ""} aria-label={`Picture ${k + 1}`} aria-current={k === i} onClick={() => go(k)} />)}</div>
         <button type="button" className="sl-arrow" aria-label="Next picture" onClick={() => go(i + 1)}><LuChevronRight /></button>
       </div>
     </div>

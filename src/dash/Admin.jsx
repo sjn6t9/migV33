@@ -1,11 +1,11 @@
 import React from "react";
 import {
   LuLayoutDashboard, LuUsers, LuBriefcase, LuFileText, LuStamp, LuWallet, LuPackage, LuNewspaper, LuSearch, LuSettings, LuMessageSquare,
-  LuCheck, LuX, LuTrash2, LuPencil, LuEye, LuEyeOff, LuBadgeCheck, LuRotateCcw, LuBan, LuTicket, LuUpload, LuImage, LuUserCog, LuImagePlus, LuQuote
+  LuCheck, LuX, LuTrash2, LuPencil, LuEye, LuEyeOff, LuBadgeCheck, LuRotateCcw, LuBan, LuTicket, LuUpload, LuImage, LuUserCog, LuImagePlus, LuQuote, LuGalleryHorizontal, LuArrowUp, LuArrowDown, LuTimer
 } from "react-icons/lu";
 import { FaWhatsapp, FaFacebookF, FaYoutube, FaLinkedinIn, FaTiktok } from "react-icons/fa6";
 import { STAFF_PERMS, TEAM_DEPTS, store, commit, user, job, worker, company, live, money, num, fdate, bdtFmt, balanceOf, candOf, clPerson, clOpen, cardPending, now, COUNTRIES, STAGES, CL_STAGES, CL_DOCS, PAY_METHODS, PAGES, LABEL } from "../store.js";
-import { toast, formData, setTab, openModal, confirmBox, deleteUser, act, readUpload } from "../actions.js";
+import { toast, formData, setTab, openModal, confirmBox, deleteUser, act, readUpload, compressImage } from "../actions.js";
 import { Rail, Tiles, Pill, Empty, Bars, Stars, Avatar } from "../ui.jsx";
 import { LedgerTable, StatusSelect, Field, Options } from "./shared.jsx";
 import { setClStatus } from "../actions.js";
@@ -21,13 +21,13 @@ function FilterButtons({ items, cur, onPick }) {
 const TABS = [
   ["overview", "Overview", LuLayoutDashboard], ["users", "Accounts", LuUsers], ["jobs", "Job moderation", LuBriefcase], ["apps", "Applications", LuFileText],
   ["clearance", "BMET clearance", LuStamp], ["tickets", "Air tickets", LuTicket], ["ledger", "Agent accounts", LuWallet], ["packages", "Payments & packages", LuPackage],
-  ["content", "Website content", LuImage], ["blog", "Blog", LuNewspaper], ["seo", "SEO", LuSearch], ["settings", "Site settings", LuSettings],
+  ["content", "Website content", LuImage], ["slides", "Home slideshow", LuGalleryHorizontal], ["blog", "Blog", LuNewspaper], ["seo", "SEO", LuSearch], ["settings", "Site settings", LuSettings],
   ["messages", "Messages", LuMessageSquare], ["staff", "Staff & permissions", LuUserCog]
 ];
 
 export function Admin({ u }) {
   const S = store.S; const R = u.role; const isAdmin = R === "admin";
-  const can = k => k === "overview" || isAdmin || (k !== "staff" && u.perms?.includes(k));
+  const can = k => k === "overview" || isAdmin || (k !== "staff" && u.perms?.includes(k === "slides" ? "content" : k));
   if (!can(ui.tab[R])) ui.tab[R] = "overview";
   const t = ui.tab[R];
   const go = tab => setTab(R, tab);
@@ -351,21 +351,23 @@ export function Admin({ u }) {
     </>;
   }
 
+  if (t === "slides") body = <SlidesAdmin />;
+
   if (t === "settings") {
     const s = S.settings;
     const save = e => { const [d] = formData(e); act("admin.settings", { ...d, moderation: !!d.moderation, rates: Object.fromEntries(Object.values(COUNTRIES).map(c => [c, d[`rate-${c}`]])) }); };
     body = <>
       <h2>Site settings</h2>
-      <form className="card fgrid" onSubmit={save}>
+      <form className="card fgrid" onSubmit={save} noValidate>
         <Field label="Office phone"><input type="tel" name="phone" defaultValue={s.phone} placeholder="+880" /></Field>
-        <Field label="Office email"><input type="email" name="email" defaultValue={s.email} /></Field>
+        <Field label="Office email"><input type="email" inputMode="email" name="email" defaultValue={s.email} /></Field>
         <Field label="Office address" full><input type="text" name="address" defaultValue={s.address} /></Field>
         <Field label="Office hours" full><input type="text" name="hours" defaultValue={s.hours} /></Field>
         <Field label={<span className="row tight"><FaWhatsapp /> WhatsApp number</span>} hint="Shows the WhatsApp chat button on every page. Include country code, e.g. 8801XXXXXXXXX"><input type="tel" name="whatsapp" defaultValue={s.whatsapp} /></Field>
-        <Field label={<span className="row tight"><FaFacebookF /> Facebook page URL</span>}><input type="url" name="facebook" defaultValue={s.social.facebook} placeholder="https://" /></Field>
-        <Field label={<span className="row tight"><FaYoutube /> YouTube URL</span>}><input type="url" name="youtube" defaultValue={s.social.youtube} placeholder="https://" /></Field>
-        <Field label={<span className="row tight"><FaLinkedinIn /> LinkedIn URL</span>}><input type="url" name="linkedin" defaultValue={s.social.linkedin} placeholder="https://" /></Field>
-        <Field label={<span className="row tight"><FaTiktok /> TikTok URL</span>}><input type="url" name="tiktok" defaultValue={s.social.tiktok} placeholder="https://" /></Field>
+        <Field label={<span className="row tight"><FaFacebookF /> Facebook page URL</span>}><input type="text" inputMode="url" name="facebook" defaultValue={s.social.facebook} placeholder="facebook.com/…" /></Field>
+        <Field label={<span className="row tight"><FaYoutube /> YouTube URL</span>}><input type="text" inputMode="url" name="youtube" defaultValue={s.social.youtube} placeholder="youtube.com/…" /></Field>
+        <Field label={<span className="row tight"><FaLinkedinIn /> LinkedIn URL</span>}><input type="text" inputMode="url" name="linkedin" defaultValue={s.social.linkedin} placeholder="linkedin.com/…" /></Field>
+        <Field label={<span className="row tight"><FaTiktok /> TikTok URL</span>}><input type="text" inputMode="url" name="tiktok" defaultValue={s.social.tiktok} placeholder="tiktok.com/…" /></Field>
         <label className="check full"><input type="checkbox" name="moderation" defaultChecked={s.moderation} /> Review employer jobs before they go live</label>
         <Field label="BMET clearance processing charge (BDT)" hint="Added to the agent's statement on each new clearance application. 0 = add charges manually."><input type="number" name="clearanceFee" min="0" defaultValue={s.clearanceFee || 0} /></Field>
         <fieldset className="plain full"><legend className="b mb6">Currency rates (BDT per 1 unit)</legend><p className="muted small mb12">Used for the approximate BDT salary shown on jobs and for the salary filter. Update these regularly.</p>
@@ -412,4 +414,60 @@ function EmailSettings() {
         <span className="muted small">{m.host && m.user && m.hasPass ? "Email sending is set up." : "Not set up yet: job seekers can't receive codes. You can verify them manually in Accounts."}</span></div>
     </form>
   );
+}
+
+/* Home page slideshow: add, caption, reorder, hide or remove pictures, and set the speed */
+const FOCUS = [["50% 50%", "Center"], ["50% 25%", "Top"], ["50% 75%", "Bottom"], ["25% 50%", "Left"], ["75% 50%", "Right"]];
+function SlidesAdmin() {
+  const S = store.S; const L = S.scenery || []; const [busy, setBusy] = React.useState(false);
+  const add = async e => {
+    e.preventDefault(); const form = e.currentTarget; const f = form.file.files[0];
+    if (!f) return toast("Choose a picture first.");
+    if (!/^image\//.test(f.type) && !/\.(jpe?g|png|webp)$/i.test(f.name)) return toast("Choose a photo (JPG or WebP).");
+    setBusy(true);
+    try {
+      let big, small;
+      try { big = await compressImage(f, 1920, 0.82); small = await compressImage(f, 960, 0.8); } catch { return toast("This image could not be read. Try another file."); }
+      const base = f.name.replace(/\.[^.]+$/, "");
+      const r = await act("admin.scenery", { op: "add", big: { name: `${base}.jpg`, data: big }, small: { name: `${base}-small.jpg`, data: small }, alt: form.alt.value, pos: form.pos.value });
+      if (r) form.reset();
+    } finally { setBusy(false); }
+  };
+  const upd = (x, ch) => act("admin.scenery", { op: "update", id: x.id, ...ch }, { quiet: true });
+  const shown = L.filter(x => !x.hidden).length;
+  return <>
+    <h2>Home slideshow</h2>
+    <p className="muted">Pictures at the top of the home page. They change every few seconds and fill the screen on computers, tablets and phones. {shown} of {L.length} pictures are showing.</p>
+    <form className="card fgrid" onSubmit={add}>
+      <h3 className="full"><LuImagePlus /> Add a picture</h3>
+      <Field label="Picture (JPG or WebP)" hint="Wide landscape photos work best (at least 1600 px wide). Large photos are made smaller before upload." full><input type="file" name="file" accept="image/jpeg,image/png,image/webp" /></Field>
+      <Field label="Description" hint="Read out by screen readers, e.g. Rice fields in Sylhet"><input type="text" name="alt" maxLength={140} /></Field>
+      <Field label="Keep in view when cropped" hint="Phones show a narrower part of the picture"><select name="pos" defaultValue="50% 50%">{FOCUS.map(([v, l]) => <option key={v} value={v}>{l}</option>)}</select></Field>
+      <div className="full"><button className="btn pri" type="submit" disabled={busy}><LuUpload /> {busy ? "Uploading…" : "Add to slideshow"}</button></div>
+    </form>
+    <form className="card row wrap" onSubmit={e => { e.preventDefault(); act("admin.scenery", { op: "speed", sec: e.currentTarget.sec.value }); }}>
+      <LuTimer /> <label htmlFor="slsec" className="b">Seconds per picture</label>
+      <input id="slsec" type="number" name="sec" min="3" max="30" step="0.5" defaultValue={S.settings.slideSec || 6.5} style={{ width: 90 }} />
+      <button className="btn" type="submit">Save speed</button>
+      <button className="btn link" type="button" onClick={() => confirmBox("Bring back the original pictures that came with the website? Your own pictures stay.", () => act("admin.scenery", { op: "reset" }), "Restore")}><LuRotateCcw /> Restore original pictures</button>
+    </form>
+    {L.length ? <div className="grid slidegrid">{L.map((x, k) => (
+      <figure key={x.id} className={`card slidecard${x.hidden ? " off" : ""}`}>
+        <div className="slidethumb"><img src={x.src} srcSet={x.srcSet || undefined} sizes="320px" alt={x.alt} style={{ objectPosition: x.pos }} loading="lazy" />
+          <span className="slidenum">{k + 1}</span>{x.hidden && <span className="pill">Hidden</span>}</div>
+        <figcaption className="stack8">
+          <input type="text" defaultValue={x.alt} maxLength={140} aria-label="Description" onBlur={e => { if (e.target.value.trim() && e.target.value !== x.alt) upd(x, { alt: e.target.value }); }} />
+          <div className="row between">
+            <select value={FOCUS.some(([v]) => v === x.pos) ? x.pos : "50% 50%"} aria-label="Keep in view when cropped" onChange={e => upd(x, { pos: e.target.value })}>{FOCUS.map(([v, l]) => <option key={v} value={v}>{l}</option>)}</select>
+            <div className="row tight">
+              <button className="btn sm icon" disabled={k === 0} onClick={() => act("admin.scenery", { op: "move", id: x.id, dir: -1 }, { quiet: true })} aria-label="Move earlier" title="Move earlier"><LuArrowUp /></button>
+              <button className="btn sm icon" disabled={k === L.length - 1} onClick={() => act("admin.scenery", { op: "move", id: x.id, dir: 1 }, { quiet: true })} aria-label="Move later" title="Move later"><LuArrowDown /></button>
+              <button className="btn sm icon" onClick={() => upd(x, { hidden: !x.hidden })} aria-label={x.hidden ? "Show on the website" : "Hide from the website"} title={x.hidden ? "Show on the website" : "Hide from the website"}>{x.hidden ? <LuEye /> : <LuEyeOff />}</button>
+              <button className="btn sm icon danger" onClick={() => confirmBox("Remove this picture from the slideshow?", () => act("admin.scenery", { op: "delete", id: x.id }), "Remove")} aria-label="Remove picture" title="Remove picture"><LuTrash2 /></button>
+            </div>
+          </div>
+        </figcaption>
+      </figure>))}</div>
+      : <Empty>No pictures in the slideshow. The home page shows a plain green banner until you add one.</Empty>}
+  </>;
 }
