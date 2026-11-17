@@ -122,3 +122,18 @@ export async function initLang() {
   if (code === "en") { startObserver(); return; }
   await Promise.race([setLang(code), new Promise(r => setTimeout(r, 2500))]);
 }
+
+/* A translate function for any of the five languages (used for downloads such as visiting cards,
+   which can be made in a language other than the one the site is shown in). */
+const dictCache = {};
+export async function translatorFor(code) {
+  if (code === "en" || !LANGS.some(l => l.code === code)) return s => s;
+  if (!dictCache[code]) dictCache[code] = loadDict(code).catch(() => ({ k: {}, p: [] }));
+  const d = await dictCache[code];
+  return s => {
+    const k = String(s ?? "").replace(/\s+/g, " ").trim(); if (!k) return s;
+    if (d.k[k] != null) return d.k[k];
+    for (const [re, tpl] of d.p) { const m = k.match(re); if (m) return tpl.replace(/\{(\d)\}/g, (_, i) => { const v = m[+i + 1] ?? ""; return d.k[v.trim()] ?? v; }); }
+    return s;
+  };
+}

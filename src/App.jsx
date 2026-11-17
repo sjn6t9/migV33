@@ -10,6 +10,7 @@ import { CardAdmin, AgentDocsView } from "./dash/shared.jsx";
 import { Home, Jobs, JobDetail, Services, About, Blog, Post, Contact, Track, Setup, Team, waLink } from "./pages/Public.jsx";
 import { Dashboard } from "./dash/Dashboard.jsx";
 import { LANGS, getLang, setLang, t, onLang } from "./i18n.js";
+import { VisitingCard } from "./VCard.jsx";
 import { currentTheme, toggleTheme } from "./theme.js";
 
 function useHash() {
@@ -129,7 +130,7 @@ function ModalHost() {
   const m = store.ui.modal; if (!m) return null;
   const close = closeModal;
   return (
-    <ModalFrame onClose={close} wide={m.type === "share"}>
+    <ModalFrame onClose={close} wide={m.type === "share" || m.type === "vcard"}>
       {m.type === "confirm" && <>
         <h3>Please confirm</h3><p className="confirm-msg">{m.msg}</p>
         <div className="row"><button className="btn pri" autoFocus onClick={() => { closeModal(); m.onYes(); }}>{m.yes}</button><button className="btn" onClick={close}>Cancel</button></div>
@@ -139,6 +140,7 @@ function ModalHost() {
       {m.type === "verify" && <VerifyEmail uid={m.uid} email={m.email} sent={m.sent} code={m.code} />}
       {m.type === "password" && <ChangePassword />}
       {m.type === "share" && <ShareJob jobId={m.jobId} />}
+      {m.type === "vcard" && <VisitingCard teamId={m.teamId} />}
       {m.type === "agentdocs" && user(m.uid) && <AgentDocsView u={user(m.uid)} />}
       {m.type === "clearance" && <ClearanceCard cid={m.cid} admin={m.admin} />}
     </ModalFrame>

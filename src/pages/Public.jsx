@@ -341,7 +341,8 @@ export function TeamCard({ m, compact }) {
         {!compact && m.years !== "" && m.years != null && Number(m.years) > 0 && <div className="tc-years"><LuAward /> {m.years}+ years in overseas recruitment</div>}
         {!compact && m.bio && <p className="tc-bio muted small">{m.bio}</p>}
         {!compact && m.expertise?.length > 0 && <div className="row tight tc-exp">{m.expertise.slice(0, 4).map(x => <span key={x} className="chip">{x}</span>)}</div>}
-        {contacts.length > 0 && <div className="tc-contact">{contacts.map(c => <a key={c.label} className={`tc-ic${c.cls || ""}`} href={c.href} aria-label={c.label} title={c.label} {...(c.ext ? { target: "_blank", rel: "noopener noreferrer" } : {})}>{c.icon}</a>)}</div>}
+        <div className="tc-contact">{contacts.map(c => <a key={c.label} className={`tc-ic${c.cls || ""}`} href={c.href} aria-label={c.label} title={c.label} {...(c.ext ? { target: "_blank", rel: "noopener noreferrer" } : {})}>{c.icon}</a>)}
+          <button type="button" className="tc-card" onClick={() => openModal("vcard", { teamId: m.id })} aria-label={`Visiting card of ${m.name}`}><LuIdCard /> <span>Visiting card</span></button></div>
       </div>
     </article>
   );

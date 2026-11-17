@@ -572,3 +572,28 @@ html[lang="bn"] .btn{font-weight:600}
 @media (max-width:900px){.util-l .util-mail{display:none}}
 @media (max-width:560px){.util-l a~.util-lic{display:none}}
 .sal-month{margin-top:6px;font-weight:600;color:var(--ink);font-size:15px}
+/* visiting card */
+.tc-card{display:inline-flex;align-items:center;gap:6px;height:38px;padding:0 14px;border-radius:99px;border:1px solid var(--brand);background:transparent;color:var(--brand);font-weight:600;font-size:14px;cursor:pointer}
+.tc-card:hover,.tc-card:focus-visible{background:var(--brand);color:#fff}
+.tc-card svg{width:17px;height:17px}
+.teamcard.compact .tc-card span{display:none}
+.teamcard.compact .tc-card{width:38px;padding:0;justify-content:center}
+.tc-contact{flex-wrap:wrap}
+.vcard h3{margin:0}
+.vc-langs{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:12px 0}
+.vc-langs>svg{color:var(--brand);width:18px;height:18px}
+.chipbtn{border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:99px;padding:6px 14px;font-weight:600;cursor:pointer;font-size:14px}
+.chipbtn.on{background:var(--brand);border-color:var(--brand);color:#fff}
+.vc-sides{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin:6px 0 14px;transition:opacity .2s}
+.vc-sides.busy{opacity:.55}
+.vc-sides figure{margin:0;text-align:center}
+.vc-sides img,.vc-ph{width:100%;aspect-ratio:1050/600;border-radius:10px;box-shadow:0 2px 6px rgba(0,0,0,.12),0 14px 30px -14px rgba(0,0,0,.35);display:block;background:var(--soft)}
+.vc-ph{display:grid;place-items:center;color:var(--brand)}
+@media (max-width:680px){.vc-sides{grid-template-columns:1fr}}
+#vcard-print{display:none}
+@media print{
+  body.printing-card>*:not(#vcard-print){display:none!important}
+  body.printing-card #vcard-print{display:flex!important;flex-direction:column;gap:.4in;align-items:center;padding-top:.3in}
+  #vcard-print img{width:3.5in;height:2in;outline:.5px dashed #999;outline-offset:0}
+  @page{margin:12mm}
+}
