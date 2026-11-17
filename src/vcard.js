@@ -3,6 +3,7 @@
 // names, numbers and addresses stay as written.
 import { translatorFor, LANGS } from "./i18n.js";
 import { drawQR } from "./qr.js";
+import { memberCode } from "./store.js";
 
 const W = 1050, H = 600;
 const GREEN = "#006a4e", DEEP = "#004d38", RED = "#d01c32", INK = "#14231d", MUTED = "#5b6b64";
@@ -103,12 +104,14 @@ export async function drawVisitingCard(m, { lang = "en", side = "front", setting
   ].filter(Boolean).slice(0, 5);
   const iconImgs = {}; for (const k of ["phone", "whatsapp", "mail", "globe", "pin"]) iconImgs[k] = await svgImg(icons[k], "#ffffff");
   // QR code that opens this member's verification page
-  const QS = 168;
+  const QS = 150; const code = memberCode(m);
   if (verifyUrl) {
-    const qx = X(R - QS, QS), qy = H - 10 - QS - 50;
+    const qx = X(R - QS, QS), qy = H - 10 - QS - (code ? 76 : 48);
     drawQR(g, verifyUrl, qx, qy, QS, INK);
     g.strokeStyle = "#d9e3de"; g.lineWidth = 2; rr(g, qx - 1, qy - 1, QS + 2, QS + 2, 6); g.stroke();
-    g.save(); g.textAlign = "center"; g.fillStyle = GREEN; fit(g, t("Scan to verify"), QS + 20, 18, 700, BODY); g.fillText(t("Scan to verify"), qx + QS / 2, qy + QS + 26); g.restore();
+    g.save(); g.textAlign = "center"; g.fillStyle = GREEN; fit(g, t("Scan to verify"), QS + 30, 17, 700, BODY); g.fillText(t("Scan to verify"), qx + QS / 2, qy + QS + 24);
+    if (code) { g.fillStyle = INK; fit(g, `ID ${code}`, QS + 40, 22, 800, "Inter, Arial, sans-serif"); g.fillText(`ID ${code}`, qx + QS / 2, qy + QS + 52); }
+    g.restore();
   }
   let y = 252; const step = rows.length > 4 ? 64 : 72;
   for (const [k, label, value] of rows) {

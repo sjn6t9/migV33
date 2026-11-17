@@ -86,14 +86,14 @@ export function Toast() {
   return <div id="toast" className={t ? "show" : ""} role="status" aria-live="polite">{t}</div>;
 }
 
-export function ModalFrame({ onClose, children, wide }) {
+export function ModalFrame({ onClose, children, wide, className = "" }) {
   React.useEffect(() => {
     const k = e => e.key === "Escape" && onClose();
     document.addEventListener("keydown", k); return () => document.removeEventListener("keydown", k);
   }, [onClose]);
   return (
     <div className="modal-bg open" onMouseDown={e => e.target === e.currentTarget && onClose()}>
-      <div className={`modal${wide ? " wide" : ""}`} role="dialog" aria-modal="true">
+      <div className={`modal${wide ? " wide" : ""}${className ? " " + className : ""}`} role="dialog" aria-modal="true">
         <button className="btn sm x" onClick={onClose} aria-label="Close"><LuX /></button>
         {children}
       </div>

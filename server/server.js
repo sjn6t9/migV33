@@ -658,6 +658,7 @@ A["admin.content"] = async (d, u) => {
     must(!str(d.website) || data.website, "Enter a valid website address, e.g. www.example.com");
     const m = d.op === "teamUpdate" ? db.team.find(x => x.id === d.id) : { id: id("tm") };
     must(m, "Team member not found.");
+    must(!db.team.some(x => x.id !== m.id && Number(x.order) === data.order), "Another team member already has this display order. Each member needs a different number, because it is part of their ID.");
     if (d.file) { const ref = storeFile(d.file, u.id, { pdf: false, isPublic: true }); if (m.photo) dropFile(m.photo); data.photo = ref; }
     else if (d.removePhoto && m.photo) { dropFile(m.photo); data.photo = null; }
     Object.assign(m, data); if (d.op === "team") db.team.push(m);

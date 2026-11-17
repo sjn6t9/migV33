@@ -104,3 +104,11 @@ export function filteredJobs(F) {
   return L;
 }
 
+
+/* team member ID printed on visiting cards: 12172026 followed by the member's display order */
+export const MEMBER_PREFIX = "12172026";
+export const memberCode = m => (m && m.order !== "" && m.order != null ? MEMBER_PREFIX + String(m.order) : "");
+export const findMember = key => {
+  const k = String(key || "").replace(/[\s-]/g, ""); if (!k) return null; const T = store.S.team || [];
+  return T.find(x => x.id === k) || T.find(x => memberCode(x) === k) || null;
+};

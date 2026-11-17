@@ -1,5 +1,6 @@
 import React from "react";
 import { SCENES } from "../scenery.js";
+import { VerifyBox } from "../VCard.jsx";
 import {
   LuSearch, LuArrowLeft, LuSend, LuUserPlus, LuLogIn, LuBadgeCheck, LuFileCheck, LuStethoscope, LuStamp, LuPlane,
   LuClipboardList, LuUsers, LuHandshake, LuMessageSquare, LuGraduationCap, LuMapPin, LuPhone, LuMail, LuClock, LuIdCard,
@@ -10,7 +11,7 @@ import { LuAward, LuUsersRound, LuGlobe, LuChevronLeft, LuChevronRight } from "r
 import {
   store, touch, me, user, job, live, money, num, bdtMin, bdtMax, isHourly, HOURS_PER_MONTH, fdate, filteredJobs,
   COUNTRIES, CATS, TYPES, BENEFITS, EMPTY_FILTERS, worker, company, LABEL, TEAM_DEPTS
-} from "../store.js";
+, memberCode } from "../store.js";
 import { apply, openModal, go, toast, formData, act } from "../actions.js";
 import { ShareButton } from "../Share.jsx";
 import { JobCard, SaveButton, Pill, Empty, Val, Md, CAT_ICON, Pipe, ClPipe, Stars, Avatar , Logo } from "../ui.jsx";
@@ -338,6 +339,7 @@ export function TeamCard({ m, compact }) {
       <div className="tc-body">
         <h3>{m.name}</h3>
         <div className="tc-title">{m.title}</div>
+        {memberCode(m) && <div className="tc-id">ID <span className="num">{memberCode(m)}</span></div>}
         {!compact && m.years !== "" && m.years != null && Number(m.years) > 0 && <div className="tc-years"><LuAward /> {m.years}+ years in overseas recruitment</div>}
         {!compact && m.bio && <p className="tc-bio muted small">{m.bio}</p>}
         {!compact && m.expertise?.length > 0 && <div className="row tight tc-exp">{m.expertise.slice(0, 4).map(x => <span key={x} className="chip">{x}</span>)}</div>}
@@ -407,6 +409,7 @@ export function Team() {
         {depts.length > 1 && <div className="row">{[["", "All"], ...depts.map(d => [d, d])].map(([k, l]) => <button key={l} className={`btn sm${dept === k ? " pri" : ""}`} onClick={() => setDept(k)}>{l}</button>)}</div>}
         {L.length ? <TeamCarousel key={dept} list={L} />
           : <Empty>Team profiles are being added. {isStaff ? <>Add them in <a href="#dashboard">Admin › Website content</a>.</> : <>Meanwhile, <a href="#contact">contact the office</a>.</>}</Empty>}
+        {S.team.length > 0 && <VerifyBox />}
         <div className="card row between cta soft">
           <div className="cta-text"><h2>Talk to our team</h2><p className="muted mt8">Visit the office or send a message. We reply within one working day.</p></div>
           <div className="row"><a className="btn pri" href="#contact">Contact us</a><a className="btn" href="#jobs">See open jobs</a></div>

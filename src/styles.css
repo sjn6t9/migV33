@@ -631,3 +631,16 @@ html[lang="bn"] .btn{font-weight:600}
 .verify-brand{flex:1;overflow:hidden}
 .verify-brand .vb-name{overflow:hidden;text-overflow:ellipsis}
 .verify-top select{max-width:112px}
+.verify-id{display:inline-flex;gap:8px;align-items:baseline;margin-top:6px;padding:4px 12px;border-radius:8px;background:var(--soft);font-size:14px;color:var(--muted)}
+.verify-id b{color:var(--ink);font-size:16px;letter-spacing:.04em}
+.tc-id{font-size:12.5px;color:var(--muted);letter-spacing:.03em}
+.tc-id .num{font-weight:700;color:var(--ink)}
+.verify-box{display:flex;align-items:center;justify-content:space-between;gap:20px;flex-wrap:wrap;border-inline-start:5px solid var(--brand)}
+.verify-box h2{display:flex;align-items:center;gap:10px;font-size:22px}
+.verify-box h2 svg{color:var(--brand)}
+.verify-box .vb-text{flex:1 1 320px}
+.verify-box .vb-form{display:flex;gap:10px;flex:1 1 300px;max-width:440px}
+.verify-box input{flex:1;font-size:18px;letter-spacing:.06em;font-weight:600}
+.modal.modal-verify{padding:0;background:transparent;box-shadow:none;max-width:520px}
+.modal.modal-verify>.x{display:none}
+.modal.modal-verify .verify-card{margin:0 auto}

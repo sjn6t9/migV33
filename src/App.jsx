@@ -3,14 +3,14 @@ import { LuMenu, LuMoon, LuSun, LuLanguages, LuLogOut, LuLayoutDashboard, LuLogI
 import { FaWhatsapp, FaFacebookF, FaYoutube, FaLinkedinIn, FaTiktok } from "react-icons/fa6";
 import { ChatWidget } from "./Chat.jsx";
 import { ShareJob } from "./Share.jsx";
-import { store, subscribe, getVersion, touch, me, user, job, unread, PAGES, fdate, kb, candOf, worker, clPerson, LABEL, CL_STAGES, CL_DOCS } from "./store.js";
+import { store, subscribe, getVersion, touch, me, user, job, unread, PAGES, fdate, kb, candOf, worker, clPerson, LABEL, CL_STAGES, CL_DOCS , findMember } from "./store.js";
 import { openModal, closeModal, signOut, toast, formData, setClStatus, downloadFile, fileExt, act, afterLogin } from "./actions.js";
 import { Logo, Toast, ModalFrame, Pill, ClPipe, CardDownload, Avatar } from "./ui.jsx";
 import { CardAdmin, AgentDocsView } from "./dash/shared.jsx";
 import { Home, Jobs, JobDetail, Services, About, Blog, Post, Contact, Track, Setup, Team, waLink } from "./pages/Public.jsx";
 import { Dashboard } from "./dash/Dashboard.jsx";
 import { LANGS, getLang, setLang, t, onLang } from "./i18n.js";
-import { VisitingCard, VerifyMember } from "./VCard.jsx";
+import { VisitingCard, VerifyMember, VerifyBody } from "./VCard.jsx";
 import { currentTheme, toggleTheme } from "./theme.js";
 
 function useHash() {
@@ -134,7 +134,7 @@ function ModalHost() {
   const m = store.ui.modal; if (!m) return null;
   const close = closeModal;
   return (
-    <ModalFrame onClose={close} wide={m.type === "share" || m.type === "vcard"}>
+    <ModalFrame onClose={close} wide={m.type === "share" || m.type === "vcard"} className={m.type === "memberCheck" ? "modal-verify" : ""}>
       {m.type === "confirm" && <>
         <h3>Please confirm</h3><p className="confirm-msg">{m.msg}</p>
         <div className="row"><button className="btn pri" autoFocus onClick={() => { closeModal(); m.onYes(); }}>{m.yes}</button><button className="btn" onClick={close}>Cancel</button></div>
@@ -145,6 +145,7 @@ function ModalHost() {
       {m.type === "password" && <ChangePassword />}
       {m.type === "share" && <ShareJob jobId={m.jobId} />}
       {m.type === "vcard" && <VisitingCard teamId={m.teamId} />}
+      {m.type === "memberCheck" && <VerifyBody m={findMember(m.key)} onClose={close} />}
       {m.type === "agentdocs" && user(m.uid) && <AgentDocsView u={user(m.uid)} />}
       {m.type === "clearance" && <ClearanceCard cid={m.cid} admin={m.admin} />}
     </ModalFrame>
