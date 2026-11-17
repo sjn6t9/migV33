@@ -10,7 +10,7 @@ import { CardAdmin, AgentDocsView } from "./dash/shared.jsx";
 import { Home, Jobs, JobDetail, Services, About, Blog, Post, Contact, Track, Setup, Team, waLink } from "./pages/Public.jsx";
 import { Dashboard } from "./dash/Dashboard.jsx";
 import { LANGS, getLang, setLang, t, onLang } from "./i18n.js";
-import { VisitingCard } from "./VCard.jsx";
+import { VisitingCard, VerifyMember } from "./VCard.jsx";
 import { currentTheme, toggleTheme } from "./theme.js";
 
 function useHash() {
@@ -30,6 +30,7 @@ export default function App() {
   if (h.startsWith("job-")) { page = "job"; arg = h.slice(4); }
   else if (h.startsWith("post-")) { page = "post"; arg = h.slice(5); }
   else if (h === "setup" || h.startsWith("setup-")) { page = "setup"; arg = h.slice(6); }
+  else if (h.startsWith("verify-")) { page = "verify"; arg = h.slice(7); }
   else if (!PAGES.includes(h) && h !== "dashboard") page = "home";
 
   // SEO: title + meta description per page (managed from Admin › SEO)
@@ -40,9 +41,12 @@ export default function App() {
     if (page === "job" && job(arg)) title = `${job(arg).title} in ${job(arg).city} | MAM & MAM Overseas Ltd.`;
     if (page === "post") { const p = S.posts.find(x => x.id === arg); if (p) title = `${p.title} | MAM & MAM Overseas Ltd.`; }
     if (page === "dashboard") title = "Dashboard | MAM & MAM Overseas Ltd.";
+    if (page === "verify") title = "Verify team member | MAM & MAM Overseas Ltd.";
     document.title = t(title);
     document.querySelector('meta[name="description"]')?.setAttribute("content", seo.desc);
   });
+
+  if (page === "verify") return <><VerifyMember id={arg} /><Toast /></>;
 
   const body = {
     home: <Home />, jobs: <Jobs />, services: <Services />, track: <Track />, team: <Team />, about: <About />, blog: <Blog />, contact: <Contact />,

@@ -2,6 +2,7 @@
 // print size 3.5 × 2 inches, 300 dpi (1050 × 600 px). Text is in the chosen language;
 // names, numbers and addresses stay as written.
 import { translatorFor, LANGS } from "./i18n.js";
+import { drawQR } from "./qr.js";
 
 const W = 1050, H = 600;
 const GREEN = "#006a4e", DEEP = "#004d38", RED = "#d01c32", INK = "#14231d", MUTED = "#5b6b64";
@@ -34,7 +35,7 @@ function fit(g, text, max, size, weight, family) {
 function clip(g, text, max) { if (g.measureText(text).width <= max) return text; let t = text; while (t.length > 1 && g.measureText(t + "…").width > max) t = t.slice(0, -1); return t + "…"; }
 
 /** Draw one side. `icons` are SVG strings for phone, whatsapp, mail, globe, pin. Returns a canvas. */
-export async function drawVisitingCard(m, { lang = "en", side = "front", settings = {}, site = location.host, icons = {} } = {}) {
+export async function drawVisitingCard(m, { lang = "en", side = "front", settings = {}, site = location.host, icons = {}, verifyUrl = "" } = {}) {
   const t = await translatorFor(lang); const rtl = !!LANGS.find(l => l.code === lang)?.rtl;
   await fontsReady();
   const c = document.createElement("canvas"); c.width = W; c.height = H; const g = c.getContext("2d");
@@ -101,12 +102,20 @@ export async function drawVisitingCard(m, { lang = "en", side = "front", setting
     settings.address && ["pin", t("Office"), settings.address],
   ].filter(Boolean).slice(0, 5);
   const iconImgs = {}; for (const k of ["phone", "whatsapp", "mail", "globe", "pin"]) iconImgs[k] = await svgImg(icons[k], "#ffffff");
+  // QR code that opens this member's verification page
+  const QS = 168;
+  if (verifyUrl) {
+    const qx = X(R - QS, QS), qy = H - 10 - QS - 50;
+    drawQR(g, verifyUrl, qx, qy, QS, INK);
+    g.strokeStyle = "#d9e3de"; g.lineWidth = 2; rr(g, qx - 1, qy - 1, QS + 2, QS + 2, 6); g.stroke();
+    g.save(); g.textAlign = "center"; g.fillStyle = GREEN; fit(g, t("Scan to verify"), QS + 20, 18, 700, BODY); g.fillText(t("Scan to verify"), qx + QS / 2, qy + QS + 26); g.restore();
+  }
   let y = 252; const step = rows.length > 4 ? 64 : 72;
   for (const [k, label, value] of rows) {
     const ix = X(L, 44);
     g.fillStyle = k === "whatsapp" ? "#1a9e52" : GREEN; g.beginPath(); g.arc(ix + 22, y + 22, 22, 0, Math.PI * 2); g.fill();
     if (iconImgs[k]) g.drawImage(iconImgs[k], ix + 11, y + 11, 22, 22);
-    const vx = rtl ? W - L - 60 : L + 60, vw = areaW - 60;
+    const vx = rtl ? W - L - 60 : L + 60, vw = areaW - 60 - (verifyUrl ? QS + 24 : 0);
     g.fillStyle = MUTED; g.font = `600 17px ${BODY}`; g.fillText(label, vx, y + 15);
     g.fillStyle = INK; fit(g, value, vw, 25, 600, k === "phone" || k === "whatsapp" ? "Inter, Arial, sans-serif" : BODY);
     g.fillText(clip(g, value, vw), vx, y + 44);

@@ -1,10 +1,11 @@
 // Visiting card window: preview both sides, pick one of the five languages, print at real size, download PNG.
 import React from "react";
-import { LuPhone, LuMail, LuGlobe, LuMapPin, LuPrinter, LuDownload, LuLanguages, LuLoaderCircle } from "react-icons/lu";
+import { LuPhone, LuMail, LuGlobe, LuMapPin, LuPrinter, LuDownload, LuLanguages, LuLoaderCircle, LuBadgeCheck, LuCircleAlert, LuX, LuExternalLink } from "react-icons/lu";
 import { FaWhatsapp } from "react-icons/fa6";
-import { store } from "./store.js";
+import { store, touch } from "./store.js";
 import { toast } from "./actions.js";
-import { LANGS, getLang } from "./i18n.js";
+import { LANGS, getLang, setLang } from "./i18n.js";
+import { Avatar } from "./ui.jsx";
 import { drawVisitingCard, canvasBlob } from "./vcard.js";
 
 const slug = s => String(s || "card").normalize("NFKD").replace(/[^\w\s-]/g, "").trim().replace(/\s+/g, "-").slice(0, 40) || "card";
@@ -24,7 +25,7 @@ export function VisitingCard({ teamId }) {
       try {
         const box = iconsRef.current; const icons = {};
         box?.querySelectorAll("[data-ic]").forEach(el => { icons[el.dataset.ic] = el.innerHTML; });
-        const opts = { lang, settings: store.S.settings, site: location.host, icons };
+        const opts = { lang, settings: store.S.settings, site: location.host, icons, verifyUrl: `${location.origin}/v/${m.id}` };
         const [f, b] = await Promise.all([drawVisitingCard(m, { ...opts, side: "front" }), drawVisitingCard(m, { ...opts, side: "back" })]);
         const [fb, bb] = await Promise.all([canvasBlob(f), canvasBlob(b)]);
         if (!alive) return;
@@ -77,6 +78,54 @@ export function VisitingCard({ teamId }) {
         <span data-ic="phone"><LuPhone /></span><span data-ic="whatsapp"><FaWhatsapp /></span><span data-ic="mail"><LuMail /></span>
         <span data-ic="globe"><LuGlobe /></span><span data-ic="pin"><LuMapPin /></span>
       </div>
+    </div>
+  );
+}
+
+/* Page opened by the QR code on a visiting card: confirms the person works for the agency */
+export function VerifyMember({ id }) {
+  const S = store.S; const loaded = store.loaded;
+  const m = loaded ? S.team.find(x => x.id === id) : null;
+  const close = () => {
+    window.close();
+    setTimeout(() => { if (history.length > 1) history.back(); else location.hash = "home"; }, 250);
+  };
+  const site = () => { location.href = location.origin + "/#home"; };
+  const wa = m?.whatsapp ? String(m.whatsapp).replace(/\D/g, "") : "";
+  return (
+    <div className="verify-page">
+      <div className="verify-top">
+        <span className="verify-brand"><img src="/brand/logo-96.webp" width="40" height="40" alt="" /> <span className="vb-name">MAM &amp; MAM OVERSEAS LTD.</span></span>
+        <select aria-label="Language" value={getLang()} onChange={async e => { await setLang(e.target.value); touch(); }} data-notr>
+          {LANGS.map(l => <option key={l.code} value={l.code}>{l.name}</option>)}
+        </select>
+      </div>
+      <div className="verify-card">
+        {!loaded ? <div className="verify-load"><LuLoaderCircle className="spin" /></div>
+          : m ? <>
+            <div className="verify-ok"><LuBadgeCheck /> <span>Verified team member</span></div>
+            <div className="verify-photo">{m.photo ? <img src={m.photo.data} alt={m.name} /> : <Avatar name={m.name} size={120} />}</div>
+            <h1>{m.name}</h1>
+            <div className="verify-title">{m.title}</div>
+            {m.dept && <div className="muted">{m.dept}</div>}
+            <p className="verify-note">This person works for MAM &amp; MAM Overseas Ltd., government licensed recruiting agency (RL 1217).</p>
+            <ul className="verify-list">
+              {m.phone && <li><LuPhone /> <a href={`tel:${m.phone.replace(/[^\d+]/g, "")}`}><span className="num">{m.phone}</span></a></li>}
+              {wa && <li><FaWhatsapp /> <a href={`https://wa.me/${wa}`} target="_blank" rel="noopener noreferrer"><span className="num">+{wa}</span></a></li>}
+              {m.email && <li><LuMail /> <a href={`mailto:${m.email}`}>{m.email}</a></li>}
+              {m.website && <li><LuGlobe /> <a href={m.website} target="_blank" rel="noopener noreferrer">{m.website.replace(/^https?:\/\//, "")}</a></li>}
+              {S.settings.address && <li><LuMapPin /> <span>{S.settings.address}</span></li>}
+            </ul>
+          </> : <>
+            <div className="verify-bad"><LuCircleAlert /> <span>This card is not valid</span></div>
+            <p className="verify-note">We could not find this person in our team. Do not pay or hand over documents. Contact our office to check.</p>
+          </>}
+        <div className="verify-btns">
+          <button className="btn pri" onClick={site}><LuExternalLink /> Visit Website</button>
+          <button className="btn" onClick={close}><LuX /> Close</button>
+        </div>
+      </div>
+      <p className="verify-foot">Recruiting Licence RL 1217 · {location.host}</p>
     </div>
   );
 }

@@ -9,6 +9,9 @@ import { applyTheme } from "./theme.js";
 // shared job links look like /job/<id>; open them inside the app
 const shared = location.pathname.match(/^\/job\/([a-z0-9]+)\/?$/i);
 if (shared) history.replaceState(null, "", `/#job-${shared[1]}`);
+// visiting-card QR codes point to /v/<member id>; show the verification page
+const verify = location.pathname.match(/^\/v\/([a-z0-9]+)\/?$/i);
+if (verify) history.replaceState(null, "", `/#verify-${verify[1]}`);
 applyTheme();
 loadState();
 initLang().finally(() => createRoot(document.getElementById("root")).render(<App />));
