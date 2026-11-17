@@ -36,6 +36,8 @@ function fit(g, text, max, size, weight, family) {
 function clip(g, text, max) { if (g.measureText(text).width <= max) return text; let t = text; while (t.length > 1 && g.measureText(t + "…").width > max) t = t.slice(0, -1); return t + "…"; }
 
 /** Draw one side. `icons` are SVG strings for phone, whatsapp, mail, globe, pin. Returns a canvas. */
+export const OFFICE_SITE = "www.mamandmam.bd", OFFICE_EMAIL = "info@mamandmam.bd";
+
 export async function drawVisitingCard(m, { lang = "en", side = "front", settings = {}, site = location.host, icons = {}, verifyUrl = "" } = {}) {
   const t = await translatorFor(lang); const rtl = !!LANGS.find(l => l.code === lang)?.rtl;
   await fontsReady();
@@ -56,8 +58,9 @@ export async function drawVisitingCard(m, { lang = "en", side = "front", setting
     fit(g, t("Government licensed recruiting agency"), W - 160, 28, 500, BODY); g.globalAlpha = .92; g.fillText(t("Government licensed recruiting agency"), W / 2, 368); g.globalAlpha = 1;
     rr(g, W / 2 - 150, 392, 300, 50, 25); g.fillStyle = RED; g.fill();
     g.fillStyle = "#fff"; fit(g, t("Recruiting Licence RL 1217"), 280, 24, 700, BODY); g.fillText(t("Recruiting Licence RL 1217"), W / 2, 425);
-    g.font = `600 26px ${BODY}`; g.fillText(site, W / 2, 498);
-    if (settings.address) { g.font = `500 21px ${BODY}`; g.globalAlpha = .85; g.fillText(clip(g, settings.address, W - 160), W / 2, 538); g.globalAlpha = 1; }
+    g.font = `600 26px ${BODY}`; g.fillText(OFFICE_SITE, W / 2, 488);
+    g.font = `500 22px ${BODY}`; g.globalAlpha = .9; g.fillText(OFFICE_EMAIL, W / 2, 522); g.globalAlpha = 1;
+    if (settings.address) { g.font = `500 19px ${BODY}`; g.globalAlpha = .8; g.fillText(clip(g, settings.address, W - 160), W / 2, 558); g.globalAlpha = 1; }
     g.fillStyle = RED; g.fillRect(0, H - 12, W, 12);
     return c;
   }
@@ -84,7 +87,8 @@ export async function drawVisitingCard(m, { lang = "en", side = "front", setting
     g.fillStyle = "#fff"; fit(g, t("Scan to verify"), BW - 60, 15, 600, BODY); g.fillText(t("Scan to verify"), cx, qy + QS + 30);
     if (code) { g.globalAlpha = .9; g.font = `600 13px Inter, Arial, sans-serif`; g.fillText(`ID ${code}`, cx, qy + QS + 50); g.globalAlpha = 1; }
   }
-  g.font = `500 16px ${BODY}`; g.globalAlpha = .85; g.fillText(clip(g, site, BW - 40), cx, 572); g.globalAlpha = 1;
+  g.font = `600 16px ${BODY}`; g.globalAlpha = .95; g.fillText(OFFICE_SITE, cx, 556);
+  g.font = `500 15px ${BODY}`; g.globalAlpha = .85; g.fillText(OFFICE_EMAIL, cx, 580); g.globalAlpha = 1;
 
   // person
   const L = BW + 52, R = W - 48, areaW = R - L;
@@ -108,7 +112,7 @@ export async function drawVisitingCard(m, { lang = "en", side = "front", setting
     m.phone && ["phone", t("Mobile"), m.phone],
     wa && wa.slice(-10) !== ph.slice(-10) && ["whatsapp", "WhatsApp", "+" + wa],
     m.email && ["mail", t("Email"), m.email],
-    ["globe", t("Website"), (m.website || site).replace(/^https?:\/\//, "").replace(/\/$/, "")],
+    ["globe", t("Website"), (m.website || OFFICE_SITE).replace(/^https?:\/\//, "").replace(/\/$/, "")],
     settings.address && ["pin", t("Office"), settings.address],
   ].filter(Boolean).slice(0, 5);
   const iconImgs = {}; for (const k of ["phone", "whatsapp", "mail", "globe", "pin"]) iconImgs[k] = await svgImg(icons[k], "#ffffff");
