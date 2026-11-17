@@ -1,11 +1,12 @@
 import React from "react";
+import { SCENES } from "../scenery.js";
 import {
   LuSearch, LuArrowLeft, LuSend, LuUserPlus, LuLogIn, LuBadgeCheck, LuFileCheck, LuStethoscope, LuStamp, LuPlane,
   LuClipboardList, LuUsers, LuHandshake, LuMessageSquare, LuGraduationCap, LuMapPin, LuPhone, LuMail, LuClock, LuIdCard,
   LuFileSearch, LuTicket, LuPlaneTakeoff, LuShieldCheck, LuScale, LuNetwork, LuHeadset, LuSearchCheck, LuQuote, LuBriefcase, LuLanguages
 } from "react-icons/lu";
 import { FaWhatsapp } from "react-icons/fa6";
-import { LuAward, LuUsersRound, LuGlobe } from "react-icons/lu";
+import { LuAward, LuUsersRound, LuGlobe, LuChevronLeft, LuChevronRight } from "react-icons/lu";
 import {
   store, touch, me, user, job, live, money, num, bdtMin, bdtMax, fdate, filteredJobs,
   COUNTRIES, CATS, TYPES, BENEFITS, EMPTY_FILTERS, worker, company, LABEL, TEAM_DEPTS
@@ -45,7 +46,7 @@ export function Home() {
   ];
   return (
     <>
-      <section className="hero"><div className="wrap">
+      <section className="hero has-slides"><HeroSlides /><div className="wrap">
         <div className="license"><LuBadgeCheck /> Government-licensed recruiting agency · <b>RL 1217</b></div>
         <h1>Overseas jobs with a licensed agency handling every step</h1>
         <p className="lead">Search open job circulars, apply with one click, and follow your application from shortlist to visa and departure.</p>
@@ -363,5 +364,41 @@ export function Team() {
         </div>
       </div></section>
     </>
+  );
+}
+
+/* Home page slideshow: pictures fill the top section, crossfade every few seconds, and scale with the window */
+function HeroSlides() {
+  const N = SCENES.length;
+  const [i, setI] = React.useState(0);
+  const [paused, setPaused] = React.useState(false);
+  const [seen, setSeen] = React.useState(() => new Set([0, 1]));
+  const tx = React.useRef(null);
+  const reduce = typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const go = n => setI(((n % N) + N) % N);
+  React.useEffect(() => { setSeen(s => (s.has(i) && s.has((i + 1) % N) ? s : new Set([...s, i, (i + 1) % N]))); }, [i]);
+  React.useEffect(() => {
+    if (paused || reduce) return;
+    const t = setTimeout(() => { if (!document.hidden) go(i + 1); else setI(n => n); }, 6500);
+    return () => clearTimeout(t);
+  }, [i, paused]);
+  return (
+    <div className="slides" role="region" aria-roledescription="carousel" aria-label="Scenes from Bangladesh"
+      onMouseEnter={() => setPaused(true)} onMouseLeave={() => setPaused(false)}
+      onTouchStart={e => { tx.current = e.touches[0].clientX; }}
+      onTouchEnd={e => { const d = e.changedTouches[0].clientX - (tx.current ?? 0); if (Math.abs(d) > 45) go(i + (d < 0 ? 1 : -1)); tx.current = null; }}>
+      {SCENES.map((s, k) => (
+        <div key={s.name} className={"slide" + (k === i ? " on" : "")} aria-hidden={k !== i}>
+          {seen.has(k) && <img src={`/scenery/${s.name}-1280.webp`} srcSet={`/scenery/${s.name}-768.webp 768w, /scenery/${s.name}-1280.webp 1280w, /scenery/${s.name}-1920.webp 1920w`}
+            sizes="100vw" alt={s.alt} style={{ objectPosition: s.pos }} decoding="async" fetchpriority={k === 0 ? "high" : "auto"} draggable="false" />}
+        </div>
+      ))}
+      <div className="slides-shade" />
+      <div className="slides-ctl" onFocus={() => setPaused(true)} onBlur={() => setPaused(false)}>
+        <button type="button" className="sl-arrow" aria-label="Previous picture" onClick={() => go(i - 1)}><LuChevronLeft /></button>
+        <div className="sl-dots">{SCENES.map((s, k) => <button key={s.name} type="button" className={k === i ? "on" : ""} aria-label={`Picture ${k + 1}`} aria-current={k === i} onClick={() => go(k)} />)}</div>
+        <button type="button" className="sl-arrow" aria-label="Next picture" onClick={() => go(i + 1)}><LuChevronRight /></button>
+      </div>
+    </div>
   );
 }
