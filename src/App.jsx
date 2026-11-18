@@ -65,6 +65,7 @@ export default function App() {
       {store.offline && <div className="demo-strip"><div className="wrap"><span><LuWifiOff /> Cannot reach the server. Check your internet connection; the page will work again when it is back.</span></div></div>}
       <main>{page === "handoff" ? <section className="sec"><div className="wrap"><p className="muted">Signing you in…</p></div></section> : page === "setup" && panelSite === "admin" ? <Setup token={arg} /> : page === "job" ? <JobDetail id={arg} /> : page === "post" ? <Post id={arg} /> : me() ? <Dashboard /> : <PanelSignIn kind={panelSite} />}</main>
       <ModalHost />
+      {panelSite === "agent" && <ChatWidget assistant={false} />}
       <Toast />
     </>
   );

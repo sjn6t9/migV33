@@ -1,8 +1,9 @@
 import React, { useState, useRef, useEffect } from "react";
-import { LuMessageCircle, LuX, LuSendHorizontal } from "react-icons/lu";
+import { LuX, LuSendHorizontal, LuInfo } from "react-icons/lu";
+import { LiveChatPanel, useChatUnread } from "./LiveChat.jsx";
 import { Logo } from "./ui.jsx";
 import { FaWhatsapp } from "react-icons/fa6";
-import { store, live, money, num, company, COUNTRIES , HOURLY } from "./store.js";
+import { me, store, live, money, num, company, COUNTRIES , HOURLY } from "./store.js";
 import { waLink } from "./pages/Public.jsx";
 
 /* Rule-based help assistant. It answers from the site's own live data (jobs, salaries, countries, contact settings);
@@ -48,8 +49,11 @@ function answer(topic) {
   }
 }
 
-export function ChatWidget({ onAgent }) {
-  const [open, setOpen] = useState(false);
+export function ChatWidget({ onAgent, assistant = true }) {
+  const [panel, setPanel] = useState(null); // null | "live" | "help"
+  const open = panel === "help"; const setOpen = v => setPanel(p => ((typeof v === "function" ? v(p === "help") : v) ? "help" : null));
+  const staffUser = ["admin", "staff"].includes(me()?.role); // the agency answers from the admin panel's Live chat
+  const [unread, setUnread] = useChatUnread(panel !== "live" && !staffUser);
   const [msgs, setMsgs] = useState([{ from: "bot", text: "Assalamu Alaikum! I'm the MAM & MAM help assistant. Ask about jobs, salary, countries, process or your file status. (বাংলায়ও লিখতে পারেন)" }]);
   const [q, setQ] = useState("");
   const end = useRef(null);
@@ -64,12 +68,15 @@ export function ChatWidget({ onAgent }) {
   return (
     <>
       <div className="floaters">
-        {s.whatsapp && <a className="fab wa" href={waLink(s.whatsapp, "Hello MAM & MAM Overseas, I have a question.")} target="_blank" rel="noopener noreferrer" aria-label="Chat on WhatsApp"><FaWhatsapp /></a>}
-        <button className="fab" onClick={() => setOpen(o => !o)} aria-label={open ? "Close help assistant" : "Open help assistant"} aria-expanded={open}>{open ? <LuX /> : <LuMessageCircle />}</button>
+        {s.whatsapp && <a className="fab wa" href={waLink(s.whatsapp, "Hello MAM & MAM Overseas, I have a question.")} target="_blank" rel="noopener noreferrer" aria-label="Chat on WhatsApp" title="WhatsApp"><FaWhatsapp /></a>}
+        {!staffUser && <button className={`fab live${panel === "live" ? " on" : ""}`} onClick={() => setPanel(p => (p === "live" ? null : "live"))} aria-label={panel === "live" ? "Close chat" : "Chat with MAM & MAM Overseas Ltd."} title="Chat with us" aria-expanded={panel === "live"}>
+          {panel === "live" ? <LuX /> : <Logo size={34} square />}{unread > 0 && panel !== "live" && <span className="fab-badge">{unread}</span>}</button>}
+        {assistant && <button className={`fab info${open ? " on" : ""}`} onClick={() => setOpen(o => !o)} aria-label={open ? "Close help assistant" : "Open help assistant"} title="Help" aria-expanded={open}>{open ? <LuX /> : <LuInfo />}</button>}
       </div>
+      {panel === "live" && <LiveChatPanel onClose={() => setPanel(null)} onRead={() => setUnread(0)} />}
       {open && (
-        <div className={`chat${s.whatsapp ? " withwa" : ""}`} role="dialog" aria-label="Help assistant">
-          <div className="chat-h"><Logo size={30} square /> <b>MAM Assistant</b><span className="muted small">Automatic answers</span></div>
+        <div className="chat" role="dialog" aria-label="Help assistant">
+          <div className="chat-h"><Logo size={30} square /><div className="chat-ht"><b>MAM Assistant</b><span className="small">Automatic answers</span></div><button className="chat-x" onClick={() => setOpen(false)} aria-label="Close"><LuX /></button></div>
           <div className="chat-b">
             {msgs.map((m, i) => (
               <div key={i} className={`msg ${m.from}`}>

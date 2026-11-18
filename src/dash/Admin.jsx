@@ -1,7 +1,7 @@
 import React from "react";
 import {
   LuLayoutDashboard, LuUsers, LuBriefcase, LuFileText, LuStamp, LuWallet, LuPackage, LuNewspaper, LuSearch, LuSettings, LuMessageSquare,
-  LuCheck, LuX, LuTrash2, LuPencil, LuEye, LuEyeOff, LuBadgeCheck, LuRotateCcw, LuBan, LuTicket, LuUpload, LuImage, LuUserCog, LuImagePlus, LuQuote, LuGalleryHorizontal, LuArrowUp, LuArrowDown, LuTimer, LuPlus, LuDownload
+  LuCheck, LuX, LuTrash2, LuPencil, LuEye, LuEyeOff, LuBadgeCheck, LuRotateCcw, LuBan, LuTicket, LuUpload, LuImage, LuUserCog, LuImagePlus, LuQuote, LuGalleryHorizontal, LuArrowUp, LuArrowDown, LuTimer, LuPlus, LuDownload, LuMessagesSquare
 } from "react-icons/lu";
 import { FaWhatsapp, FaFacebookF, FaYoutube, FaLinkedinIn, FaTiktok } from "react-icons/fa6";
 import { clStage, STAFF_PERMS, TEAM_DEPTS, store, commit, user, job, worker, company, live, money, num, fdate, bdtFmt, balanceOf, candOf, clPerson, clOpen, cardPending, now, COUNTRIES, STAGES, CL_STAGES, CL_DOCS, PAY_METHODS, PAGES, LABEL } from "../store.js";
@@ -11,6 +11,7 @@ import { Rail, Tiles, Pill, Empty, Bars, Stars, Avatar } from "../ui.jsx";
 import { LedgerTable, StatusSelect, Field, Options, JobFields, blankJob } from "./shared.jsx";
 import { setClStatus } from "../actions.js";
 import { ShareButton, storeCard } from "../Share.jsx";
+import { ChatInbox, useInboxUnread } from "../LiveChat.jsx";
 
 const ui = store.ui;
 const openCl = clOpen;
@@ -23,11 +24,12 @@ const TABS = [
   ["overview", "Overview", LuLayoutDashboard], ["users", "Accounts", LuUsers], ["jobs", "Job moderation", LuBriefcase], ["apps", "Applications", LuFileText],
   ["clearance", "BMET clearance", LuStamp], ["tickets", "Air tickets", LuTicket], ["ledger", "Agent accounts", LuWallet], ["packages", "Payments & packages", LuPackage],
   ["content", "Website content", LuImage], ["slides", "Home slideshow", LuGalleryHorizontal], ["blog", "Blog", LuNewspaper], ["seo", "SEO", LuSearch], ["settings", "Site settings", LuSettings],
-  ["messages", "Messages", LuMessageSquare], ["staff", "Staff & permissions", LuUserCog]
+  ["chat", "Live chat", LuMessagesSquare], ["messages", "Messages", LuMessageSquare], ["staff", "Staff & permissions", LuUserCog]
 ];
 
 export function Admin({ u }) {
   const S = store.S; const R = u.role; const isAdmin = R === "admin";
+  const chatUnread = useInboxUnread(isAdmin || !!u.perms?.includes("chat"));
   const can = k => k === "overview" || isAdmin || (k !== "staff" && u.perms?.includes(k === "slides" ? "content" : k));
   if (!can(ui.tab[R])) ui.tab[R] = "overview";
   const t = ui.tab[R];
@@ -361,6 +363,7 @@ export function Admin({ u }) {
     </>;
   }
 
+  if (t === "chat") body = <ChatInbox />;
   if (t === "messages") body = <>
     <h2>Contact messages</h2>
     {S.messages.length ? S.messages.map(m => (
@@ -374,7 +377,7 @@ export function Admin({ u }) {
 
   return (
     <div className="wrap dash">
-      <Rail role={R} items={TABS.filter(([k]) => can(k)).map(([k, l, I]) => [k, l, I, { users: pendU, jobs: pendJ, clearance: pendC, tickets: pendT, ledger: pendP, packages: pendO, messages: newMsg }[k]])} />
+      <Rail role={R} items={TABS.filter(([k]) => can(k)).map(([k, l, I]) => [k, l, I, { users: pendU, jobs: pendJ, clearance: pendC, tickets: pendT, ledger: pendP, packages: pendO, messages: newMsg, chat: chatUnread }[k]])} />
       <div className="panel">{body}</div>
     </div>
   );

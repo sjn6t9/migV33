@@ -150,18 +150,22 @@ setInterval(() => { const t = Date.now(); for (const [k, a] of hits) if (!a.some
 /* ======================= files ======================= */
 const SIG = [["pdf", "application/pdf", b => b.slice(0, 5).toString() === "%PDF-"], ["jpg", "image/jpeg", b => b[0] === 0xff && b[1] === 0xd8], ["png", "image/png", b => b.slice(0, 4).toString("hex") === "89504e47"],
   ["webp", "image/webp", b => b.slice(0, 4).toString() === "RIFF" && b.slice(8, 12).toString() === "WEBP"], ["doc", "application/msword", b => b.slice(0, 4).toString("hex") === "d0cf11e0"],
-  ["docx", "application/vnd.openxmlformats-officedocument.wordprocessingml.document", b => b.slice(0, 2).toString() === "PK"]];
+  ["docx", "application/vnd.openxmlformats-officedocument.wordprocessingml.document", b => b.slice(0, 2).toString() === "PK"],
+  /* voice messages recorded in the browser (Chrome/Firefox: WebM or Ogg; Safari: MP4) */
+  ["webm", "audio/webm", b => b.slice(0, 4).toString("hex") === "1a45dfa3"], ["ogg", "audio/ogg", b => b.slice(0, 4).toString() === "OggS"],
+  ["m4a", "audio/mp4", b => b.slice(4, 8).toString() === "ftyp"], ["mp3", "audio/mpeg", b => b.slice(0, 3).toString() === "ID3" || (b[0] === 0xff && (b[1] & 0xe0) === 0xe0)],
+  ["wav", "audio/wav", b => b.slice(0, 4).toString() === "RIFF" && b.slice(8, 12).toString() === "WAVE"]];
 /* f = { name, data: "data:...;base64,..." }; kinds limit which formats are accepted */
-function storeFile(f, owner, { images = true, pdf = true, word = false, isPublic = false } = {}) {
+function storeFile(f, owner, { images = true, pdf = true, word = false, audio = false, isPublic = false, chat = null } = {}) {
   must(f && typeof f.data === "string" && f.data.startsWith("data:"), "File is missing.");
   const buf = Buffer.from(f.data.slice(f.data.indexOf(",") + 1), "base64");
   must(buf.length > 0, "File is empty."); must(buf.length <= MAX_FILE, "File is larger than 6 MB.");
   const sig = SIG.find(s => s[2](buf)); must(sig, "Unsupported file. Upload PDF or JPG.");
-  const ok = (["jpg", "png", "webp"].includes(sig[0]) && images) || (sig[0] === "pdf" && pdf) || (["doc", "docx"].includes(sig[0]) && word);
+  const ok = (["jpg", "png", "webp"].includes(sig[0]) && images) || (sig[0] === "pdf" && pdf) || (["doc", "docx"].includes(sig[0]) && word) || (["webm", "ogg", "m4a", "mp3", "wav"].includes(sig[0]) && audio);
   must(ok, images && !pdf ? "Upload a photo (JPG)." : "Upload a PDF or JPG file.");
   const fid = id("f"); fs.writeFileSync(path.join(DATA_DIR, "files", fid), buf);
   const name = str(f.name, 120).replace(/[^\w.\- ]+/g, "_") || `file.${sig[0]}`;
-  db.files[fid] = { id: fid, owner, name, size: buf.length, mime: sig[1], public: isPublic, at: now() };
+  db.files[fid] = { id: fid, owner, name, size: buf.length, mime: sig[1], public: isPublic, at: now(), ...(chat ? { chat } : {}) };
   return { id: fid, name, size: buf.length };
 }
 function dropFile(ref) { if (!ref?.id || !db.files[ref.id]) return; delete db.files[ref.id]; fs.rmSync(path.join(DATA_DIR, "files", ref.id), { force: true }); }
@@ -883,10 +887,17 @@ async function handleApi(req, res, url) {
   if (req.method === "GET" && url.pathname === "/api/state") return send(res, 200, viewFor(u));
   if (req.method === "GET" && url.pathname.startsWith("/api/files/")) {
     const f = db.files[url.pathname.slice(11)];
-    if (!f || !mayRead(u, f)) return send(res, 404, { error: "File not found." });
-    const inline = f.mime.startsWith("image/") || url.searchParams.get("inline") === "1";
+    if (!f || !(f.chat ? mayReadChatFile(u, f, url.searchParams.get("k")) : mayRead(u, f))) return send(res, 404, { error: "File not found." });
+    const range = /^bytes=(\d*)-(\d*)$/.exec(req.headers.range || ""); // voice messages: Safari plays audio only with byte ranges
+    if (range && f.mime.startsWith("audio/")) {
+      const start = range[1] ? Number(range[1]) : Math.max(0, f.size - Number(range[2])), end = range[1] && range[2] ? Math.min(Number(range[2]), f.size - 1) : f.size - 1;
+      if (start > end || start >= f.size) { res.writeHead(416, { "Content-Range": `bytes */${f.size}` }); return res.end(); }
+      res.writeHead(206, { ...baseHeaders, "Content-Type": f.mime, "Content-Length": end - start + 1, "Content-Range": `bytes ${start}-${end}/${f.size}`, "Accept-Ranges": "bytes", "Cache-Control": "private, max-age=300" });
+      return fs.createReadStream(path.join(DATA_DIR, "files", f.id), { start, end }).pipe(res);
+    }
+    const inline = f.mime.startsWith("image/") || f.mime.startsWith("audio/") || url.searchParams.get("inline") === "1";
     res.writeHead(200, { ...baseHeaders, "Content-Type": f.mime, "Content-Length": f.size, "Cache-Control": f.public ? "public, max-age=86400" : "private, max-age=300",
-      "Content-Disposition": `${inline ? "inline" : "attachment"}; filename="${f.name.replace(/"/g, "")}"`, "Content-Security-Policy": "default-src 'none'; img-src 'self'; style-src 'unsafe-inline'; sandbox" });
+      "Accept-Ranges": f.mime.startsWith("audio/") ? "bytes" : "none", "Content-Disposition": `${inline ? "inline" : "attachment"}; filename="${f.name.replace(/"/g, "")}"`, "Content-Security-Policy": "default-src 'none'; img-src 'self'; style-src 'unsafe-inline'; sandbox" });
     return fs.createReadStream(path.join(DATA_DIR, "files", f.id)).pipe(res);
   }
   if (req.method === "POST" && url.pathname === "/api/act") {
@@ -915,6 +926,7 @@ async function handleApi(req, res, url) {
       return send(res, e.code || 500, { error: e instanceof Fail ? e.message : "Something went wrong. Please try again.", state: viewFor(ctx.user) }, setCookie.length ? { "Set-Cookie": setCookie } : {});
     }
   }
+  if (url.pathname.startsWith("/api/chat")) return chatApi(req, res, url, u, zone);
   if (url.pathname === "/api/health") return send(res, 200, { ok: true });
   return send(res, 404, { error: "Not found." });
 }
@@ -977,3 +989,110 @@ const server = http.createServer(async (req, res) => {
 });
 server.listen(PORT, HOST, () => console.log(`MAM & MAM portal running on http://${HOST}:${PORT} (data: ${DATA_DIR})`));
 export { server };
+
+
+/* ======================= live chat (job seekers, employers, agents and visitors ↔ the agency) =======================
+   db.chats: one conversation per account (uid) or per visitor (name + mobile, identified by a secret key kept in the
+   visitor's browser). Messages: text, photo or voice; a reply can quote another message; deleted messages keep a stub.
+   The agency answers as "MAM & MAM Overseas Ltd."; which staff member wrote is visible only in the admin panel. */
+if (!Array.isArray(db.chats)) db.chats = [];
+const CHAT_MAX = 2000;
+const chatOf = (u, k) => (u && !isStaffRole(u) ? db.chats.find(c => c.uid === u.id) : null) || (k ? db.chats.find(c => c.key && c.key === String(k)) : null);
+function mayReadChatFile(u, f, k) {
+  const c = db.chats.find(x => x.id === f.chat); if (!c) return false;
+  if (u && (u.role === "admin" || (u.role === "staff" && can(u, "chat")))) return true;
+  return (u && c.uid === u.id) || (!!k && c.key === k);
+}
+function chatWho(c) {
+  if (c.uid) { const x = user(c.uid); const role = { candidate: "Job seeker", employer: "Employer", agent: "Agent" }[x?.role] || "Account";
+    return { name: x ? (x.role === "agent" ? x.agent?.business || x.name : x.role === "employer" ? x.company?.name || x.name : x.name) : "Removed account", sub: `${role}${x ? ` · ${x.role === "candidate" ? x.profile?.phone || x.email : x.email}` : ""}`, role: x?.role || "", contact: x?.name || "" }; }
+  return { name: c.guest?.name || "Visitor", sub: `Visitor · ${c.guest?.phone || ""}`, role: "guest", contact: "" };
+}
+function msgView(c, m, staff, k) {
+  const q = k ? `?k=${encodeURIComponent(k)}` : "";
+  const base = { id: m.id, from: m.from, at: m.at, deleted: !!m.deleted, kind: m.kind };
+  if (m.deleted) return base;
+  const r = m.replyTo ? c.msgs.find(x => x.id === m.replyTo) : null;
+  return { ...base, text: m.text || "", file: m.file ? { url: `/api/files/${m.file.id}${q}`, name: m.file.name } : null, by: staff && m.from === "agency" ? m.byName || "" : undefined,
+    reply: r ? { id: r.id, from: r.from, kind: r.kind, text: r.deleted ? "" : (r.text || "").slice(0, 120), deleted: !!r.deleted } : null };
+}
+const chatThread = (c, staff, k) => ({ id: c.id, ...(staff ? chatWho(c) : {}), msgs: c.msgs.map(m => msgView(c, m, staff, k)), unread: staff ? c.unreadAgency : c.unreadUser, joined: true, guest: c.guest ? { name: c.guest.name } : null });
+const chatSummary = c => { const l = [...c.msgs].reverse().find(m => !m.deleted); return { id: c.id, ...chatWho(c), last: l ? { from: l.from, text: l.kind === "image" ? "📷 Photo" : l.kind === "voice" ? "🎤 Voice message" : (l.text || "").slice(0, 80), at: l.at } : null, at: c.last, unread: c.unreadAgency }; };
+const staffChat = u => u && (u.role === "admin" || (u.role === "staff" && u.status === "active" && u.perms?.includes("chat")));
+
+async function chatApi(req, res, url, u, zone) {
+  const staff = staffChat(u) && (zone === "admin" || zone === "any");
+  const ip = clientIp(req);
+  if (req.method === "GET") {
+    if (url.pathname === "/api/chat/inbox") {
+      if (!staff) return send(res, 403, { error: "Not allowed." });
+      const L = [...db.chats].sort((a, b) => String(b.last).localeCompare(String(a.last))).map(chatSummary);
+      return send(res, 200, { chats: L, unread: db.chats.filter(c => c.unreadAgency > 0).length });
+    }
+    if (url.pathname === "/api/chat/thread") {
+      if (!staff) return send(res, 403, { error: "Not allowed." });
+      const c = db.chats.find(x => x.id === url.searchParams.get("id")); if (!c) return send(res, 404, { error: "Chat not found." });
+      if (c.unreadAgency) { c.unreadAgency = 0; save(); }
+      return send(res, 200, { chat: chatThread(c, true) });
+    }
+    if (url.pathname === "/api/chat") {
+      const k = url.searchParams.get("k") || ""; const c = chatOf(u, k);
+      if (url.searchParams.get("seen") === "1" && c?.unreadUser) { c.unreadUser = 0; save(); }
+      return send(res, 200, { chat: c ? chatThread(c, false, c.uid ? "" : k) : null, account: !!(u && !isStaffRole(u)) });
+    }
+    return send(res, 404, { error: "Not found." });
+  }
+  if (req.method !== "POST" || url.pathname !== "/api/chat") return send(res, 405, { error: "Method not allowed." });
+  const origin = req.headers.origin; if (origin && new URL(origin).host !== req.headers.host) return send(res, 403, { error: "Cross-site request refused." });
+  let d; try { d = JSON.parse(await readBody(req)); } catch (e) { return send(res, e.code || 400, { error: e.code ? e.message : "Bad request." }); }
+  try {
+    const op = d.op;
+    if (op === "join") { // a visitor without an account: name and mobile number
+      limit(ip, "chatjoin", 8, 3600e3);
+      if (u && !isStaffRole(u)) { const c = chatOf(u) || newChat({ uid: u.id }); save(); return send(res, 200, { chat: chatThread(c, false) }); }
+      const name = str(d.name, 80), phone = str(d.phone, 30);
+      must(name.length >= 2, "Enter your name."); must(phone.replace(/\D/g, "").length >= 10, "Enter a valid mobile number, e.g. 01XXXXXXXXX.");
+      const c = newChat({ guest: { name, phone }, key: crypto.randomBytes(24).toString("hex") });
+      save(); return send(res, 200, { key: c.key, chat: chatThread(c, false, c.key) });
+    }
+    if (op === "send") {
+      limit(ip, "chatsend", 60, 60e3);
+      let c, from, k = "";
+      if (staff && d.chatId) { c = db.chats.find(x => x.id === d.chatId); must(c, "Chat not found."); from = "agency"; }
+      else { k = str(d.k, 80); c = chatOf(u, k); if (!c && u && !isStaffRole(u)) c = newChat({ uid: u.id }); must(c, "Join the chat first."); from = "user"; if (c.uid) k = ""; }
+      const text = String(d.text ?? "").slice(0, CHAT_MAX).trim();
+      let file = null, kind = "text";
+      if (d.file) {
+        kind = d.kind === "voice" ? "voice" : "image";
+        file = storeFile(d.file, u?.id || c.id, kind === "voice" ? { images: false, pdf: false, audio: true, chat: c.id } : { images: true, pdf: false, chat: c.id });
+      }
+      must(text || file, "Write a message.");
+      const replyTo = d.replyTo && c.msgs.some(m => m.id === d.replyTo) ? d.replyTo : null;
+      const m = { id: id("cm"), from, kind, text, file, replyTo, at: now(), ...(from === "agency" ? { by: u.id, byName: u.name } : {}) };
+      c.msgs.push(m); c.last = m.at;
+      if (from === "user") { c.unreadAgency = (c.unreadAgency || 0) + 1; if (c.msgs.filter(x => x.from === "user").length === 1) notifyAdmins(`New live chat from ${chatWho(c).name}.`, "chat"); }
+      else { c.unreadUser = (c.unreadUser || 0) + 1; c.unreadAgency = 0; if (c.uid) notify(c.uid, "MAM & MAM Overseas Ltd. replied in the chat."); }
+      if (c.msgs.length > 2000) c.msgs.splice(0, c.msgs.length - 2000);
+      save(); return send(res, 200, { chat: chatThread(c, from === "agency", k) });
+    }
+    if (op === "delete") {
+      let c, mine, k = "";
+      if (staff && d.chatId) { c = db.chats.find(x => x.id === d.chatId); must(c, "Chat not found."); mine = () => true; } // the agency may remove any message
+      else { k = str(d.k, 80); c = chatOf(u, k); must(c, "Chat not found."); mine = m => m.from === "user"; if (c.uid) k = ""; }
+      const m = c.msgs.find(x => x.id === d.mid); must(m && mine(m), "You can delete only your own messages.");
+      if (m.file) dropFile(m.file);
+      Object.assign(m, { deleted: true, text: "", file: null }); save();
+      return send(res, 200, { chat: chatThread(c, !!(staff && d.chatId), k) });
+    }
+    if (op === "deleteChat") {
+      must(staff, "Not allowed.", 403); const c = db.chats.find(x => x.id === d.chatId); must(c, "Chat not found.");
+      c.msgs.forEach(m => m.file && dropFile(m.file)); db.chats = db.chats.filter(x => x !== c); save();
+      return send(res, 200, { ok: true, msg: "Chat deleted." });
+    }
+    return send(res, 400, { error: "Unknown action." });
+  } catch (e) {
+    if (!(e instanceof Fail)) console.error("chat", e);
+    return send(res, e.code || 500, { error: e instanceof Fail ? e.message : "Something went wrong. Please try again." });
+  }
+}
+function newChat(x) { const c = { id: id("ch"), uid: null, guest: null, key: null, ...x, msgs: [], created: now(), last: now(), unreadAgency: 0, unreadUser: 0 }; db.chats.push(c); return c; }
