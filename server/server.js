@@ -940,7 +940,8 @@ function indexHtml(req) {
   const site = { admin: zone === "admin", agent: zone === "agent", main: ADMIN_HOST || AGENT_HOST ? mainUrl() : "" }; // the admin panel's address is never sent to the public site
   const head = `<script>window.__SITE__=${JSON.stringify(site).replace(/</g, "\\u003c")}</script>${zone === "admin" || zone === "agent" ? '<meta name="robots" content="noindex, nofollow">' : ""}`;
   // the aipraktor chat widget is registered for the public site only (it refuses other addresses)
-  const body = zone === "main" ? '<script src="https://www.aipraktor.com/embed.js" data-site="site_83b1a0b1018eadaa" async></script>' : "";
+  // its button sits in the bottom corner, so our WhatsApp / chat / "i" buttons move up above it
+  const body = zone === "main" ? '<style>.floaters{bottom:104px}</style><script src="https://www.aipraktor.com/embed.js" data-site="site_83b1a0b1018eadaa" async></script>' : "";
   return fs.readFileSync(path.join(STATIC_DIR, "index.html"), "utf8").replace(/__ORIGIN__/g, escHtml(siteOrigin(req))).replace("</head>", head + "</head>").replace("</body>", body + "</body>");
 }
 function serveJobShare(req, res, jid) {
