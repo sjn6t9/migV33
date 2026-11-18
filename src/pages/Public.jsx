@@ -7,7 +7,7 @@ import {
   LuFileSearch, LuTicket, LuPlaneTakeoff, LuShieldCheck, LuScale, LuNetwork, LuHeadset, LuSearchCheck, LuQuote, LuBriefcase, LuLanguages
 } from "react-icons/lu";
 import { FaWhatsapp } from "react-icons/fa6";
-import { LuAward, LuUsersRound, LuGlobe, LuChevronLeft, LuChevronRight } from "react-icons/lu";
+import { LuAward, LuUsersRound, LuGlobe, LuChevronLeft, LuChevronRight, LuFileText, LuEye, LuDownload, LuX } from "react-icons/lu";
 import {
   store, touch, me, user, job, live, money, num, bdtMin, bdtMax, isHourly, HOURS_PER_MONTH, fdate, filteredJobs,
   COUNTRIES, CATS, TYPES, BENEFITS, EMPTY_FILTERS, worker, company, LABEL, TEAM_DEPTS
@@ -203,23 +203,83 @@ export function Services() {
 }
 
 export function About() {
-  const s = store.S.settings;
-  return (
-    <section className="sec"><div className="wrap grid split">
-      <div className="article"><div className="eyebrow">About us</div><h1 className="h1s mb16">MAM &amp; MAM Overseas Ltd.</h1>
-        <p>MAM &amp; MAM Overseas Ltd. is a licensed recruiting agency (RL 1217) that connects job seekers in Bangladesh with employers abroad.</p>
-        <p>We handle the full recruitment process: sourcing and screening candidates, arranging interviews, and completing medical, visa and emigration formalities so workers depart with the right documents and a clear contract.</p>
-        <h3>What we stand for</h3>
-        <ul><li><b>Transparency.</b> Every candidate hears the salary, benefits, contract terms and costs before signing.</li><li><b>Legal processing.</b> All recruitment goes through official channels under our licence.</li><li><b>Follow-up.</b> We stay in touch with workers and employers after deployment.</li></ul>
-      </div>
-      <aside className="card stack">
-        <div className="license brandc"><LuBadgeCheck /> Recruiting Licence · <b>RL 1217</b></div>
-        <OfficeTable s={s} />
-        <a className="btn pri" href="#contact">Contact us</a>
-        <a className="btn" href="#team"><LuUsersRound /> Meet our expert team</a>
-      </aside>
+  const [view, setView] = React.useState(null); // document opened in the viewer
+  const s = store.S.settings; const a = store.S.about; if (!a) return null;
+  const countries = Object.keys(COUNTRIES);
+  const stats = a.stats.map((x, i) => (i === 3 && !x.value ? { ...x, value: String(countries.length), sub: x.sub || countries.join(" · ") } : x)).filter(x => x.value);
+  const highlights = a.highlights.map(x => (!x.value && /countr/i.test(x.label) ? { ...x, value: String(countries.length) } : x)).filter(x => x.value);
+  const paras = a.overview.split(/\n\s*\n/).map(x => x.trim()).filter(Boolean);
+  const isPdf = d => /pdf/.test(d.file?.mime || "") || /\.pdf$/i.test(d.file?.name || "");
+  return <>
+    <section className="ab-hero"><div className="wrap">
+      <nav className="crumbs" aria-label="Breadcrumb"><a href="#home">Home</a> <span>/</span> <b>About us</b></nav>
+      {a.credentials && <div className="ab-cred"><LuBadgeCheck /> <span>{a.credentials}</span></div>}
+      <h1 className="h1s">About us</h1>
+      {a.tagline && <p className="ab-tag">{a.tagline}</p>}
+      {stats.length > 0 && <div className={`ab-stats n${stats.length}`}>{stats.map((x, i) => <div key={i} className="ab-stat"><b>{x.value}</b><span>{x.label}</span>{x.sub && <small>{x.sub}</small>}</div>)}</div>}
     </div></section>
-  );
+
+    <section className="sec"><div className="wrap ab-narrow">
+      <div className="eyebrow">Who we are</div><h2 className="mb16">Company overview</h2>
+      <div className="article">{paras.map((x, i) => <p key={i}>{x}</p>)}{a.commitment && <p className="ab-commit"><b>{a.commitment}</b></p>}</div>
+    </div></section>
+
+    {a.leader.name && <section className="sec alt"><div className="wrap">
+      <div className="eyebrow">Leadership</div><h2 className="mb20">Executive leadership &amp; governance</h2>
+      <div className="card ab-leader">
+        <div className="ab-leader-pic">{a.leader.photo ? <img src={a.leader.photo.url} alt={a.leader.name} loading="lazy" /> : <Avatar name={a.leader.name} size={140} />}
+          {a.leader.badge && <span className="ab-badge"><LuBadgeCheck /> {a.leader.badge}</span>}</div>
+        <div className="ab-leader-txt">
+          <h3>{a.leader.name}</h3><div className="muted b">{a.leader.title}</div>
+          {a.leader.quote && <blockquote className="ab-quote">“{a.leader.quote}”</blockquote>}
+          {a.leader.bio && a.leader.bio.split(/\n+/).map((x, i) => <p key={i}>{x}</p>)}
+        </div>
+      </div>
+      {highlights.length > 0 && <div className="ab-high">{highlights.map((x, i) => <div key={i} className="card ab-hl"><b>{x.value}</b><span>{x.label}</span></div>)}</div>}
+    </div></section>}
+
+    <section className={`sec${a.leader.name ? "" : " alt"}`}><div className="wrap">
+      <div className="eyebrow">Purpose</div><h2 className="mb20">Mission &amp; vision</h2>
+      <div className="grid g2">{[a.mission, a.vision].map((m, i) => m.title && (
+        <article key={i} className="card ab-mv"><span className="ab-num">0{i + 1}</span><h3>{m.title}</h3><p>{m.text}</p>
+          {m.points.length > 0 && <ul className="ab-points">{m.points.map((p, j) => <li key={j}><LuBadgeCheck /> {p}</li>)}</ul>}
+          {m.tag && <span className="ab-valtag">{m.tag}</span>}</article>))}</div>
+    </div></section>
+
+    {a.docs.length > 0 && <section className={`sec${a.leader.name ? " alt" : ""}`}><div className="wrap">
+      <div className="eyebrow">Verified</div><h2 className="mb8">Licences &amp; official documents</h2>
+      {a.docsIntro && <p className="muted mb20">{a.docsIntro}</p>}
+      <div className="grid g3">{a.docs.map(d => (
+        <article key={d.id} className="card ab-doc">
+          <button type="button" className="ab-thumb" onClick={() => (isPdf(d) ? window.open(`${d.file.url}?inline=1`, "_blank", "noopener") : setView(d))} aria-label={`Inspect ${d.title}`}>
+            {isPdf(d) ? <span className="ab-pdf"><LuFileText /><b>PDF</b></span> : <img src={d.file.url} alt={d.title} loading="lazy" />}
+            <span className="ab-ok"><LuBadgeCheck /> Verified</span>
+          </button>
+          <div className="ab-doc-b">
+            <h3>{d.title}</h3>
+            {d.issuer && <div className="muted small">{d.issuer}</div>}
+            <div className="ab-doc-meta">{d.number && <span><b>No.</b> <span data-notr>{d.number}</span></span>}{d.valid && <span><b>Valid:</b> {d.valid}</span>}</div>
+            <div className="row tight mt8">
+              <button type="button" className="btn sm" onClick={() => (isPdf(d) ? window.open(`${d.file.url}?inline=1`, "_blank", "noopener") : setView(d))}><LuEye /> Inspect</button>
+              <a className="btn sm" href={d.file.url} download={d.file.name}><LuDownload /> {isPdf(d) ? "Open PDF" : "Download"}</a>
+            </div>
+          </div>
+        </article>))}</div>
+    </div></section>}
+
+    <section className="sec"><div className="wrap"><div className="ab-cta">
+      <div><h2>{a.cta.title}</h2><p>{a.cta.text}</p>
+        <div className="ab-cta-c">{s.address && <span><LuMapPin /> {s.address}</span>}{s.phone && <a href={`tel:${s.phone.replace(/[^+\d]/g, "")}`}><LuPhone /> {s.phone}</a>}{s.whatsapp && <a href={waLink(s.whatsapp, "Hello MAM & MAM Overseas")} target="_blank" rel="noopener noreferrer"><FaWhatsapp /> +{s.whatsapp}</a>}</div></div>
+      <div className="ab-cta-b"><a className="btn pri" href="#contact"><LuMail /> Contact us</a><a className="btn ghost" href="#jobs"><LuBriefcase /> Browse jobs</a><a className="btn ghost" href="#team"><LuUsersRound /> Our team</a></div>
+    </div></div></section>
+
+    {view && <div className="ab-viewer" role="dialog" aria-label={view.title} onClick={() => setView(null)}>
+      <div className="ab-viewer-in" onClick={e => e.stopPropagation()}>
+        <div className="row between"><b>{view.title}</b><button className="btn sm" onClick={() => setView(null)} aria-label="Close"><LuX /></button></div>
+        <img src={view.file.url} alt={view.title} />
+      </div>
+    </div>}
+  </>;
 }
 function OfficeTable({ s }) {
   return <table><tbody>

@@ -23,14 +23,14 @@ function FilterButtons({ items, cur, onPick }) {
 const TABS = [
   ["overview", "Overview", LuLayoutDashboard], ["users", "Accounts", LuUsers], ["jobs", "Job moderation", LuBriefcase], ["apps", "Applications", LuFileText],
   ["clearance", "BMET clearance", LuStamp], ["tickets", "Air tickets", LuTicket], ["ledger", "Agent accounts", LuWallet], ["packages", "Payments & packages", LuPackage],
-  ["content", "Website content", LuImage], ["slides", "Home slideshow", LuGalleryHorizontal], ["blog", "Blog", LuNewspaper], ["seo", "SEO", LuSearch], ["settings", "Site settings", LuSettings],
+  ["content", "Website content", LuImage], ["about", "About page", LuInfo], ["slides", "Home slideshow", LuGalleryHorizontal], ["blog", "Blog", LuNewspaper], ["seo", "SEO", LuSearch], ["settings", "Site settings", LuSettings],
   ["chat", "Live chat", LuMessagesSquare], ["messages", "Messages", LuMessageSquare], ["staff", "Staff & permissions", LuUserCog]
 ];
 
 export function Admin({ u }) {
   const S = store.S; const R = u.role; const isAdmin = R === "admin";
   const chatUnread = useInboxUnread(isAdmin || !!u.perms?.includes("chat"));
-  const can = k => k === "overview" || isAdmin || (k !== "staff" && u.perms?.includes(k === "slides" ? "content" : k));
+  const can = k => k === "overview" || isAdmin || (k !== "staff" && u.perms?.includes(k === "slides" || k === "about" ? "content" : k));
   if (!can(ui.tab[R])) ui.tab[R] = "overview";
   const t = ui.tab[R];
   const go = tab => setTab(R, tab);
@@ -372,6 +372,7 @@ export function Admin({ u }) {
   }
 
   if (t === "chat") body = <ChatInbox />;
+  if (t === "about") body = <AboutAdmin />;
   if (t === "messages") body = <>
     <h2>Contact messages</h2>
     {S.messages.length ? S.messages.map(m => (
@@ -637,5 +638,114 @@ function Switch({ on, onChange, label, hint }) {
       <button type="button" role="switch" aria-checked={on} className={`switch${on ? " on" : ""}`} onClick={() => onChange(!on)}>
         <span className="switch-knob" /><span className="switch-txt">{on ? "On" : "Off"}</span></button>
     </div>
+  );
+}
+
+
+/* ---------- About page editor ---------- */
+function AboutAdmin() {
+  const a = store.S.about; const [k, setK] = React.useState(0); // k remounts the form after a reset
+  const [docEdit, setDocEdit] = React.useState(null);
+  if (!a) return null;
+  const save = e => {
+    e.preventDefault(); const d = Object.fromEntries(new FormData(e.currentTarget));
+    const pts = v => String(v || "").split(/\r?\n/).map(x => x.trim()).filter(Boolean);
+    act("admin.about", { op: "save", about: {
+      credentials: d.credentials, tagline: d.tagline, overview: d.overview, commitment: d.commitment, docsIntro: d.docsIntro,
+      stats: [0, 1, 2, 3].map(i => ({ value: d[`sv${i}`], label: d[`sl${i}`], sub: d[`ss${i}`] })),
+      highlights: [0, 1, 2].map(i => ({ value: d[`hv${i}`], label: d[`hl${i}`] })),
+      leader: { name: d.lname, title: d.ltitle, badge: d.lbadge, quote: d.lquote, bio: d.lbio },
+      mission: { title: d.mt, text: d.mx, tag: d.mg, points: pts(d.mp) }, vision: { title: d.vt, text: d.vx, tag: d.vg, points: pts(d.vp) },
+      cta: { title: d.ct, text: d.cx } } });
+  };
+  const photo = async e => { const f = e.target.files[0]; e.target.value = ""; if (!f) return; try { act("admin.about", { op: "leaderPhoto", file: await readUpload(f, { imageMax: 1200, photo: true }) }); } catch (er) { toast(er.message); } };
+  return <>
+    <div className="row between"><h2>About page</h2><a className="btn sm" href="#about" target="_blank" rel="noopener"><LuEye /> View page</a></div>
+    <p className="muted small mb14">Everything on the About page. Empty boxes are hidden on the page (for example, a number you have not filled in).</p>
+    <form key={k} className="stack" onSubmit={save} noValidate>
+      <div className="card fgrid"><h3 className="full">Top of the page</h3>
+        <Field label="Credentials line" hint="e.g. Government licensed RL 1217 · BAIRA member ___ · Est. 20__" full><input type="text" name="credentials" defaultValue={a.credentials} maxLength={200} /></Field>
+        <Field label="Tagline" full><textarea name="tagline" className="short" defaultValue={a.tagline} maxLength={400} /></Field>
+        {a.stats.map((x, i) => <fieldset key={i} className="plain ab-ed-stat"><legend className="small b">{`Number box ${i + 1}`}</legend>
+          <Field label="Number / value"><input type="text" name={`sv${i}`} defaultValue={x.value} maxLength={30} placeholder={["2015", "5,000+", "RL 1217", "auto"][i]} /></Field>
+          <Field label="Label"><input type="text" name={`sl${i}`} defaultValue={x.label} maxLength={60} /></Field>
+          <Field label="Small text (optional)"><input type="text" name={`ss${i}`} defaultValue={x.sub} maxLength={60} /></Field></fieldset>)}
+        <p className="muted small full">Number box 4 shows the number of destination countries by itself when its value is empty.</p>
+      </div>
+      <div className="card fgrid"><h3 className="full">Company overview</h3>
+        <Field label="Overview text" hint="Leave an empty line between paragraphs." full><textarea name="overview" rows={9} defaultValue={a.overview} maxLength={6000} /></Field>
+        <Field label="Commitment (shown in bold)" full><input type="text" name="commitment" defaultValue={a.commitment} maxLength={400} /></Field>
+      </div>
+      <div className="card fgrid"><h3 className="full">Leadership</h3>
+        <p className="muted small full">The leadership section appears when a name is filled in.</p>
+        <div className="full row ab-ed-photo">{a.leader.photo ? <img src={a.leader.photo.url} alt="" /> : <span className="muted small">No photo</span>}
+          <label className="btn sm"><LuUpload /> {a.leader.photo ? "Change photo" : "Upload photo"}<input type="file" accept="image/*" hidden onChange={photo} /></label>
+          {a.leader.photo && <button type="button" className="btn sm danger" onClick={() => act("admin.about", { op: "leaderPhoto", remove: true })}><LuTrash2 /> Remove</button>}</div>
+        <Field label="Name"><input type="text" name="lname" defaultValue={a.leader.name} maxLength={80} /></Field>
+        <Field label="Title"><input type="text" name="ltitle" defaultValue={a.leader.title} maxLength={80} /></Field>
+        <Field label="Badge"><input type="text" name="lbadge" defaultValue={a.leader.badge} maxLength={60} /></Field>
+        <Field label="Quote" full><textarea name="lquote" className="short" defaultValue={a.leader.quote} maxLength={500} /></Field>
+        <Field label="Short biography" full><textarea name="lbio" rows={4} defaultValue={a.leader.bio} maxLength={2000} /></Field>
+        {a.highlights.map((x, i) => <fieldset key={i} className="plain ab-ed-stat"><legend className="small b">{`Highlight ${i + 1}`}</legend>
+          <Field label="Value"><input type="text" name={`hv${i}`} defaultValue={x.value} maxLength={30} /></Field>
+          <Field label="Label"><input type="text" name={`hl${i}`} defaultValue={x.label} maxLength={60} /></Field></fieldset>)}
+      </div>
+      <div className="card fgrid"><h3 className="full">Mission &amp; vision</h3>
+        {[["m", a.mission, "Mission"], ["v", a.vision, "Vision"]].map(([p, m, l]) => <fieldset key={p} className="plain full fgrid"><legend className="b">{l}</legend>
+          <Field label="Heading"><input type="text" name={`${p}t`} defaultValue={m.title} maxLength={80} /></Field>
+          <Field label="Value tag"><input type="text" name={`${p}g`} defaultValue={m.tag} maxLength={60} /></Field>
+          <Field label="Text" full><textarea name={`${p}x`} className="short" defaultValue={m.text} maxLength={800} /></Field>
+          <Field label="Points" hint="One per line" full><textarea name={`${p}p`} rows={3} defaultValue={m.points.join("\n")} /></Field></fieldset>)}
+      </div>
+      <div className="card fgrid"><h3 className="full">Bottom banner</h3>
+        <Field label="Heading" full><input type="text" name="ct" defaultValue={a.cta.title} maxLength={120} /></Field>
+        <Field label="Text" full><input type="text" name="cx" defaultValue={a.cta.text} maxLength={300} /></Field>
+        <p className="muted small full">Office address, phone and WhatsApp come from Site settings.</p>
+        <Field label="Documents section intro" full><input type="text" name="docsIntro" defaultValue={a.docsIntro} maxLength={300} /></Field>
+      </div>
+      <div className="row"><button className="btn pri" type="submit"><LuCheck /> Save About page</button>
+        <button type="button" className="btn" onClick={() => confirmBox("Put back the original texts? Documents and the leader photo are kept.", async () => { if (await act("admin.about", { op: "reset", confirm: true })) setK(x => x + 1); }, "Reset")}><LuRotateCcw /> Reset texts</button></div>
+    </form>
+
+    <div className="card mt16">
+      <div className="row between"><h3>Licences &amp; documents</h3><button className="btn sm pri" onClick={() => setDocEdit("new")}><LuPlus /> Add document</button></div>
+      <p className="muted small">PDF or photo, e.g. RL licence, trade licence, certificate of incorporation, BAIRA membership, TIN/VAT. Shown with a Verified badge.</p>
+      {docEdit && <DocForm d={docEdit === "new" ? null : a.docs.find(x => x.id === docEdit)} onDone={() => setDocEdit(null)} />}
+      {a.docs.length ? <div className="tbl ec-tbl grid mt8"><table><thead><tr><th>Document</th><th>Number</th><th>Valid</th><th>File</th><th></th></tr></thead><tbody>
+        {a.docs.map((d, i) => <tr key={d.id}>
+          <td><b>{d.title}</b><div className="muted small">{d.issuer}</div></td><td data-notr>{d.number || "—"}</td><td>{d.valid || "—"}</td>
+          <td><a href={d.file?.url} target="_blank" rel="noopener noreferrer" className="small">{d.file?.name}</a></td>
+          <td><div className="row tight nowrap">
+            <button className="btn sm" disabled={i === 0} onClick={() => act("admin.about", { op: "docMove", id: d.id, dir: -1 }, { quiet: true })} aria-label="Move up"><LuArrowUp /></button>
+            <button className="btn sm" disabled={i === a.docs.length - 1} onClick={() => act("admin.about", { op: "docMove", id: d.id, dir: 1 }, { quiet: true })} aria-label="Move down"><LuArrowDown /></button>
+            <button className="btn sm" onClick={() => setDocEdit(d.id)} aria-label="Edit"><LuPencil /></button>
+            <button className="btn sm danger" onClick={() => confirmBox(`Remove “${d.title}” from the About page?`, () => act("admin.about", { op: "docDelete", id: d.id }), "Remove")} aria-label="Remove"><LuTrash2 /></button>
+          </div></td></tr>)}
+      </tbody></table></div> : <Empty>No documents yet. The documents section stays hidden until you add one.</Empty>}
+    </div>
+  </>;
+}
+
+function DocForm({ d, onDone }) {
+  const [busy, setBusy] = React.useState(false);
+  const submit = async e => {
+    e.preventDefault(); const fd = new FormData(e.currentTarget); const f = fd.get("file");
+    setBusy(true);
+    try {
+      const file = f && f.size ? await readUpload(f, { imageMax: 2200 }) : null;
+      const r = await act("admin.about", { op: d ? "docUpdate" : "docAdd", id: d?.id, title: fd.get("title"), issuer: fd.get("issuer"), number: fd.get("number"), valid: fd.get("valid"), file });
+      if (r) onDone();
+    } catch (er) { toast(er.message); } finally { setBusy(false); }
+  };
+  return (
+    <form className="card fgrid mt8 jobtpl-edit" onSubmit={submit} noValidate>
+      <h4 className="full">{d ? `Edit: ${d.title}` : "Add a document"}</h4>
+      <Field label="Document name"><input type="text" name="title" defaultValue={d?.title} placeholder="e.g. RL Licence (BMET)" maxLength={120} required /></Field>
+      <Field label="Issued by"><input type="text" name="issuer" defaultValue={d?.issuer} placeholder="e.g. Ministry of Expatriates' Welfare" maxLength={120} /></Field>
+      <Field label="Number"><input type="text" name="number" defaultValue={d?.number} placeholder="e.g. RL 1217" maxLength={80} /></Field>
+      <Field label="Valid until / date"><input type="text" name="valid" defaultValue={d?.valid} placeholder="e.g. 31 Dec 2028" maxLength={60} /></Field>
+      <Field label={d ? "Replace file (optional)" : "File (PDF or photo)"} full><input type="file" name="file" accept="application/pdf,image/*" /></Field>
+      <div className="full row"><button className="btn pri" type="submit" disabled={busy}><LuCheck /> {busy ? "Uploading…" : d ? "Save" : "Add document"}</button><button type="button" className="btn" onClick={onDone}>Cancel</button></div>
+    </form>
   );
 }

@@ -203,7 +203,7 @@ function viewFor(u) {
   const live = db.jobs.filter(j => j.status === "active");
   const pub = {
     v: db.v, session: u?.id || null, settings: { ...db.settings }, needsSetup: !db.users.some(x => x.role === "admin"), seo: db.seo, packages: db.packages, posts: db.posts,
-    testimonials: db.testimonials, team: [...db.team].sort((a, b) => (a.order ?? 99) - (b.order ?? 99)).map(m => ({ ...m, photo: m.photo ? { ...m.photo, data: `/api/files/${m.photo.id}` } : null })), gallery: db.gallery.map(g => ({ ...g, src: `/api/files/${g.fileId}` })), scenery: sceneryView(u),
+    testimonials: db.testimonials, team: [...db.team].sort((a, b) => (a.order ?? 99) - (b.order ?? 99)).map(m => ({ ...m, photo: m.photo ? { ...m.photo, data: `/api/files/${m.photo.id}` } : null })), gallery: db.gallery.map(g => ({ ...g, src: `/api/files/${g.fileId}` })), scenery: sceneryView(u), about: aboutView(),
     stats: { employers: db.users.filter(x => x.role === "employer" && x.status === "active").length, hired: db.applications.filter(a => a.status === "hired").length },
     jobs: live, applications: [], notifications: [], orders: [], messages: [], workers: [], clearances: [], ledger: [], tickets: [],
     users: db.users.filter(x => x.role === "employer" && live.some(j => j.employerId === x.id)).map(x => ({ id: x.id, role: "employer", status: x.status, company: { name: x.company?.name, verify: x.company?.verify, country: x.company?.country } }))
@@ -1112,3 +1112,62 @@ async function chatApi(req, res, url, u, zone) {
   }
 }
 function newChat(x) { const c = { id: id("ch"), uid: null, guest: null, key: null, ...x, msgs: [], created: now(), last: now(), unreadAgency: 0, unreadUser: 0 }; db.chats.push(c); return c; }
+
+
+/* ======================= About page (edited in Admin panel › About page) ======================= */
+const ABOUT_DEFAULT = {
+  credentials: "Government licensed recruiting agency · RL 1217",
+  tagline: "We connect skilled Bangladeshi workers with trusted employers abroad, through a legal, transparent and caring process.",
+  stats: [{ value: "", label: "Established", sub: "" }, { value: "", label: "Workers sent abroad", sub: "" }, { value: "RL 1217", label: "Govt. licence", sub: "BMET approved" }, { value: "", label: "Destination countries", sub: "" }],
+  overview: "MAM & MAM Overseas Ltd. is a government licensed recruiting agency (RL 1217) that connects job seekers in Bangladesh with employers abroad.\n\nWe handle the full recruitment process: sourcing and screening candidates, arranging interviews, and completing medical, visa and emigration (BMET) formalities, so every worker departs with the right documents and a clear contract.\n\nEvery candidate hears the salary, benefits, contract terms and costs before signing, and all recruitment goes through official channels under our licence.",
+  commitment: "Our commitment: honest information, legal processing, and support for every worker before and after departure.",
+  leader: { name: "", title: "Managing Director", badge: "Authorized licensee", quote: "", bio: "", photo: null },
+  highlights: [{ value: "", label: "Destination countries" }, { value: "100%", label: "Legal processing" }, { value: "RL 1217", label: "Government licence" }],
+  mission: { title: "Our mission", text: "To place Bangladeshi workers in safe, well-paid jobs abroad through a recruitment process that is legal, transparent and fair from the first interview to the flight.", points: ["Clear salary and contract information before signing", "All processing through official channels", "Support for workers after departure"], tag: "Trust & transparency" },
+  vision: { title: "Our vision", text: "To be the agency employers and workers recommend first, known for skilled candidates, ethical recruitment and long-term relationships.", points: ["Skilled, well-prepared candidates", "Long-term partnerships with employers", "Respect and dignity for every worker"], tag: "Excellence & integrity" },
+  docsIntro: "Our licence and company documents. Open any document to check it.",
+  docs: [],
+  cta: { title: "Ready to work with MAM & MAM Overseas?", text: "Talk to our office about jobs abroad or about hiring workers from Bangladesh." }
+};
+if (!db.about) db.about = JSON.parse(JSON.stringify(ABOUT_DEFAULT));
+const fileView = f => (f ? { name: f.name, mime: db.files[f.id]?.mime || "", url: `/api/files/${f.id}` } : null);
+function aboutView() {
+  const a = db.about;
+  return { ...a, leader: { ...a.leader, photo: fileView(a.leader.photo) }, docs: a.docs.map(d => ({ ...d, file: fileView(d.file) })) };
+}
+A["admin.about"] = async (d, u) => {
+  needPerm(u, "content"); const a = db.about;
+  const L = (v, n) => String(v ?? "").slice(0, n).trim();
+  if (d.op === "save") { // all texts of the page
+    const x = d.about || {};
+    a.credentials = L(x.credentials, 200); a.tagline = L(x.tagline, 400); a.overview = L(x.overview, 6000); a.commitment = L(x.commitment, 400); a.docsIntro = L(x.docsIntro, 300);
+    a.stats = [0, 1, 2, 3].map(i => ({ value: L(x.stats?.[i]?.value, 30), label: L(x.stats?.[i]?.label, 60), sub: L(x.stats?.[i]?.sub, 60) }));
+    a.highlights = [0, 1, 2].map(i => ({ value: L(x.highlights?.[i]?.value, 30), label: L(x.highlights?.[i]?.label, 60) }));
+    a.leader = { ...a.leader, name: L(x.leader?.name, 80), title: L(x.leader?.title, 80), badge: L(x.leader?.badge, 60), quote: L(x.leader?.quote, 500), bio: L(x.leader?.bio, 2000) };
+    for (const k of ["mission", "vision"]) a[k] = { title: L(x[k]?.title, 80), text: L(x[k]?.text, 800), tag: L(x[k]?.tag, 60), points: (x[k]?.points || []).map(p => L(p, 160)).filter(Boolean).slice(0, 6) };
+    a.cta = { title: L(x.cta?.title, 120), text: L(x.cta?.text, 300) };
+    return { msg: "About page saved." };
+  }
+  if (d.op === "leaderPhoto") {
+    if (d.remove) { if (a.leader.photo) dropFile(a.leader.photo); a.leader.photo = null; return { msg: "Photo removed." }; }
+    must(d.file, "Choose a photo."); const ref = storeFile(d.file, u.id, { pdf: false, isPublic: true }); if (a.leader.photo) dropFile(a.leader.photo); a.leader.photo = ref;
+    return { msg: "Photo saved." };
+  }
+  if (d.op === "docAdd" || d.op === "docUpdate") {
+    const data = { title: L(d.title, 120), issuer: L(d.issuer, 120), number: L(d.number, 80), valid: L(d.valid, 60) };
+    must(data.title.length >= 2, "Enter the document name, e.g. RL Licence.");
+    if (d.op === "docAdd") {
+      must(d.file, "Choose the document (PDF or photo)."); must(a.docs.length < 30, "Too many documents.");
+      a.docs.push({ id: id("ad"), ...data, file: storeFile(d.file, u.id, { pdf: true, images: true, isPublic: true }) });
+      return { msg: "Document added to the About page." };
+    }
+    const x = a.docs.find(z => z.id === d.id); must(x, "Document not found.");
+    Object.assign(x, data);
+    if (d.file) { const ref = storeFile(d.file, u.id, { pdf: true, images: true, isPublic: true }); dropFile(x.file); x.file = ref; }
+    return { msg: "Document saved." };
+  }
+  if (d.op === "docDelete") { const x = a.docs.find(z => z.id === d.id); must(x, "Document not found."); dropFile(x.file); a.docs = a.docs.filter(z => z !== x); return { msg: "Document removed." }; }
+  if (d.op === "docMove") { const i = a.docs.findIndex(z => z.id === d.id), j = i + (d.dir < 0 ? -1 : 1); must(i >= 0, "Document not found."); if (j >= 0 && j < a.docs.length) [a.docs[i], a.docs[j]] = [a.docs[j], a.docs[i]]; return {}; }
+  if (d.op === "reset") { must(d.confirm === true, "Not confirmed."); const keep = { docs: a.docs, leader: a.leader }; db.about = { ...JSON.parse(JSON.stringify(ABOUT_DEFAULT)), ...keep }; return { msg: "Texts reset to the defaults (documents and leader kept)." }; }
+  must(false, "Unknown action.");
+};
