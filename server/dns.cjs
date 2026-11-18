@@ -1,7 +1,7 @@
 // Tiny authoritative DNS server for the agency's own domain (Node built-ins only).
 //
 // It answers for the zones in DNS_ZONES (default mamandmam.bd):
-//   <zone>, www.<zone>, mail.<zone>  ->  A  DNS_IP
+//   <zone>, www.<zone>, mail.<zone>, admin.<zone>  ->  A  DNS_IP
 //   NS  -> DNS_NS (default ns1.migv33.tech, ns2.migv33.tech)
 //   SOA -> first name server
 //   MX 10 mail.<zone>, SPF and DMARC TXT records, and the DKIM key from
@@ -54,7 +54,7 @@ function recordsFor(name, zone) {
   const A = { type: T.A, data: aData(IP) };
   if (name === zone) return [A, ...NS.map((n) => ({ type: T.NS, data: encName(n) })), { type: T.SOA, data: soaData(zone) },
     { type: T.MX, data: Buffer.concat([u16(10), encName("mail." + zone)]) }, { type: T.TXT, data: txtData(`v=spf1 a mx ip4:${IP} ~all`) }];
-  if (name === "www." + zone || name === "mail." + zone) return [A];
+  if (name === "www." + zone || name === "mail." + zone || name === "admin." + zone) return [A];
   if (name === "_dmarc." + zone) return [{ type: T.TXT, data: txtData(`v=DMARC1; p=none; adkim=r; aspf=r`) }];
   if (name === "mail._domainkey." + zone) { const k = dkimText(zone); return k ? [{ type: T.TXT, data: txtData(k) }] : null; }
   if (name === "_domainkey." + zone && dkimText(zone)) return []; // empty non-terminal

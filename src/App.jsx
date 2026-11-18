@@ -12,6 +12,8 @@ import { Dashboard } from "./dash/Dashboard.jsx";
 import { LANGS, getLang, setLang, t, onLang } from "./i18n.js";
 import { VisitingCard, VerifyMember, VerifyBody } from "./VCard.jsx";
 import { currentTheme, toggleTheme } from "./theme.js";
+import { SITE } from "./site.js";
+import { LuExternalLink, LuShieldCheck } from "react-icons/lu";
 
 function useHash() {
   const [h, setH] = useState(location.hash.slice(1) || "home");
@@ -32,6 +34,7 @@ export default function App() {
   else if (h === "setup" || h.startsWith("setup-")) { page = "setup"; arg = h.slice(6); }
   else if (h.startsWith("verify-")) { page = "verify"; arg = h.slice(7); }
   else if (!PAGES.includes(h) && h !== "dashboard") page = "home";
+  if (SITE.admin && !["dashboard", "setup", "job", "post", "verify"].includes(page)) page = "dashboard"; // the admin panel opens straight to the dashboard
 
   // SEO: title + meta description per page (managed from Admin › SEO)
   useEffect(() => {
@@ -47,6 +50,15 @@ export default function App() {
   });
 
   if (page === "verify") return <><VerifyMember id={arg} /><Toast /></>;
+  if (SITE.admin) return (
+    <>
+      <AdminHeader />
+      {store.offline && <div className="demo-strip"><div className="wrap"><span><LuWifiOff /> Cannot reach the server. Check your internet connection; the page will work again when it is back.</span></div></div>}
+      <main>{page === "setup" ? <Setup token={arg} /> : page === "job" ? <JobDetail id={arg} /> : page === "post" ? <Post id={arg} /> : me() ? <Dashboard /> : <AdminSignIn />}</main>
+      <ModalHost />
+      <Toast />
+    </>
+  );
 
   const body = {
     home: <Home />, jobs: <Jobs />, services: <Services />, track: <Track />, team: <Team />, about: <About />, blog: <Blog />, contact: <Contact />,
@@ -92,6 +104,48 @@ function Header({ navOn }) {
         </>}
       </div>
     </div></header>
+  );
+}
+
+/* the separate admin panel (admin.<domain>) */
+function AdminHeader() {
+  const u = me();
+  return (
+    <header className="top admin-top">
+      <div className="utilbar"><div className="wrap"><div className="util-l"><span className="util-lic"><LuShieldCheck /> Admin panel · MAM &amp; MAM Overseas Ltd.</span></div><Prefs /></div></div>
+      <div className="wrap topbar">
+        <a className="logo" href="#dashboard" aria-label="Admin panel home"><Logo /><div><b>MAM &amp; MAM OVERSEAS LTD.</b><span>Admin panel</span></div></a>
+        <div className="acct">
+          {SITE.main && <a className="btn sm" href={SITE.main} target="_blank" rel="noopener noreferrer"><LuExternalLink /> <span className="hide-sm">View website</span></a>}
+          {u && <>
+            <button className="btn sm" onClick={() => openModal("password")} aria-label="Change password" title="Change password"><LuKeyRound /></button>
+            <button className="btn sm" onClick={signOut} aria-label="Sign out" title="Sign out"><LuLogOut /><span className="hide-lg">Sign out</span></button>
+          </>}
+        </div>
+      </div>
+    </header>
+  );
+}
+
+function AdminSignIn() {
+  const busy = store.ui.busy;
+  const login = async e => {
+    const [d] = formData(e);
+    const r = await act("auth.login", { email: d.email, pass: d.pass });
+    if (r && !r.verify) afterLogin(r);
+  };
+  return (
+    <section className="sec"><div className="wrap admin-signin">
+      <form className="card stack12" onSubmit={login}>
+        <div className="modal-brand"><Logo size={56} /></div>
+        <h1 className="h1s">Admin panel</h1>
+        <p className="muted">For the agency's admin and staff only.</p>
+        <label className="f">Email<input type="email" name="email" required autoComplete="username" autoFocus /></label>
+        <label className="f">Password<input type="password" name="pass" required autoComplete="current-password" /></label>
+        <button className="btn pri" type="submit" disabled={busy}><LuLogIn /> Sign in</button>
+        {SITE.main && <p className="muted small">Job seeker, employer or agent? <a href={SITE.main}>Go to the website</a></p>}
+      </form>
+    </div></section>
   );
 }
 
@@ -184,6 +238,7 @@ function Auth({ mode, role: initialRole }) {
           <label className="f">Password<input type="password" name="pass" required autoComplete="current-password" /></label>
           <button className="btn pri" type="submit" disabled={busy}><LuLogIn /> Sign in</button>
           <p className="muted small">Forgot your password? Contact the office and we will reset it.</p>
+          {SITE.adminUrl && <p className="muted small">Agency admin or staff? <a href={SITE.adminUrl}>Sign in to the admin panel</a></p>}
         </form>
       ) : (
         <form className="stack12" onSubmit={register} key={role}>

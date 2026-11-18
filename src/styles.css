@@ -651,3 +651,11 @@ html[lang="bn"] .btn{font-weight:600}
 .jobtpl-btns{flex-wrap:wrap;padding-bottom:4px}
 .jobtpl-edit{margin-top:12px;box-shadow:none}
 .lines{white-space:pre-line}
+/* separate admin panel */
+.admin-signin{max-width:420px;margin:0 auto}
+.admin-signin .card{padding:28px}
+.admin-signin h1{text-align:center;margin:4px 0 0}
+.admin-signin > form > p.muted:first-of-type{text-align:center;margin-top:-4px}
+.admin-top .util-lic{display:inline-flex;align-items:center;gap:6px}
+@media (max-width:560px){.hide-sm{display:none}}
+.admin-top .topbar{display:flex;align-items:center;gap:12px}.admin-top .acct{margin-left:auto}

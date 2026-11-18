@@ -17,6 +17,7 @@
 #      so the registrar only needs the name servers ns1.migv33.tech and ns2.migv33.tech
 #      and its email: noreply@ sends verification codes, info@ is forwarded (deploy/mail.sh)
 #   7. if DNS or HTTPS is not ready yet, tries again by itself every 10 minutes until it is
+#      and a separate admin panel at admin.<domain> (admin and staff sign in only there)
 #   8. prints a one-time link for creating the admin account
 set -euo pipefail
 
@@ -165,6 +166,14 @@ EOF
   grep -q "mam-dns" /usr/local/bin/$SVC-update || sed -i "s|^  systemctl restart $SVC\$|  systemctl restart $SVC; systemctl is-enabled --quiet mam-dns \&\& systemctl restart mam-dns|" /usr/local/bin/$SVC-update
 fi
 
+# separate admin panel at admin.<domain> (needs this server's DNS for the domain, so .bd domains only by default)
+ADMIN_NAME="${ADMIN_NAME:-}"
+[ -n "$ADMIN_NAME" ] || { [ "$SELF_DNS" = 1 ] && ADMIN_NAME="admin.$DOMAIN"; } || true
+if [ -n "$ADMIN_NAME" ]; then
+  if grep -q '^ADMIN_HOST=' "$ENVF"; then sed -i "s/^ADMIN_HOST=.*/ADMIN_HOST=$ADMIN_NAME/" "$ENVF"; else echo "ADMIN_HOST=$ADMIN_NAME" >> "$ENVF"; fi
+  systemctl restart $SVC
+fi
+
 say "5/6 Web server for $NAMES"
 HTTPS_OK=0; DNS_OK=1
 # HTTPS needs every name to point at this server first
@@ -184,6 +193,13 @@ if systemctl is-active --quiet caddy; then
     printf '\n%s {\n\tencode gzip\n\trequest_body {\n\t\tmax_size 30MB\n\t}\n\treverse_proxy 127.0.0.1:%s\n}\n' "$(echo $NAMES | sed 's/ /, /g')" "$PORT" >> "$CF"
     if caddy validate --config "$CF" --adapter caddyfile >/dev/null 2>&1; then systemctl reload caddy; echo "Added $NAMES to Caddy (HTTPS is automatic)."
     else cp "$CF.bak.$STAMP" "$CF"; warn "Caddy rejected the new block; the old Caddyfile was restored. Nothing else changed."; exit 1; fi
+  fi
+  # the separate admin panel (admin.<domain>)
+  if [ -n "$ADMIN_NAME" ] && ! grep -qE "^[[:space:]]*(https?://)?$ADMIN_NAME([ ,{]|$)" "$CF"; then
+    cp "$CF" "$CF.bak.$STAMP.admin"
+    printf '\n%s {\n\tencode gzip\n\trequest_body {\n\t\tmax_size 30MB\n\t}\n\treverse_proxy 127.0.0.1:%s\n}\n' "$ADMIN_NAME" "$PORT" >> "$CF"
+    if caddy validate --config "$CF" --adapter caddyfile >/dev/null 2>&1; then systemctl reload caddy; echo "Added the admin panel $ADMIN_NAME to Caddy."
+    else cp "$CF.bak.$STAMP.admin" "$CF"; warn "Caddy rejected the admin panel block; the old Caddyfile was restored."; fi
   fi
 elif systemctl is-active --quiet nginx; then
   echo "nginx found"
@@ -264,8 +280,8 @@ if curl -s "http://127.0.0.1:$PORT/api/state" | grep -q '"needsSetup":true'; the
   echo
   echo "Create the admin account here (one-time link, keep it private):"
   echo
-  echo "    https://$DOMAIN/#setup-$TOKEN"
+  echo "    https://${ADMIN_NAME:-$DOMAIN}/#setup-$TOKEN"
   echo
 else
-  echo "Admin account already exists. Site: https://$DOMAIN"
+  echo "Admin account already exists. Site: https://$DOMAIN${ADMIN_NAME:+  Admin panel: https://$ADMIN_NAME}"
 fi
