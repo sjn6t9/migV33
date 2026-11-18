@@ -13,7 +13,10 @@
 #   4. checks GitHub every 2 minutes and updates itself when new code is pushed
 #   5. ADDS a site for the domain to the existing nginx or Caddy (other sites are not changed;
 #      the config is tested before reload and a backup is kept), with HTTPS
-#   6. prints a one-time link for creating the admin account
+#   6. for a .bd main domain: runs the domain's own DNS server (server/dns.cjs, service "mam-dns")
+#      so the registrar only needs the name servers ns1.migv33.tech and ns2.migv33.tech
+#   7. if DNS or HTTPS is not ready yet, tries again by itself every 10 minutes until it is
+#   8. prints a one-time link for creating the admin account
 set -euo pipefail
 
 DOMAIN="${1:-mam.migv33.tech}"
@@ -116,10 +119,52 @@ systemctl restart $SVC
 sleep 2
 curl -sf "http://127.0.0.1:$PORT/api/health" >/dev/null && echo "app is running on 127.0.0.1:$PORT" || { journalctl -u $SVC -n 30 --no-pager; echo "The app did not start."; exit 1; }
 
+MYIP=$(curl -s4 --max-time 8 https://api.ipify.org || hostname -I | awk '{print $1}')
+
+# The domain's own DNS server (.bd registrars only take name servers, not A records)
+SELF_DNS="${SELF_DNS:-auto}"
+if [ "$SELF_DNS" = auto ]; then case "$DOMAIN" in *.bd) SELF_DNS=1 ;; *) SELF_DNS=0 ;; esac; fi
+if [ "$SELF_DNS" = 1 ]; then
+  say "DNS server for $DOMAIN"
+  if ip -4 addr | grep -qw "$MYIP"; then DBIND=$MYIP; else DBIND=0.0.0.0; fi
+  cat > /etc/systemd/system/mam-dns.service <<EOF
+[Unit]
+Description=DNS for $DOMAIN (MAM & MAM Overseas)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+User=mamapp
+Group=mamapp
+WorkingDirectory=$APP
+Environment=DNS_IP=$MYIP DNS_BIND=$DBIND DNS_ZONES=$DOMAIN DNS_NS=${DNS_NS:-ns1.migv33.tech,ns2.migv33.tech}
+ExecStart=$NODE_BIN server/dns.cjs
+Restart=always
+RestartSec=3
+AmbientCapabilities=CAP_NET_BIND_SERVICE
+CapabilityBoundingSet=CAP_NET_BIND_SERVICE
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+
+[Install]
+WantedBy=multi-user.target
+EOF
+  systemctl daemon-reload
+  systemctl enable -q mam-dns
+  systemctl restart mam-dns || true
+  if command -v ufw >/dev/null 2>&1 && ufw status | grep -q "Status: active"; then ufw allow 53 >/dev/null && echo "firewall: port 53 opened"; fi
+  sleep 1
+  if systemctl is-active --quiet mam-dns; then echo "DNS server is answering for $DOMAIN and www.$DOMAIN -> $MYIP"
+  else journalctl -u mam-dns -n 15 --no-pager; warn "The DNS server did not start (see above). The rest of the site is not affected."; fi
+  # restart the DNS server too when the code updates
+  grep -q "mam-dns" /usr/local/bin/$SVC-update || sed -i "s|^  systemctl restart $SVC\$|  systemctl restart $SVC; systemctl is-enabled --quiet mam-dns \&\& systemctl restart mam-dns|" /usr/local/bin/$SVC-update
+fi
+
 say "5/6 Web server for $NAMES"
 HTTPS_OK=0; DNS_OK=1
 # HTTPS needs every name to point at this server first
-MYIP=$(curl -s4 --max-time 8 https://api.ipify.org || hostname -I | awk '{print $1}')
 for n in $NAMES; do
   got=$(getent ahostsv4 "$n" | awk '{print $1; exit}' || true)
   if [ "$got" = "$MYIP" ]; then echo "$n -> $MYIP (ok)"
@@ -182,6 +227,31 @@ fi
 if [ "$DNS_OK" = 1 ] && { [ "$HTTPS_OK" = 1 ] || systemctl is-active --quiet caddy; }; then
   if grep -q '^CANONICAL_HOST=' "$ENVF"; then sed -i "s/^CANONICAL_HOST=.*/CANONICAL_HOST=$DOMAIN/" "$ENVF"; else echo "CANONICAL_HOST=$DOMAIN" >> "$ENVF"; fi
   systemctl restart $SVC; echo "Main domain: https://$DOMAIN (other names redirect here)"
+fi
+
+# not finished yet (DNS still spreading or no certificate): try again by itself every 10 minutes
+if [ "$DNS_OK" = 1 ] && [ "$HTTPS_OK" = 1 ]; then
+  systemctl disable -q --now $SVC-finish.timer 2>/dev/null || true
+elif systemctl is-active --quiet nginx; then
+  cat > /etc/systemd/system/$SVC-finish.service <<EOF
+[Unit]
+Description=Finish MAM & MAM Overseas setup for $NAMES (DNS and HTTPS)
+[Service]
+Type=oneshot
+TimeoutStartSec=20min
+ExecStart=/bin/bash $APP/deploy/install.sh $NAMES
+EOF
+  cat > /etc/systemd/system/$SVC-finish.timer <<EOF
+[Unit]
+Description=Retry MAM & MAM Overseas DNS/HTTPS setup every 10 minutes until it works
+[Timer]
+OnActiveSec=10min
+OnUnitActiveSec=10min
+[Install]
+WantedBy=timers.target
+EOF
+  systemctl daemon-reload; systemctl enable -q --now $SVC-finish.timer
+  echo "DNS/HTTPS is not ready yet. This server tries again by itself every 10 minutes and switches to https://$DOMAIN when it works."
 fi
 
 say "6/6 Done"
