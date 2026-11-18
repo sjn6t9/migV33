@@ -198,7 +198,7 @@ export function Agent({ u }) {
 
   return (
     <div className="wrap dash">
-      <Rail role="agent" items={[["overview", "Overview", LuLayoutDashboard], ["profile", "Agent profile", LuUser], ["workers", "My workers", LuUsers, W.length], ["clearance", "BMET clearance", LuStamp, C.filter(open).length], ["jobs", "Job applications", LuBriefcase, A.length], ["tickets", "Air tickets", LuTicket, S.tickets.filter(x => x.agentId === u.id && x.status === "requested").length], ["account", "Payment history", LuWallet], ["notifications", "Notifications", LuBell, unread(u)]]} />
+      <Rail role="agent" items={[["overview", "Overview", LuLayoutDashboard], ["profile", "Agent profile", LuUser], ["workers", "My workers", LuUsers, W.length], ["clearance", "BMET clearance", LuStamp, C.filter(open).length], ["jobs", "Job applications", LuBriefcase, A.length], ["tickets", "Air tickets", LuTicket, S.tickets.filter(x => x.agentId === u.id && x.status === "requested").length], ["account", "Payment history", LuWallet]]} />
       <div className="panel">{body}</div>
     </div>
   );

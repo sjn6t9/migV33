@@ -253,7 +253,7 @@ export function Candidate({ u }) {
 
   return (
     <div className="wrap dash">
-      <Rail role="candidate" items={[["overview", "Overview", LuLayoutDashboard], ["profile", "Profile & CV", LuUser], ["applications", "Applications", LuFileText, apps.length], ["clearance", "BMET clearance", LuStamp, S.clearances.filter(c => c.candidateId === u.id && c.card).length], ["saved", "Saved jobs", LuBookmark, u.saved.length], ["alerts", "Job alerts", LuMail], ["notifications", "Notifications", LuBell, unread(u)]]} />
+      <Rail role="candidate" items={[["overview", "Overview", LuLayoutDashboard], ["profile", "Profile & CV", LuUser], ["applications", "Applications", LuFileText, apps.length], ["clearance", "BMET clearance", LuStamp, S.clearances.filter(c => c.candidateId === u.id && c.card).length], ["saved", "Saved jobs", LuBookmark, u.saved.length], ["alerts", "Job alerts", LuMail]]} />
       <div className="panel">{body}</div>
     </div>
   );

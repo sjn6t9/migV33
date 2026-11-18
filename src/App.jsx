@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useSyncExternalStore } from "react";
-import { LuMenu, LuMoon, LuSun, LuLanguages, LuLogOut, LuLayoutDashboard, LuLogIn, LuUserPlus, LuSend, LuMailCheck, LuRefreshCw, LuDownload, LuFileText, LuKeyRound, LuWifiOff, LuPhone, LuMail } from "react-icons/lu";
+import { LuMenu, LuBell, LuCheck, LuMoon, LuSun, LuLanguages, LuLogOut, LuLayoutDashboard, LuLogIn, LuUserPlus, LuSend, LuMailCheck, LuRefreshCw, LuDownload, LuFileText, LuKeyRound, LuWifiOff, LuPhone, LuMail } from "react-icons/lu";
 import { FaWhatsapp, FaFacebookF, FaYoutube, FaLinkedinIn, FaTiktok } from "react-icons/fa6";
 import { ChatWidget } from "./Chat.jsx";
 import { ShareJob } from "./Share.jsx";
@@ -65,7 +65,7 @@ export default function App() {
   if (page === "receipt") return <><VerifyReceipt token={arg} /><Toast /></>;
   if (panelSite) return (
     <>
-      <PanelHeader kind={panelSite} />
+      <PanelHeader kind={panelSite} dash={!!me() && !["handoff", "setup", "job", "post"].includes(page)} />
       {store.offline && <div className="demo-strip"><div className="wrap"><span><LuWifiOff /> Cannot reach the server. Check your internet connection; the page will work again when it is back.</span></div></div>}
       <main>{page === "handoff" ? <section className="sec"><div className="wrap"><p className="muted">Signing you in…</p></div></section> : page === "setup" && panelSite === "admin" ? <Setup token={arg} /> : page === "job" ? <JobDetail id={arg} /> : page === "post" ? <Post id={arg} /> : me() ? <Dashboard /> : <PanelSignIn kind={panelSite} />}</main>
       <ModalHost />
@@ -118,7 +118,8 @@ function Header({ navOn }) {
       </Drawer>
       <div className="acct">
         {u ? <>
-          <a className="btn sm pri" href="#dashboard"><LuLayoutDashboard /> {panel[u.role]}{unread(u) > 0 && <span className="count">{unread(u)}</span>}</a>
+          <a className="btn sm pri" href="#dashboard"><LuLayoutDashboard /> {panel[u.role]}</a>
+          <NotifBell u={u} />
           <button className="btn sm" onClick={() => openModal("password")} aria-label="Change password" title="Change password"><LuKeyRound /></button>
           <button className="btn sm" onClick={signOut} aria-label="Sign out" title="Sign out"><LuLogOut /><span className="hide-lg">Sign out</span></button>
         </> : <>
@@ -130,17 +131,42 @@ function Header({ navOn }) {
   );
 }
 
+/* bell in the header: unread count and the latest notifications */
+function NotifBell({ u }) {
+  const [pos, setPos] = useState(null); const ref = React.useRef(null);
+  const N = store.S.notifications.filter(n => n.uid === u.id).slice(0, 40); const n = N.filter(x => !x.read).length;
+  useEffect(() => {
+    if (!pos) return;
+    const off = e => { if (ref.current && !ref.current.contains(e.target)) setPos(null); };
+    const esc = e => { if (e.key === "Escape") setPos(null); };
+    const re = () => setPos(null);
+    document.addEventListener("mousedown", off); document.addEventListener("keydown", esc); window.addEventListener("resize", re);
+    return () => { document.removeEventListener("mousedown", off); document.removeEventListener("keydown", esc); window.removeEventListener("resize", re); };
+  }, [pos]);
+  const toggle = e => { if (pos) return setPos(null); const r = e.currentTarget.getBoundingClientRect(), w = Math.min(380, window.innerWidth - 16); setPos({ top: r.bottom + 8, left: Math.max(8, Math.min(window.innerWidth - w - 8, r.right - w)), width: w }); };
+  return <div className="bell" ref={ref}>
+    <button className="btn sm bell-btn" onClick={toggle} aria-label={n ? `Notifications, ${n} new` : "Notifications"} title="Notifications" aria-expanded={!!pos}><LuBell />{n > 0 && <span className="count">{n > 99 ? "99+" : n}</span>}</button>
+    {pos && <div className="bell-pop" style={pos} role="dialog" aria-label="Notifications">
+      <div className="bell-head"><b>Notifications</b>{n > 0 && <button className="btn sm link" onClick={() => act("notif.readAll", {}, { quiet: true })}><LuCheck /> Mark all as read</button>}</div>
+      <div className="bell-list">{N.length ? N.map(x => <div key={x.id} className={`bell-item${x.read ? "" : " new"}`}><span className="bell-dot" /><div><div>{x.text}</div><div className="muted small">{fdate(x.at)}</div></div></div>)
+        : <p className="muted small bell-empty">No notifications.</p>}</div>
+    </div>}
+  </div>;
+}
+
 /* the separate panels: admin.<domain> and agent.<domain> */
-function PanelHeader({ kind }) {
+function PanelHeader({ kind, dash }) {
   const u = me(); const label = kind === "agent" ? "Agent panel" : "Admin panel";
   return (
     <header className="top admin-top">
       <div className="utilbar"><div className="wrap"><div className="util-l"><span className="util-lic"><LuShieldCheck /> {kind === "agent" ? "Agent panel · Mam & Mam Overseas Ltd." : "Admin panel · Mam & Mam Overseas Ltd."}</span></div><Prefs /></div></div>
       <div className="wrap topbar">
+        {dash && <button className="btn menu-btn panel-menu" onClick={() => { store.ui.railOpen = true; touch(); }} aria-label="Open menu" aria-expanded={!!store.ui.railOpen}><LuMenu /></button>}
         <a className="logo" href="#dashboard" aria-label={`${label} home`}><Logo /><div><b>MAM &amp; MAM OVERSEAS LTD.</b><span>{label}</span></div></a>
         <div className="acct">
           {SITE.main && <a className="btn sm" href={SITE.main} target="_blank" rel="noopener noreferrer"><LuExternalLink /> <span className="hide-sm">View website</span></a>}
           {u && <>
+            <NotifBell u={u} />
             <button className="btn sm" onClick={() => openModal("password")} aria-label="Change password" title="Change password"><LuKeyRound /></button>
             <button className="btn sm" onClick={kind === "agent" && SITE.main ? agentSignOut : signOut} aria-label="Sign out" title="Sign out"><LuLogOut /><span className="hide-lg">Sign out</span></button>
           </>}

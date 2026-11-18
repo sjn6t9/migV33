@@ -118,7 +118,7 @@ export function Employer({ u }) {
 
   return (
     <div className="wrap dash">
-      <Rail role="employer" items={[["overview", "Overview", LuLayoutDashboard], ["company", "Company profile", LuBuilding2], ["post", ui.editJob ? "Edit job" : "Post a job", LuPlus], ["jobs", "My jobs", LuBriefcase, myJobs.length], ["applicants", "Applicants", LuUsers, myApps.filter(a => a.status === "applied").length], ...(S.settings.paidPosting ? [["package", "Packages", LuPackage]] : []), ["notifications", "Notifications", LuBell, unread(u)]]} />
+      <Rail role="employer" items={[["overview", "Overview", LuLayoutDashboard], ["company", "Company profile", LuBuilding2], ["post", ui.editJob ? "Edit job" : "Post a job", LuPlus], ["jobs", "My jobs", LuBriefcase, myJobs.length], ["applicants", "Applicants", LuUsers, myApps.filter(a => a.status === "applied").length], ...(S.settings.paidPosting ? [["package", "Packages", LuPackage]] : [])]} />
       <div className="panel">{body}</div>
     </div>
   );

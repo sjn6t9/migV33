@@ -6,6 +6,7 @@ import {
 import { store, touch, me, company, money, num, bdtMin, isHourly, fdate, bdtFmt, LABEL, STAGES, CL_STAGES } from "./store.js";
 import { toggleSave, downloadFile, cardFileName } from "./actions.js";
 import { ShareButton } from "./Share.jsx";
+import { SITE } from "./site.js";
 
 /* All icons are inline SVG React components (react-icons / Lucide). No PNG images are used anywhere. */
 export const CAT_ICON = {
@@ -139,7 +140,10 @@ export function Drawer({ open, onClose, title, children, label = "Menu" }) {
 }
 
 export function Rail({ role, items }) {
-  const cur = store.ui.tab[role]; const [open, setOpen] = React.useState(false);
+  const cur = store.ui.tab[role]; const [open0, setOpen0] = React.useState(false);
+  const inPanel = !!(SITE.admin || SITE.agent); // the panels open this drawer from the ☰ button in their header
+  const open = inPanel ? !!store.ui.railOpen : open0;
+  const setOpen = v => { if (inPanel) { store.ui.railOpen = v; touch(); } else setOpen0(v); };
   const pick = k => { store.ui.tab[role] = k; if (k !== "post") store.ui.editJob = null; setOpen(false); touch(); window.scrollTo({ top: 0, behavior: "smooth" }); };
   const now = items.find(x => x[0] === cur) || items[0]; const total = items.reduce((s, x) => s + (Number(x[3]) || 0), 0);
   const list = cls => <nav className={cls} aria-label="Dashboard sections">
@@ -151,9 +155,9 @@ export function Rail({ role, items }) {
   </nav>;
   return <>
     {list("rail rail-desk")}
-    <button type="button" className="rail-mob" onClick={() => setOpen(true)} aria-label="Open dashboard menu" aria-expanded={open}>
+    {!inPanel && <button type="button" className="rail-mob" onClick={() => setOpen(true)} aria-label="Open dashboard menu" aria-expanded={open}>
       <LuMenu className="rail-mob-ic" /><span className="rail-l">{now?.[2] && React.createElement(now[2])}{now?.[1]}</span>{total > 0 && <span className="count">{total}</span>}<LuChevronDown className="rail-mob-down" />
-    </button>
+    </button>}
     <Drawer open={open} onClose={() => setOpen(false)} label="Dashboard sections" title={<b className="drawer-title">Dashboard</b>}>{list("rail rail-drawer")}</Drawer>
   </>;
 }
