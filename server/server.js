@@ -730,6 +730,12 @@ A["admin.ledgerConfirm"] = async ({ id: lid, ok }, u) => {
   return { msg: ok ? "Payment confirmed." : "Payment marked as not received." };
 };
 A["admin.ledgerDelete"] = async ({ id: lid }, u) => { needPerm(u, "ledger"); db.ledger = db.ledger.filter(l => l.id !== lid); return { msg: "Entry deleted." }; };
+/* floating buttons on the website: WhatsApp and the "i" help assistant can be switched on/off (off by default) */
+A["admin.fabs"] = async ({ key, v }, u) => {
+  needPerm(u, "settings"); must(["fabWhatsapp", "fabHelp"].includes(key), "Unknown button.");
+  db.settings[key] = !!v; const name = key === "fabWhatsapp" ? "WhatsApp button" : "Help (i) button";
+  return { msg: `${name} is ${v ? "on" : "off"}.` };
+};
 A["admin.paidPosting"] = async ({ v }, u) => { needPerm(u, "packages"); db.settings.paidPosting = !!v; return { msg: v ? "Paid job posting is on." : "Job posting is free." }; };
 A["admin.packages"] = async ({ packages }, u) => {
   needPerm(u, "packages"); must(Array.isArray(packages), "Bad data.");
@@ -935,13 +941,18 @@ async function handleApi(req, res, url) {
 const escHtml = v => String(v ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const siteOrigin = req => `${req.headers["x-forwarded-proto"] || "http"}://${req.headers["x-forwarded-host"] || req.headers.host}`;
 /* index.html with absolute addresses in the share tags (Facebook and WhatsApp need full URLs for the logo preview) */
+/* aipraktor widget + a "Chat to Ai Assistant" caption beside its button (the button lives in their iframe, so the caption
+   is our own element; it hides while their chat window is open) */
+const AI_WIDGET = `<style>.floaters{bottom:104px}.ai-cap{position:fixed;right:86px;bottom:31px;z-index:2147483646;background:#fff;color:#0b3b2c;border:1px solid #d6e3dd;border-radius:999px;padding:5px 12px;font:600 13px Inter,system-ui,sans-serif;box-shadow:0 4px 14px rgba(0,0,0,.16);pointer-events:none;white-space:nowrap;transition:opacity .2s}.ai-cap.hide{opacity:0;visibility:hidden}</style>
+<script src="https://www.aipraktor.com/embed.js" data-site="site_83b1a0b1018eadaa" async></script>
+<script>(function(){var cap;setInterval(function(){var f=document.getElementById("aipraktor-chat");if(!f){if(cap)cap.classList.add("hide");return}if(!cap){cap=document.createElement("div");cap.className="ai-cap hide";cap.textContent="Chat to Ai Assistant";document.body.appendChild(cap)}var r=f.getBoundingClientRect();var small=r.width<=120&&r.height<=120&&r.width>0;cap.classList.toggle("hide",!small);if(small){cap.style.bottom=Math.max(8,innerHeight-r.bottom+r.height/2-14)+"px";cap.style.right=Math.max(8,innerWidth-r.left-6)+"px"}},500)})();</script>`;
 function indexHtml(req) {
   const zone = hostZone(req);
   const site = { admin: zone === "admin", agent: zone === "agent", main: ADMIN_HOST || AGENT_HOST ? mainUrl() : "" }; // the admin panel's address is never sent to the public site
   const head = `<script>window.__SITE__=${JSON.stringify(site).replace(/</g, "\\u003c")}</script>${zone === "admin" || zone === "agent" ? '<meta name="robots" content="noindex, nofollow">' : ""}`;
   // the aipraktor chat widget is registered for the public site only (it refuses other addresses)
   // its button sits in the bottom corner, so our WhatsApp / chat / "i" buttons move up above it
-  const body = zone === "main" ? '<style>.floaters{bottom:104px}</style><script src="https://www.aipraktor.com/embed.js" data-site="site_83b1a0b1018eadaa" async></script>' : "";
+  const body = zone === "main" ? AI_WIDGET : "";
   return fs.readFileSync(path.join(STATIC_DIR, "index.html"), "utf8").replace(/__ORIGIN__/g, escHtml(siteOrigin(req))).replace("</head>", head + "</head>").replace("</body>", body + "</body>");
 }
 function serveJobShare(req, res, jid) {

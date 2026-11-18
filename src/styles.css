@@ -811,3 +811,17 @@ html[lang="bn"] .btn{font-weight:600}
 .inbox-back{display:none}
 .inbox-empty{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px}
 @media (max-width:900px){.inbox{grid-template-columns:1fr}.inbox.has-sel .inbox-list{display:none}.inbox:not(.has-sel) .inbox-thread{display:none}.inbox-back{display:inline-flex}}
+/* "Chat to Human" pill (live chat) */
+.floaters{align-items:flex-end}
+.fab.live:not(.on){width:auto;height:52px;border-radius:999px;padding:0 16px 0 6px;gap:8px;display:inline-flex;align-items:center;color:var(--brand);background:#fff}
+.fab-label{font:700 14px/1 var(--body);white-space:nowrap}
+.fab.live.on .fab-label{display:none}
+:root[data-theme="dark"] .fab.live:not(.on){background:#fff;color:#0b3b2c}
+/* On/Off switches */
+.switch-list{display:flex;flex-direction:column;gap:2px;margin-top:8px}
+.switch-row{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:10px 0;border-top:1px solid var(--line)}
+.switch{position:relative;display:inline-flex;align-items:center;width:74px;height:32px;border-radius:999px;border:0;background:#c9d2ce;cursor:pointer;flex:none;padding:0 10px;justify-content:flex-end;color:#fff;font:700 12.5px var(--body);transition:background .2s}
+.switch.on{background:var(--brand);justify-content:flex-start}
+.switch-knob{position:absolute;top:3px;left:3px;width:26px;height:26px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.25);transition:left .2s}
+.switch.on .switch-knob{left:45px}
+[dir="rtl"] .switch-knob{left:auto;right:3px}[dir="rtl"] .switch.on .switch-knob{right:45px}

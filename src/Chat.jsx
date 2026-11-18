@@ -68,10 +68,10 @@ export function ChatWidget({ onAgent, assistant = true }) {
   return (
     <>
       <div className="floaters">
-        {s.whatsapp && <a className="fab wa" href={waLink(s.whatsapp, "Hello MAM & MAM Overseas, I have a question.")} target="_blank" rel="noopener noreferrer" aria-label="Chat on WhatsApp" title="WhatsApp"><FaWhatsapp /></a>}
+        {s.whatsapp && s.fabWhatsapp && <a className="fab wa" href={waLink(s.whatsapp, "Hello MAM & MAM Overseas, I have a question.")} target="_blank" rel="noopener noreferrer" aria-label="Chat on WhatsApp" title="WhatsApp"><FaWhatsapp /></a>}
         {!staffUser && <button className={`fab live${panel === "live" ? " on" : ""}`} onClick={() => setPanel(p => (p === "live" ? null : "live"))} aria-label={panel === "live" ? "Close chat" : "Chat with MAM & MAM Overseas Ltd."} title="Chat with us" aria-expanded={panel === "live"}>
-          {panel === "live" ? <LuX /> : <Logo size={34} square />}{unread > 0 && panel !== "live" && <span className="fab-badge">{unread}</span>}</button>}
-        {assistant && <button className={`fab info${open ? " on" : ""}`} onClick={() => setOpen(o => !o)} aria-label={open ? "Close help assistant" : "Open help assistant"} title="Help" aria-expanded={open}>{open ? <LuX /> : <LuInfo />}</button>}
+          {panel === "live" ? <LuX /> : <Logo size={34} square />}<span className="fab-label">Chat to Human</span>{unread > 0 && panel !== "live" && <span className="fab-badge">{unread}</span>}</button>}
+        {assistant && s.fabHelp && <button className={`fab info${open ? " on" : ""}`} onClick={() => setOpen(o => !o)} aria-label={open ? "Close help assistant" : "Open help assistant"} title="Help" aria-expanded={open}>{open ? <LuX /> : <LuInfo />}</button>}
       </div>
       {panel === "live" && <LiveChatPanel onClose={() => setPanel(null)} onRead={() => setUnread(0)} />}
       {open && (

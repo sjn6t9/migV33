@@ -1,7 +1,7 @@
 import React from "react";
 import {
   LuLayoutDashboard, LuUsers, LuBriefcase, LuFileText, LuStamp, LuWallet, LuPackage, LuNewspaper, LuSearch, LuSettings, LuMessageSquare,
-  LuCheck, LuX, LuTrash2, LuPencil, LuEye, LuEyeOff, LuBadgeCheck, LuRotateCcw, LuBan, LuTicket, LuUpload, LuImage, LuUserCog, LuImagePlus, LuQuote, LuGalleryHorizontal, LuArrowUp, LuArrowDown, LuTimer, LuPlus, LuDownload, LuMessagesSquare
+  LuCheck, LuX, LuTrash2, LuPencil, LuEye, LuEyeOff, LuBadgeCheck, LuRotateCcw, LuBan, LuTicket, LuUpload, LuImage, LuUserCog, LuImagePlus, LuQuote, LuGalleryHorizontal, LuArrowUp, LuArrowDown, LuTimer, LuPlus, LuDownload, LuMessagesSquare, LuInfo
 } from "react-icons/lu";
 import { FaWhatsapp, FaFacebookF, FaYoutube, FaLinkedinIn, FaTiktok } from "react-icons/fa6";
 import { clStage, STAFF_PERMS, TEAM_DEPTS, store, commit, user, job, worker, company, live, money, num, fdate, bdtFmt, balanceOf, candOf, clPerson, clOpen, cardPending, now, COUNTRIES, STAGES, CL_STAGES, CL_DOCS, PAY_METHODS, PAGES, LABEL } from "../store.js";
@@ -343,12 +343,20 @@ export function Admin({ u }) {
     const save = e => { const [d] = formData(e); act("admin.settings", { ...d, moderation: !!d.moderation, rates: Object.fromEntries(Object.values(COUNTRIES).map(c => [c, d[`rate-${c}`]])) }); };
     body = <>
       <h2>Site settings</h2>
+      <div className="card mb14">
+        <h3>Website buttons</h3>
+        <p className="muted small">Buttons at the bottom corner of every page. “Chat to Human” (live chat) is always on.</p>
+        <div className="switch-list">
+          <Switch on={!!s.fabWhatsapp} onChange={v => act("admin.fabs", { key: "fabWhatsapp", v })} label={<span className="row tight"><FaWhatsapp /> WhatsApp button</span>} hint={s.whatsapp ? `Opens WhatsApp chat with +${s.whatsapp}` : "Set the WhatsApp number below first."} />
+          <Switch on={!!s.fabHelp} onChange={v => act("admin.fabs", { key: "fabHelp", v })} label={<span className="row tight"><LuInfo /> Help (i) button</span>} hint="Automatic answers about jobs, salary, countries and file status." />
+        </div>
+      </div>
       <form className="card fgrid" onSubmit={save} noValidate>
         <Field label="Office phone"><input type="tel" name="phone" defaultValue={s.phone} placeholder="+880" /></Field>
         <Field label="Office email"><input type="email" inputMode="email" name="email" defaultValue={s.email} /></Field>
         <Field label="Office address" full><input type="text" name="address" defaultValue={s.address} /></Field>
         <Field label="Office hours" full><input type="text" name="hours" defaultValue={s.hours} /></Field>
-        <Field label={<span className="row tight"><FaWhatsapp /> WhatsApp number</span>} hint="Shows the WhatsApp chat button on every page. Include country code, e.g. 8801XXXXXXXXX"><input type="tel" name="whatsapp" defaultValue={s.whatsapp} /></Field>
+        <Field label={<span className="row tight"><FaWhatsapp /> WhatsApp number</span>} hint="Used by the WhatsApp button (switch it on above). Include country code, e.g. 8801XXXXXXXXX"><input type="tel" name="whatsapp" defaultValue={s.whatsapp} /></Field>
         <Field label={<span className="row tight"><FaFacebookF /> Facebook page URL</span>}><input type="text" inputMode="url" name="facebook" defaultValue={s.social.facebook} placeholder="facebook.com/…" /></Field>
         <Field label={<span className="row tight"><FaYoutube /> YouTube URL</span>}><input type="text" inputMode="url" name="youtube" defaultValue={s.social.youtube} placeholder="youtube.com/…" /></Field>
         <Field label={<span className="row tight"><FaLinkedinIn /> LinkedIn URL</span>}><input type="text" inputMode="url" name="linkedin" defaultValue={s.social.linkedin} placeholder="linkedin.com/…" /></Field>
@@ -616,6 +624,18 @@ export function StatusCell({ c, wide }) {
       </select>
       {custom && <div className="ec-refedit"><input type="text" value={v} maxLength={80} placeholder="Write the status" onChange={e => setV(e.target.value)} onKeyDown={e => { if (e.key === "Enter") saveCustom(); if (e.key === "Escape") setCustom(false); }} autoFocus />
         <button className="btn sm pri" onClick={saveCustom} aria-label="Save status"><LuCheck /></button><button className="btn sm" onClick={() => setCustom(false)} aria-label="Cancel"><LuX /></button></div>}
+    </div>
+  );
+}
+
+
+/* an On/Off switch */
+function Switch({ on, onChange, label, hint }) {
+  return (
+    <div className="switch-row">
+      <div><div className="b">{label}</div>{hint && <div className="muted small">{hint}</div>}</div>
+      <button type="button" role="switch" aria-checked={on} className={`switch${on ? " on" : ""}`} onClick={() => onChange(!on)}>
+        <span className="switch-knob" /><span className="switch-txt">{on ? "On" : "Off"}</span></button>
     </div>
   );
 }
