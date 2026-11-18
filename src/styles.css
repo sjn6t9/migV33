@@ -730,3 +730,4 @@ html[lang="bn"] .btn{font-weight:600}
 .ec-tbl.grid .ec-opts{gap:3px}
 .ec-tbl.grid .ec-ref{font-size:12.5px}
 .ec-tbl.grid th,.ec-tbl.grid td{padding:8px 6px}
+.ec-sub{display:flex;flex-direction:column;gap:2px;font-size:13.5px}.ec-sub b{font-weight:600}.ec-sub .num{color:var(--muted);white-space:nowrap}

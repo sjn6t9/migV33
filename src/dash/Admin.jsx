@@ -533,16 +533,16 @@ function AdminClearanceList() {
       <span className="grow" />
       <label className="ec-search"><input type="text" value={q} onChange={e => { setQ(e.target.value); setPage(1); }} placeholder="EC Ref No, name or passport" /><LuSearch /></label>
     </div>
-    <div className="tbl ec-tbl grid"><table><thead><tr><th>SL</th><th>Worker name</th><th>Passport No</th><th>EC Ref No</th><th>Country</th><th>Status</th><th>Submission Date</th><th>Download Documents</th></tr></thead><tbody>
+    <div className="tbl ec-tbl grid"><table><thead><tr><th>SL</th><th>Worker name</th><th>Passport No</th><th>EC Ref No</th><th>Country</th><th>Status</th><th>Submission</th><th>Download Documents</th></tr></thead><tbody>
       {shown.length ? shown.map(({ c, p }, i) => (
         <tr key={c.id}>
           <td>{(pg - 1) * per + i + 1}</td>
-          <td><b>{p.name}</b><div className="muted small">{p.via}</div></td>
+          <td><b>{p.name}</b></td>
           <td className="num" data-notr>{p.passport || "—"}</td>
           <td><RefCell c={c} /></td>
           <td>{c.country}</td>
           <td><StatusCell c={c} /></td>
-          <td className="num">{ecDay(c.created)}</td>
+          <td><div className="ec-sub"><b>{p.via}</b><span className="num">{ecDay(c.created)}</span></div></td>
           <td>{pastSent(c)
             ? <div className="stack6"><button className="btn sm" onClick={() => openModal("clearance", { cid: c.id, admin: true })}><LuEye /> Details</button>
                 {c.payment?.status === "submitted" && <span className="ec-badge pay-pending">Payment to check</span>}
