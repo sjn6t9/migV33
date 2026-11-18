@@ -4,7 +4,7 @@
 #   curl -fsSL https://raw.githubusercontent.com/sjn6t9/migV33/mam-overseas/deploy/install.sh | bash -s -- mamandmam.bd www.mamandmam.bd
 #
 # The first name is the main domain. Once it has HTTPS, every other name that reaches the app
-# (www., the old mam.migv33.tech) is redirected to it, keeping the page path.
+# (such as www.) is redirected to it, keeping the page path.
 #
 # What it does (safe to run again):
 #   1. installs Node.js 22 and git if missing
@@ -20,7 +20,7 @@
 #   8. prints a one-time link for creating the admin account
 set -euo pipefail
 
-DOMAIN="${1:-mam.migv33.tech}"
+DOMAIN="${1:-mamandmam.bd}"
 NAMES="${*:-$DOMAIN}"   # all names for this site, main domain first
 REPO="${REPO:-https://github.com/sjn6t9/migV33.git}"
 BRANCH="${BRANCH:-mam-overseas}"
