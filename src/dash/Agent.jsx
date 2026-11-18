@@ -1,7 +1,8 @@
 import React from "react";
 import { LuLayoutDashboard, LuUser, LuUsers, LuStamp, LuBriefcase, LuWallet, LuBell, LuPencil, LuTrash2, LuSend, LuPlus, LuEye, LuTicket, LuPlaneTakeoff } from "react-icons/lu";
-import { store, commit, worker, job, live, money, fdate, bdtFmt, balanceOf, unread, now, COUNTRIES, CL_DOCS, PAY_METHODS } from "../store.js";
-import { toast, formData, setTab, openModal, confirmBox, withdraw, readUpload, act, DOC_TYPES } from "../actions.js";
+import { store, commit, worker, job, live, money, fdate, bdtFmt, balanceOf, unread, now, COUNTRIES, CL_DOCS, PAY_METHODS, loadState } from "../store.js";
+import { toast, formData, setTab, openModal, confirmBox, withdraw, readUpload, act, DOC_TYPES, downloadFile, cardFileName } from "../actions.js";
+import { LuDownload, LuMaximize2, LuMinimize2, LuRefreshCw, LuSearch, LuFileText, LuBanknote, LuCirclePlus, LuX } from "react-icons/lu";
 import { Rail, Tiles, Pill, Pipe, ClPipe, Empty, CardDownload, Avatar } from "../ui.jsx";
 import { NotifPanel, LedgerTable, Field, Options, AgentDocUploads, AGENT_DOCS } from "./shared.jsx";
 
@@ -109,46 +110,7 @@ export function Agent({ u }) {
     </>;
   }
 
-  if (t === "clearance") {
-    const fee = Number(S.settings.clearanceFee || 0);
-    const submit = async e => {
-      const [d, fd] = formData(e); const form = e.currentTarget;
-      if (!active) return toast("Your account must be approved first.");
-      const w = worker(d.workerId);
-      if (S.clearances.some(c => c.workerId === w.id && c.status !== "rejected")) return toast("This worker already has an open clearance file.");
-      const pick = n => { const f = fd.get(n); return f && f.size ? f : null; };
-      const passF = pick("passportCopy"), visaF = pick("visaCopy"), contractF = pick("contract");
-      if (!passF) return toast("Upload the passport copy.");
-      if (!visaF) return toast("Upload the visa copy.");
-      ui.clBusy = true; commit();
-      try {
-        const files = { passport: await readUpload(passF, { imageMax: 1800 }), visa: await readUpload(visaF, { imageMax: 1800 }), contract: contractF ? await readUpload(contractF, { imageMax: 1800 }) : null };
-        const r = await act("agent.clearance", { workerId: w.id, country: d.country, employer: d.employer, visaNo: d.visaNo, visaType: d.visaType, flightDate: d.flightDate, notes: d.notes, files });
-        if (r) { ui.clWorker = ""; form.reset(); }
-      } catch (err) { toast(err.message); }
-      finally { ui.clBusy = false; commit(); }
-    };
-    body = <>
-      <h2>BMET clearance applications</h2>{banner}
-      {W.length ? (
-        <form className="card fgrid" onSubmit={submit} key={ui.clWorker || "cl"}>
-          <h3 className="full">New clearance application</h3>
-          <Field label="Worker"><select name="workerId" defaultValue={ui.clWorker || W[0].id} required>{W.map(w => <option key={w.id} value={w.id}>{w.name} · {w.passport}</option>)}</select></Field>
-          <Field label="Destination country"><select name="country" defaultValue="Saudi Arabia"><Options list={Object.keys(COUNTRIES)} /></select></Field>
-          <Field label="Employer / sponsor name"><input type="text" name="employer" required /></Field>
-          <Field label="Visa number"><input type="text" name="visaNo" /></Field>
-          <Field label="Visa type"><select name="visaType"><Options list={["Work visa", "Free visa", "Group visa", "Other"]} /></select></Field>
-          <Field label="Planned flight date"><input type="date" name="flightDate" /></Field>
-          <Field label="Upload passport copy" hint="PDF or JPG"><input type="file" name="passportCopy" accept={DOC_TYPES} required /></Field>
-          <Field label="Upload visa copy" hint="PDF or JPG"><input type="file" name="visaCopy" accept={DOC_TYPES} required /></Field>
-          <Field label="Upload employment contract (optional)" hint="PDF or JPG"><input type="file" name="contract" accept={DOC_TYPES} /></Field>
-          <Field label="Notes for the agency" full><textarea name="notes" className="short" /></Field>
-          <div className="full row"><button className="btn pri" type="submit" disabled={!active || ui.clBusy}><LuSend /> {ui.clBusy ? "Uploading…" : "Submit application"}</button>{fee > 0 && <span className="muted small">Processing charge of {bdtFmt(fee)} is added to your account.</span>}</div>
-        </form>
-      ) : <div className="notice">Add a worker first. <button className="btn link sm" onClick={() => setTab("agent", "workers")}>Add worker</button></div>}
-      <div className="card"><h3 className="mb6">My clearance files</h3>{C.length ? C.map(c => <ClRow key={c.id} c={c} />) : <Empty>No clearance applications yet.</Empty>}</div>
-    </>;
-  }
+  if (t === "clearance") body = <>{banner}<ClearanceList C={C} W={W} active={active} /></>;
 
   if (t === "jobs") {
     const L = live(); const sel = L.some(j => j.id === ui.agentJob) ? ui.agentJob : (L[0]?.id || "");
@@ -238,5 +200,129 @@ export function Agent({ u }) {
       <Rail role="agent" items={[["overview", "Overview", LuLayoutDashboard], ["profile", "Agent profile", LuUser], ["workers", "My workers", LuUsers, W.length], ["clearance", "BMET clearance", LuStamp, C.filter(open).length], ["jobs", "Job applications", LuBriefcase, A.length], ["tickets", "Air tickets", LuTicket, S.tickets.filter(x => x.agentId === u.id && x.status === "requested").length], ["account", "Account statement", LuWallet], ["notifications", "Notifications", LuBell, unread(u)]]} />
       <div className="panel">{body}</div>
     </div>
+  );
+}
+
+
+/* ---------- BMET clearance: list of EC applications (one row per worker) ---------- */
+const EC_STATUS = {
+  pending: "Pending Agency Review", received: "Received by Agency", sent_bmet: "Sent to BMET", section: "Pending Section Approval", ad: "Pending AD Approval",
+  dd: "Pending DD Approval", director: "Pending Director Approval", adg: "Pending ADG Approval", final: "Pending Final Approval", approved: "Approved", rejected: "Rejected"
+};
+const ecPay = c => c.status !== "approved" ? "na" : c.card?.feePaid ? "paid" : "unpaid";
+const ecDate = iso => { const d = new Date(iso); return isNaN(d) ? "N/A" : `${String(d.getDate()).padStart(2, "0")}-${String(d.getMonth() + 1).padStart(2, "0")}-${d.getFullYear()}`; };
+const TYPES = [["all", "All Types"], ["open", "In progress"], ["approved", "Approved"], ["card", "Card received"], ["rejected", "Rejected"]];
+
+function ClearanceList({ C, W, active }) {
+  const [q, setQ] = React.useState(""); const [type, setType] = React.useState("all");
+  const [per, setPer] = React.useState(10); const [page, setPage] = React.useState(1);
+  const [full, setFull] = React.useState(false); const [spin, setSpin] = React.useState(false);
+  const [form, setForm] = React.useState(!!ui.clWorker);
+  const rows = C.map(c => ({ c, w: worker(c.workerId) || { name: "Removed worker", passport: "" } }))
+    .filter(({ c }) => type === "all" || (type === "open" ? open(c) : type === "card" ? !!c.card : c.status === type))
+    .filter(({ c, w }) => { const k = q.trim().toLowerCase(); return !k || [c.ref, w.name, w.passport].some(v => String(v || "").toLowerCase().includes(k)); });
+  const pages = Math.max(1, Math.ceil(rows.length / per)); const pg = Math.min(page, pages);
+  const shown = rows.slice((pg - 1) * per, pg * per);
+  const refresh = async () => { setSpin(true); await loadState(); setSpin(false); toast("List refreshed."); };
+  const exportCsv = () => {
+    const esc = v => `"${String(v ?? "").replace(/"/g, '""')}"`;
+    const lines = [["SL", "Worker name", "Passport No", "EC Ref No", "Country", "Status", "Submission Date", "Payment Status"].map(esc).join(",")]
+      .concat(rows.map(({ c, w }, i) => [i + 1, w.name, w.passport, c.ref, c.country, EC_STATUS[c.status] || c.status, ecDate(c.created), { na: "N/A", paid: "Paid", unpaid: "Unpaid" }[ecPay(c)]].map(esc).join(",")));
+    const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob(["\ufeff" + lines.join("\r\n")], { type: "text/csv;charset=utf-8" }));
+    a.download = `EC-Applications-${new Date().toISOString().slice(0, 10)}.csv`; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+  };
+  return <>
+    <div className="ec-head">
+      <div><h2>BMET clearance applications</h2><div className="crumbs"><a href="#dashboard" onClick={e => { e.preventDefault(); setTab("agent", "overview"); }}>Home</a> <span>›</span> <b>EC Application List</b></div></div>
+      <button className="btn dark" onClick={() => setForm(f => !f)} disabled={!W.length}>{form ? <LuX /> : <LuCirclePlus />} {form ? "Close the form" : "Create New Group EC Application"}</button>
+    </div>
+    {!W.length && <div className="notice">Add a worker first. <button className="btn link sm" onClick={() => setTab("agent", "workers")}>Add worker</button></div>}
+    {form && W.length > 0 && <GroupEcForm C={C} W={W} active={active} onDone={() => setForm(false)} />}
+    <div className={`card ec-card${full ? " ec-full" : ""}`}>
+      <div className="ec-tools">
+        <button className="btn sm" onClick={exportCsv} disabled={!rows.length}><LuDownload /> Export</button>
+        <button className="btn sm soft" onClick={() => setFull(f => !f)}>{full ? <LuMinimize2 /> : <LuMaximize2 />} {full ? "Normal View" : "Full View"}</button>
+        <button className="btn sm soft" onClick={refresh} disabled={spin}><LuRefreshCw className={spin ? "spin" : ""} /> Refresh</button>
+        <label className="ec-show">Show <select value={per} onChange={e => { setPer(Number(e.target.value)); setPage(1); }}>{[10, 25, 50, 100].map(n => <option key={n} value={n}>{n}</option>)}</select></label>
+        <span className="grow" />
+        <select className="ec-type" value={type} onChange={e => { setType(e.target.value); setPage(1); }} aria-label="Type">{TYPES.map(([v, l]) => <option key={v} value={v}>{l}</option>)}</select>
+        <label className="ec-search"><input type="text" value={q} onChange={e => { setQ(e.target.value); setPage(1); }} placeholder="EC Ref No, name or passport" /><LuSearch /></label>
+      </div>
+      <div className="tbl ec-tbl"><table><thead><tr><th>SL</th><th>Worker name</th><th>Passport No</th><th>EC Ref No</th><th>Country</th><th>Status</th><th>Submission Date</th><th>Payment Status</th><th>Option</th></tr></thead><tbody>
+        {shown.length ? shown.map(({ c, w }, i) => { const pay = ecPay(c); return (
+          <tr key={c.id}>
+            <td>{(pg - 1) * per + i + 1}</td>
+            <td><b>{w.name}</b></td>
+            <td className="num" data-notr>{w.passport || "—"}</td>
+            <td><a href="#" className="ec-ref" data-notr onClick={e => { e.preventDefault(); openModal("clearance", { cid: c.id }); }}>{c.ref || c.id}</a></td>
+            <td>{c.country}</td>
+            <td><span className={`ec-badge s-${c.status}`}>{EC_STATUS[c.status] || c.status}</span></td>
+            <td className="num">{ecDate(c.created)}</td>
+            <td><span className={`ec-badge pay-${pay}`}>{{ na: "N/A", paid: "Paid", unpaid: "Unpaid" }[pay]}</span></td>
+            <td><div className="ec-opts">
+              <button className="ec-ico view" title="View details" aria-label="View details" onClick={() => openModal("clearance", { cid: c.id })}><LuEye /></button>
+              {c.card && <button className="ec-ico pdf" title="Download clearance card" aria-label="Download clearance card" onClick={() => downloadFile(c.card.data, cardFileName(c))}><LuFileText /></button>}
+              {pay === "unpaid" && <button className="ec-ico pay" title="Pay the agency" aria-label="Pay the agency" onClick={() => setTab("agent", "account")}><LuBanknote /></button>}
+            </div></td>
+          </tr>); }) : <tr><td colSpan={9}><Empty>{C.length ? "No application matches your search." : "No clearance applications yet."}</Empty></td></tr>}
+      </tbody></table></div>
+      {rows.length > 0 && <div className="row between mt8 ec-foot"><span className="muted small">{`Showing ${(pg - 1) * per + 1} to ${Math.min(pg * per, rows.length)} of ${rows.length} entries`}</span>
+        <div className="row tight"><button className="btn sm" disabled={pg <= 1} onClick={() => setPage(pg - 1)}>Previous</button><span className="small b">{pg} / {pages}</span><button className="btn sm" disabled={pg >= pages} onClick={() => setPage(pg + 1)}>Next</button></div></div>}
+    </div>
+  </>;
+}
+
+/* one form for one or more workers going to the same country and employer; each worker gets their own EC file */
+function GroupEcForm({ C, W, active, onDone }) {
+  const S = store.S; const fee = Number(S.settings.clearanceFee || 0);
+  const free = W.filter(w => !C.some(c => c.workerId === w.id && c.status !== "rejected"));
+  const [sel, setSel] = React.useState(() => ui.clWorker && free.some(w => w.id === ui.clWorker) ? [ui.clWorker] : []);
+  const [busy, setBusy] = React.useState(false);
+  const toggle = id => setSel(L => L.includes(id) ? L.filter(x => x !== id) : [...L, id]);
+  const submit = async e => {
+    e.preventDefault(); const form = e.currentTarget; const fd = new FormData(form); const d = Object.fromEntries(fd);
+    if (!active) return toast("Your account must be approved first.");
+    if (!sel.length) return toast("Select at least one worker.");
+    const pick = n => { const f = fd.get(n); return f && f.size ? f : null; };
+    for (const id of sel) { const w = worker(id); if (!pick(`pass_${id}`) || !pick(`visa_${id}`)) return toast(`Upload the passport copy and visa copy for ${w.name}.`); }
+    setBusy(true); let ok = 0;
+    try {
+      for (const id of sel) {
+        const w = worker(id), contractF = pick(`contract_${id}`);
+        const files = { passport: await readUpload(pick(`pass_${id}`), { imageMax: 1800 }), visa: await readUpload(pick(`visa_${id}`), { imageMax: 1800 }), contract: contractF ? await readUpload(contractF, { imageMax: 1800 }) : null };
+        const r = await act("agent.clearance", { workerId: id, country: d.country, employer: d.employer, visaNo: d[`visaNo_${id}`] || "", visaType: d.visaType, flightDate: d.flightDate, notes: d.notes, files }, { quiet: true });
+        if (r) ok++; else break; // the server's reason is shown; the workers already sent leave the list
+      }
+      if (ok && ok < sel.length) setSel(L => L.slice(ok));
+      if (ok === sel.length) { toast(`${ok} EC application(s) submitted.`); ui.clWorker = ""; setSel([]); form.reset(); onDone(); }
+    } catch (err) { toast(err.message); }
+    finally { setBusy(false); }
+  };
+  return (
+    <form className="card fgrid ec-form" onSubmit={submit} noValidate>
+      <h3 className="full">Create New Group EC Application</h3>
+      <p className="muted small full">Choose the workers going to the same country and employer. Each worker gets their own EC Ref No.</p>
+      <Field label="Destination country"><select name="country" defaultValue="Saudi Arabia"><Options list={Object.keys(COUNTRIES)} /></select></Field>
+      <Field label="Employer / sponsor name"><input type="text" name="employer" required /></Field>
+      <Field label="Visa type"><select name="visaType"><Options list={["Work visa", "Free visa", "Group visa", "Other"]} /></select></Field>
+      <Field label="Planned flight date"><input type="date" name="flightDate" /></Field>
+      <fieldset className="plain full"><legend className="small b">Workers</legend>
+        {free.length ? <div className="ec-pick">{free.map(w => <label key={w.id} className={`check ec-chip${sel.includes(w.id) ? " on" : ""}`}><input type="checkbox" checked={sel.includes(w.id)} onChange={() => toggle(w.id)} /> {w.name} <span className="muted small" data-notr>{w.passport}</span></label>)}</div>
+          : <p className="muted small">All your workers already have an open clearance file.</p>}
+      </fieldset>
+      {sel.map(id => { const w = worker(id); return (
+        <div key={id} className="full ec-worker">
+          <div className="b mb6">{w.name} <span className="muted small" data-notr>· {w.passport}</span></div>
+          <div className="fgrid">
+            <Field label="Visa number"><input type="text" name={`visaNo_${id}`} /></Field>
+            <Field label="Upload passport copy" hint="PDF or JPG"><input type="file" name={`pass_${id}`} accept={DOC_TYPES} /></Field>
+            <Field label="Upload visa copy" hint="PDF or JPG"><input type="file" name={`visa_${id}`} accept={DOC_TYPES} /></Field>
+            <Field label="Upload employment contract (optional)" hint="PDF or JPG"><input type="file" name={`contract_${id}`} accept={DOC_TYPES} /></Field>
+          </div>
+        </div>); })}
+      <Field label="Notes for the agency" full><textarea name="notes" className="short" /></Field>
+      <div className="full row"><button className="btn pri" type="submit" disabled={!active || busy || !sel.length}><LuSend /> {busy ? "Uploading…" : sel.length > 1 ? `Submit ${sel.length} applications` : "Submit application"}</button>
+        {fee > 0 && <span className="muted small">{`Processing charge of ${bdtFmt(fee)} per worker is added to your account.`}</span>}</div>
+    </form>
   );
 }

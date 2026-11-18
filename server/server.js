@@ -63,6 +63,9 @@ function save() {
 }
 
 /* Fiji wages are hourly: mark Fiji jobs whose amounts already look hourly (others keep monthly until edited) */
+/* every clearance file gets an EC reference number, e.g. EC-2026-RL1217-100001 (older files get one in date order) */
+const ecRef = c => { db.clSeq = (db.clSeq || 100000) + 1; return `EC-${String(c.created || now()).slice(0, 4)}-RL1217-${db.clSeq}`; };
+[...db.clearances].sort((a, b) => String(a.created).localeCompare(String(b.created))).forEach(c => { if (!c.ref) c.ref = ecRef(c); });
 for (const j of db.jobs) if (!j.period) j.period = HOURLY.includes(j.country) && Number(j.salaryMax) <= 500 ? "hour" : "month";
 /* home page slideshow: the pictures shipped in dist/scenery are the starting list; after that the admin manages it */
 if (!Array.isArray(db.scenery)) {
@@ -391,6 +394,7 @@ A["cand.clearance"] = async (d, u) => {
   const files = { passport: d.files.passport ? storeFile(d.files.passport, u.id) : { ...u.profile.passportFile }, visa: storeFile(d.files.visa, u.id), contract: d.files.contract ? storeFile(d.files.contract, u.id) : null, others: (d.files.others || []).map(f => storeFile(f, u.id)) };
   const docs = ["Passport copy", "Visa copy", ...(files.contract ? ["Employment contract"] : []), ...(files.others.length ? ["Other documents"] : [])];
   db.clearances.push({ id: id("c"), agentId: null, workerId: null, candidateId: u.id, country: d.country, fullName, passportNo, employer: "", visaNo: "", visaType: "", flightDate: "", docs, files, notes: "", status: "pending", history: [{ s: "pending", at: now() }], created: now() });
+  { const c = db.clearances[db.clearances.length - 1]; c.ref = ecRef(c); }
   if (!u.profile.passportNo) u.profile.passportNo = passportNo;
   notifyAdmins(`New BMET clearance file from job seeker ${fullName} (${d.country}).`, "clearance");
   return { msg: "Clearance application submitted. Follow its status below." };
@@ -537,6 +541,7 @@ A["agent.clearance"] = async (d, u) => {
   const files = { passport: storeFile(d.files.passport, u.id), visa: storeFile(d.files.visa, u.id), contract: d.files.contract ? storeFile(d.files.contract, u.id) : null, others: [] };
   const docs = ["Passport copy", "Visa copy", ...(files.contract ? ["Employment contract"] : [])];
   db.clearances.push({ id: id("c"), agentId: u.id, workerId: w.id, candidateId: null, country: d.country, employer: str(d.employer, 150), visaNo: str(d.visaNo, 40), visaType: str(d.visaType, 40), flightDate: str(d.flightDate, 10), docs, files, notes: str(d.notes, 2000), status: "pending", history: [{ s: "pending", at: now() }], created: now() });
+  { const c = db.clearances[db.clearances.length - 1]; c.ref = ecRef(c); }
   const fee = Number(db.settings.clearanceFee || 0);
   if (fee > 0) db.ledger.push({ id: id("l"), agentId: u.id, type: "charge", desc: `BMET clearance processing: ${w.name}`, amount: fee, date: now().slice(0, 10), method: "", ref: "", status: "confirmed" });
   notifyAdmins(`New BMET clearance file: ${w.name} (${d.country}) from ${u.agent.business}.`, "clearance");
