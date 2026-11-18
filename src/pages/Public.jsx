@@ -169,8 +169,8 @@ export function JobDetail({ id }) {
           <p className="muted mt8">{c.name || j.employerName} {c.verify === "verified" && <Pill s="verified" />}</p>
           <div className="sal num big mt14">{money(j.salaryMin, j.currency)} – {num(j.salaryMax)} <span className="muted small sal-sub">{isHourly(j) ? "per hour · ≈ BDT" : "per month · ≈ BDT"} {num(bdtMin(j))} – {num(bdtMax(j))}</span>
             {isHourly(j) && <div className="sal-month small">≈ BDT {num(bdtMin(j) * HOURS_PER_MONTH)} – {num(bdtMax(j) * HOURS_PER_MONTH)} <span className="muted">per month (8 hours a day, one day off a week)</span></div>}</div>
-          <h3 className="sub">Job description</h3><p>{j.description}</p>
-          <h3 className="sub">Requirements</h3><p>{j.requirements}</p>
+          <h3 className="sub">Job description</h3><p className="lines">{j.description}</p>
+          <h3 className="sub">Requirements</h3><p className="lines">{j.requirements}</p>
           <h3 className="sub">Benefits</h3><div className="row tight">{j.benefits.length ? j.benefits.map(b => <span key={b} className="chip">{b}</span>) : "—"}</div>
         </div>
         <aside className="card stack">

@@ -644,3 +644,10 @@ html[lang="bn"] .btn{font-weight:600}
 .modal.modal-verify{padding:0;background:transparent;box-shadow:none;max-width:520px}
 .modal.modal-verify>.x{display:none}
 .modal.modal-verify .verify-card{margin:0 auto}
+/* admin job form: profession templates */
+.jobtpl{background:color-mix(in srgb,var(--brand) 6%,transparent);border:1px dashed color-mix(in srgb,var(--brand) 35%,transparent);border-radius:12px;padding:12px 14px}
+.jobtpl>.row{align-items:flex-end;gap:12px;flex-wrap:wrap}
+.jobtpl>.row>.f{flex:1 1 260px;margin:0}
+.jobtpl-btns{flex-wrap:wrap;padding-bottom:4px}
+.jobtpl-edit{margin-top:12px;box-shadow:none}
+.lines{white-space:pre-line}

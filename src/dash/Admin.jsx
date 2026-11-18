@@ -501,7 +501,7 @@ function AdminJobForm() {
       <Field label="Employer" hint="Pick a registered employer, or type the company name for an employer without an account">
         <select value={emp} onChange={e => setEmp(e.target.value)}><option value="">Not registered (type the name)</option>{employers.map(([v, l]) => <option key={v} value={v}>{l}</option>)}</select></Field>
       {!emp ? <Field label="Employer / company name (optional)" hint="Leave empty to post without showing an employer name"><input type="text" name="employerName" defaultValue={editing?.employerName || ""} maxLength={120} /></Field> : <div />}
-      <JobFields j={j} />
+      <JobFields j={j} templates />
       {!editing && <label className="check full"><input type="checkbox" name="publish" defaultChecked /> Publish now (otherwise saved as unpublished)</label>}
       <label className="check full"><input type="checkbox" name="featured" defaultChecked={!!j.featured} /> Featured job (shown first on the home page)</label>
       <div className="full row"><button className="btn pri" type="submit">{editing ? "Save changes" : "Post job"}</button><button className="btn" type="button" onClick={close}>Cancel</button></div>

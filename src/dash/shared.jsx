@@ -1,8 +1,10 @@
 import React from "react";
-import { LuEye, LuCheck, LuX, LuTrash2, LuUpload, LuSend, LuDownload, LuCamera, LuFileText, LuIdCard, LuFileBadge } from "react-icons/lu";
+import { LuPlus, LuPencil, LuRotateCcw, LuEye, LuCheck, LuX, LuTrash2, LuUpload, LuSend, LuDownload, LuCamera, LuFileText, LuIdCard, LuFileBadge } from "react-icons/lu";
 import { store, num, fdate, kb, bdtFmt, candOf, clPerson, job, STAGES, LABEL, CARD_TYPES, COUNTRIES, CATS, TYPES, BENEFITS, HOURLY } from "../store.js";
 import { openModal, setAppStatus, confirmPayment, confirmBox, toast, downloadFile, cardFileName, formData, act } from "../actions.js";
 import { Pill, Empty, Avatar } from "../ui.jsx";
+import { descriptionFor, requirementsFor, toLines, PASSPORT_LINE, TERM_BENEFITS } from "../jobtpl.js";
+import { HOURS_PER_DAY } from "../constants.js";
 import { readUpload, fileExt } from "../actions.js";
 
 export function NotifPanel({ u }) {
@@ -157,13 +159,62 @@ export function AgentDocsView({ u }) {
 
 /* the job fields shared by the employer's and the admin's job forms */
 export const blankJob = (country = "Saudi Arabia", category = "Construction") => ({ title: "", city: "", salaryMin: "", salaryMax: "", description: "", requirements: "", benefits: [], type: "Contract", contract: 2, experience: 0, vacancies: 10, age: "21–40", country, category, deadline: new Date(Date.now() + 30 * 864e5).toISOString().slice(0, 10) });
-export function JobFields({ j }) {
+export function JobFields({ j, templates = false }) {
   const [country, setCountry] = React.useState(j.country);
   const hourly = HOURLY.includes(country); const cur = COUNTRIES[country];
+  const r = { title: React.useRef(), cat: React.useRef(), desc: React.useRef(), req: React.useRef(), contract: React.useRef() };
+  const auto = React.useRef({ title: "", desc: "", req: "" }); // what the template last wrote
+  const [tid, setTid] = React.useState("");
+  const [edit, setEdit] = React.useState(null); // null | "new" | template id
+  const list = store.S.jobTemplates || [];
+  const edited = () => {
+    const d = r.desc.current.value.trim(), q = r.req.current.value.trim();
+    return (d && d !== auto.current.desc.trim()) || (q && q !== auto.current.req.trim());
+  };
+  const apply = (id, ctry, onlyTerms) => {
+    const t = (store.S.jobTemplates || []).find(x => x.id === id); if (!t) return;
+    if (ctry === "Fiji" && r.contract.current && !onlyTerms) r.contract.current.value = "3"; // Fiji contracts run 3 years
+    const desc = descriptionFor(t, ctry, r.contract.current?.value), req = requirementsFor(t);
+    r.desc.current.value = desc; auto.current.desc = desc;
+    if (!onlyTerms) {
+      r.req.current.value = req; auto.current.req = req;
+      const ti = r.title.current; if (!ti.value.trim() || ti.value === auto.current.title) { ti.value = t.name; auto.current.title = t.name; }
+      if (t.category && CATS.includes(t.category)) r.cat.current.value = t.category;
+    } else auto.current.req = r.req.current.value;
+    const form = r.desc.current.form;
+    (TERM_BENEFITS[ctry] || []).forEach(b => { const box = form?.querySelector(`input[name="benefits"][value="${b}"]`); if (box) box.checked = true; });
+  };
+  const pick = id => {
+    if (!id) { setTid(""); return; }
+    const go = () => { setTid(id); apply(id, country); };
+    edited() ? confirmBox("Replace the job description and requirements you edited with this job's template?", go, "Replace") : go();
+  };
+  const changeCountry = c => {
+    setCountry(c);
+    if (!tid) return;
+    const d = r.desc.current.value.trim();
+    if (!d || d === auto.current.desc.trim()) apply(tid, c, true);
+    else confirmBox(`Update the benefits in the job description for ${c}? Your other edits in the description will be replaced.`, () => apply(tid, c, true), "Update");
+  };
+  const del = () => { const t = list.find(x => x.id === tid); if (t) confirmBox(`Remove “${t.name}” from the job list? Jobs already posted are not changed.`, async () => { if (await act("admin.jobTemplate", { op: "delete", id: tid })) setTid(""); }, "Remove"); };
   return <>
-    <Field label="Job title"><input type="text" name="title" defaultValue={j.title} required /></Field>
-    <Field label="Industry"><select name="category" defaultValue={j.category}><Options list={CATS} /></select></Field>
-    <Field label="Country"><select name="country" value={country} onChange={e => setCountry(e.target.value)}><Options list={Object.keys(COUNTRIES)} /></select></Field>
+    {templates && <div className="full jobtpl">
+      <div className="row">
+        <Field label="Job (profession)" hint="Fills the job title, description and requirements. You can still edit them before posting.">
+          <select value={tid} onChange={e => pick(e.target.value)}><option value="">Choose a job…</option>{list.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}</select></Field>
+        <div className="row tight jobtpl-btns">
+          <button type="button" className="btn sm" onClick={() => setEdit("new")}><LuPlus /> Add job</button>
+          {tid && <button type="button" className="btn sm" onClick={() => setEdit(tid)}><LuPencil /> Edit template</button>}
+          {tid && <button type="button" className="btn sm" onClick={() => apply(tid, country)}><LuRotateCcw /> Reset text</button>}
+          {tid && <button type="button" className="btn sm danger" onClick={del} aria-label="Remove template"><LuTrash2 /></button>}
+        </div>
+      </div>
+      {edit && <TemplateEditor t={edit === "new" ? null : list.find(x => x.id === edit)} onClose={() => setEdit(null)}
+        onSaved={id => { setEdit(null); setTid(id); const go = () => apply(id, country); edited() ? confirmBox("Put this job's template into the job description and requirements? Your edits there will be replaced.", go, "Replace") : go(); }} />}
+    </div>}
+    <Field label="Job title"><input type="text" name="title" ref={r.title} defaultValue={j.title} required /></Field>
+    <Field label="Industry"><select name="category" ref={r.cat} defaultValue={j.category}><Options list={CATS} /></select></Field>
+    <Field label="Country"><select name="country" value={country} onChange={e => changeCountry(e.target.value)}><Options list={Object.keys(COUNTRIES)} /></select></Field>
     <Field label="City"><input type="text" name="city" defaultValue={j.city} required /></Field>
     {hourly
       ? <Field label={`Hourly wage from (${cur} / hour)`} hint="Fiji wages are paid per hour, e.g. 5.5"><input type="number" name="salaryMin" min="0" max="500" step="0.01" defaultValue={j.period === "hour" ? j.salaryMin : ""} key="hmin" required /></Field>
@@ -173,12 +224,33 @@ export function JobFields({ j }) {
       : <Field label={`Salary to (${cur} / month)`}><input type="number" name="salaryMax" min="0" step="any" defaultValue={j.period === "hour" ? "" : j.salaryMax} key="mmax" required /></Field>}
     <Field label="Job type"><select name="type" defaultValue={j.type}><Options list={TYPES} /></select></Field>
     <Field label="Minimum experience (years)"><input type="number" name="experience" min="0" defaultValue={j.experience} /></Field>
-    <Field label="Contract length (years)"><input type="number" name="contract" min="1" defaultValue={j.contract} /></Field>
+    <Field label="Contract length (years)"><input type="number" name="contract" min="1" ref={r.contract} defaultValue={j.contract} /></Field>
     <Field label="Vacancies"><input type="number" name="vacancies" min="1" defaultValue={j.vacancies} /></Field>
     <Field label="Age limit"><input type="text" name="age" defaultValue={j.age} /></Field>
     <Field label="Application deadline"><input type="date" name="deadline" defaultValue={j.deadline} /></Field>
     <fieldset className="plain full"><legend className="small b">Benefits</legend><div className="row">{BENEFITS.map(b => <label key={b} className="check"><input type="checkbox" name="benefits" value={b} defaultChecked={j.benefits.includes(b)} /> {b}</label>)}</div></fieldset>
-    <Field label="Job description" full><textarea name="description" defaultValue={j.description} required /></Field>
-    <Field label="Requirements" full><textarea name="requirements" defaultValue={j.requirements} /></Field>
+    <Field label="Job description" full><textarea name="description" ref={r.desc} rows={templates ? 12 : undefined} defaultValue={j.description} required /></Field>
+    <Field label="Requirements" full><textarea name="requirements" ref={r.req} rows={templates ? 6 : undefined} defaultValue={j.requirements} /></Field>
   </>;
+}
+
+/* add or edit a profession template (no <form>: it sits inside the job form) */
+function TemplateEditor({ t, onClose, onSaved }) {
+  const [v, setV] = React.useState(() => ({ name: t?.name || "", category: t?.category || "Construction", duties: (t?.duties || []).join("\n"), requirements: (t?.requirements || [PASSPORT_LINE]).join("\n") }));
+  const set = k => e => setV({ ...v, [k]: e.target.value });
+  const save = async () => {
+    const res = await act("admin.jobTemplate", { op: t ? "update" : "add", id: t?.id, ...v, duties: toLines(v.duties), requirements: toLines(v.requirements) });
+    if (res) onSaved(res.id || t?.id);
+  };
+  return (
+    <div className="card jobtpl-edit fgrid" onKeyDown={e => { if (e.key === "Enter" && e.target.tagName === "INPUT") { e.preventDefault(); save(); } }}>
+      <h3 className="full">{t ? `Edit template: ${t.name}` : "Add a new job"}</h3>
+      <Field label="Job name"><input type="text" value={v.name} onChange={set("name")} placeholder="e.g. Electrician" maxLength={60} /></Field>
+      <Field label="Industry"><select value={v.category} onChange={set("category")}><Options list={CATS} /></select></Field>
+      <Field label="Responsibilities" hint="One per line" full><textarea rows={4} value={v.duties} onChange={set("duties")} placeholder="Installation and repair of electrical wiring and fittings." /></Field>
+      <Field label="Requirements" hint="One per line" full><textarea rows={4} value={v.requirements} onChange={set("requirements")} /></Field>
+      <p className="muted small full">{`Working hours (${HOURS_PER_DAY} hours per day) and the benefits for the chosen country are added by themselves.`}</p>
+      <div className="full row"><button type="button" className="btn pri" onClick={save}><LuCheck /> {t ? "Save template" : "Add job"}</button><button type="button" className="btn" onClick={onClose}>Cancel</button></div>
+    </div>
+  );
 }

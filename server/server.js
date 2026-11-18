@@ -69,6 +69,11 @@ if (!Array.isArray(db.scenery)) {
   try { db.scenery = JSON.parse(fs.readFileSync(path.join(HERE, "seed", "scenery.json"), "utf8")).map(x => ({ id: id("sc"), builtin: x.name, alt: x.alt, pos: x.pos || "50% 50%", hidden: false })); }
   catch { db.scenery = []; }
 }
+/* job post templates by profession (admin job form): start from server/seed/job-templates.json, then the admin manages them */
+if (!Array.isArray(db.jobTemplates)) {
+  try { db.jobTemplates = JSON.parse(fs.readFileSync(path.join(HERE, "seed", "job-templates.json"), "utf8")).map(x => ({ id: id("jt"), ...x })); }
+  catch { db.jobTemplates = []; }
+}
 /* team members shipped with the code (server/seed/team.json): each is added once; if the admin later deletes one it stays deleted */
 try {
   const seedDir = path.join(HERE, "seed"); const list = JSON.parse(fs.readFileSync(path.join(seedDir, "team.json"), "utf8"));
@@ -224,6 +229,7 @@ function viewFor(u) {
       jobs: db.jobs, applications: db.applications, orders: db.orders, messages: can(u, "messages") ? db.messages : [], workers: db.workers,
       clearances: db.clearances.map(cleanCl), ledger: db.ledger, tickets: db.tickets, users: db.users.map(x => cleanUser(x, true))
     });
+    if (can(u, "jobs")) pub.jobTemplates = db.jobTemplates;
     if (u.role === "admin") { const c = smtpConf(); pub.smtp = { host: c.host || "", port: c.port || 465, user: c.user || "", from: c.from || "", hasPass: !!c.pass, local: !!c.local }; }
   }
   return pub;
@@ -423,6 +429,22 @@ A["emp.jobSave"] = async (d, u) => {
   db.jobs.push(nj); if (!db.settings.moderation) publishJob(nj);
   notifyAdmins(`New job submitted for review: ${nj.title} by ${u.company.name}.`, "jobs");
   return { msg: db.settings.moderation ? "Job submitted. It goes live after the agency approves it." : "Job is live." };
+};
+/* job post templates: add, update or delete a profession */
+A["admin.jobTemplate"] = async (d, u) => {
+  needPerm(u, "jobs");
+  const L = db.jobTemplates;
+  if (d.op === "delete") { const x = L.find(t => t.id === d.id); must(x, "Template not found."); db.jobTemplates = L.filter(t => t !== x); return { msg: `“${x.name}” removed from the list.` }; }
+  const lines = v => (Array.isArray(v) ? v : String(v ?? "").split(/\r?\n/)).map(s => str(s, 300).replace(/^(?:[•\-*]|Bullet)\s*/i, "")).filter(Boolean).slice(0, 25);
+  const name = str(d.name, 60), duties = lines(d.duties), requirements = lines(d.requirements);
+  must(name.length >= 2, "Enter the job name, e.g. Electrician.");
+  must(duties.length, "Write at least one responsibility.");
+  must(!L.some(t => t.id !== d.id && t.name.toLowerCase() === name.toLowerCase()), `“${name}” is already in the list.`);
+  const data = { name, category: str(d.category, 60) || "Construction", duties, requirements };
+  if (d.op === "update") { const x = L.find(t => t.id === d.id); must(x, "Template not found."); Object.assign(x, data); return { msg: "Template saved.", id: x.id }; }
+  must(L.length < 200, "Too many templates.");
+  const x = { id: id("jt"), ...data }; L.push(x);
+  return { msg: `“${name}” added to the job list.`, id: x.id };
 };
 /* admin / staff with the jobs permission: post a job for any employer or edit any job; goes live without review */
 A["admin.jobSave"] = async (d, u) => {
