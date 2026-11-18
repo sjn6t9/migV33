@@ -69,7 +69,7 @@ export function ChatWidget({ onAgent }) {
       </div>
       {open && (
         <div className={`chat${s.whatsapp ? " withwa" : ""}`} role="dialog" aria-label="Help assistant">
-          <div className="chat-h"><Logo size={30} /> <b>MAM Assistant</b><span className="muted small">Automatic answers</span></div>
+          <div className="chat-h"><Logo size={30} square /> <b>MAM Assistant</b><span className="muted small">Automatic answers</span></div>
           <div className="chat-b">
             {msgs.map((m, i) => (
               <div key={i} className={`msg ${m.from}`}>

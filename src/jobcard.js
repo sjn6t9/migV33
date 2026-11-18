@@ -37,7 +37,7 @@ async function fontsReady() {
 export async function renderJobCard(job, { company = "", settings = {}, link = "" } = {}) {
   await fontsReady();
   const c = document.createElement("canvas"); c.width = W; c.height = H;
-  const logo = await loadImage("/brand/logo-320.webp");
+  const logo = await loadImage("/brand/logo-w320.webp?v=2");
   const g = c.getContext("2d"); g.textBaseline = "alphabetic";
 
   /* background */
@@ -47,11 +47,11 @@ export async function renderJobCard(job, { company = "", settings = {}, link = "
   const hg = g.createLinearGradient(0, 0, W, 330); hg.addColorStop(0, "#00785a"); hg.addColorStop(0.5, GREEN); hg.addColorStop(1, GREEN_DEEP);
   g.fillStyle = hg; g.fillRect(0, 0, W, 330);
   // logo
-  roundRect(g, 64, 50, 120, 120, 24); g.fillStyle = "#ffffff"; g.fill();
-  if (logo) g.drawImage(logo, 70, 56, 108, 108);
-  else { g.fillStyle = GREEN; g.font = `800 34px ${DISPLAY}`; g.textAlign = "center"; g.fillText("M&M", 124, 118); }
-  g.textAlign = "left"; g.fillStyle = "#ffffff"; g.font = `800 40px ${DISPLAY}`; g.fillText("MAM & MAM OVERSEAS LTD.", 208, 102);
-  g.font = `500 28px ${BODY}`; g.fillStyle = "rgba(255,255,255,.88)"; g.fillText("Government licensed recruiting agency · RL 1217", 208, 146);
+  roundRect(g, 64, 52, 184, 115, 22); g.fillStyle = "#ffffff"; g.fill();
+  if (logo) g.drawImage(logo, 68, 56, 176, 110);
+  else { g.fillStyle = GREEN; g.font = `800 34px ${DISPLAY}`; g.textAlign = "center"; g.fillText("M&M", 156, 122); }
+  g.textAlign = "left"; g.fillStyle = "#ffffff"; g.font = `800 40px ${DISPLAY}`; g.fillText("MAM & MAM OVERSEAS LTD.", 274, 102);
+  g.font = `500 26px ${BODY}`; g.fillStyle = "rgba(255,255,255,.88)"; g.fillText("Government licensed recruiting agency · RL 1217", 274, 146);
   // hiring pill
   g.font = `800 34px ${DISPLAY}`; const hire = "WE ARE HIRING"; const hw = g.measureText(hire).width + 64;
   roundRect(g, 64, 210, hw, 70, 35); g.fillStyle = RED; g.fill();

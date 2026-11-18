@@ -505,11 +505,11 @@ img.avatar.photo{object-fit:cover;border-radius:50%;border:2px solid var(--line)
 .logo-mark{flex:none;display:block;border-radius:10px;background:#fff;object-fit:contain}
 :root[data-theme="dark"] .logo-mark{padding:2px}
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .logo-mark{padding:2px}}
-.logo .logo-mark{width:52px;height:52px}
-.foot-logo{border-radius:14px;padding:6px;margin-bottom:10px;width:84px;height:84px}
+.logo .logo-mark{width:83px;height:52px}
+.foot-logo{border-radius:14px;padding:4px;margin-bottom:10px;width:134px;height:84px}
 .modal-brand{display:flex;justify-content:center;margin:-4px 0 6px}
 .chat-h .logo-mark{width:30px;height:30px;border-radius:7px;padding:1px}
-@media (max-width:560px){.logo .logo-mark{width:44px;height:44px}}
+@media (max-width:560px){.logo .logo-mark{width:70px;height:44px}}
 /* Bangla: Noto Sans Bengali for text, Anek Bangla for headings and buttons */
 html[lang="bn"] body{line-height:1.7}
 html[lang="bn"] h1,html[lang="bn"] h2,html[lang="bn"] h3,html[lang="bn"] h4{line-height:1.3;letter-spacing:0}

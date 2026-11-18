@@ -127,7 +127,7 @@ export function VerifyMember({ id }) {
   return (
     <div className="verify-page">
       <div className="verify-top">
-        <span className="verify-brand"><img src="/brand/logo-96.webp" width="40" height="40" alt="" /> <span className="vb-name">MAM &amp; MAM OVERSEAS LTD.</span></span>
+        <span className="verify-brand"><img src="/brand/logo-w160.webp?v=2" width="64" height="40" alt="" /> <span className="vb-name">MAM &amp; MAM OVERSEAS LTD.</span></span>
         <select aria-label="Language" value={getLang()} onChange={async e => { await setLang(e.target.value); touch(); }} data-notr>
           {LANGS.map(l => <option key={l.code} value={l.code}>{l.name}</option>)}
         </select>

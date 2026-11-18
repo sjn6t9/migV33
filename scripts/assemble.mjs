@@ -30,18 +30,18 @@ const html = `<!DOCTYPE html>
 <script>try{var t=localStorage.getItem("mam_theme");if(t)document.documentElement.dataset.theme=t;var l=localStorage.getItem("mam_lang");if(l==="ar")document.documentElement.dir="rtl";}catch(e){}</script>
 <title>MAM &amp; MAM Overseas Ltd.</title>
 <meta name="description" content="MAM & MAM Overseas Ltd. — licensed recruiting agency (RL 1217). Overseas jobs in Saudi Arabia, Malaysia and Fiji.">
-<link rel="icon" href="/brand/favicon.ico" sizes="48x48">
-<link rel="icon" type="image/png" sizes="32x32" href="/brand/favicon-32.png">
-<link rel="apple-touch-icon" href="/brand/apple-touch-icon.png">
+<link rel="icon" href="/brand/favicon.ico?v=2" sizes="48x48">
+<link rel="icon" type="image/png" sizes="32x32" href="/brand/favicon-32.png?v=2">
+<link rel="apple-touch-icon" href="/brand/apple-touch-icon.png?v=2">
 <link rel="manifest" href="/site.webmanifest">
-<link rel="preload" as="image" href="/brand/logo-96.webp">
+<link rel="preload" as="image" href="/brand/logo-w160.webp?v=2">
 <link rel="preload" as="font" type="font/woff" href="/fonts/inter.woff" crossorigin>
 <!--og--><meta property="og:type" content="website">
 <meta property="og:site_name" content="MAM &amp; MAM Overseas Ltd.">
 <meta property="og:title" content="MAM &amp; MAM Overseas Ltd. · Licensed recruiting agency RL 1217">
 <meta property="og:description" content="Overseas jobs in Saudi Arabia, Malaysia and Fiji through a government licensed recruiting agency (RL 1217).">
 <meta property="og:url" content="__ORIGIN__/">
-<meta property="og:image" content="__ORIGIN__/brand/og-image.png">
+<meta property="og:image" content="__ORIGIN__/brand/og-image.png?v=2">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
 <meta name="twitter:card" content="summary_large_image"><!--/og-->

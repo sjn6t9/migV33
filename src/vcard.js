@@ -47,12 +47,12 @@ export async function drawVisitingCard(m, { lang = "en", side = "front", setting
   const _fill = g.fillText.bind(g);
   g.fillText = (str, x, y) => { if (rtl && /^[\x20-\x7E…]+$/.test(String(str))) { const d = g.direction; g.direction = "ltr"; _fill(str, x, y); g.direction = d; } else _fill(str, x, y); };
   const X = (x, w = 0) => (rtl ? W - x - w : x); // mirror for right-to-left
-  const logo = await loadImg("/brand/logo-320.webp");
+  const logo = await loadImg("/brand/logo-w320.webp?v=2");
 
   if (side === "back") {
     const bg = g.createLinearGradient(0, 0, W, H); bg.addColorStop(0, GREEN); bg.addColorStop(1, DEEP); g.fillStyle = bg; g.fillRect(0, 0, W, H);
     g.globalAlpha = .07; g.fillStyle = "#fff"; g.beginPath(); g.arc(W - 90, 60, 230, 0, Math.PI * 2); g.fill(); g.beginPath(); g.arc(80, H - 40, 170, 0, Math.PI * 2); g.fill(); g.globalAlpha = 1;
-    rr(g, W / 2 - 100, 58, 200, 200, 34); g.fillStyle = "#fff"; g.fill(); if (logo) g.drawImage(logo, W / 2 - 88, 70, 176, 176);
+    rr(g, W / 2 - 160, 58, 320, 200, 34); g.fillStyle = "#fff"; g.fill(); if (logo) g.drawImage(logo, W / 2 - 150, 64, 300, 188);
     g.textAlign = "center"; g.fillStyle = "#fff";
     fit(g, "MAM & MAM OVERSEAS LTD.", W - 120, 50, 800, DISPLAY); g.fillText("MAM & MAM OVERSEAS LTD.", W / 2, 322);
     fit(g, t("Government licensed recruiting agency"), W - 160, 28, 500, BODY); g.globalAlpha = .92; g.fillText(t("Government licensed recruiting agency"), W / 2, 368); g.globalAlpha = 1;
@@ -71,7 +71,7 @@ export async function drawVisitingCard(m, { lang = "en", side = "front", setting
   const bg = g.createLinearGradient(bx, 0, bx + BW, H); bg.addColorStop(0, GREEN); bg.addColorStop(1, DEEP); g.fillStyle = bg; g.fillRect(bx, 0, BW, H);
   g.fillStyle = RED; g.fillRect(rtl ? bx : BW - 8, 0, 8, H);
   const cx = bx + BW / 2;
-  rr(g, cx - 66, 30, 132, 132, 24); g.fillStyle = "#fff"; g.fill(); if (logo) g.drawImage(logo, cx - 58, 38, 116, 116);
+  rr(g, cx - 104, 30, 208, 132, 22); g.fillStyle = "#fff"; g.fill(); if (logo) g.drawImage(logo, cx - 100, 34, 200, 125);
   g.textAlign = "center"; g.fillStyle = "#fff";
   fit(g, "MAM & MAM", BW - 50, 34, 800, DISPLAY); g.fillText("MAM & MAM", cx, 204);
   fit(g, "OVERSEAS LTD.", BW - 50, 25, 700, DISPLAY); g.fillText("OVERSEAS LTD.", cx, 234);

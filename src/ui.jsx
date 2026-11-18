@@ -13,11 +13,16 @@ export const CAT_ICON = {
   "Security": LuShield, "Cleaning & Facility": LuSparkles, "Agriculture": LuWheat, "Retail & Sales": LuShoppingBag, "IT & Office": LuMonitor
 };
 
-/* The agency's own logo (globe, plane and M&M), served from /brand/ */
-export function Logo({ size = 48, className = "" }) {
-  const src = size > 64 ? "/brand/logo-192.webp" : "/brand/logo-96.webp";
-  const src2 = size > 64 ? "/brand/logo-320.webp" : "/brand/logo-192.webp";
-  return <img className={`logo-mark ${className}`} src={src} srcSet={`${src} 1x, ${src2} 2x`} width={size} height={size} alt="" decoding="async" />;
+/* The agency's own logo (M&M with the plane), served from /brand/ */
+export function Logo({ size = 48, className = "", square = false }) {
+  if (square) {
+    const src = size > 64 ? "/brand/logo-192.webp?v=2" : "/brand/logo-96.webp?v=2";
+    const src2 = size > 64 ? "/brand/logo-320.webp?v=2" : "/brand/logo-192.webp?v=2";
+    return <img className={`logo-mark ${className}`} src={src} srcSet={`${src} 1x, ${src2} 2x`} width={size} height={size} alt="" decoding="async" />;
+  }
+  // the logo is wide (16:10): `size` is its height
+  const w = Math.round(size * 1.6), src = w > 160 ? "/brand/logo-w320.webp?v=2" : "/brand/logo-w160.webp?v=2";
+  return <img className={`logo-mark wide ${className}`} src={src} srcSet={`${src} 1x, ${w > 160 ? "/brand/logo-w640.webp?v=2" : "/brand/logo-w320.webp?v=2"} 2x`} width={w} height={size} alt="" decoding="async" />;
 }
 
 export const Pill = ({ s }) => <span className={`pill p-${s}`}>{LABEL[s] || s}</span>;
