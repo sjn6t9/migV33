@@ -232,7 +232,9 @@ fi
 # not finished yet (DNS still spreading or no certificate): try again by itself every 10 minutes
 if [ "$DNS_OK" = 1 ] && [ "$HTTPS_OK" = 1 ]; then
   systemctl disable -q --now $SVC-finish.timer 2>/dev/null || true
-elif systemctl is-active --quiet nginx; then
+elif [ "$DNS_OK" = 1 ] && systemctl is-active --quiet caddy && grep -q "^CANONICAL_HOST=$DOMAIN\$" "$ENVF"; then
+  systemctl disable -q --now $SVC-finish.timer 2>/dev/null || true
+elif systemctl is-active --quiet nginx || systemctl is-active --quiet caddy; then
   cat > /etc/systemd/system/$SVC-finish.service <<EOF
 [Unit]
 Description=Finish MAM & MAM Overseas setup for $NAMES (DNS and HTTPS)
