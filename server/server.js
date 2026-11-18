@@ -274,14 +274,21 @@ A["auth.login"] = async ({ email, pass }, u, ctx) => {
   limit(ctx.ip, "login", 10, 15 * 60e3);
   const x = db.users.find(y => y.email === str(email, 200).toLowerCase());
   must(x && checkPass(pass, x.pass), "Email or password is wrong.");
-  must(zoneAllows(ctx.zone, x), zoneMsg(ctx.zone), ctx.zone === "admin" ? 403 : 400);
+  must(zoneAllows(ctx.zone, x) || (ctx.zone === "main" && AGENT_HOST && x.role === "agent"), zoneMsg(ctx.zone), ctx.zone === "main" ? 400 : 403);
   must(x.status !== "suspended", "This account is suspended. Contact the agency.");
   if (x.status === "unverified") return { verify: x.id, email: x.email, msg: "Verify your email address to continue." };
   ctx.login(x); return { msg: `Signed in as ${x.name}` };
 };
+A["auth.handoff"] = async ({ token: t }, u, ctx) => {
+  limit(ctx.ip, "handoff", 30, 15 * 60e3);
+  const h = handoffs.get(String(t || "")); handoffs.delete(String(t || ""));
+  must(ctx.zone === "agent" && h && h.exp > Date.now(), "This sign-in link has expired. Sign in again.");
+  const x = user(h.uid); must(x && x.role === "agent" && x.status !== "suspended", "This sign-in link has expired. Sign in again.");
+  ctx.login(x); return { msg: `Signed in as ${x.name}` };
+};
 A["auth.logout"] = async (_, u, ctx) => { ctx.logout(); return {}; };
 A["auth.register"] = async (d, u, ctx) => {
-  must(ctx.zone !== "admin", zoneMsg("admin"), 403);
+  must(ctx.zone !== "admin" && ctx.zone !== "agent", zoneMsg(ctx.zone), 403);
   limit(ctx.ip, "register", 6, 3600e3);
   const role = ["candidate", "employer", "agent"].includes(d.role) ? d.role : "candidate";
   const email = str(d.email, 200).toLowerCase(), name = str(d.name, 120);
@@ -767,24 +774,38 @@ const MIME = { ".html": "text/html; charset=utf-8", ".js": "text/javascript; cha
 const baseHeaders = { "X-Content-Type-Options": "nosniff", "Referrer-Policy": "strict-origin-when-cross-origin", "X-Frame-Options": "SAMEORIGIN" };
 
 function cookies(req) { return Object.fromEntries((req.headers.cookie || "").split(";").map(c => c.trim().split("=")).filter(p => p[0]).map(([k, ...v]) => [k, decodeURIComponent(v.join("="))])); }
-/* separate admin panel: with ADMIN_HOST (e.g. admin.mamandmam.bd) set, admin and staff work only there,
-   and the public domain is only for job seekers, employers and agents. localhost and IP addresses are not split. */
+/* separate panels: with ADMIN_HOST (e.g. admin.mamandmam.bd) set, admin and staff work only there; with AGENT_HOST
+   (agent.mamandmam.bd) agents work only there. The public domain is for job seekers and employers, and an agent who
+   signs in there is handed over to the agent panel. localhost and IP addresses are not split. */
 const ADMIN_HOST = (process.env.ADMIN_HOST || "").trim().toLowerCase();
+const AGENT_HOST = (process.env.AGENT_HOST || "").trim().toLowerCase();
 const reqHost = req => String(req.headers["x-forwarded-host"] || req.headers.host || "").split(",")[0].trim().replace(/:\d+$/, "").toLowerCase();
 function hostZone(req) {
-  if (!ADMIN_HOST) return "any";
+  if (!ADMIN_HOST && !AGENT_HOST) return "any";
   const h = reqHost(req);
-  if (h === ADMIN_HOST) return "admin";
+  if (ADMIN_HOST && h === ADMIN_HOST) return "admin";
+  if (AGENT_HOST && h === AGENT_HOST) return "agent";
   if (!h || h === "localhost" || /^[\d.]+$/.test(h) || h.startsWith("[")) return "any";
   return "main";
 }
 const isStaffRole = x => x && (x.role === "admin" || x.role === "staff");
-const zoneAllows = (zone, x) => zone === "any" || (zone === "admin" ? isStaffRole(x) : !isStaffRole(x));
-const mainUrl = () => `https://${(process.env.CANONICAL_HOST || "").trim().toLowerCase() || ADMIN_HOST.replace(/^admin\./, "")}`;
+const zoneAllows = (zone, x) => zone === "any" ? true
+  : zone === "admin" ? isStaffRole(x)
+  : zone === "agent" ? x?.role === "agent"
+  : !(ADMIN_HOST && isStaffRole(x)) && !(AGENT_HOST && x?.role === "agent");
+const mainUrl = () => `https://${(process.env.CANONICAL_HOST || "").trim().toLowerCase() || (ADMIN_HOST || AGENT_HOST).replace(/^(admin|agent)\./, "")}`;
 // on the public site an admin/staff account looks like a wrong password: the admin panel's address is not shown there
-const zoneMsg = zone => zone === "admin"
-  ? `This is the agency's admin panel. Job seekers, employers and agents sign in at ${mainUrl()}`
+const zoneMsg = zone => zone === "admin" ? `This is the agency's admin panel. Job seekers, employers and agents sign in at ${mainUrl()}`
+  : zone === "agent" ? `This is the agent panel. Job seekers and employers sign in at ${mainUrl()}`
   : "Email or password is wrong.";
+/* agent signing in on the public site: a one-time pass (2 minutes) that the agent panel exchanges for its own session */
+const handoffs = new Map();
+function agentHandoff(x, req) {
+  const t = crypto.randomBytes(24).toString("hex"); handoffs.set(t, { uid: x.id, exp: Date.now() + 120e3 });
+  for (const [k, v] of handoffs) if (v.exp < Date.now()) handoffs.delete(k);
+  const port = String(req.headers.host || "").match(/:\d+$/)?.[0] || "";
+  return `${secure(req) ? "https" : "http"}://${AGENT_HOST}${secure(req) ? "" : port}/#handoff-${t}`;
+}
 function sessionUser(req) {
   const t = cookies(req).mam_s; const s = t && db.sessions[t];
   if (!s || Date.parse(s.exp) < Date.now()) return { token: null, u: null };
@@ -827,7 +848,9 @@ async function handleApi(req, res, url) {
     const setCookie = [];
     const ctx = {
       ip: clientIp(req), token, zone,
-      login: x => { must(zoneAllows(zone, x), zoneMsg(zone), 403); const t = crypto.randomBytes(32).toString("hex"); db.sessions[t] = { uid: x.id, exp: new Date(Date.now() + SESSION_DAYS * 864e5).toISOString() }; if (token) delete db.sessions[token]; ctx.token = t; ctx.user = x;
+      login: x => {
+        if (zone === "main" && AGENT_HOST && x.role === "agent") { ctx.redirect = agentHandoff(x, req); return; } // sign in on the agent panel instead
+        must(zoneAllows(zone, x), zoneMsg(zone), 403); const t = crypto.randomBytes(32).toString("hex"); db.sessions[t] = { uid: x.id, exp: new Date(Date.now() + SESSION_DAYS * 864e5).toISOString() }; if (token) delete db.sessions[token]; ctx.token = t; ctx.user = x;
         setCookie.push(`mam_s=${t}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${SESSION_DAYS * 86400}${secure(req) ? "; Secure" : ""}`); },
       logout: () => { if (token) delete db.sessions[token]; ctx.user = null; setCookie.push(`mam_s=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0${secure(req) ? "; Secure" : ""}`); },
       user: u
@@ -836,6 +859,7 @@ async function handleApi(req, res, url) {
       const out = (await fn(body.payload || {}, u, ctx)) || {};
       for (const [t, s] of Object.entries(db.sessions)) if (Date.parse(s.exp) < Date.now()) delete db.sessions[t];
       save();
+      if (ctx.redirect) out.redirect = ctx.redirect;
       return send(res, out.error ? 400 : 200, { ...out, state: viewFor(ctx.user) }, setCookie.length ? { "Set-Cookie": setCookie } : {});
     } catch (e) {
       if (!(e instanceof Fail)) { console.error(body.type, e); try { save(); } catch { /* ignore */ } }
@@ -852,8 +876,8 @@ const siteOrigin = req => `${req.headers["x-forwarded-proto"] || "http"}://${req
 /* index.html with absolute addresses in the share tags (Facebook and WhatsApp need full URLs for the logo preview) */
 function indexHtml(req) {
   const zone = hostZone(req);
-  const site = { admin: zone === "admin", main: ADMIN_HOST ? mainUrl() : "" }; // the admin panel's address is never sent to the public site
-  const head = `<script>window.__SITE__=${JSON.stringify(site).replace(/</g, "\\u003c")}</script>${zone === "admin" ? '<meta name="robots" content="noindex, nofollow">' : ""}`;
+  const site = { admin: zone === "admin", agent: zone === "agent", main: ADMIN_HOST || AGENT_HOST ? mainUrl() : "" }; // the admin panel's address is never sent to the public site
+  const head = `<script>window.__SITE__=${JSON.stringify(site).replace(/</g, "\\u003c")}</script>${zone === "admin" || zone === "agent" ? '<meta name="robots" content="noindex, nofollow">' : ""}`;
   return fs.readFileSync(path.join(STATIC_DIR, "index.html"), "utf8").replace(/__ORIGIN__/g, escHtml(siteOrigin(req))).replace("</head>", head + "</head>");
 }
 function serveJobShare(req, res, jid) {
@@ -896,7 +920,7 @@ const server = http.createServer(async (req, res) => {
     const canon = (process.env.CANONICAL_HOST || "").trim().toLowerCase();
     if (canon) {
       const h = reqHost(req);
-      if (h && h !== canon && h !== ADMIN_HOST && h !== "localhost" && !/^[\d.]+$/.test(h) && !h.startsWith("[")) { res.writeHead(301, { Location: `https://${canon}${req.url}`, "Cache-Control": "max-age=3600" }); return res.end(); }
+      if (h && h !== canon && h !== ADMIN_HOST && h !== AGENT_HOST && h !== "localhost" && !/^[\d.]+$/.test(h) && !h.startsWith("[")) { res.writeHead(301, { Location: `https://${canon}${req.url}`, "Cache-Control": "max-age=3600" }); return res.end(); }
     }
     const m = url.pathname.match(/^\/job\/([a-z0-9]+)\/?$/i); if (m) return serveJobShare(req, res, m[1]);
     return serveStatic(req, res, url);

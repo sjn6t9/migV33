@@ -34,7 +34,14 @@ export default function App() {
   else if (h === "setup" || h.startsWith("setup-")) { page = "setup"; arg = h.slice(6); }
   else if (h.startsWith("verify-")) { page = "verify"; arg = h.slice(7); }
   else if (!PAGES.includes(h) && h !== "dashboard") page = "home";
-  if (SITE.admin && !["dashboard", "setup", "job", "post", "verify"].includes(page)) page = "dashboard"; // the admin panel opens straight to the dashboard
+  const panelSite = SITE.admin ? "admin" : SITE.agent ? "agent" : null; // admin.<domain> or agent.<domain>
+  if (panelSite && h.startsWith("handoff-")) { page = "handoff"; arg = h.slice(8); }
+  else if (panelSite && !["dashboard", "setup", "job", "post", "verify"].includes(page)) page = "dashboard"; // the panel opens straight to the dashboard
+  useEffect(() => {
+    if (page !== "handoff") return;
+    history.replaceState(null, "", "#dashboard"); // the one-time pass leaves the address bar at once
+    act("auth.handoff", { token: arg }, { quiet: true }).then(() => window.dispatchEvent(new HashChangeEvent("hashchange")));
+  }, [page, arg]);
 
   // SEO: title + meta description per page (managed from Admin › SEO)
   useEffect(() => {
@@ -50,11 +57,11 @@ export default function App() {
   });
 
   if (page === "verify") return <><VerifyMember id={arg} /><Toast /></>;
-  if (SITE.admin) return (
+  if (panelSite) return (
     <>
-      <AdminHeader />
+      <PanelHeader kind={panelSite} />
       {store.offline && <div className="demo-strip"><div className="wrap"><span><LuWifiOff /> Cannot reach the server. Check your internet connection; the page will work again when it is back.</span></div></div>}
-      <main>{page === "setup" ? <Setup token={arg} /> : page === "job" ? <JobDetail id={arg} /> : page === "post" ? <Post id={arg} /> : me() ? <Dashboard /> : <AdminSignIn />}</main>
+      <main>{page === "handoff" ? <section className="sec"><div className="wrap"><p className="muted">Signing you in…</p></div></section> : page === "setup" && panelSite === "admin" ? <Setup token={arg} /> : page === "job" ? <JobDetail id={arg} /> : page === "post" ? <Post id={arg} /> : me() ? <Dashboard /> : <PanelSignIn kind={panelSite} />}</main>
       <ModalHost />
       <Toast />
     </>
@@ -107,14 +114,14 @@ function Header({ navOn }) {
   );
 }
 
-/* the separate admin panel (admin.<domain>) */
-function AdminHeader() {
-  const u = me();
+/* the separate panels: admin.<domain> and agent.<domain> */
+function PanelHeader({ kind }) {
+  const u = me(); const label = kind === "agent" ? "Agent panel" : "Admin panel";
   return (
     <header className="top admin-top">
-      <div className="utilbar"><div className="wrap"><div className="util-l"><span className="util-lic"><LuShieldCheck /> Admin panel · MAM &amp; MAM Overseas Ltd.</span></div><Prefs /></div></div>
+      <div className="utilbar"><div className="wrap"><div className="util-l"><span className="util-lic"><LuShieldCheck /> {kind === "agent" ? "Agent panel · MAM & MAM Overseas Ltd." : "Admin panel · MAM & MAM Overseas Ltd."}</span></div><Prefs /></div></div>
       <div className="wrap topbar">
-        <a className="logo" href="#dashboard" aria-label="Admin panel home"><Logo /><div><b>MAM &amp; MAM OVERSEAS LTD.</b><span>Admin panel</span></div></a>
+        <a className="logo" href="#dashboard" aria-label={`${label} home`}><Logo /><div><b>MAM &amp; MAM OVERSEAS LTD.</b><span>{label}</span></div></a>
         <div className="acct">
           {SITE.main && <a className="btn sm" href={SITE.main} target="_blank" rel="noopener noreferrer"><LuExternalLink /> <span className="hide-sm">View website</span></a>}
           {u && <>
@@ -127,8 +134,8 @@ function AdminHeader() {
   );
 }
 
-function AdminSignIn() {
-  const busy = store.ui.busy;
+function PanelSignIn({ kind }) {
+  const busy = store.ui.busy; const agent = kind === "agent";
   const login = async e => {
     const [d] = formData(e);
     const r = await act("auth.login", { email: d.email, pass: d.pass });
@@ -138,12 +145,14 @@ function AdminSignIn() {
     <section className="sec"><div className="wrap admin-signin">
       <form className="card stack12" onSubmit={login}>
         <div className="modal-brand"><Logo size={56} /></div>
-        <h1 className="h1s">Admin panel</h1>
-        <p className="muted">For the agency's admin and staff only.</p>
+        <h1 className="h1s">{agent ? "Agent panel" : "Admin panel"}</h1>
+        <p className="muted">{agent ? "For the agency's registered agents." : "For the agency's admin and staff only."}</p>
         <label className="f">Email<input type="email" name="email" required autoComplete="username" autoFocus /></label>
         <label className="f">Password<input type="password" name="pass" required autoComplete="current-password" /></label>
         <button className="btn pri" type="submit" disabled={busy}><LuLogIn /> Sign in</button>
-        {SITE.main && <p className="muted small">Job seeker, employer or agent? <a href={SITE.main}>Go to the website</a></p>}
+        {SITE.main && (agent
+          ? <p className="muted small">New agent? <a href={`${SITE.main}/#home`}>Register on the website</a></p>
+          : <p className="muted small">Job seeker, employer or agent? <a href={SITE.main}>Go to the website</a></p>)}
       </form>
     </div></section>
   );

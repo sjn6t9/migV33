@@ -18,6 +18,7 @@ export async function act(type, payload = {}, { quiet = false } = {}) {
     let out = {}; try { out = await r.json(); } catch { out = { error: r.status === 413 ? "Upload is too large." : "The server did not answer correctly. Try again." }; }
     if (out.state) setState(out.state);
     if (out.error) { toast(out.error); return null; }
+    if (out.redirect) { location.href = out.redirect; return out; } // e.g. an agent signing in on the public site goes to the agent panel
     if (!quiet && out.msg) toast(out.msg);
     return out;
   } catch {

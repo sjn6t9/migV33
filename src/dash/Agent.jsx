@@ -234,7 +234,7 @@ function ClearanceList({ C, W, active }) {
   return <>
     <div className="ec-head">
       <div><h2>BMET clearance applications</h2><div className="crumbs"><a href="#dashboard" onClick={e => { e.preventDefault(); setTab("agent", "overview"); }}>Home</a> <span>›</span> <b>EC Application List</b></div></div>
-      <button className="btn dark" onClick={() => setForm(f => !f)} disabled={!W.length}>{form ? <LuX /> : <LuCirclePlus />} {form ? "Close the form" : "Create New Group EC Application"}</button>
+      <button className="btn dark" onClick={() => setForm(f => !f)} disabled={!W.length}>{form ? <LuX /> : <LuCirclePlus />} {form ? "Close the form" : "Create New Application"}</button>
     </div>
     {!W.length && <div className="notice">Add a worker first. <button className="btn link sm" onClick={() => setTab("agent", "workers")}>Add worker</button></div>}
     {form && W.length > 0 && <GroupEcForm C={C} W={W} active={active} onDone={() => setForm(false)} />}
@@ -300,7 +300,7 @@ function GroupEcForm({ C, W, active, onDone }) {
   };
   return (
     <form className="card fgrid ec-form" onSubmit={submit} noValidate>
-      <h3 className="full">Create New Group EC Application</h3>
+      <h3 className="full">Create New Application</h3>
       <p className="muted small full">Choose the workers going to the same country and employer. Each worker gets their own EC Ref No.</p>
       <Field label="Destination country"><select name="country" defaultValue="Saudi Arabia"><Options list={Object.keys(COUNTRIES)} /></select></Field>
       <Field label="Employer / sponsor name"><input type="text" name="employer" required /></Field>

@@ -167,12 +167,14 @@ EOF
 fi
 
 # separate admin panel at admin.<domain> (needs this server's DNS for the domain, so .bd domains only by default)
-ADMIN_NAME="${ADMIN_NAME:-}"
+# and a separate agent panel at agent.<domain>
+ADMIN_NAME="${ADMIN_NAME:-}"; AGENT_NAME="${AGENT_NAME:-}"
 [ -n "$ADMIN_NAME" ] || { [ "$SELF_DNS" = 1 ] && ADMIN_NAME="admin.$DOMAIN"; } || true
-if [ -n "$ADMIN_NAME" ]; then
-  if grep -q '^ADMIN_HOST=' "$ENVF"; then sed -i "s/^ADMIN_HOST=.*/ADMIN_HOST=$ADMIN_NAME/" "$ENVF"; else echo "ADMIN_HOST=$ADMIN_NAME" >> "$ENVF"; fi
-  systemctl restart $SVC
-fi
+[ -n "$AGENT_NAME" ] || { [ "$SELF_DNS" = 1 ] && AGENT_NAME="agent.$DOMAIN"; } || true
+setenv() { if grep -q "^$1=" "$ENVF"; then sed -i "s/^$1=.*/$1=$2/" "$ENVF"; else echo "$1=$2" >> "$ENVF"; fi; }
+[ -z "$ADMIN_NAME" ] || setenv ADMIN_HOST "$ADMIN_NAME"
+[ -z "$AGENT_NAME" ] || setenv AGENT_HOST "$AGENT_NAME"
+[ -z "$ADMIN_NAME$AGENT_NAME" ] || systemctl restart $SVC
 
 say "5/6 Web server for $NAMES"
 HTTPS_OK=0; DNS_OK=1
@@ -194,13 +196,14 @@ if systemctl is-active --quiet caddy; then
     if caddy validate --config "$CF" --adapter caddyfile >/dev/null 2>&1; then systemctl reload caddy; echo "Added $NAMES to Caddy (HTTPS is automatic)."
     else cp "$CF.bak.$STAMP" "$CF"; warn "Caddy rejected the new block; the old Caddyfile was restored. Nothing else changed."; exit 1; fi
   fi
-  # the separate admin panel (admin.<domain>)
-  if [ -n "$ADMIN_NAME" ] && ! grep -qE "^[[:space:]]*(https?://)?$ADMIN_NAME([ ,{]|$)" "$CF"; then
-    cp "$CF" "$CF.bak.$STAMP.admin"
-    printf '\n%s {\n\tencode gzip\n\trequest_body {\n\t\tmax_size 30MB\n\t}\n\treverse_proxy 127.0.0.1:%s\n}\n' "$ADMIN_NAME" "$PORT" >> "$CF"
-    if caddy validate --config "$CF" --adapter caddyfile >/dev/null 2>&1; then systemctl reload caddy; echo "Added the admin panel $ADMIN_NAME to Caddy."
-    else cp "$CF.bak.$STAMP.admin" "$CF"; warn "Caddy rejected the admin panel block; the old Caddyfile was restored."; fi
-  fi
+  # the separate panels (admin.<domain>, agent.<domain>)
+  for PN in $ADMIN_NAME $AGENT_NAME; do
+    grep -qE "^[[:space:]]*(https?://)?$PN([ ,{]|$)" "$CF" && continue
+    cp "$CF" "$CF.bak.$STAMP.$PN"
+    printf '\n%s {\n\tencode gzip\n\trequest_body {\n\t\tmax_size 30MB\n\t}\n\treverse_proxy 127.0.0.1:%s\n}\n' "$PN" "$PORT" >> "$CF"
+    if caddy validate --config "$CF" --adapter caddyfile >/dev/null 2>&1; then systemctl reload caddy; echo "Added the panel $PN to Caddy."
+    else cp "$CF.bak.$STAMP.$PN" "$CF"; warn "Caddy rejected the block for $PN; the old Caddyfile was restored."; fi
+  done
 elif systemctl is-active --quiet nginx; then
   echo "nginx found"
   if [ -d /etc/nginx/sites-available ]; then NC=/etc/nginx/sites-available/$DOMAIN; else NC=/etc/nginx/conf.d/$DOMAIN.conf; fi
@@ -283,5 +286,5 @@ if curl -s "http://127.0.0.1:$PORT/api/state" | grep -q '"needsSetup":true'; the
   echo "    https://${ADMIN_NAME:-$DOMAIN}/#setup-$TOKEN"
   echo
 else
-  echo "Admin account already exists. Site: https://$DOMAIN${ADMIN_NAME:+  Admin panel: https://$ADMIN_NAME}"
+  echo "Admin account already exists. Site: https://$DOMAIN${ADMIN_NAME:+  Admin panel: https://$ADMIN_NAME}${AGENT_NAME:+  Agent panel: https://$AGENT_NAME}"
 fi
