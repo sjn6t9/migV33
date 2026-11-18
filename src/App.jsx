@@ -128,12 +128,18 @@ function PanelHeader({ kind }) {
           {SITE.main && <a className="btn sm" href={SITE.main} target="_blank" rel="noopener noreferrer"><LuExternalLink /> <span className="hide-sm">View website</span></a>}
           {u && <>
             <button className="btn sm" onClick={() => openModal("password")} aria-label="Change password" title="Change password"><LuKeyRound /></button>
-            <button className="btn sm" onClick={signOut} aria-label="Sign out" title="Sign out"><LuLogOut /><span className="hide-lg">Sign out</span></button>
+            <button className="btn sm" onClick={kind === "agent" && SITE.main ? agentSignOut : signOut} aria-label="Sign out" title="Sign out"><LuLogOut /><span className="hide-lg">Sign out</span></button>
           </>}
         </div>
       </div>
     </header>
   );
+}
+
+/* agents came from the public site, so signing out of the agent panel takes them back to its home page */
+async function agentSignOut() {
+  const r = await act("auth.logout", {}, { quiet: true });
+  if (r) location.href = `${SITE.main}/#home`;
 }
 
 function PanelSignIn({ kind }) {
