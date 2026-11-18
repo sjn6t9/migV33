@@ -237,7 +237,7 @@ function viewFor(u) {
       clearances: db.clearances.map(cleanCl), ledger: db.ledger, tickets: db.tickets, users: db.users.map(x => cleanUser(x, true))
     });
     if (can(u, "jobs")) pub.jobTemplates = db.jobTemplates;
-    if (can(u, "receipts")) pub.mr = { accounts: db.mr.accounts, receipts: db.mr.receipts.map(r => mrOut(r)) };
+    if (can(u, "receipts")) pub.mr = { accounts: db.mr.accounts, receipts: db.mr.receipts.map(r => mrOut(r)), charges: db.mr.charges };
     if (u.role === "admin") { const c = smtpConf(); pub.smtp = { host: c.host || "", port: c.port || 465, user: c.user || "", from: c.from || "", hasPass: !!c.pass, local: !!c.local }; }
   }
   return pub;
@@ -719,8 +719,11 @@ A["admin.ticketBook"] = async (d, u) => {
 };
 A["admin.ticketCancel"] = async ({ id: tid }, u) => { needPerm(u, "tickets"); const t = db.tickets.find(x => x.id === tid); must(t && t.status === "requested", "Ticket not found."); t.status = "cancelled"; notify(t.agentId, `Ticket request for ${worker(t.workerId)?.name} was cancelled by the agency.`); return { msg: "Request cancelled." }; };
 A["admin.ledgerAdd"] = async (d, u) => {
-  needPerm(u, "ledger"); const ag = user(d.agentId); must(ag?.role === "agent", "Choose an agent."); const amount = numv(d.amount, 0, 1e8); must(amount >= 1 && str(d.desc), "Enter the amount and description.");
-  db.ledger.push({ id: id("l"), agentId: ag.id, type: d.type === "payment" ? "payment" : "charge", desc: str(d.desc, 200), amount, date: str(d.date, 10) || now().slice(0, 10), method: str(d.method, 40), ref: str(d.ref, 80), status: "confirmed" });
+  needPerm(u, "ledger"); const ag = user(d.agentId); must(ag?.role === "agent", "Choose an agent.");
+  const charge = d.type !== "payment", qty = charge && d.qty != null && d.qty !== "" ? numv(d.qty, 1, 10000) : 1;
+  const rate = d.rate != null && d.rate !== "" ? numv(d.rate, 0, 1e8) : numv(d.amount, 0, 1e8);
+  const amount = Math.round(qty * rate * 100) / 100; must(amount >= 1 && amount <= 1e9 && str(d.desc), "Enter the amount and description.");
+  db.ledger.push({ id: id("l"), agentId: ag.id, type: charge ? "charge" : "payment", desc: str(d.desc, 200), amount, ...(charge ? { qty, rate } : {}), date: str(d.date, 10) || now().slice(0, 10), method: str(d.method, 80), ref: str(d.ref, 80), status: "confirmed" });
   notify(ag.id, d.type === "charge" ? `New charge on your account: ${str(d.desc, 100)} (${bdt(amount)}).` : `Payment of ${bdt(amount)} recorded.`);
   return { msg: "Entry added." };
 };
@@ -1159,6 +1162,7 @@ function aboutView() {
 // A payer account is found or created from any of: name, mobile, passport no., email, agent name.
 // Each payment gets a numbered money receipt (MR-2026-0001); the payer's details are copied onto the receipt.
 if (!db.mr) db.mr = { accounts: [], receipts: [], seq: {} };
+if (!db.mr.charges) db.mr.charges = []; // debits on a payer's account (e.g. "1 ITALY (FC) PP", 6000 × 1)
 for (const r of db.mr.receipts) { // receipts made before approval existed wait for approval
   if (!r.status) { r.status = "pending"; r.received = { uid: null, name: r.by || "Office", title: "", sig: null }; }
 }
@@ -1177,6 +1181,7 @@ const MR_CHANNEL = ["Bank transfer", "Mobile banking", "Cheque"]; // these name 
 const agentDue = aid => db.ledger.filter(l => l.agentId === aid && l.status === "confirmed").reduce((s, l) => s + (l.type === "charge" ? 1 : -1) * Number(l.amount), 0);
 const agentName = a => a?.agent?.business || a?.name || "";
 const r2 = n => Math.round(n * 100) / 100;
+const mrPayable = acc => r2((acc?.price || 0) + db.mr.charges.filter(c => c.accountId === acc?.id).reduce((s, c) => s + c.amount, 0));
 const mrNorm = { mobile: v => String(v || "").replace(/[^\d+]/g, ""), passport: v => String(v || "").replace(/\s+/g, "").toUpperCase(), email: v => String(v || "").trim().toLowerCase() };
 const mrPayer = p => {
   const x = { name: str(p?.name, 120), mobile: mrNorm.mobile(p?.mobile).slice(0, 20), passport: mrNorm.passport(p?.passport).slice(0, 20), email: mrNorm.email(p?.email).slice(0, 120), agent: str(p?.agent, 120) };
@@ -1223,9 +1228,9 @@ A["admin.mr"] = async (d, u) => {
       const before = agentDue(ag.id); const l = { id: id("l"), agentId: ag.id, type: "payment", desc: `Money receipt ${r.no}${r.payer.name ? ": " + r.payer.name : ""}`, amount: r.amount, date: r.date, method: [r.method, r.channel].filter(Boolean).join(" · "), ref: r.ref, status: "confirmed", mr: r.id };
       db.ledger.push(l); r.ledgerId = l.id; r.balance = { kind: "agent", agent: agentName(ag), before: r2(before), paid: r.amount, after: r2(before - r.amount) };
       notify(ag.id, `Payment received: BDT ${r.amount.toLocaleString("en-US")} (money receipt ${r.no}).`);
-    } else if (acc?.price > 0) {
-      const before = r2(M.receipts.filter(x => x !== r && x.accountId === acc.id && x.status === "approved" && !x.void).reduce((s, x) => s + x.amount, 0));
-      r.balance = { kind: "price", price: acc.price, before, paid: r.amount, after: r2(acc.price - before - r.amount) };
+    } else if (mrPayable(acc) > 0) {
+      const before = r2(M.receipts.filter(x => x !== r && x.accountId === acc.id && x.status === "approved" && !x.void).reduce((s, x) => s + x.amount, 0)), pay = mrPayable(acc);
+      r.balance = { kind: "price", price: pay, before, paid: r.amount, after: r2(pay - before - r.amount) };
     }
     return { msg: `Approved. Money receipt ${r.no} is ready to download.`, email: r.payer.email || "" };
   }
@@ -1261,6 +1266,13 @@ A["admin.mr"] = async (d, u) => {
     if ("price" in d && !acc.agentId) { const p = d.price === "" || d.price == null ? null : r2(Number(d.price)); must(p === null || (p >= 0 && p < 1e9), "Check the price."); acc.price = p; }
     return { msg: "Account updated." };
   }
+  if (d.op === "chargeAdd") { // a debit on a payer's account: quantity × rate
+    const acc = M.accounts.find(a => a.id === d.accountId); must(acc, "Account not found."); must(!acc.agentId, "This payer pays through an agent: add charges in Agent accounts.");
+    const qty = numv(d.qty ?? 1, 1, 10000), rate = numv(d.rate, 0, 1e8), desc = str(d.desc, 200); must(desc && rate > 0, "Enter the details and the rate.");
+    M.charges.push({ id: id("mc"), accountId: acc.id, date: /^\d{4}-\d{2}-\d{2}$/.test(d.date || "") ? d.date : new Date(Date.now() + 6 * 3600e3).toISOString().slice(0, 10), desc, qty, rate, amount: r2(qty * rate), by: u.name, at: now() });
+    return { msg: "Added to the payment history." };
+  }
+  if (d.op === "chargeDelete") { const c = M.charges.find(x => x.id === d.id); must(c, "Entry not found."); M.charges = M.charges.filter(x => x !== c); return { msg: "Entry deleted." }; }
   if (d.op === "void") { // cancel a receipt; it stays in the list marked Cancelled
     must(u.role === "admin", "Only the admin can cancel a receipt.", 403);
     const r = M.receipts.find(x => x.id === d.id); must(r, "Receipt not found."); must(!r.void, "This receipt is already cancelled.");

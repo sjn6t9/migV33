@@ -6,6 +6,8 @@ import { store, user, balanceOf } from "../store.js";
 import { act, openModal, closeModal, toast, confirmBox } from "../actions.js";
 import { Field } from "./shared.jsx";
 import { Tiles, Empty } from "../ui.jsx";
+import { Statement } from "./Statement.jsx";
+import { agentRows, accountRows } from "../statement.js";
 import { drawReceipt, receiptPng, receiptPdf, receiptPdfBlob, receiptXlsx, receiptsXlsx, takaWords, tk, rDate, receiptUrl, payText } from "../receipt.js";
 
 import { METHODS, channelsFor } from "../banks.js";
@@ -19,6 +21,8 @@ export function mrMatch(q) {
   const d = s.replace(/[^\d]/g, "");
   return o => { const h = hay(o.payer || o) + " " + [o.no, o.purpose, o.ref, o.method].join(" ").toLowerCase(); return h.includes(s) || (d.length >= 4 && h.replace(/[^\d]/g, " ").includes(d)); };
 }
+const charges = aid => (MR().charges || []).filter(c => c.accountId === aid);
+const payable = a => (a?.price || 0) + charges(a?.id).reduce((s, c) => s + c.amount, 0);
 const accReceipts = aid => MR().receipts.filter(r => r.accountId === aid);
 const paid = list => list.filter(r => !r.void).reduce((s, r) => s + r.amount, 0);
 const me = () => user(store.S.session);
@@ -117,7 +121,7 @@ export function ReceiptsAdmin() {
 }
 
 function DueCell({ a, l }) {
-  const d = a.agentId ? balanceOf(a.agentId) : a.price > 0 ? a.price - paid(l.filter(ok)) : null;
+  const d = a.agentId ? balanceOf(a.agentId) : payable(a) > 0 ? payable(a) - paid(l.filter(ok)) : null;
   if (d === null) return <span className="muted">—</span>;
   return d > 0 ? <span className="mr-due">{`Due ${tk(d)}`}</span> : d < 0 ? <span className="mr-ok">{`Advance ${tk(-d)}`}</span> : <span className="mr-ok">Paid</span>;
 }
@@ -167,7 +171,7 @@ export function MrEntry({ aid: aid0 }) {
   const ag = agentId && agents().find(x => x.id === agentId);
   const before = target ? paid(accReceipts(target.id).filter(ok)) : 0;
   const bal = ag ? { kind: "agent", before: balanceOf(ag.id), paid: amt, after: balanceOf(ag.id) - amt }
-    : Number(price) > 0 ? { kind: "price", price: Number(price), before, paid: amt, after: Number(price) - before - amt } : null;
+    : (Number(price) || 0) + (target ? charges(target.id).reduce((s, c) => s + c.amount, 0) : 0) > 0 ? (() => { const pay = (Number(price) || 0) + (target ? charges(target.id).reduce((s, c) => s + c.amount, 0) : 0); return { kind: "price", price: pay, before, paid: amt, after: pay - before - amt }; })() : null;
   const chans = channelsFor(method);
   const pickAgent = v => { if (v === "__other") { setAgentId(""); setAgentOther(true); } else { setAgentId(v); setAgentOther(false); const x = agents().find(y => y.id === v); setP({ ...p, agent: x ? x.name : "" }); } };
   const submit = async e => {
@@ -311,7 +315,7 @@ export function MrAccount({ aid }) {
   if (!a) return <p>Account not found.</p>;
   const l = accReceipts(a.id), done = paid(l.filter(ok));
   const save = e => { e.preventDefault(); act("admin.mr", { op: "account", id: a.id, payer: p, ...(a.agentId ? {} : { price }) }); };
-  const bal = a.agentId ? null : Number(price) > 0 ? { kind: "price", price: Number(price), before: done, paid: 0, after: Number(price) - done } : null;
+  const bal = null;
   return <>
     <h2 className="row6"><LuUserRound /> Payer account</h2>
     <form className="card mr-box" onSubmit={save} noValidate>
@@ -322,12 +326,34 @@ export function MrAccount({ aid }) {
       {bal && <BalanceBox b={bal} />}
       <div className="row between mt14"><span className="muted small">New receipts use these details. Receipts already made keep the details they were made with.</span><button className="btn pri">Update account</button></div>
     </form>
-    <div className="row between mt14"><h3>{`Payments (${l.length}) · Approved total ${tk(paid(l.filter(ok)))} BDT`}</h3><div className="row6">
-      <button className="btn sm" disabled={!l.length} onClick={() => receiptsXlsx(l, `Account: ${a.name || a.passport || a.mobile}`)}><LuFileSpreadsheet /> Excel</button>
+    <div className="row between mt14"><h3>Payment history</h3><div className="row6">
+      <button className="btn sm" disabled={!l.length} onClick={() => receiptsXlsx(l, `Account: ${a.name || a.passport || a.mobile}`)}><LuFileSpreadsheet /> Receipts list</button>
       <button className="btn sm pri" onClick={() => openModal("mrEntry", { aid: a.id })}><LuPlus /> New payment</button></div></div>
-    {l.length ? <div className="tbl ec-tbl grid mt8"><table><thead><tr><th>Receipt No.</th><th>Date</th><th>Purpose</th><th>Method</th><th className="r">Amount</th><th>Status</th><th /></tr></thead><tbody>
-      {l.map(r => <tr key={r.id} className={r.void ? "mr-void" : ""}><td className="ec-ref" data-notr>{r.no}</td><td className="num">{rDate(r.date)}</td><td>{r.purpose || "—"}</td><td>{r.method}</td><td className="num r b">{tk(r.amount)}</td><td><StatusBadge r={r} /></td>
-        <td><button className="ec-ico view" aria-label="View receipt" title="View receipt" onClick={() => openModal("mrView", { rid: r.id })}><LuEye /></button></td></tr>)}</tbody></table></div>
-      : <p className="muted small">No payments yet.</p>}
+    {a.agentId ? <>
+      <p className="muted small">{`This payer pays through the agent ${a.agent}. The agent's payment history:`}</p>
+      <Statement title={a.agent} rows={agentRows(store.S.ledger, a.agentId)} />
+    </> : <>
+      <Statement title={a.name || a.passport || a.mobile || "Account"} sub={[a.passport && `Passport ${a.passport}`, a.mobile, a.email].filter(Boolean).join(" · ")}
+        rows={accountRows(a, MR().charges || [], MR().receipts)}
+        actions={r => r.charge ? <button className="btn sm link danger" aria-label="Delete entry" onClick={() => confirmBox("Delete this entry from the payment history?", () => act("admin.mr", { op: "chargeDelete", id: r.id }), "Delete")}><LuTrash2 /></button>
+          : r.receipt ? <button className="ec-ico view" aria-label="View receipt" title="View receipt" onClick={() => openModal("mrView", { rid: r.receipt.id })}><LuEye /></button> : null} />
+      <ChargeForm aid={a.id} />
+    </>}
+    {l.some(r => !ok(r)) && <p className="muted small mt8">{`Receipts waiting for approval or cancelled are not in the payment history: ${l.filter(r => !ok(r)).map(r => r.no).join(", ")}.`}</p>}
   </>;
+}
+
+/* debit on a payer's account: details, quantity × rate */
+function ChargeForm({ aid }) {
+  const [qty, setQty] = React.useState("1"); const [rate, setRate] = React.useState("");
+  const add = e => { e.preventDefault(); const d = Object.fromEntries(new FormData(e.currentTarget)); const form = e.currentTarget;
+    act("admin.mr", { op: "chargeAdd", accountId: aid, desc: d.desc, date: d.date, qty, rate }).then(r => { if (r) { form.reset(); setQty("1"); setRate(""); } }); };
+  return <form className="fgrid divider mt14" onSubmit={add} noValidate>
+    <h4 className="full">Add a charge (debit)</h4>
+    <Field label="Details" full><input type="text" name="desc" maxLength={200} required placeholder="e.g. 1 ITALY (FC) PP (A06852056)" /></Field>
+    <Field label="Date"><input type="date" name="date" defaultValue={today()} /></Field>
+    <Field label="Quantity"><input type="number" min="1" step="1" value={qty} onChange={e => setQty(e.target.value)} /></Field>
+    <Field label="Rate (BDT)" hint={Number(rate) > 0 ? `Debit: ${tk((Number(qty) || 1) * Number(rate))} BDT` : ""}><input type="number" min="1" value={rate} onChange={e => setRate(e.target.value)} placeholder="6000" /></Field>
+    <div className="full"><button className="btn pri" type="submit"><LuPlus /> Add</button></div>
+  </form>;
 }

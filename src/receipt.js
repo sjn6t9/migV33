@@ -155,24 +155,32 @@ export async function receiptPng(r, settings) { const c = await drawReceipt(r, s
 
 /** One-page PDF (A5 landscape) holding the receipt as a JPEG image. */
 export async function receiptPdf(r, settings) { save(await receiptPdfBlob(r, settings), `${r.no}.pdf`); }
-export async function receiptPdfBlob(r, settings) {
-  const c = await drawReceipt(r, settings);
-  const jpg = new Uint8Array(await (await new Promise(res => c.toBlob(res, "image/jpeg", .94))).arrayBuffer());
-  const pw = 595.28, ph = 419.53, parts = [], offs = []; let len = 0;
+export async function receiptPdfBlob(r, settings) { return pdfFromCanvases([await drawReceipt(r, settings)], 595.28, 419.53, `Money receipt ${r.no}`); }
+
+/** A PDF with one page per canvas (each page is the canvas as a JPEG), page size in points. */
+export async function pdfFromCanvases(canvases, pw, ph, title = "") {
+  const jpgs = await Promise.all(canvases.map(async c => new Uint8Array(await (await new Promise(res => c.toBlob(res, "image/jpeg", .92))).arrayBuffer())));
+  const parts = [], offs = []; let len = 0; const n = canvases.length;
   const push = x => { const b = typeof x === "string" ? enc.encode(x) : x; parts.push(b); len += b.length; };
-  const obj = (n, body) => { offs[n] = len; push(`${n} 0 obj\n`); body(); push("\nendobj\n"); };
+  const obj = (k, body) => { offs[k] = len; push(`${k} 0 obj\n`); body(); push("\nendobj\n"); };
+  // objects: 1 catalog, 2 pages, 3 info, then per page i: page 4+3i, content 5+3i, image 6+3i
   push("%PDF-1.4\n%\xE2\xE3\xCF\xD3\n");
   obj(1, () => push("<< /Type /Catalog /Pages 2 0 R >>"));
-  obj(2, () => push("<< /Type /Pages /Kids [3 0 R] /Count 1 >>"));
-  obj(3, () => push(`<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${pw} ${ph}] /Resources << /XObject << /Im0 5 0 R >> >> /Contents 4 0 R >>`));
+  obj(2, () => push(`<< /Type /Pages /Kids [${canvases.map((_, i) => `${4 + 3 * i} 0 R`).join(" ")}] /Count ${n} >>`));
+  obj(3, () => push(`<< /Title (${String(title).replace(/[()\\]/g, "").replace(/[^\x20-\x7e]/g, "")}) /Producer (${OFFICE.site}) >>`));
   const cs = `q ${pw} 0 0 ${ph} 0 0 cm /Im0 Do Q`;
-  obj(4, () => { push(`<< /Length ${cs.length} >>\nstream\n${cs}\nendstream`); });
-  obj(5, () => { push(`<< /Type /XObject /Subtype /Image /Width ${W} /Height ${H} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ${jpg.length} >>\nstream\n`); push(jpg); push("\nendstream"); });
-  obj(6, () => push(`<< /Title (Money receipt ${r.no}) /Producer (${OFFICE.site}) >>`));
-  const xref = len;
-  push(`xref\n0 7\n0000000000 65535 f \n${[1, 2, 3, 4, 5, 6].map(n => String(offs[n]).padStart(10, "0") + " 00000 n \n").join("")}trailer\n<< /Size 7 /Root 1 0 R /Info 6 0 R >>\nstartxref\n${xref}\n%%EOF`);
+  canvases.forEach((c, i) => {
+    const pg = 4 + 3 * i;
+    obj(pg, () => push(`<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${pw} ${ph}] /Resources << /XObject << /Im0 ${pg + 2} 0 R >> >> /Contents ${pg + 1} 0 R >>`));
+    obj(pg + 1, () => push(`<< /Length ${cs.length} >>\nstream\n${cs}\nendstream`));
+    obj(pg + 2, () => { push(`<< /Type /XObject /Subtype /Image /Width ${c.width} /Height ${c.height} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ${jpgs[i].length} >>\nstream\n`); push(jpgs[i]); push("\nendstream"); });
+  });
+  const total = 4 + 3 * n, xref = len;
+  push(`xref\n0 ${total}\n0000000000 65535 f \n${Array.from({ length: total - 1 }, (_, k) => String(offs[k + 1]).padStart(10, "0") + " 00000 n \n").join("")}trailer\n<< /Size ${total} /Root 1 0 R /Info 3 0 R >>\nstartxref\n${xref}\n%%EOF`);
   return new Blob(parts, { type: "application/pdf" });
 }
+export function saveBlob(blob, name) { save(blob, name); }
+export { loadImg, rr, fitFont, clip, fontsReady, F as FONT, GREEN, DEEP, RED, INK, MUTED, LINE, TINT };
 
 /* ---- Excel: a minimal .xlsx (zip, stored) with inline strings ---- */
 const CRC = (() => { const t = new Uint32Array(256); for (let n = 0; n < 256; n++) { let c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1; t[n] = c >>> 0; } return t; })();

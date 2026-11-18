@@ -1,10 +1,12 @@
 import React from "react";
+import { Statement } from "./Statement.jsx";
+import { agentRows } from "../statement.js";
 import { LuLayoutDashboard, LuUser, LuUsers, LuStamp, LuBriefcase, LuWallet, LuBell, LuPencil, LuTrash2, LuSend, LuPlus, LuEye, LuTicket, LuPlaneTakeoff } from "react-icons/lu";
 import { store, commit, worker, job, live, money, fdate, bdtFmt, balanceOf, unread, now, COUNTRIES, CL_DOCS, PAY_METHODS, loadState } from "../store.js";
 import { toast, formData, setTab, openModal, closeModal, confirmBox, withdraw, readUpload, act, DOC_TYPES, downloadFile, cardFileName } from "../actions.js";
 import { LuDownload, LuMaximize2, LuMinimize2, LuRefreshCw, LuSearch, LuFileText, LuBanknote, LuCirclePlus, LuX } from "react-icons/lu";
 import { Rail, Tiles, Pill, Pipe, ClPipe, Empty, CardDownload, Avatar } from "../ui.jsx";
-import { NotifPanel, LedgerTable, Field, Options, AgentDocUploads, AGENT_DOCS } from "./shared.jsx";
+import { NotifPanel, Field, Options, AgentDocUploads, AGENT_DOCS } from "./shared.jsx";
 
 const ui = store.ui;
 const open = c => !["approved", "rejected"].includes(c.status);
@@ -146,9 +148,8 @@ export function Agent({ u }) {
       const form = e.currentTarget; act("agent.payment", d).then(r => { if (r) form.reset(); });
     };
     body = <>
-      <h2>Account statement</h2>
-      <Tiles items={[[bdtFmt(ch), "Total charges"], [bdtFmt(pd), "Total paid"], [bdtFmt(Math.abs(bal)), bal < 0 ? "Advance with agency" : "Balance due", true]]} />
-      <LedgerTable agentId={u.id} />
+      <h2>Payment history</h2>
+      <div className="card"><Statement title={u.agent?.business || u.name} sub={[u.name, u.agent?.phone].filter(Boolean).join(" · ")} rows={agentRows(S.ledger, u.id)} /></div>
       <form className="card fgrid" onSubmit={pay}>
         <h3 className="full">Report a payment</h3>
         <Field label="Amount (BDT)"><input type="number" name="amount" min="1" required /></Field>

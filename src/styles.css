@@ -936,3 +936,26 @@ html[lang="bn"] .btn{font-weight:600}
 .mr-bal .due span,.mr-bal .due b,.mr-due{color:var(--bad,#b3202f)}
 .mr-bal .adv span,.mr-bal .adv b,.mr-bal .paid span,.mr-bal .paid b{color:#1f7a3d}
 .mr-bal p{margin:4px 0 0}
+
+/* payment history (statement) */
+.st-sum{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:6px 0 12px}
+.st-sum>div{border:1px solid var(--line);border-radius:10px;padding:10px 14px;background:var(--surface);display:flex;flex-direction:column;gap:2px}
+.st-sum span{color:var(--muted);font-size:13px;font-weight:600}.st-sum b{font-size:20px}
+.st-sum .due{background:#fdecee;border-color:#f3c0c6}.st-sum .due b,.st-sum .due span{color:#b3202f}
+.st-sum .ok{background:#e6f6ea;border-color:#b9e3c5}.st-sum .ok b,.st-sum .ok span{color:#1f7a3d}
+.st-tools{display:flex;gap:8px 12px;flex-wrap:wrap;align-items:center;margin-bottom:10px}
+.st-tools .grow{flex:1}
+.st-date{display:inline-flex;align-items:center;gap:6px;font-weight:600;font-size:14px}.st-date input{width:auto;padding:6px 8px}
+.st-tbl table{border-collapse:collapse}
+.st-tbl th{background:#c9e3b2;color:#14231d;font-weight:800;white-space:nowrap;border:1px solid #8aa57a}
+.st-tbl td{border:1px solid var(--line)}
+.st-tbl th.r,.st-tbl td.r{text-align:end}
+.st-tbl tbody tr:nth-child(even):not(.st-total){background:color-mix(in srgb,var(--soft) 60%,transparent)}
+.st-tbl .st-rate{background:#fff6c7;color:#14231d;font-weight:600;white-space:nowrap}
+.st-tbl .st-due{color:#c4162b}.st-tbl .st-ok{color:#1f7a3d}
+.st-tbl .st-open td{background:var(--soft);font-style:italic}
+.st-tbl .st-total td{background:#e3efdc;color:#14231d;font-weight:800;border-color:#8aa57a}
+.st-tbl tr.dim td{opacity:.6}
+.nowrap{white-space:nowrap}
+@media (max-width:640px){.st-sum{grid-template-columns:1fr 1fr}.st-sum>div:last-child{grid-column:1/-1}}
+.st-tbl td.b{min-width:210px}

@@ -8,9 +8,12 @@ import { clStage, STAFF_PERMS, TEAM_DEPTS, store, commit, user, job, worker, com
 import { toast, formData, setTab, openModal, confirmBox, deleteUser, act, readUpload, compressImage } from "../actions.js";
 import { downloadFile as dlFile } from "../actions.js";
 import { Rail, Tiles, Pill, Empty, Bars, Stars, Avatar } from "../ui.jsx";
-import { LedgerTable, StatusSelect, Field, Options, JobFields, blankJob } from "./shared.jsx";
+import { StatusSelect, Field, Options, JobFields, blankJob } from "./shared.jsx";
 import { setClStatus } from "../actions.js";
 import { ReceiptsAdmin, SignatureBox } from "./Receipts.jsx";
+import { Statement } from "./Statement.jsx";
+import { agentRows } from "../statement.js";
+import { MFS, BANKS } from "../banks.js";
 import { LuReceipt } from "react-icons/lu";
 import { ShareButton, storeCard } from "../Share.jsx";
 import { ChatInbox, useInboxUnread } from "../LiveChat.jsx";
@@ -226,7 +229,6 @@ export function Admin({ u }) {
   if (t === "ledger") {
     const sel = ui.ledgerAgent ? user(ui.ledgerAgent) : null;
     const totalDue = agents.reduce((s, a) => s + balanceOf(a.id), 0);
-    const add = e => { const [d] = formData(e); const form = e.currentTarget; act("admin.ledgerAdd", { ...d, agentId: sel.id }).then(r => r && form.reset()); };
     body = <>
       <h2>Agent accounts</h2>
       <Tiles items={[[agents.length, "Agents"], [bdtFmt(totalDue), "Total due from agents", true], [pendP, "Payments to confirm"]]} />
@@ -237,22 +239,17 @@ export function Admin({ u }) {
           const pd = conf.filter(l => l.type === "payment").reduce((s, l) => s + Number(l.amount), 0);
           const pp = S.ledger.filter(l => l.agentId === a.id && l.status === "pending").length;
           const on = sel?.id === a.id;
-          return <tr key={a.id} className={on ? "sel" : ""}><td><b>{a.agent?.business || a.name}</b><div className="muted small">{a.name} · {a.agent?.phone}</div></td><td className="num">{num(ch)}</td><td className="num">{num(pd)}</td><td className="num"><b>{num(ch - pd)}</b></td><td>{pp ? <span className="count">{pp}</span> : "—"}</td><td><button className={`btn sm${on ? " pri" : ""}`} onClick={() => { ui.ledgerAgent = a.id; commit(); }}>Statement</button></td></tr>;
+          return <tr key={a.id} className={on ? "sel" : ""}><td><b>{a.agent?.business || a.name}</b><div className="muted small">{a.name} · {a.agent?.phone}</div></td><td className="num">{num(ch)}</td><td className="num">{num(pd)}</td><td className="num"><b>{num(ch - pd)}</b></td><td>{pp ? <span className="count">{pp}</span> : "—"}</td><td><button className={`btn sm${on ? " pri" : ""}`} onClick={() => { ui.ledgerAgent = a.id; commit(); setTimeout(() => document.getElementById("agent-history")?.scrollIntoView({ behavior: "smooth" }), 80); }}>Payment history</button></td></tr>;
         }) : <tr><td colSpan={6}><Empty>No agents yet.</Empty></td></tr>}
       </tbody></table></div>
-      {sel ? <div className="card stack">
-        <div className="row between"><h3>Statement: {sel.agent?.business || sel.name}</h3><span>Balance due <b className="num">{bdtFmt(balanceOf(sel.id))}</b></span></div>
-        <LedgerTable agentId={sel.id} admin />
-        <form className="fgrid divider" onSubmit={add} key={sel.id}>
-          <h4 className="full">Add entry</h4>
-          <Field label="Type"><select name="type"><Options list={[["charge", "Charge (agent owes)"], ["payment", "Payment received"]]} /></select></Field>
-          <Field label="Amount (BDT)"><input type="number" name="amount" min="1" required /></Field>
-          <Field label="Date"><input type="date" name="date" defaultValue={now().slice(0, 10)} required /></Field>
-          <Field label="Method (payments)"><select name="method"><Options list={PAY_METHODS} blank="—" /></select></Field>
-          <Field label="Reference no."><input type="text" name="ref" /></Field>
-          <Field label="Description" full><input type="text" name="desc" required placeholder="e.g. Visa processing fee: Sohel Rana" /></Field>
-          <div className="full"><button className="btn pri" type="submit">Add to statement</button></div>
-        </form>
+      {sel ? <div className="card stack" id="agent-history">
+        <div className="row between"><h3>{`Payment history: ${sel.agent?.business || sel.name}`}</h3><button className="btn sm" onClick={() => { ui.ledgerAgent = null; commit(); }}><LuX /> Close</button></div>
+        <Statement key={sel.id} title={sel.agent?.business || sel.name} sub={[sel.name, sel.agent?.phone, sel.email].filter(Boolean).join(" · ")} rows={agentRows(S.ledger, sel.id)}
+          actions={r => <div className="row tight nowrap">
+            {r.pending && <><button className="btn sm pri" onClick={() => confirmLedger(r.id, true)}><LuCheck /> Confirm</button><button className="btn sm danger" onClick={() => confirmLedger(r.id, false)}><LuX /> Reject</button></>}
+            {!r.src?.mr && <button className="btn sm link danger" aria-label="Delete entry" onClick={() => confirmBox("Delete this entry from the payment history?", () => act("admin.ledgerDelete", { id: r.id }), "Delete")}><LuTrash2 /></button>}
+          </div>} />
+        <LedgerAddForm sel={sel} />
       </div> : <p className="muted">Choose an agent to see the full statement, confirm payments and add charges.</p>}
     </>;
   }
@@ -766,4 +763,27 @@ function StaffAdmin({ u }) {
         {x.role === "staff" && <div className="grid checkgrid">{STAFF_PERMS.map(([k, l]) => <label key={k} className="check"><input type="checkbox" checked={x.perms.includes(k)} onChange={() => toggle(x, k)} /> {l}</label>)}</div>}
       </div>); }) : <Empty>No other admin or staff IDs yet.</Empty>}
   </>;
+}
+
+const confirmLedger = (lid, ok) => act("admin.ledgerConfirm", { id: lid, ok });
+/* add a line to an agent's payment history: a charge (quantity × rate) or a payment received */
+function LedgerAddForm({ sel }) {
+  const [type, setType] = React.useState("charge"); const [qty, setQty] = React.useState("1"); const [rate, setRate] = React.useState("");
+  const add = e => { const [d] = formData(e); const form = e.currentTarget; act("admin.ledgerAdd", { ...d, type, qty: type === "charge" ? qty : 1, rate, agentId: sel.id }).then(r => { if (r) { form.reset(); setQty("1"); setRate(""); } }); };
+  const total = (type === "charge" ? Number(qty) || 0 : 1) * (Number(rate) || 0);
+  return <form className="fgrid divider" onSubmit={add} key={sel.id}>
+    <h4 className="full">Add to payment history</h4>
+    <Field label="Type"><select value={type} onChange={e => setType(e.target.value)}><option value="charge">Debit: charge (agent owes)</option><option value="payment">Credit: money received</option></select></Field>
+    <Field label="Date"><input type="date" name="date" defaultValue={new Date(Date.now() - new Date().getTimezoneOffset() * 6e4).toISOString().slice(0, 10)} required /></Field>
+    {type === "charge" ? <>
+      <Field label="Quantity"><input type="number" min="1" step="1" value={qty} onChange={e => setQty(e.target.value)} required /></Field>
+      <Field label="Rate (BDT)" hint={total ? `Debit: ${num(total)} BDT` : ""}><input type="number" min="1" value={rate} onChange={e => setRate(e.target.value)} required placeholder="6000" /></Field>
+    </> : <>
+      <Field label="Amount (BDT)"><input type="number" min="1" value={rate} onChange={e => setRate(e.target.value)} required /></Field>
+      <Field label="Received by"><select name="method" defaultValue="Cash"><option>Cash</option><optgroup label="Mobile banking">{MFS.map(x => <option key={x} value={`Mobile banking · ${x}`}>{x}</option>)}</optgroup><optgroup label="Bank">{BANKS.map(x => <option key={x} value={`Bank transfer · ${x}`}>{x}</option>)}</optgroup><option value="Cheque">Cheque</option></select></Field>
+      <Field label="Reference no."><input type="text" name="ref" /></Field>
+    </>}
+    <Field label="Details" full><input type="text" name="desc" required placeholder={type === "charge" ? "e.g. 1 QATAR (NON) (FC) PP (A16406219)" : "e.g. Money Received"} /></Field>
+    <div className="full"><button className="btn pri" type="submit">Add</button></div>
+  </form>;
 }
