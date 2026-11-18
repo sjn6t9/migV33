@@ -928,3 +928,11 @@ html[lang="bn"] .btn{font-weight:600}
 .mr-vlist dt{color:var(--muted);font-weight:600;font-size:14px}.mr-vlist dd{margin:0}
 .mr-sigbox>.stack6{flex:1;min-width:240px}
 .mr-vpage .verify-brand{color:#fff;text-decoration:none}
+.mr-bal{border:1px solid var(--line);border-radius:10px;padding:10px 14px;margin-top:12px;display:flex;flex-direction:column;gap:4px;max-width:420px;background:var(--surface)}
+.mr-bal>div{display:flex;justify-content:space-between;gap:12px;font-size:14.5px}
+.mr-bal>div span{color:var(--muted)}
+.mr-bal .mr-bal-end{border-top:1px solid var(--line);padding-top:6px;margin-top:2px;font-size:16px}
+.mr-bal .mr-bal-end span,.mr-bal .mr-bal-end b{font-weight:800}
+.mr-bal .due span,.mr-bal .due b,.mr-due{color:var(--bad,#b3202f)}
+.mr-bal .adv span,.mr-bal .adv b,.mr-bal .paid span,.mr-bal .paid b{color:#1f7a3d}
+.mr-bal p{margin:4px 0 0}

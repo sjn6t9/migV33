@@ -26,6 +26,14 @@ export function takaWords(amount) {
   const a = Math.round(Number(amount || 0) * 100); const tk = Math.floor(a / 100), ps = a % 100;
   return `Taka ${intWords(tk)}${ps ? ` and ${two(ps)} Paisa` : ""} Only`;
 }
+export const payText = r => [r.method, r.channel].filter(Boolean).join(" · ") + (r.ref ? ` · ${r.method === "Cheque" ? "Cheque No. " : ""}${r.ref}` : "");
+/** balance lines for the receipt: agent account (due / advance) or the payer's set price */
+export function balLines(b) {
+  if (!b) return null;
+  const end = b.after > 0 ? [b.kind === "agent" ? "New due" : "Due", b.after] : b.after < 0 ? ["Advance", -b.after] : ["Fully paid", 0];
+  return b.kind === "agent" ? [[b.before >= 0 ? "Previous due" : "Previous advance", Math.abs(b.before)], ["Paid now", b.paid], end]
+    : [["Total price", b.price], ["Paid before", b.before], ["Paid now", b.paid], end];
+}
 export const tk = n => Number(n || 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 export const rDate = d => (d ? new Date(d + "T00:00:00").toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" }) : "");
 
@@ -87,14 +95,25 @@ export async function drawReceipt(r, settings = {}) {
   field("Received with thanks from", p.name, L, 420, W - 140);
   field("Passport No.", p.passport, L, 520, CW); field("Mobile", p.mobile, R2, 520, CW);
   field("Email", p.email, L, 620, CW); field("Agent", p.agent, R2, 620, CW);
-  field("Purpose of payment", r.purpose, L, 720, CW); field("Payment method" + (r.ref ? " · Transaction / Ref No." : ""), r.ref ? `${r.method} · ${r.ref}` : r.method, R2, 720, CW);
+  field("Purpose of payment", r.purpose, L, 720, CW); field("Payment method" + (r.ref ? (r.method === "Mobile banking" ? " · Transaction ID" : r.method === "Cheque" ? " · Cheque No." : " · Transaction / Ref No.") : ""), [r.method, r.channel, r.ref].filter(Boolean).join(" · "), R2, 720, CW);
 
-  // amount in words + amount box
-  rr(g, L, 812, 960, 96, 14); g.fillStyle = TINT; g.fill();
+  // amount in words (+ balance) + amount box
+  const bl = r.status === "approved" ? balLines(r.balance) : null, ww = bl ? 560 : 960;
+  rr(g, L, 812, ww, 96, 14); g.fillStyle = TINT; g.fill();
   g.fillStyle = MUTED; g.font = `600 20px ${F}`; g.fillText("Amount in words", L + 24, 846);
-  g.fillStyle = GREEN; g.font = `700 26px ${F}`; let wl = wrap(g, takaWords(r.amount), 910);
-  if (wl.length > 1) { g.font = `700 20px ${F}`; wl = wrap(g, takaWords(r.amount), 910).slice(0, 2); }
+  g.fillStyle = GREEN; g.font = `700 26px ${F}`; let wl = wrap(g, takaWords(r.amount), ww - 50);
+  if (wl.length > 1) { g.font = `700 20px ${F}`; wl = wrap(g, takaWords(r.amount), ww - 50).slice(0, 2); }
   wl.forEach((t, i) => g.fillText(t, L + 24, (wl.length > 1 ? 872 : 884) + i * 24));
+  if (bl) { // balance after this payment
+    const x0 = L + ww + 20, w0 = 1050 - x0, rowH = bl.length > 3 ? 21 : 27;
+    rr(g, x0, 812, w0, 96, 14); g.strokeStyle = LINE; g.lineWidth = 2; g.stroke();
+    bl.forEach(([lab, v], i) => {
+      const y = 812 + 14 + (96 - 28 - rowH * bl.length) / 2 + rowH * (i + 1) - 4, last = i === bl.length - 1;
+      g.textAlign = "left"; g.fillStyle = last ? (lab === "Advance" || lab === "Fully paid" ? GREEN : RED) : MUTED; g.font = `${last ? 800 : 600} ${bl.length > 3 ? 17 : 19}px ${F}`; g.fillText(lab, x0 + 18, y);
+      g.textAlign = "right"; g.fillStyle = last ? g.fillStyle : INK; g.fillText(tk(v), x0 + w0 - 18, y);
+    });
+    g.textAlign = "left";
+  }
   const bx = 1070, bw = W - 70 - bx;
   rr(g, bx, 812, bw, 96, 14); g.fillStyle = GREEN; g.fill();
   g.fillStyle = "#fff"; g.textAlign = "left"; g.font = `600 20px ${F}`; g.globalAlpha = .9; g.fillText("Amount (BDT)", bx + 24, 846); g.globalAlpha = 1;
@@ -135,7 +154,8 @@ const enc = new TextEncoder();
 export async function receiptPng(r, settings) { const c = await drawReceipt(r, settings); save(await new Promise(res => c.toBlob(res, "image/png")), `${r.no}.png`); }
 
 /** One-page PDF (A5 landscape) holding the receipt as a JPEG image. */
-export async function receiptPdf(r, settings) {
+export async function receiptPdf(r, settings) { save(await receiptPdfBlob(r, settings), `${r.no}.pdf`); }
+export async function receiptPdfBlob(r, settings) {
   const c = await drawReceipt(r, settings);
   const jpg = new Uint8Array(await (await new Promise(res => c.toBlob(res, "image/jpeg", .94))).arrayBuffer());
   const pw = 595.28, ph = 419.53, parts = [], offs = []; let len = 0;
@@ -151,7 +171,7 @@ export async function receiptPdf(r, settings) {
   obj(6, () => push(`<< /Title (Money receipt ${r.no}) /Producer (${OFFICE.site}) >>`));
   const xref = len;
   push(`xref\n0 7\n0000000000 65535 f \n${[1, 2, 3, 4, 5, 6].map(n => String(offs[n]).padStart(10, "0") + " 00000 n \n").join("")}trailer\n<< /Size 7 /Root 1 0 R /Info 6 0 R >>\nstartxref\n${xref}\n%%EOF`);
-  save(new Blob(parts, { type: "application/pdf" }), `${r.no}.pdf`);
+  return new Blob(parts, { type: "application/pdf" });
 }
 
 /* ---- Excel: a minimal .xlsx (zip, stored) with inline strings ---- */
@@ -197,8 +217,9 @@ export function receiptXlsx(r, settings = {}) {
     [{ v: OFFICE.name, s: 3 }], [TAGLINE], [[settings.address, settings.phone, OFFICE.site].filter(Boolean).join(" · ")], [],
     [{ v: "MONEY RECEIPT", s: 3 }], [{ v: "Receipt No.", s: 1 }, r.no], [{ v: "Date", s: 1 }, rDate(r.date)], [],
     [{ v: "Received with thanks from", s: 1 }, p.name], [{ v: "Passport No.", s: 1 }, p.passport], [{ v: "Mobile", s: 1 }, p.mobile], [{ v: "Email", s: 1 }, p.email], [{ v: "Agent", s: 1 }, p.agent], [],
-    [{ v: "Purpose of payment", s: 1 }, r.purpose], [{ v: "Payment method", s: 1 }, r.method], [{ v: "Transaction / Ref No.", s: 1 }, r.ref],
+    [{ v: "Purpose of payment", s: 1 }, r.purpose], [{ v: "Payment method", s: 1 }, r.method], [{ v: r.method === "Mobile banking" ? "Mobile banking service" : "Bank", s: 1 }, r.channel], [{ v: "Transaction / Ref No.", s: 1 }, r.ref],
     [{ v: "Amount (BDT)", s: 1 }, { v: r.amount, s: 4 }], [{ v: "Amount in words", s: 1 }, takaWords(r.amount)], [{ v: "Note", s: 1 }, r.note],
+    ...(balLines(r.balance) || []).map(([l, v], i, a) => [{ v: l, s: 1 }, { v, s: i === a.length - 1 ? 4 : 2 }]),
     [{ v: "Received by", s: 1 }, signer(r.received)], [{ v: "Authorized signature", s: 1 }, signer(r.approved)], [{ v: "Verify online", s: 1 }, receiptUrl(r)],
     ...(r.void ? [[], [{ v: "Status", s: 1 }, `CANCELLED${r.void.reason ? " · " + r.void.reason : ""}`]] : [])
   ], [28, 60], `${r.no}.xlsx`);
@@ -206,10 +227,10 @@ export function receiptXlsx(r, settings = {}) {
 
 /** A list of receipts (e.g. the current search) as one Excel sheet. */
 export function receiptsXlsx(list, title = "Money receipts") {
-  const head = ["Receipt No.", "Date", "Name", "Passport No.", "Mobile", "Email", "Agent", "Purpose", "Method", "Ref No.", "Amount (BDT)", "Received by", "Approved by", "Status"].map(v => ({ v, s: 1 }));
+  const head = ["Receipt No.", "Date", "Name", "Passport No.", "Mobile", "Email", "Agent", "Purpose", "Method", "Bank / service", "Ref No.", "Amount (BDT)", "Due after (BDT)", "Received by", "Approved by", "Status"].map(v => ({ v, s: 1 }));
   const live = list.filter(r => !r.void && r.status === "approved");
   xlsx("Receipts", [[{ v: `${OFFICE.name} · ${title}`, s: 3 }], [], head,
-    ...list.map(r => [r.no, r.date, r.payer?.name, r.payer?.passport, r.payer?.mobile, r.payer?.email, r.payer?.agent, r.purpose, r.method, r.ref, { v: r.amount, s: 2 }, signer(r.received), signer(r.approved), r.void ? "Cancelled" : r.status === "approved" ? "Approved" : "Waiting for approval"]),
-    [], ["", "", "", "", "", "", "", "", "", { v: "Total approved", s: 1 }, { v: live.reduce((s, r) => s + r.amount, 0), s: 4 }]
-  ], [15, 12, 24, 15, 15, 24, 20, 24, 14, 16, 15, 22, 22, 18], `money-receipts-${new Date().toISOString().slice(0, 10)}.xlsx`);
+    ...list.map(r => [r.no, r.date, r.payer?.name, r.payer?.passport, r.payer?.mobile, r.payer?.email, r.payer?.agent, r.purpose, r.method, r.channel, r.ref, { v: r.amount, s: 2 }, r.balance ? { v: r.balance.after, s: 2 } : "", signer(r.received), signer(r.approved), r.void ? "Cancelled" : r.status === "approved" ? "Approved" : "Waiting for approval"]),
+    [], ["", "", "", "", "", "", "", "", "", "", { v: "Total approved", s: 1 }, { v: live.reduce((s, r) => s + r.amount, 0), s: 4 }]
+  ], [15, 12, 24, 15, 15, 24, 20, 24, 14, 22, 16, 15, 15, 22, 22, 18], `money-receipts-${new Date().toISOString().slice(0, 10)}.xlsx`);
 }

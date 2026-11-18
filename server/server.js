@@ -1167,12 +1167,16 @@ const mrSigner = u => { const m = u.memberId && db.team.find(x => x.id === u.mem
 // what the browser gets: signature pictures as links (staff: stored files; public page: through the receipt's own link)
 const mrOut = (r, pub) => {
   const sig = (s, k) => s ? { name: s.name, title: s.title, at: s.at, sigUrl: s.sig && db.files[s.sig] ? (pub ? `/api/receipt/${r.token}/sig/${k}` : `/api/files/${s.sig}`) : "" } : null;
-  const x = { id: r.id, no: r.no, accountId: r.accountId, payer: r.payer, amount: r.amount, method: r.method, ref: r.ref, purpose: r.purpose, note: r.note, date: r.date, created: r.created,
+  const x = { id: r.id, no: r.no, accountId: r.accountId, payer: r.payer, agentId: r.agentId || null, amount: r.amount, method: r.method, channel: r.channel || "", balance: r.balance || null, mailed: r.mailed || null, ref: r.ref, purpose: r.purpose, note: r.note, date: r.date, created: r.created,
     status: r.status, token: r.status === "approved" ? r.token : "", received: sig(r.received, "r"), approved: sig(r.approved, "a"), void: r.void || null };
-  if (pub) { delete x.accountId; delete x.id; if (x.payer) x.payer = { ...x.payer, email: x.payer.email ? x.payer.email.replace(/^(.).*(@.*)$/, "$1***$2") : "" }; }
+  if (pub) { delete x.accountId; delete x.id; delete x.mailed; delete x.agentId; if (x.payer) x.payer = { ...x.payer, email: x.payer.email ? x.payer.email.replace(/^(.).*(@.*)$/, "$1***$2") : "" }; }
   return x;
 };
-const MR_METHODS = ["Cash", "bKash", "Nagad", "Rocket", "Bank transfer", "Cheque", "Card"];
+const MR_METHODS = ["Cash", "Bank transfer", "Mobile banking", "Cheque", "Card"];
+const MR_CHANNEL = ["Bank transfer", "Mobile banking", "Cheque"]; // these name a bank or a mobile banking service
+const agentDue = aid => db.ledger.filter(l => l.agentId === aid && l.status === "confirmed").reduce((s, l) => s + (l.type === "charge" ? 1 : -1) * Number(l.amount), 0);
+const agentName = a => a?.agent?.business || a?.name || "";
+const r2 = n => Math.round(n * 100) / 100;
 const mrNorm = { mobile: v => String(v || "").replace(/[^\d+]/g, ""), passport: v => String(v || "").replace(/\s+/g, "").toUpperCase(), email: v => String(v || "").trim().toLowerCase() };
 const mrPayer = p => {
   const x = { name: str(p?.name, 120), mobile: mrNorm.mobile(p?.mobile).slice(0, 20), passport: mrNorm.passport(p?.passport).slice(0, 20), email: mrNorm.email(p?.email).slice(0, 120), agent: str(p?.agent, 120) };
@@ -1189,14 +1193,21 @@ A["admin.mr"] = async (d, u) => {
     const amount = Math.round(Number(d.amount) * 100) / 100;
     must(amount > 0 && amount < 1e9, "Enter the amount received.");
     const method = MR_METHODS.includes(d.method) ? d.method : "Cash";
+    const channel = MR_CHANNEL.includes(method) ? str(d.channel, 80) : "";
+    must(channel || method === "Cheque" || !MR_CHANNEL.includes(method), method === "Mobile banking" ? "Choose the mobile banking service." : "Choose the bank.");
+    const ag = d.agentId ? user(d.agentId) : null; must(!d.agentId || ag?.role === "agent", "Agent not found.");
+    if (ag) x.agent = agentName(ag);
+    const price = d.price === "" || d.price == null ? null : r2(Number(d.price)); must(price === null || (price >= 0 && price < 1e9), "Check the price.");
     const date = /^\d{4}-\d{2}-\d{2}$/.test(d.date || "") ? d.date : new Date(Date.now() + 6 * 3600e3).toISOString().slice(0, 10); // Bangladesh date
     let acc = d.accountId ? M.accounts.find(a => a.id === d.accountId) : mrFind(x);
     if (d.accountId) must(acc, "Account not found.");
     if (acc) { for (const k in x) if (x[k]) acc[k] = x[k]; acc.updated = now(); }
     else { acc = { id: id("ma"), ...x, created: now(), updated: now() }; M.accounts.unshift(acc); }
+    if ("agentId" in d) acc.agentId = ag ? ag.id : null;
+    if (!acc.agentId && price !== null) acc.price = price; // the total this payer has to pay (not for agents: they have their agent account)
     const yr = date.slice(0, 4); M.seq[yr] = (M.seq[yr] || 0) + 1;
     const r = { id: id("mr"), no: `MR-${yr}-${String(M.seq[yr]).padStart(4, "0")}`, accountId: acc.id, payer: { name: acc.name, mobile: acc.mobile, passport: acc.passport, email: acc.email, agent: acc.agent },
-      amount, method, ref: str(d.ref, 80), purpose: str(d.purpose, 160), note: str(d.note, 400), date, status: "pending", received: mrSigner(u), created: now() };
+      agentId: acc.agentId || null, amount, method, channel, ref: str(d.ref, 80), purpose: str(d.purpose, 160), note: str(d.note, 400), date, status: "pending", received: mrSigner(u), created: now() };
     M.receipts.unshift(r);
     notifyAdmins(`Payment ${r.no} (BDT ${amount.toLocaleString("en-US")}) is waiting for approval.`, "receipts");
     return { msg: `Payment ${r.no} saved. It waits for approval by an admin or another staff member.`, receiptId: r.id, accountId: acc.id };
@@ -1206,7 +1217,36 @@ A["admin.mr"] = async (d, u) => {
     must(u.role === "admin" || r.received?.uid !== u.id, "Another admin or staff member must approve a payment you entered.");
     must(u.signature?.id && db.files[u.signature.id], "Upload your signature first (Money receipts › My signature).");
     r.approved = mrSigner(u); r.status = "approved"; r.token = crypto.randomBytes(12).toString("hex");
-    return { msg: `Approved. Money receipt ${r.no} is ready to download.` };
+    // balance at approval: an agent's account (due / advance), or the payer's set price (due)
+    const ag = r.agentId && user(r.agentId), acc = M.accounts.find(a => a.id === r.accountId);
+    if (ag) {
+      const before = agentDue(ag.id); const l = { id: id("l"), agentId: ag.id, type: "payment", desc: `Money receipt ${r.no}${r.payer.name ? ": " + r.payer.name : ""}`, amount: r.amount, date: r.date, method: [r.method, r.channel].filter(Boolean).join(" · "), ref: r.ref, status: "confirmed", mr: r.id };
+      db.ledger.push(l); r.ledgerId = l.id; r.balance = { kind: "agent", agent: agentName(ag), before: r2(before), paid: r.amount, after: r2(before - r.amount) };
+      notify(ag.id, `Payment received: BDT ${r.amount.toLocaleString("en-US")} (money receipt ${r.no}).`);
+    } else if (acc?.price > 0) {
+      const before = r2(M.receipts.filter(x => x !== r && x.accountId === acc.id && x.status === "approved" && !x.void).reduce((s, x) => s + x.amount, 0));
+      r.balance = { kind: "price", price: acc.price, before, paid: r.amount, after: r2(acc.price - before - r.amount) };
+    }
+    return { msg: `Approved. Money receipt ${r.no} is ready to download.`, email: r.payer.email || "" };
+  }
+  if (d.op === "mail") { // the approver's browser makes the PDF; the server emails it to the payer
+    const r = M.receipts.find(x => x.id === d.id); must(r && r.status === "approved", "Receipt not found.");
+    const to = d.to ? mrNorm.email(d.to) : r.payer.email; must(to && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(to), "This payer has no email address.");
+    const pdf = Buffer.from(String(d.pdf || "").replace(/^data:application\/pdf;base64,/, ""), "base64");
+    must(pdf.length > 100 && pdf.length < 4e6 && pdf.subarray(0, 5).toString() === "%PDF-", "The receipt PDF is missing.");
+    const m = await getMailer();
+    const fail = msg => { r.mailed = { to, at: now(), ok: false }; return { msg }; };
+    if (!m) return fail("Email is not set up on this server, so the receipt was not emailed. Download it and send it yourself.");
+    const link = ADMIN_HOST || AGENT_HOST || process.env.CANONICAL_HOST ? `${mainUrl()}/r/${r.token}` : "";
+    const b = r.balance, money = n => `BDT ${Number(n).toLocaleString("en-US", { minimumFractionDigits: 2 })}`;
+    const bal = !b ? "" : b.kind === "agent" ? (b.after > 0 ? `Due on your agent account: ${money(b.after)}\n` : b.after < 0 ? `Advance on your agent account: ${money(-b.after)}\n` : "Your agent account is fully paid.\n")
+      : b.after > 0 ? `Remaining due: ${money(b.after)} (total ${money(b.price)})\n` : b.after < 0 ? `Advance: ${money(-b.after)}\n` : "Fully paid.\n";
+    try {
+      await m.sendMail({ from: `"MAM & MAM Overseas Ltd." <${mailFrom()}>`, to, subject: `Money receipt ${r.no} · MAM & MAM Overseas Ltd.`,
+        text: `Assalamu Alaikum${r.payer.name ? " " + r.payer.name : ""},\n\nThank you for your payment. Your money receipt is attached.\n\nReceipt No.: ${r.no}\nDate: ${r.date}\nAmount: ${money(r.amount)}\nPayment: ${[r.method, r.channel].filter(Boolean).join(" · ")}${r.ref ? " · " + r.ref : ""}\n${r.purpose ? `Purpose: ${r.purpose}\n` : ""}${bal}${link ? `\nCheck this receipt online: ${link}\n` : ""}\nMAM & MAM Overseas Ltd. · Government Licensed Recruiting Agency · RL1217`,
+        attachments: [{ filename: `${r.no}.pdf`, content: pdf, contentType: "application/pdf" }] });
+    } catch (e) { console.error("Receipt email failed:", e.message); return fail(`The receipt could not be emailed to ${to}. Check the email settings and try again.`); }
+    r.mailed = { to, at: now(), ok: true }; return { msg: `Money receipt ${r.no} emailed to ${to}.` };
   }
   if (d.op === "discard") { // remove an entry that was not approved (wrong entry)
     const r = M.receipts.find(x => x.id === d.id); must(r, "Receipt not found."); must(r.status === "pending", "An approved receipt cannot be deleted. Cancel it instead.");
@@ -1217,12 +1257,16 @@ A["admin.mr"] = async (d, u) => {
     const acc = M.accounts.find(a => a.id === d.id); must(acc, "Account not found.");
     const x = mrPayer(d.payer); must(Object.values(x).some(Boolean), "Enter at least one of: name, mobile, passport no., email or agent name.");
     for (const k of ["passport", "mobile", "email"]) if (x[k]) { const o = M.accounts.find(a => a.id !== acc.id && a[k] === x[k]); must(!o, `Another account already has this ${k === "passport" ? "passport no." : k}: ${o?.name || o?.[k]}`); }
-    Object.assign(acc, x, { updated: now() }); return { msg: "Account updated." };
+    Object.assign(acc, x, { updated: now() });
+    if ("price" in d && !acc.agentId) { const p = d.price === "" || d.price == null ? null : r2(Number(d.price)); must(p === null || (p >= 0 && p < 1e9), "Check the price."); acc.price = p; }
+    return { msg: "Account updated." };
   }
   if (d.op === "void") { // cancel a receipt; it stays in the list marked Cancelled
     must(u.role === "admin", "Only the admin can cancel a receipt.", 403);
     const r = M.receipts.find(x => x.id === d.id); must(r, "Receipt not found."); must(!r.void, "This receipt is already cancelled.");
-    r.void = { by: u.name || "Admin", at: now(), reason: str(d.reason, 200) }; return { msg: `Receipt ${r.no} cancelled.` };
+    r.void = { by: u.name || "Admin", at: now(), reason: str(d.reason, 200) };
+    if (r.ledgerId) db.ledger = db.ledger.filter(l => l.id !== r.ledgerId); // take the payment off the agent's account again
+    return { msg: `Receipt ${r.no} cancelled.` };
   }
   must(false, "Unknown request.");
 };

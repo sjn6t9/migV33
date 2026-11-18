@@ -1,14 +1,14 @@
 // Admin panel › Money receipts: payment entry (any of name, mobile, passport, email, agent),
 // search to find and update a payer's account, and receipts downloadable as PNG, PDF and Excel.
 import React from "react";
-import { LuPlus, LuSearch, LuEye, LuDownload, LuFileSpreadsheet, LuFileText, LuImage, LuPrinter, LuPencil, LuX, LuReceipt, LuUserRound, LuBan, LuCheck, LuSignature, LuUpload, LuTrash2, LuClock, LuQrCode, LuExternalLink } from "react-icons/lu";
-import { store, user } from "../store.js";
+import { LuPlus, LuSearch, LuEye, LuDownload, LuFileSpreadsheet, LuFileText, LuImage, LuPrinter, LuPencil, LuX, LuReceipt, LuUserRound, LuBan, LuCheck, LuSignature, LuUpload, LuTrash2, LuClock, LuQrCode, LuExternalLink, LuMail } from "react-icons/lu";
+import { store, user, balanceOf } from "../store.js";
 import { act, openModal, closeModal, toast, confirmBox } from "../actions.js";
 import { Field } from "./shared.jsx";
 import { Tiles, Empty } from "../ui.jsx";
-import { drawReceipt, receiptPng, receiptPdf, receiptXlsx, receiptsXlsx, takaWords, tk, rDate, receiptUrl } from "../receipt.js";
+import { drawReceipt, receiptPng, receiptPdf, receiptPdfBlob, receiptXlsx, receiptsXlsx, takaWords, tk, rDate, receiptUrl, payText } from "../receipt.js";
 
-const METHODS = ["Cash", "bKash", "Nagad", "Rocket", "Bank transfer", "Cheque", "Card"];
+import { METHODS, channelsFor } from "../banks.js";
 const PURPOSES = ["Visa processing fee", "Medical fee", "BMET clearance fee", "Air ticket", "Service charge", "Advance payment", "Final payment", "Training fee"];
 const PAYER = [["name", "Name", "text", "Full name"], ["mobile", "Mobile number", "tel", "01XXXXXXXXX"], ["passport", "Passport No.", "text", "A01234567"], ["email", "Email address", "email", "name@example.com"], ["agent", "Agent name", "text", "Agent or office"]];
 const MR = () => store.S.mr || { accounts: [], receipts: [] };
@@ -27,7 +27,16 @@ const canApprove = r => { const u = me(); return r.status === "pending" && !r.vo
 const canDiscard = r => { const u = me(); return r.status === "pending" && (u?.role === "admin" || r.received?.uid === u?.id); };
 export function approve(r) {
   if (!me()?.signature) { toast("Upload your signature first (My signature, at the top of Money receipts)."); return; }
-  confirmBox(`Approve payment ${r.no} of BDT ${tk(r.amount)} from ${r.payer.name || r.payer.passport || r.payer.mobile || "the payer"}? Your name and signature go on the receipt as Authorized signature.`, async () => { if (await act("admin.mr", { op: "approve", id: r.id })) openModal("mrView", { rid: r.id }); }, "Approve");
+  confirmBox(`Approve payment ${r.no} of BDT ${tk(r.amount)} from ${r.payer.name || r.payer.passport || r.payer.mobile || "the payer"}? Your name and signature go on the receipt as Authorized signature.`, async () => { const res = await act("admin.mr", { op: "approve", id: r.id }); if (res) { openModal("mrView", { rid: r.id }); if (res.email) mailReceipt(r.id); } }, "Approve");
+}
+/** make the PDF here and have the server email it to the payer */
+export async function mailReceipt(rid, to) {
+  const r = MR().receipts.find(x => x.id === rid); if (!r) return;
+  try {
+    const blob = await receiptPdfBlob(r, store.S.settings);
+    const pdf = await new Promise((res, rej) => { const f = new FileReader(); f.onload = () => res(f.result); f.onerror = rej; f.readAsDataURL(blob); });
+    await act("admin.mr", { op: "mail", id: r.id, pdf, to });
+  } catch { toast("The receipt PDF could not be made for the email. Try Send by email again."); }
 }
 const discard = r => confirmBox(`Delete entry ${r.no}? It was not approved, so no receipt was made.`, async () => { if (await act("admin.mr", { op: "discard", id: r.id })) closeModal(); }, "Delete entry");
 export function StatusBadge({ r }) {
@@ -97,16 +106,21 @@ export function ReceiptsAdmin() {
         <td><div className="row6"><button className="ec-ico view" title="View receipt" aria-label="View receipt" onClick={() => openModal("mrView", { rid: r.id })}><LuEye /></button>
           {ok(r) || r.void ? <DlMenu r={r} /> : canApprove(r) ? <button className="btn sm pri" onClick={() => approve(r)}><LuCheck /> Approve</button> : null}</div></td>
       </tr>)}</tbody></table></div> : <Empty>{q ? "No receipt matches your search." : view === "pending" ? "Nothing is waiting for approval." : "No payments yet. Use New payment entry to add the first one."}</Empty>)
-      : (Acc.length ? <div className="tbl ec-tbl grid"><table><thead><tr><th>SL</th><th>Name</th><th>Mobile</th><th>Passport No.</th><th>Email</th><th>Agent</th><th className="r">Receipts</th><th className="r">Total paid (BDT)</th><th>Actions</th></tr></thead><tbody>
+      : (Acc.length ? <div className="tbl ec-tbl grid"><table><thead><tr><th>SL</th><th>Name</th><th>Mobile</th><th>Passport No.</th><th>Email</th><th>Agent</th><th className="r">Receipts</th><th className="r">Total paid (BDT)</th><th className="r">Due / advance</th><th>Actions</th></tr></thead><tbody>
         {Acc.slice(0, n).map((a, i) => { const l = accReceipts(a.id); return <tr key={a.id}>
           <td>{i + 1}</td><td data-notr><b>{a.name || "—"}</b></td><td className="num" data-notr>{a.mobile || "—"}</td><td className="num" data-notr>{a.passport || "—"}</td><td data-notr>{a.email || "—"}</td><td data-notr>{a.agent || "—"}</td>
-          <td className="num r">{l.length}</td><td className="num r b">{tk(paid(l.filter(ok)))}</td>
+          <td className="num r">{l.length}</td><td className="num r b">{tk(paid(l.filter(ok)))}</td><td className="num r"><DueCell a={a} l={l} /></td>
           <td><div className="row6"><button className="btn sm pri" onClick={() => openModal("mrEntry", { aid: a.id })}><LuPlus /> Payment</button><button className="btn sm" onClick={() => openModal("mrAccount", { aid: a.id })}><LuPencil /> Account</button></div></td>
         </tr>; })}</tbody></table></div> : <Empty>{q ? "No account matches your search." : "No accounts yet. An account is made with the first payment entry."}</Empty>)}
     {(view !== "accounts" ? R : Acc).length > n && <div className="center mt14"><button className="btn" onClick={() => setN(n + 50)}>Show more</button></div>}
   </>;
 }
 
+function DueCell({ a, l }) {
+  const d = a.agentId ? balanceOf(a.agentId) : a.price > 0 ? a.price - paid(l.filter(ok)) : null;
+  if (d === null) return <span className="muted">—</span>;
+  return d > 0 ? <span className="mr-due">{`Due ${tk(d)}`}</span> : d < 0 ? <span className="mr-ok">{`Advance ${tk(-d)}`}</span> : <span className="mr-ok">Paid</span>;
+}
 /* download menu: PNG, PDF, Excel */
 function DlMenu({ r }) {
   const [open, setOpen] = React.useState(false); const ref = React.useRef(null); const [pos, setPos] = React.useState(null);
@@ -120,23 +134,50 @@ function DlMenu({ r }) {
 }
 
 /* ---------------- payment entry ---------------- */
+export const agents = () => store.S.users.filter(u => u.role === "agent").map(u => ({ id: u.id, name: u.agent?.business || u.name, person: u.name })).sort((x, y) => x.name.localeCompare(y.name));
+const money = n => `${n < 0 ? "-" : ""}${tk(Math.abs(n))}`;
+/** what the payment does to the balance: agent account (due / advance) or the payer's set price (due) */
+export function balanceRows(b) {
+  if (!b) return null;
+  const end = b.after > 0 ? ["Due", tk(b.after), "due"] : b.after < 0 ? ["Advance", tk(-b.after), "adv"] : ["Fully paid", tk(0), "paid"];
+  if (b.kind === "agent") return [[b.before >= 0 ? "Previous due" : "Previous advance", tk(Math.abs(b.before))], ["Paid now", tk(b.paid)], [b.after > 0 ? "New due" : end[0], end[1], end[2]]];
+  return [["Total price", tk(b.price)], ["Paid before", tk(b.before)], ...(b.paid ? [["Paid now", tk(b.paid)]] : []), end];
+}
+export function BalanceBox({ b, note }) {
+  const rows = balanceRows(b); if (!rows) return null;
+  return <div className="mr-bal">{rows.map(([l, v, k], i) => <div key={i} className={k ? `mr-bal-end ${k}` : ""}><span>{l}</span><b className="num">{v}</b></div>)}{note && <p className="muted small">{note}</p>}</div>;
+}
+
 export function MrEntry({ aid: aid0 }) {
   const [aid, setAid] = React.useState(aid0 || null);
   const acc = aid && MR().accounts.find(a => a.id === aid);
   const blank = { name: "", mobile: "", passport: "", email: "", agent: "" };
   const [p, setP] = React.useState(acc ? { ...blank, ...pick(acc) } : blank);
+  const [agentId, setAgentId] = React.useState(acc?.agentId || ""); const [agentOther, setAgentOther] = React.useState(!!(acc && !acc.agentId && acc.agent));
+  const [price, setPrice] = React.useState(acc?.price != null ? String(acc.price) : "");
+  const [amount, setAmount] = React.useState(""); const [method, setMethod] = React.useState("Cash"); const [channel, setChannel] = React.useState(""); const [chOther, setChOther] = React.useState(false);
   const [q, setQ] = React.useState(""); const [busy, setBusy] = React.useState(false);
   const found = q.trim() ? MR().accounts.filter(mrMatch(q)).slice(0, 6) : [];
   const auto = !aid && MR().accounts.find(a => ["passport", "mobile", "email"].some(k => p[k] && norm(k, p[k]) === a[k]));
-  const choose = a => { setAid(a.id); setP({ ...blank, ...pick(a) }); setQ(""); };
-  const clear = () => { setAid(null); setP(blank); };
-  const has = Object.values(p).some(v => v.trim());
+  const target = acc || auto;
+  const choose = a => { setAid(a.id); setP({ ...blank, ...pick(a) }); setAgentId(a.agentId || ""); setAgentOther(!a.agentId && !!a.agent); setPrice(a.price != null ? String(a.price) : ""); setQ(""); };
+  const clear = () => { setAid(null); setP(blank); setAgentId(""); setAgentOther(false); setPrice(""); };
+  const has = Object.values(p).some(v => v.trim()) || !!agentId;
+  const amt = Number(amount) > 0 ? Number(amount) : 0;
+  const ag = agentId && agents().find(x => x.id === agentId);
+  const before = target ? paid(accReceipts(target.id).filter(ok)) : 0;
+  const bal = ag ? { kind: "agent", before: balanceOf(ag.id), paid: amt, after: balanceOf(ag.id) - amt }
+    : Number(price) > 0 ? { kind: "price", price: Number(price), before, paid: amt, after: Number(price) - before - amt } : null;
+  const chans = channelsFor(method);
+  const pickAgent = v => { if (v === "__other") { setAgentId(""); setAgentOther(true); } else { setAgentId(v); setAgentOther(false); const x = agents().find(y => y.id === v); setP({ ...p, agent: x ? x.name : "" }); } };
   const submit = async e => {
     e.preventDefault(); const d = Object.fromEntries(new FormData(e.currentTarget));
     if (!has) { toast("Enter at least one of: name, mobile, passport no., email or agent name."); return; }
-    if (!(Number(d.amount) > 0)) { toast("Enter the amount received."); return; }
+    if (!(amt > 0)) { toast("Enter the amount received."); return; }
+    if (chans && method !== "Cheque" && !channel.trim()) { toast(method === "Mobile banking" ? "Choose the mobile banking service." : "Choose the bank."); return; }
     setBusy(true);
-    const r = await act("admin.mr", { op: "entry", accountId: aid || (auto ? auto.id : undefined), payer: p, amount: d.amount, date: d.date, method: d.method, ref: d.ref, purpose: d.purpose, note: d.note });
+    const r = await act("admin.mr", { op: "entry", accountId: aid || (auto ? auto.id : undefined), payer: { ...p, agent: ag ? ag.name : agentOther ? p.agent : "" }, agentId: agentId || "",
+      price: agentId ? undefined : price, amount: amt, date: d.date, method, channel: chans ? channel : "", ref: d.ref, purpose: d.purpose, note: d.note });
     setBusy(false); if (r?.receiptId) openModal("mrView", { rid: r.receiptId, fresh: true });
   };
   return <form className="mr-entry" onSubmit={submit} noValidate>
@@ -151,19 +192,30 @@ export function MrEntry({ aid: aid0 }) {
     {acc ? <div className="mr-acc"><LuUserRound /><span>Account: <b data-notr>{acc.name || acc.passport || acc.mobile}</b> · <span className="muted">changes below update this account</span></span><button type="button" className="btn sm link" onClick={clear}><LuX /> New account</button></div>
       : auto ? <div className="mr-acc soft"><LuUserRound /><span>This payment will be added to the existing account of <b data-notr>{auto.name || auto.passport || auto.mobile}</b>.</span><button type="button" className="btn sm link" onClick={() => choose(auto)}>Open account</button></div> : null}
     <fieldset className="card mr-box"><legend>Payer details <span className="muted small">· fill in any one or all</span></legend>
-      <div className="fgrid">{PAYER.map(([k, l, t, ph]) => <Field key={k} label={l}><input type={t} value={p[k]} onChange={e => setP({ ...p, [k]: e.target.value })} placeholder={ph} maxLength={120} list={k === "agent" ? "mr-agents" : undefined} inputMode={k === "mobile" ? "tel" : undefined} /></Field>)}</div>
-      <datalist id="mr-agents">{agentNames().map(n => <option key={n} value={n} />)}</datalist>
+      <div className="fgrid">{PAYER.filter(x => x[0] !== "agent").map(([k, l, t, ph]) => <Field key={k} label={l}><input type={t} value={p[k]} onChange={e => setP({ ...p, [k]: e.target.value })} placeholder={ph} maxLength={120} inputMode={k === "mobile" ? "tel" : undefined} /></Field>)}
+        <Field label="Agent"><select value={agentOther ? "__other" : agentId} onChange={e => pickAgent(e.target.value)}><option value="">— No agent —</option>
+          {agents().map(x => { const d = balanceOf(x.id); return <option key={x.id} value={x.id} data-notr>{`${x.name}${d > 0 ? ` · due ${tk(d)}` : d < 0 ? ` · advance ${tk(-d)}` : ""}`}</option>; })}
+          <option value="__other">Other agent (type the name)</option></select></Field>
+        {agentOther && <Field label="Agent name"><input type="text" value={p.agent} onChange={e => setP({ ...p, agent: e.target.value })} maxLength={120} placeholder="Agent or office" /></Field>}
+      </div>
     </fieldset>
     <fieldset className="card mr-box"><legend>Payment</legend>
       <div className="fgrid">
-        <Field label="Amount (BDT)"><input type="number" name="amount" min="1" step="0.01" required placeholder="0.00" inputMode="decimal" /></Field>
+        <Field label="Amount (BDT)"><input type="number" name="amount" min="1" step="0.01" required placeholder="0.00" inputMode="decimal" value={amount} onChange={e => setAmount(e.target.value)} /></Field>
         <Field label="Date"><input type="date" name="date" defaultValue={today()} /></Field>
-        <Field label="Payment method"><select name="method" defaultValue="Cash">{METHODS.map(x => <option key={x}>{x}</option>)}</select></Field>
-        <Field label="Transaction / Ref No."><input type="text" name="ref" maxLength={80} placeholder="Optional" /></Field>
+        <Field label="Payment method"><select value={method} onChange={e => { setMethod(e.target.value); setChannel(""); setChOther(false); }}>{METHODS.map(x => <option key={x}>{x}</option>)}</select></Field>
+        {chans && <Field label={method === "Mobile banking" ? "Mobile banking service" : "Bank"}>
+          <select value={chOther ? "__other" : channel} onChange={e => { if (e.target.value === "__other") { setChOther(true); setChannel(""); } else { setChOther(false); setChannel(e.target.value); } }}>
+            <option value="">{method === "Mobile banking" ? "— Choose the service —" : "— Choose the bank —"}</option>
+            {chans.map(x => <option key={x} value={x} data-notr>{x}</option>)}<option value="__other">Other (type the name)</option></select></Field>}
+        {chans && chOther && <Field label={method === "Mobile banking" ? "Service name" : "Bank name"}><input type="text" value={channel} onChange={e => setChannel(e.target.value)} maxLength={80} /></Field>}
+        <Field label={method === "Mobile banking" ? "Transaction ID" : method === "Cheque" ? "Cheque No." : "Transaction / Ref No."}><input type="text" name="ref" maxLength={80} placeholder="Optional" /></Field>
+        {!agentId && <Field label="Total price (BDT)" hint="What this payer has to pay in total. Leave empty if not needed."><input type="number" min="0" step="0.01" inputMode="decimal" value={price} onChange={e => setPrice(e.target.value)} placeholder="Optional" /></Field>}
         <Field label="Purpose of payment" full><input type="text" name="purpose" maxLength={160} list="mr-purposes" placeholder="e.g. Visa processing fee" /></Field>
         <Field label="Note" full><textarea name="note" className="short" maxLength={400} placeholder="Optional" /></Field>
       </div>
       <datalist id="mr-purposes">{PURPOSES.map(x => <option key={x} value={x} />)}</datalist>
+      {bal && <BalanceBox b={bal} note={ag ? `Agent account of ${ag.name}. The payment is added to it when approved.` : "Only approved payments are counted."} />}
     </fieldset>
     <div className="row between mt14"><button type="button" className="btn" onClick={closeModal}>Cancel</button><button className="btn pri" disabled={busy}><LuReceipt /> Save entry</button></div>
   </form>;
@@ -189,9 +241,12 @@ export function MrView({ rid, fresh }) {
       <span><b>Authorized signature:</b> {r.approved ? <><span data-notr>{r.approved.name}</span><span className="muted"> · {fdt(r.approved.at)}</span></> : <span className="muted">waiting for approval</span>}</span>
     </div>
     <div className="mr-preview">{src ? <img src={src} alt={`Money receipt ${r.no}`} /> : <div className="mr-ph">Making the receipt…</div>}</div>
-    <p className="muted small mt8">{`${tk(r.amount)} BDT · ${takaWords(r.amount)}`}</p>
+    <p className="muted small mt8">{`${tk(r.amount)} BDT · ${takaWords(r.amount)} · ${payText(r)}`}</p>
+    {r.balance && <BalanceBox b={r.balance} />}
+    {r.status === "approved" && r.payer.email && <p className={`small mt8 ${r.mailed?.ok ? "mr-ok" : "muted"}`}>{r.mailed ? (r.mailed.ok ? `Emailed to ${r.mailed.to} · ${fdt(r.mailed.at)}` : `Not emailed to ${r.mailed.to} (${fdt(r.mailed.at)})`) : `Not emailed yet to ${r.payer.email}`}</p>}
     <div className="mr-actions">
       {done ? <>
+        {ok(r) && r.payer.email && <button className="btn" onClick={() => mailReceipt(r.id)}><LuMail /> Send by email</button>}
         <button className="btn pri" onClick={() => run(receiptPng)}><LuImage /> PNG</button>
         <button className="btn pri" onClick={() => run(receiptPdf)}><LuFileText /> PDF</button>
         <button className="btn pri" onClick={() => run(receiptXlsx)}><LuFileSpreadsheet /> Excel</button>
@@ -236,6 +291,8 @@ export function VerifyReceipt({ token }) {
             <dt>Amount</dt><dd><b>{`BDT ${tk(r.amount)}`}</b> <span className="muted small">{takaWords(r.amount)}</span></dd>
             <dt>Date</dt><dd>{rDate(r.date)}</dd>
             {r.purpose && <><dt>Purpose</dt><dd>{r.purpose}</dd></>}
+            <dt>Payment</dt><dd>{payText(r)}</dd>
+            {r.balance && <><dt>{r.balance.after > 0 ? "Due" : r.balance.after < 0 ? "Advance" : "Balance"}</dt><dd><b>{r.balance.after === 0 ? "Fully paid" : `BDT ${tk(Math.abs(r.balance.after))}`}</b></dd></>}
             <dt>Received by</dt><dd data-notr>{r.received?.name}{r.received?.title ? `, ${r.received.title}` : ""}</dd>
             <dt>Approved by</dt><dd data-notr>{r.approved?.name}{r.approved?.title ? `, ${r.approved.title}` : ""}</dd>
           </dl>
@@ -250,14 +307,19 @@ export function VerifyReceipt({ token }) {
 /* ---------------- account: update details, see all receipts ---------------- */
 export function MrAccount({ aid }) {
   const a = MR().accounts.find(x => x.id === aid); const [p, setP] = React.useState(a ? pick(a) : null);
+  const [price, setPrice] = React.useState(a?.price != null ? String(a.price) : "");
   if (!a) return <p>Account not found.</p>;
-  const l = accReceipts(a.id);
-  const save = e => { e.preventDefault(); act("admin.mr", { op: "account", id: a.id, payer: p }); };
+  const l = accReceipts(a.id), done = paid(l.filter(ok));
+  const save = e => { e.preventDefault(); act("admin.mr", { op: "account", id: a.id, payer: p, ...(a.agentId ? {} : { price }) }); };
+  const bal = a.agentId ? null : Number(price) > 0 ? { kind: "price", price: Number(price), before: done, paid: 0, after: Number(price) - done } : null;
   return <>
     <h2 className="row6"><LuUserRound /> Payer account</h2>
     <form className="card mr-box" onSubmit={save} noValidate>
       <div className="fgrid">{PAYER.map(([k, lb, t, ph]) => <Field key={k} label={lb}><input type={t} value={p[k]} onChange={e => setP({ ...p, [k]: e.target.value })} placeholder={ph} maxLength={120} list={k === "agent" ? "mr-agents2" : undefined} /></Field>)}</div>
       <datalist id="mr-agents2">{agentNames().map(n => <option key={n} value={n} />)}</datalist>
+      {a.agentId ? <p className="small mt8">{`Agent account: ${a.agent}. `}<DueCell a={a} l={l} /></p>
+        : <div className="fgrid mt8"><Field label="Total price (BDT)" hint="What this payer has to pay in total."><input type="number" min="0" step="0.01" value={price} onChange={e => setPrice(e.target.value)} placeholder="Optional" /></Field></div>}
+      {bal && <BalanceBox b={bal} />}
       <div className="row between mt14"><span className="muted small">New receipts use these details. Receipts already made keep the details they were made with.</span><button className="btn pri">Update account</button></div>
     </form>
     <div className="row between mt14"><h3>{`Payments (${l.length}) · Approved total ${tk(paid(l.filter(ok)))} BDT`}</h3><div className="row6">
