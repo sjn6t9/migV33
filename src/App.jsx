@@ -238,7 +238,6 @@ function Auth({ mode, role: initialRole }) {
           <label className="f">Password<input type="password" name="pass" required autoComplete="current-password" /></label>
           <button className="btn pri" type="submit" disabled={busy}><LuLogIn /> Sign in</button>
           <p className="muted small">Forgot your password? Contact the office and we will reset it.</p>
-          {SITE.adminUrl && <p className="muted small">Agency admin or staff? <a href={SITE.adminUrl}>Sign in to the admin panel</a></p>}
         </form>
       ) : (
         <form className="stack12" onSubmit={register} key={role}>

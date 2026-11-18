@@ -271,7 +271,7 @@ A["auth.login"] = async ({ email, pass }, u, ctx) => {
   limit(ctx.ip, "login", 10, 15 * 60e3);
   const x = db.users.find(y => y.email === str(email, 200).toLowerCase());
   must(x && checkPass(pass, x.pass), "Email or password is wrong.");
-  must(zoneAllows(ctx.zone, x), zoneMsg(ctx.zone), 403);
+  must(zoneAllows(ctx.zone, x), zoneMsg(ctx.zone), ctx.zone === "admin" ? 403 : 400);
   must(x.status !== "suspended", "This account is suspended. Contact the agency.");
   if (x.status === "unverified") return { verify: x.id, email: x.email, msg: "Verify your email address to continue." };
   ctx.login(x); return { msg: `Signed in as ${x.name}` };
@@ -566,7 +566,7 @@ A["agent.payment"] = async (d, u) => {
 
 /* ---- first admin account (one-time link printed by the installer) ---- */
 A["setup.admin"] = async (d, u, ctx) => {
-  must(ctx.zone !== "main", `Create the admin account at https://${ADMIN_HOST}`, 403);
+  must(ctx.zone !== "main", "This setup link is not valid. Use the link printed by the installer.", 403);
   limit(ctx.ip, "setup", 10, 3600e3);
   must(!db.users.some(x => x.role === "admin"), "The admin account already exists. Sign in instead.");
   const tok = process.env.SETUP_TOKEN || ""; must(tok.length >= 16 && str(d.token, 200) === tok, "This setup link is not valid. Use the link printed by the installer.");
@@ -776,9 +776,10 @@ function hostZone(req) {
 const isStaffRole = x => x && (x.role === "admin" || x.role === "staff");
 const zoneAllows = (zone, x) => zone === "any" || (zone === "admin" ? isStaffRole(x) : !isStaffRole(x));
 const mainUrl = () => `https://${(process.env.CANONICAL_HOST || "").trim().toLowerCase() || ADMIN_HOST.replace(/^admin\./, "")}`;
+// on the public site an admin/staff account looks like a wrong password: the admin panel's address is not shown there
 const zoneMsg = zone => zone === "admin"
   ? `This is the agency's admin panel. Job seekers, employers and agents sign in at ${mainUrl()}`
-  : `Admin and staff sign in at https://${ADMIN_HOST}`;
+  : "Email or password is wrong.";
 function sessionUser(req) {
   const t = cookies(req).mam_s; const s = t && db.sessions[t];
   if (!s || Date.parse(s.exp) < Date.now()) return { token: null, u: null };
@@ -846,7 +847,7 @@ const siteOrigin = req => `${req.headers["x-forwarded-proto"] || "http"}://${req
 /* index.html with absolute addresses in the share tags (Facebook and WhatsApp need full URLs for the logo preview) */
 function indexHtml(req) {
   const zone = hostZone(req);
-  const site = { admin: zone === "admin", main: ADMIN_HOST ? mainUrl() : "", adminUrl: ADMIN_HOST ? `https://${ADMIN_HOST}` : "" };
+  const site = { admin: zone === "admin", main: ADMIN_HOST ? mainUrl() : "" }; // the admin panel's address is never sent to the public site
   const head = `<script>window.__SITE__=${JSON.stringify(site).replace(/</g, "\\u003c")}</script>${zone === "admin" ? '<meta name="robots" content="noindex, nofollow">' : ""}`;
   return fs.readFileSync(path.join(STATIC_DIR, "index.html"), "utf8").replace(/__ORIGIN__/g, escHtml(siteOrigin(req))).replace("</head>", head + "</head>");
 }
