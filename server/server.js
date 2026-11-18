@@ -237,6 +237,7 @@ function viewFor(u) {
       clearances: db.clearances.map(cleanCl), ledger: db.ledger, tickets: db.tickets, users: db.users.map(x => cleanUser(x, true))
     });
     if (can(u, "jobs")) pub.jobTemplates = db.jobTemplates;
+    if (can(u, "receipts")) pub.mr = { accounts: db.mr.accounts, receipts: db.mr.receipts };
     if (u.role === "admin") { const c = smtpConf(); pub.smtp = { host: c.host || "", port: c.port || 465, user: c.user || "", from: c.from || "", hasPass: !!c.pass, local: !!c.local }; }
   }
   return pub;
@@ -1135,6 +1136,52 @@ function aboutView() {
   const a = db.about;
   return { ...a, leader: { ...a.leader, photo: fileView(a.leader.photo) }, docs: a.docs.map(d => ({ ...d, file: fileView(d.file) })) };
 }
+/* ======================= money receipts & payment entry ======================= */
+// A payer account is found or created from any of: name, mobile, passport no., email, agent name.
+// Each payment gets a numbered money receipt (MR-2026-0001); the payer's details are copied onto the receipt.
+if (!db.mr) db.mr = { accounts: [], receipts: [], seq: {} };
+const MR_METHODS = ["Cash", "bKash", "Nagad", "Rocket", "Bank transfer", "Cheque", "Card"];
+const mrNorm = { mobile: v => String(v || "").replace(/[^\d+]/g, ""), passport: v => String(v || "").replace(/\s+/g, "").toUpperCase(), email: v => String(v || "").trim().toLowerCase() };
+const mrPayer = p => {
+  const x = { name: str(p?.name, 120), mobile: mrNorm.mobile(p?.mobile).slice(0, 20), passport: mrNorm.passport(p?.passport).slice(0, 20), email: mrNorm.email(p?.email).slice(0, 120), agent: str(p?.agent, 120) };
+  if (x.email) must(/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(x.email), "Check the email address.");
+  return x;
+};
+const mrFind = x => ["passport", "mobile", "email"].map(k => x[k] && db.mr.accounts.find(a => a[k] === x[k])).find(Boolean);
+const mrTotal = accId => db.mr.receipts.filter(r => r.accountId === accId && !r.void).reduce((s, r) => s + r.amount, 0);
+A["admin.mr"] = async (d, u) => {
+  needPerm(u, "receipts"); const M = db.mr;
+  if (d.op === "entry") {
+    const x = mrPayer(d.payer);
+    must(Object.values(x).some(Boolean), "Enter at least one of: name, mobile, passport no., email or agent name.");
+    const amount = Math.round(Number(d.amount) * 100) / 100;
+    must(amount > 0 && amount < 1e9, "Enter the amount received.");
+    const method = MR_METHODS.includes(d.method) ? d.method : "Cash";
+    const date = /^\d{4}-\d{2}-\d{2}$/.test(d.date || "") ? d.date : now().slice(0, 10);
+    let acc = d.accountId ? M.accounts.find(a => a.id === d.accountId) : mrFind(x);
+    if (d.accountId) must(acc, "Account not found.");
+    if (acc) { for (const k in x) if (x[k]) acc[k] = x[k]; acc.updated = now(); }
+    else { acc = { id: id("ma"), ...x, created: now(), updated: now() }; M.accounts.unshift(acc); }
+    const yr = date.slice(0, 4); M.seq[yr] = (M.seq[yr] || 0) + 1;
+    const r = { id: id("mr"), no: `MR-${yr}-${String(M.seq[yr]).padStart(4, "0")}`, accountId: acc.id, payer: { name: acc.name, mobile: acc.mobile, passport: acc.passport, email: acc.email, agent: acc.agent },
+      amount, method, ref: str(d.ref, 80), purpose: str(d.purpose, 160), note: str(d.note, 400), date, by: u.name || "Office", created: now() };
+    M.receipts.unshift(r);
+    return { msg: `Payment saved. Receipt ${r.no} is ready.`, receiptId: r.id, accountId: acc.id };
+  }
+  if (d.op === "account") { // update a payer's details
+    const acc = M.accounts.find(a => a.id === d.id); must(acc, "Account not found.");
+    const x = mrPayer(d.payer); must(Object.values(x).some(Boolean), "Enter at least one of: name, mobile, passport no., email or agent name.");
+    for (const k of ["passport", "mobile", "email"]) if (x[k]) { const o = M.accounts.find(a => a.id !== acc.id && a[k] === x[k]); must(!o, `Another account already has this ${k === "passport" ? "passport no." : k}: ${o?.name || o?.[k]}`); }
+    Object.assign(acc, x, { updated: now() }); return { msg: "Account updated." };
+  }
+  if (d.op === "void") { // cancel a receipt; it stays in the list marked Cancelled
+    must(u.role === "admin", "Only the admin can cancel a receipt.", 403);
+    const r = M.receipts.find(x => x.id === d.id); must(r, "Receipt not found."); must(!r.void, "This receipt is already cancelled.");
+    r.void = { by: u.name || "Admin", at: now(), reason: str(d.reason, 200) }; return { msg: `Receipt ${r.no} cancelled.` };
+  }
+  must(false, "Unknown request.");
+};
+
 A["admin.about"] = async (d, u) => {
   needPerm(u, "content"); const a = db.about;
   const L = (v, n) => String(v ?? "").slice(0, n).trim();

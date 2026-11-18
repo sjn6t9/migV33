@@ -10,6 +10,8 @@ import { downloadFile as dlFile } from "../actions.js";
 import { Rail, Tiles, Pill, Empty, Bars, Stars, Avatar } from "../ui.jsx";
 import { LedgerTable, StatusSelect, Field, Options, JobFields, blankJob } from "./shared.jsx";
 import { setClStatus } from "../actions.js";
+import { ReceiptsAdmin } from "./Receipts.jsx";
+import { LuReceipt } from "react-icons/lu";
 import { ShareButton, storeCard } from "../Share.jsx";
 import { ChatInbox, useInboxUnread } from "../LiveChat.jsx";
 
@@ -22,7 +24,7 @@ function FilterButtons({ items, cur, onPick }) {
 
 const TABS = [
   ["overview", "Overview", LuLayoutDashboard], ["users", "Accounts", LuUsers], ["jobs", "Job moderation", LuBriefcase], ["apps", "Applications", LuFileText],
-  ["clearance", "BMET clearance", LuStamp], ["tickets", "Air tickets", LuTicket], ["ledger", "Agent accounts", LuWallet], ["packages", "Payments & packages", LuPackage],
+  ["clearance", "BMET clearance", LuStamp], ["tickets", "Air tickets", LuTicket], ["ledger", "Agent accounts", LuWallet], ["packages", "Payments & packages", LuPackage], ["receipts", "Money receipts", LuReceipt],
   ["content", "Website content", LuImage], ["about", "About page", LuInfo], ["slides", "Home slideshow", LuGalleryHorizontal], ["blog", "Blog", LuNewspaper], ["seo", "SEO", LuSearch], ["settings", "Site settings", LuSettings],
   ["chat", "Live chat", LuMessagesSquare], ["messages", "Messages", LuMessageSquare], ["staff", "Staff & permissions", LuUserCog]
 ];
@@ -373,6 +375,7 @@ export function Admin({ u }) {
 
   if (t === "chat") body = <ChatInbox />;
   if (t === "about") body = <AboutAdmin />;
+  if (t === "receipts") body = <ReceiptsAdmin />;
   if (t === "messages") body = <>
     <h2>Contact messages</h2>
     {S.messages.length ? S.messages.map(m => (

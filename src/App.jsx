@@ -10,6 +10,7 @@ import { CardAdmin, AgentDocsView } from "./dash/shared.jsx";
 import { Home, Jobs, JobDetail, Services, About, Blog, Post, Contact, Track, Setup, Team, waLink } from "./pages/Public.jsx";
 import { Dashboard } from "./dash/Dashboard.jsx";
 import { ClPayForm } from "./dash/Agent.jsx";
+import { MrEntry, MrView, MrAccount } from "./dash/Receipts.jsx";
 import { StatusCell, ClPayCell } from "./dash/Admin.jsx";
 import { LANGS, getLang, setLang, t, onLang } from "./i18n.js";
 import { VisitingCard, VerifyMember, VerifyBody } from "./VCard.jsx";
@@ -206,7 +207,7 @@ function ModalHost() {
   const m = store.ui.modal; if (!m) return null;
   const close = closeModal;
   return (
-    <ModalFrame onClose={close} wide={m.type === "share" || m.type === "vcard"} className={m.type === "memberCheck" ? "modal-verify" : ""}>
+    <ModalFrame onClose={close} wide={m.type === "share" || m.type === "vcard" || m.type === "mrEntry" || m.type === "mrView" || m.type === "mrAccount"} className={m.type === "memberCheck" ? "modal-verify" : ""}>
       {m.type === "confirm" && <>
         <h3>Please confirm</h3><p className="confirm-msg">{m.msg}</p>
         <div className="row"><button className="btn pri" autoFocus onClick={() => { closeModal(); m.onYes(); }}>{m.yes}</button><button className="btn" onClick={close}>Cancel</button></div>
@@ -221,6 +222,9 @@ function ModalHost() {
       {m.type === "agentdocs" && user(m.uid) && <AgentDocsView u={user(m.uid)} />}
       {m.type === "clearance" && <ClearanceCard cid={m.cid} admin={m.admin} />}
       {m.type === "clPay" && <ClPayForm cid={m.cid} />}
+      {m.type === "mrEntry" && <MrEntry key={m.aid || "new"} aid={m.aid} />}
+      {m.type === "mrView" && <MrView rid={m.rid} fresh={m.fresh} />}
+      {m.type === "mrAccount" && <MrAccount key={m.aid} aid={m.aid} />}
     </ModalFrame>
   );
 }
