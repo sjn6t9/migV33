@@ -1,7 +1,7 @@
 import React from "react";
 import {
   LuBookmark, LuBookmarkCheck, LuMapPin, LuClock, LuBriefcase, LuX, LuHardHat, LuHotel, LuTruck, LuFactory,
-  LuHeartPulse, LuShield, LuSparkles, LuWheat, LuShoppingBag, LuMonitor, LuStar, LuDownload, LuBadgeCheck
+  LuHeartPulse, LuShield, LuSparkles, LuWheat, LuShoppingBag, LuMonitor, LuStar, LuDownload, LuBadgeCheck, LuMenu, LuChevronDown
 } from "react-icons/lu";
 import { store, touch, me, company, money, num, bdtMin, isHourly, fdate, bdtFmt, LABEL, STAGES, CL_STAGES } from "./store.js";
 import { toggleSave, downloadFile, cardFileName } from "./actions.js";
@@ -122,17 +122,40 @@ export function Bars({ rows }) {
 }
 
 /* Dashboard tab rail with icons */
+/* Left side drawer for menus on small screens */
+export function Drawer({ open, onClose, title, children, label = "Menu" }) {
+  React.useEffect(() => {
+    if (!open) return;
+    const esc = e => { if (e.key === "Escape") onClose(); };
+    document.addEventListener("keydown", esc); const o = document.body.style.overflow; document.body.style.overflow = "hidden"; document.body.classList.add("drawer-on");
+    return () => { document.removeEventListener("keydown", esc); document.body.style.overflow = o; document.body.classList.remove("drawer-on"); };
+  }, [open]);
+  return <div className={`drawer-bg${open ? " open" : ""}`} onClick={e => { if (e.target === e.currentTarget) onClose(); }} aria-hidden={!open}>
+    <aside className="drawer" role="dialog" aria-modal="true" aria-label={label}>
+      <div className="drawer-head">{title}<button type="button" className="btn sm drawer-x" onClick={onClose} aria-label="Close menu"><LuX /></button></div>
+      <div className="drawer-body">{open && children}</div>
+    </aside>
+  </div>;
+}
+
 export function Rail({ role, items }) {
-  const cur = store.ui.tab[role];
-  return (
-    <nav className="rail" aria-label="Dashboard sections">
-      {items.map(([k, label, Icon, c]) => (
-        <button key={k} className={cur === k ? "on" : ""} onClick={() => { store.ui.tab[role] = k; if (k !== "post") store.ui.editJob = null; touch(); }}>
-          <span className="rail-l">{Icon && <Icon />}{label}</span><Count n={c} />
-        </button>
-      ))}
-    </nav>
-  );
+  const cur = store.ui.tab[role]; const [open, setOpen] = React.useState(false);
+  const pick = k => { store.ui.tab[role] = k; if (k !== "post") store.ui.editJob = null; setOpen(false); touch(); window.scrollTo({ top: 0, behavior: "smooth" }); };
+  const now = items.find(x => x[0] === cur) || items[0]; const total = items.reduce((s, x) => s + (Number(x[3]) || 0), 0);
+  const list = cls => <nav className={cls} aria-label="Dashboard sections">
+    {items.map(([k, label, Icon, c]) => (
+      <button key={k} className={cur === k ? "on" : ""} aria-current={cur === k ? "page" : undefined} onClick={() => pick(k)}>
+        <span className="rail-l">{Icon && <Icon />}{label}</span><Count n={c} />
+      </button>
+    ))}
+  </nav>;
+  return <>
+    {list("rail rail-desk")}
+    <button type="button" className="rail-mob" onClick={() => setOpen(true)} aria-label="Open dashboard menu" aria-expanded={open}>
+      <LuMenu className="rail-mob-ic" /><span className="rail-l">{now?.[2] && React.createElement(now[2])}{now?.[1]}</span>{total > 0 && <span className="count">{total}</span>}<LuChevronDown className="rail-mob-down" />
+    </button>
+    <Drawer open={open} onClose={() => setOpen(false)} label="Dashboard sections" title={<b className="drawer-title">Dashboard</b>}>{list("rail rail-drawer")}</Drawer>
+  </>;
 }
 
 /* Simple text renderer for blog posts: "### " lines become sub-headings */

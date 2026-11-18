@@ -5,7 +5,7 @@ import { ChatWidget } from "./Chat.jsx";
 import { ShareJob } from "./Share.jsx";
 import { store, subscribe, getVersion, touch, me, user, job, unread, PAGES, fdate, kb, candOf, worker, clPerson, LABEL, CL_STAGES, CL_DOCS , findMember } from "./store.js";
 import { openModal, closeModal, signOut, toast, formData, setClStatus, downloadFile, fileExt, act, afterLogin } from "./actions.js";
-import { Logo, Toast, ModalFrame, Pill, ClPipe, CardDownload, Avatar } from "./ui.jsx";
+import { Logo, Toast, ModalFrame, Pill, ClPipe, CardDownload, Avatar, Drawer } from "./ui.jsx";
 import { CardAdmin, AgentDocsView } from "./dash/shared.jsx";
 import { Home, Jobs, JobDetail, Services, About, Blog, Post, Contact, Track, Setup, Team, waLink } from "./pages/Public.jsx";
 import { Dashboard } from "./dash/Dashboard.jsx";
@@ -104,9 +104,18 @@ function Header({ navOn }) {
       {store.S.settings.email ? <a className="util-mail" href={`mailto:${store.S.settings.email}`}><LuMail /> {store.S.settings.email}</a> : null}
       <span className="util-lic">Government licensed recruiting agency · RL 1217</span></div><Prefs /></div></div>
     <div className="wrap topbar">
+      <button className="btn menu-btn" onClick={() => { ui.navOpen = true; touch(); }} aria-label="Open menu" aria-expanded={!!ui.navOpen}><LuMenu /></button>
       <a className="logo" href="#home" aria-label="Mam & Mam Overseas Ltd. home"><Logo /><div><b>MAM &amp; MAM OVERSEAS LTD.</b><span>Recruiting Licence RL 1217</span></div></a>
-      <button className="btn sm menu-btn" onClick={() => { ui.navOpen = !ui.navOpen; touch(); }} aria-label="Open menu" aria-expanded={ui.navOpen}><LuMenu /> Menu</button>
-      <nav className={`main${ui.navOpen ? " open" : ""}`}>{links.map(([k, t]) => <a key={k} href={`#${k}`} className={navOn === k ? "on" : ""}>{t}</a>)}</nav>
+      <nav className="main">{links.map(([k, t]) => <a key={k} href={`#${k}`} className={navOn === k ? "on" : ""}>{t}</a>)}</nav>
+      <Drawer open={!!ui.navOpen} onClose={() => { ui.navOpen = false; touch(); }} label="Site menu"
+        title={<a className="logo drawer-logo" href="#home" onClick={() => { ui.navOpen = false; touch(); }}><Logo size={40} /><div><b>MAM &amp; MAM OVERSEAS LTD.</b><span>Recruiting Licence RL 1217</span></div></a>}>
+        <nav className="drawer-nav">{links.map(([k, t]) => <a key={k} href={`#${k}`} className={navOn === k ? "on" : ""} onClick={() => { ui.navOpen = false; touch(); }}>{t}</a>)}
+          {u && <a href="#dashboard" className={navOn === "dashboard" ? "on" : ""} onClick={() => { ui.navOpen = false; touch(); }}><LuLayoutDashboard /> {panel[u.role]}</a>}</nav>
+        {(store.S.settings.phone || store.S.settings.email) && <div className="drawer-contact">
+          {store.S.settings.phone && <a href={`tel:${store.S.settings.phone.replace(/[^\d+]/g, "")}`}><LuPhone /> <span className="num">{store.S.settings.phone}</span></a>}
+          {store.S.settings.email && <a href={`mailto:${store.S.settings.email}`}><LuMail /> {store.S.settings.email}</a>}</div>}
+        <p className="drawer-lic">Government licensed recruiting agency · RL 1217</p>
+      </Drawer>
       <div className="acct">
         {u ? <>
           <a className="btn sm pri" href="#dashboard"><LuLayoutDashboard /> {panel[u.role]}{unread(u) > 0 && <span className="count">{unread(u)}</span>}</a>
