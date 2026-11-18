@@ -97,7 +97,7 @@ export function VerifyBody({ m, onClose }) {
         <div className="verify-title">{m.title}</div>
         {m.dept && <div className="muted">{m.dept}</div>}
         {code && <div className="verify-id"><span>ID</span> <b className="num">{code}</b></div>}
-        <p className="verify-note">This person works for MAM &amp; MAM Overseas Ltd., government licensed recruiting agency (RL 1217).</p>
+        <p className="verify-note">This person works for Mam &amp; Mam Overseas Ltd., government licensed recruiting agency (RL 1217).</p>
         <ul className="verify-list">
           {m.phone && <li><LuPhone /> <a href={`tel:${m.phone.replace(/[^\d+]/g, "")}`}><span className="num">{m.phone}</span></a></li>}
           {wa && <li><FaWhatsapp /> <a href={`https://wa.me/${wa}`} target="_blank" rel="noopener noreferrer"><span className="num">+{wa}</span></a></li>}

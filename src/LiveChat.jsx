@@ -1,6 +1,6 @@
 // Live chat between the agency and job seekers, employers, agents and visitors.
 // Visitors join with name + mobile; the secret chat key stays in this browser (localStorage).
-// The agency always appears as "MAM & MAM Overseas Ltd." with the M&M logo.
+// The agency always appears as "Mam & Mam Overseas Ltd." with the M&M logo.
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { LuX, LuSendHorizontal, LuImage, LuMic, LuSquare, LuReply, LuTrash2, LuCornerUpLeft, LuLoader, LuSearch, LuArrowLeft } from "react-icons/lu";
 import { Logo } from "./ui.jsx";
@@ -51,8 +51,8 @@ export function LiveChatPanel({ onClose, onRead }) {
   const send = async body => { const j = await chatPost({ op: "send", k: getKey(), ...body }); setChat(j.chat); };
   const del = mid => confirmBox("Delete this message?", async () => { try { const j = await chatPost({ op: "delete", k: getKey(), mid }); setChat(j.chat); } catch (e) { toast(e.message); } }, "Delete");
   return (
-    <div className="chat live" role="dialog" aria-label="Chat with MAM & MAM Overseas Ltd.">
-      <div className="chat-h"><Logo size={30} square /><div className="chat-ht"><b>MAM &amp; MAM Overseas Ltd.</b><span className="small">We reply as soon as we can</span></div>
+    <div className="chat live" role="dialog" aria-label="Chat with Mam & Mam Overseas Ltd.">
+      <div className="chat-h"><Logo size={30} square /><div className="chat-ht"><b>Mam &amp; Mam Overseas Ltd.</b><span className="small">We reply as soon as we can</span></div>
         <button className="chat-x" onClick={onClose} aria-label="Close chat"><LuX /></button></div>
       {chat === undefined ? <div className="chat-b center"><LuLoader className="spin" /></div>
         : chat === null && !account ? <JoinForm onJoined={c => setChat(c)} err={err} />
@@ -92,7 +92,7 @@ function Thread({ chat, side, onSend, onDelete, empty, canDelete = m => m.from =
     count.current = chat.msgs.length;
   }, [chat.msgs.length]);
   const byId = id => chat.msgs.find(m => m.id === id);
-  const label = m => (m.from === "agency" ? "MAM & MAM Overseas Ltd." : side === "agency" ? chat.name || "Visitor" : "You");
+  const label = m => (m.from === "agency" ? "Mam & Mam Overseas Ltd." : side === "agency" ? chat.name || "Visitor" : "You");
   const preview = m => (m.deleted ? t("This message was deleted") : m.kind === "image" ? `📷 ${t("Photo")}` : m.kind === "voice" ? `🎤 ${t("Voice message")}` : m.text);
   return (
     <>
@@ -210,7 +210,7 @@ export function ChatInbox() {
   const L = (list || []).filter(c => { const k = q.trim().toLowerCase(); return !k || [c.name, c.sub, c.contact].some(v => String(v || "").toLowerCase().includes(k)); });
   return <>
     <h2>Live chat</h2>
-    <p className="muted small">Job seekers, employers, agents and website visitors write here. Your replies appear as “MAM & MAM Overseas Ltd.” with the M&amp;M logo.</p>
+    <p className="muted small">Job seekers, employers, agents and website visitors write here. Your replies appear as “Mam & Mam Overseas Ltd.” with the M&amp;M logo.</p>
     <div className={`inbox card${sel ? " has-sel" : ""}`}>
       <div className="inbox-list">
         <label className="ec-search"><input type="text" value={q} onChange={e => setQ(e.target.value)} placeholder="Search name or mobile" /><LuSearch /></label>

@@ -178,7 +178,7 @@ export function JobDetail({ id }) {
           {cta}
           <SaveButton j={j} full />
           {j.status === "active" && <ShareButton j={j} label="Share this job" />}
-          <p className="muted small">Never pay anyone outside our office. Processed by MAM &amp; MAM Overseas Ltd., RL 1217.</p>
+          <p className="muted small">Never pay anyone outside our office. Processed by Mam &amp; Mam Overseas Ltd., RL 1217.</p>
         </aside>
       </div>
     </div></section>
@@ -461,7 +461,7 @@ export function Team() {
       <section className="pagehead"><div className="wrap">
         <div className="eyebrow light">Expert team</div>
         <h1>The people behind every file</h1>
-        <p className="lead">Recruitment officers, visa and BMET processing staff, accounts and agent support: the MAM &amp; MAM Overseas Ltd. team working under licence RL 1217.</p>
+        <p className="lead">Recruitment officers, visa and BMET processing staff, accounts and agent support: the Mam &amp; Mam Overseas Ltd. team working under licence RL 1217.</p>
         {S.team.length > 0 && <div className="pagehead-stats"><span><b>{S.team.length}</b> team members</span><span><b>{depts.length}</b> departments</span>
           {S.team.some(m => Number(m.years) > 0) && <span><b>{S.team.reduce((s, m) => s + (Number(m.years) || 0), 0)}+</b> combined years of experience</span>}</div>}
       </div></section>

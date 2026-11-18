@@ -281,7 +281,7 @@ export function VerifyReceipt({ token }) {
     <div className="verify-top"><a className="verify-brand" href="/#home"><img src="/brand/logo-w160.webp?v=2" width="64" height="40" alt="" /> <span className="vb-name">MAM &amp; MAM OVERSEAS LTD.</span></a></div>
     <div className="card mr-vcard">
       {st.loading ? <p className="muted">Checking the receipt…</p> : st.error ? <p>No connection to the server. Check your internet and try again.</p>
-        : !r ? <><div className="verify-bad"><LuBan /> <span>Receipt not found</span></div><p className="verify-note">{`This QR code does not match a money receipt of MAM & MAM Overseas Ltd. Contact our office to check.`}</p></>
+        : !r ? <><div className="verify-bad"><LuBan /> <span>Receipt not found</span></div><p className="verify-note">{`This QR code does not match a money receipt of Mam & Mam Overseas Ltd. Contact our office to check.`}</p></>
         : <>
           {r.void ? <div className="verify-bad"><LuBan /> <span>{`Receipt ${r.no} was cancelled`}</span></div>
             : <div className="mr-valid"><LuCheck /> <span>{`Valid money receipt ${r.no}`}</span></div>}

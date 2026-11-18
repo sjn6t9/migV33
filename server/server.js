@@ -1,4 +1,4 @@
-// MAM & MAM Overseas Ltd. (RL 1217): portal backend.
+// Mam & Mam Overseas Ltd. (RL 1217): portal backend.
 // Built only on Node's built-in modules, so it runs on any Node 18+ without native packages.
 // Data: one JSON document saved atomically to DATA_DIR/db.json (with daily backups); uploaded files in DATA_DIR/files.
 // Email: verification codes are sent through SMTP when SMTP_* settings and the `nodemailer` package are present.
@@ -264,8 +264,8 @@ async function getMailer() {
 async function sendCode(u) {
   const m = await getMailer(); if (!m) return false;
   try {
-    await m.sendMail({ from: `"MAM & MAM Overseas Ltd." <${mailFrom()}>`, to: u.email, subject: `Your verification code: ${u.verify.code}`,
-      text: `Assalamu Alaikum ${u.name},\n\nYour MAM & MAM Overseas Ltd. verification code is ${u.verify.code}.\nIt expires in 30 minutes.\n\nIf you did not create an account, ignore this email.\n\nMAM & MAM Overseas Ltd. · RL 1217` });
+    await m.sendMail({ from: `"Mam & Mam Overseas Ltd." <${mailFrom()}>`, to: u.email, subject: `Your verification code: ${u.verify.code}`,
+      text: `Assalamu Alaikum ${u.name},\n\nYour Mam & Mam Overseas Ltd. verification code is ${u.verify.code}.\nIt expires in 30 minutes.\n\nIf you did not create an account, ignore this email.\n\nMam & Mam Overseas Ltd. · RL 1217` });
     return true;
   } catch (e) { console.error("Email send failed:", e.message); return false; }
 }
@@ -613,7 +613,7 @@ A["admin.smtp"] = async (d, u) => {
 A["admin.smtpTest"] = async (_, u) => {
   must(u?.role === "admin", "Only the admin can do this.", 403);
   mailer = null; const m = await getMailer(); must(m, "Email is not set up yet: fill in the server, username and password.");
-  try { await m.sendMail({ from: `"MAM & MAM Overseas Ltd." <${mailFrom()}>`, to: u.email, subject: "Test email from your website", text: "Email sending works. Job seekers will now receive their verification codes." }); }
+  try { await m.sendMail({ from: `"Mam & Mam Overseas Ltd." <${mailFrom()}>`, to: u.email, subject: "Test email from your website", text: "Email sending works. Job seekers will now receive their verification codes." }); }
   catch (e) { throw new Fail(`Sending failed: ${e.message}`); }
   return { msg: `Test email sent to ${u.email}.` };
 };
@@ -983,9 +983,9 @@ function serveJobShare(req, res, jid) {
   if (j && j.status === "active") {
     const origin = siteOrigin(req);
     const company = user(j.employerId)?.company?.name || j.employerName;
-    const title = `${j.title} – ${j.city}, ${j.country} | MAM & MAM Overseas Ltd.`;
+    const title = `${j.title} – ${j.city}, ${j.country} | Mam & Mam Overseas Ltd.`;
     const desc = `${j.currency} ${Number(j.salaryMin).toLocaleString("en-US")}–${Number(j.salaryMax).toLocaleString("en-US")}/${j.period === "hour" ? "hour" : "month"} · ${j.vacancies} vacancies${company ? ` · ${company}` : ""}${j.deadline ? ` · Apply by ${j.deadline}` : ""}. Licensed recruiting agency RL 1217.`;
-    const tags = [`<title>${escHtml(title)}</title>`, `<meta name="description" content="${escHtml(desc)}">`, `<meta property="og:type" content="website">`, `<meta property="og:site_name" content="MAM &amp; MAM Overseas Ltd.">`,
+    const tags = [`<title>${escHtml(title)}</title>`, `<meta name="description" content="${escHtml(desc)}">`, `<meta property="og:type" content="website">`, `<meta property="og:site_name" content="Mam &amp; Mam Overseas Ltd.">`,
       `<meta property="og:title" content="${escHtml(title)}">`, `<meta property="og:description" content="${escHtml(desc)}">`, `<meta property="og:url" content="${escHtml(`${origin}/job/${j.id}`)}">`,
       ...(j.card ? [`<meta property="og:image" content="${escHtml(`${origin}/api/files/${j.card.id}`)}">`, `<meta property="og:image:type" content="image/png">`, `<meta property="og:image:width" content="1080">`, `<meta property="og:image:height" content="1350">`, `<meta name="twitter:card" content="summary_large_image">`]
         : [`<meta property="og:image" content="${escHtml(`${origin}/brand/og-image.png?v=2`)}">`, `<meta property="og:image:width" content="1200">`, `<meta property="og:image:height" content="630">`, `<meta name="twitter:card" content="summary_large_image">`])].join("\n");
@@ -1030,7 +1030,7 @@ export { server };
 /* ======================= live chat (job seekers, employers, agents and visitors ↔ the agency) =======================
    db.chats: one conversation per account (uid) or per visitor (name + mobile, identified by a secret key kept in the
    visitor's browser). Messages: text, photo or voice; a reply can quote another message; deleted messages keep a stub.
-   The agency answers as "MAM & MAM Overseas Ltd."; which staff member wrote is visible only in the admin panel. */
+   The agency answers as "Mam & Mam Overseas Ltd."; which staff member wrote is visible only in the admin panel. */
 if (!Array.isArray(db.chats)) db.chats = [];
 const CHAT_MAX = 2000;
 const chatOf = (u, k) => (u && !isStaffRole(u) ? db.chats.find(c => c.uid === u.id) : null) || (k ? db.chats.find(c => c.key && c.key === String(k)) : null);
@@ -1107,7 +1107,7 @@ async function chatApi(req, res, url, u, zone) {
       const m = { id: id("cm"), from, kind, text, file, replyTo, at: now(), ...(from === "agency" ? { by: u.id, byName: u.name } : {}) };
       c.msgs.push(m); c.last = m.at;
       if (from === "user") { c.unreadAgency = (c.unreadAgency || 0) + 1; if (c.msgs.filter(x => x.from === "user").length === 1) notifyAdmins(`New live chat from ${chatWho(c).name}.`, "chat"); }
-      else { c.unreadUser = (c.unreadUser || 0) + 1; c.unreadAgency = 0; if (c.uid) notify(c.uid, "MAM & MAM Overseas Ltd. replied in the chat."); }
+      else { c.unreadUser = (c.unreadUser || 0) + 1; c.unreadAgency = 0; if (c.uid) notify(c.uid, "Mam & Mam Overseas Ltd. replied in the chat."); }
       if (c.msgs.length > 2000) c.msgs.splice(0, c.msgs.length - 2000);
       save(); return send(res, 200, { chat: chatThread(c, from === "agency", k) });
     }
@@ -1139,7 +1139,7 @@ const ABOUT_DEFAULT = {
   credentials: "Government licensed recruiting agency · RL 1217",
   tagline: "We connect skilled Bangladeshi workers with trusted employers abroad, through a legal, transparent and caring process.",
   stats: [{ value: "", label: "Established", sub: "" }, { value: "", label: "Workers sent abroad", sub: "" }, { value: "RL 1217", label: "Govt. licence", sub: "BMET approved" }, { value: "", label: "Destination countries", sub: "" }],
-  overview: "MAM & MAM Overseas Ltd. is a government licensed recruiting agency (RL 1217) that connects job seekers in Bangladesh with employers abroad.\n\nWe handle the full recruitment process: sourcing and screening candidates, arranging interviews, and completing medical, visa and emigration (BMET) formalities, so every worker departs with the right documents and a clear contract.\n\nEvery candidate hears the salary, benefits, contract terms and costs before signing, and all recruitment goes through official channels under our licence.",
+  overview: "Mam & Mam Overseas Ltd. is a government licensed recruiting agency (RL 1217) that connects job seekers in Bangladesh with employers abroad.\n\nWe handle the full recruitment process: sourcing and screening candidates, arranging interviews, and completing medical, visa and emigration (BMET) formalities, so every worker departs with the right documents and a clear contract.\n\nEvery candidate hears the salary, benefits, contract terms and costs before signing, and all recruitment goes through official channels under our licence.",
   commitment: "Our commitment: honest information, legal processing, and support for every worker before and after departure.",
   leader: { name: "", title: "Managing Director", badge: "Authorized licensee", quote: "", bio: "", photo: null },
   highlights: [{ value: "", label: "Destination countries" }, { value: "100%", label: "Legal processing" }, { value: "RL 1217", label: "Government licence" }],
@@ -1242,8 +1242,8 @@ A["admin.mr"] = async (d, u) => {
     const bal = !b ? "" : b.kind === "agent" ? (b.after > 0 ? `Due on your agent account: ${money(b.after)}\n` : b.after < 0 ? `Advance on your agent account: ${money(-b.after)}\n` : "Your agent account is fully paid.\n")
       : b.after > 0 ? `Remaining due: ${money(b.after)} (total ${money(b.price)})\n` : b.after < 0 ? `Advance: ${money(-b.after)}\n` : "Fully paid.\n";
     try {
-      await m.sendMail({ from: `"MAM & MAM Overseas Ltd." <${mailFrom()}>`, to, subject: `Money receipt ${r.no} · MAM & MAM Overseas Ltd.`,
-        text: `Assalamu Alaikum${r.payer.name ? " " + r.payer.name : ""},\n\nThank you for your payment. Your money receipt is attached.\n\nReceipt No.: ${r.no}\nDate: ${r.date}\nAmount: ${money(r.amount)}\nPayment: ${[r.method, r.channel].filter(Boolean).join(" · ")}${r.ref ? " · " + r.ref : ""}\n${r.purpose ? `Purpose: ${r.purpose}\n` : ""}${bal}${link ? `\nCheck this receipt online: ${link}\n` : ""}\nMAM & MAM Overseas Ltd. · Government Licensed Recruiting Agency · RL1217`,
+      await m.sendMail({ from: `"Mam & Mam Overseas Ltd." <${mailFrom()}>`, to, subject: `Money receipt ${r.no} · Mam & Mam Overseas Ltd.`,
+        text: `Assalamu Alaikum${r.payer.name ? " " + r.payer.name : ""},\n\nThank you for your payment. Your money receipt is attached.\n\nReceipt No.: ${r.no}\nDate: ${r.date}\nAmount: ${money(r.amount)}\nPayment: ${[r.method, r.channel].filter(Boolean).join(" · ")}${r.ref ? " · " + r.ref : ""}\n${r.purpose ? `Purpose: ${r.purpose}\n` : ""}${bal}${link ? `\nCheck this receipt online: ${link}\n` : ""}\nMam & Mam Overseas Ltd. · Government Licensed Recruiting Agency · RL1217`,
         attachments: [{ filename: `${r.no}.pdf`, content: pdf, contentType: "application/pdf" }] });
     } catch (e) { console.error("Receipt email failed:", e.message); return fail(`The receipt could not be emailed to ${to}. Check the email settings and try again.`); }
     r.mailed = { to, at: now(), ok: true }; return { msg: `Money receipt ${r.no} emailed to ${to}.` };

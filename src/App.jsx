@@ -50,13 +50,13 @@ export default function App() {
   // SEO: title + meta description per page (managed from Admin › SEO)
   useEffect(() => {
     const S = store.S; const key = page === "job" ? "jobs" : page === "post" ? "blog" : PAGES.includes(page) ? page : "home";
-    const seo = S.seo[key] || S.seo.home || { title: "MAM & MAM Overseas Ltd.", desc: "" };
+    const seo = S.seo[key] || S.seo.home || { title: "Mam & Mam Overseas Ltd.", desc: "" };
     let title = seo.title;
-    if (page === "job" && job(arg)) title = `${job(arg).title} in ${job(arg).city} | MAM & MAM Overseas Ltd.`;
-    if (page === "post") { const p = S.posts.find(x => x.id === arg); if (p) title = `${p.title} | MAM & MAM Overseas Ltd.`; }
-    if (page === "dashboard") title = "Dashboard | MAM & MAM Overseas Ltd.";
-    if (page === "verify") title = "Verify team member | MAM & MAM Overseas Ltd.";
-    if (page === "receipt") title = "Verify money receipt | MAM & MAM Overseas Ltd.";
+    if (page === "job" && job(arg)) title = `${job(arg).title} in ${job(arg).city} | Mam & Mam Overseas Ltd.`;
+    if (page === "post") { const p = S.posts.find(x => x.id === arg); if (p) title = `${p.title} | Mam & Mam Overseas Ltd.`; }
+    if (page === "dashboard") title = "Dashboard | Mam & Mam Overseas Ltd.";
+    if (page === "verify") title = "Verify team member | Mam & Mam Overseas Ltd.";
+    if (page === "receipt") title = "Verify money receipt | Mam & Mam Overseas Ltd.";
     document.title = t(title);
     document.querySelector('meta[name="description"]')?.setAttribute("content", seo.desc);
   });
@@ -104,7 +104,7 @@ function Header({ navOn }) {
       {store.S.settings.email ? <a className="util-mail" href={`mailto:${store.S.settings.email}`}><LuMail /> {store.S.settings.email}</a> : null}
       <span className="util-lic">Government licensed recruiting agency · RL 1217</span></div><Prefs /></div></div>
     <div className="wrap topbar">
-      <a className="logo" href="#home" aria-label="MAM & MAM Overseas Ltd. home"><Logo /><div><b>MAM &amp; MAM OVERSEAS LTD.</b><span>Recruiting Licence RL 1217</span></div></a>
+      <a className="logo" href="#home" aria-label="Mam & Mam Overseas Ltd. home"><Logo /><div><b>MAM &amp; MAM OVERSEAS LTD.</b><span>Recruiting Licence RL 1217</span></div></a>
       <button className="btn sm menu-btn" onClick={() => { ui.navOpen = !ui.navOpen; touch(); }} aria-label="Open menu" aria-expanded={ui.navOpen}><LuMenu /> Menu</button>
       <nav className={`main${ui.navOpen ? " open" : ""}`}>{links.map(([k, t]) => <a key={k} href={`#${k}`} className={navOn === k ? "on" : ""}>{t}</a>)}</nav>
       <div className="acct">
@@ -126,7 +126,7 @@ function PanelHeader({ kind }) {
   const u = me(); const label = kind === "agent" ? "Agent panel" : "Admin panel";
   return (
     <header className="top admin-top">
-      <div className="utilbar"><div className="wrap"><div className="util-l"><span className="util-lic"><LuShieldCheck /> {kind === "agent" ? "Agent panel · MAM & MAM Overseas Ltd." : "Admin panel · MAM & MAM Overseas Ltd."}</span></div><Prefs /></div></div>
+      <div className="utilbar"><div className="wrap"><div className="util-l"><span className="util-lic"><LuShieldCheck /> {kind === "agent" ? "Agent panel · Mam & Mam Overseas Ltd." : "Admin panel · Mam & Mam Overseas Ltd."}</span></div><Prefs /></div></div>
       <div className="wrap topbar">
         <a className="logo" href="#dashboard" aria-label={`${label} home`}><Logo /><div><b>MAM &amp; MAM OVERSEAS LTD.</b><span>{label}</span></div></a>
         <div className="acct">
@@ -200,7 +200,7 @@ function Footer() {
         <div><h4>For agents</h4><ul><li><a href="#" onClick={reg("agent")}>Register as an agent</a></li><li><a href="#" onClick={e => { e.preventDefault(); openModal("auth", { mode: "login" }); }}>Agent sign-in</a></li><li className="muted">BMET clearance &amp; job applications</li></ul></div>
         <div><h4>Contact</h4><ul>{(s.phone || staffView) && <li>Phone: <V v={s.phone} /></li>}{(s.email || staffView) && <li>Email: <V v={s.email} /></li>}{(s.address || staffView) && <li><V v={s.address} /></li>}<li className="muted">{s.hours}</li><li><a href="#contact">Send us a message →</a></li></ul></div>
       </div>
-      <p className="muted small mt24">© {new Date().getFullYear()} MAM &amp; MAM Overseas Ltd. · RL 1217 · All rights reserved.</p>
+      <p className="muted small mt24">© {new Date().getFullYear()} Mam &amp; Mam Overseas Ltd. · RL 1217 · All rights reserved.</p>
     </div></footer>
   );
 }

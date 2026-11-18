@@ -34,14 +34,14 @@ export const INITIAL = {
       rates: { SAR: 32, MYR: 27, FJD: 54 }
     },
     seo: {
-      home: { title: "MAM & MAM Overseas Ltd. | Licensed Recruiting Agency RL 1217", desc: "Find verified overseas jobs in Saudi Arabia, Malaysia and Fiji through MAM & MAM Overseas Ltd., licensed recruiting agency RL 1217." },
-      jobs: { title: "Overseas Jobs | MAM & MAM Overseas Ltd.", desc: "Search overseas job circulars by country, salary, trade and experience." },
-      services: { title: "Services | MAM & MAM Overseas Ltd.", desc: "Recruitment, document processing, medical and visa support for workers and employers." },
-      about: { title: "About Us | MAM & MAM Overseas Ltd.", desc: "About MAM & MAM Overseas Ltd., recruiting licence RL 1217." },
-      blog: { title: "Blog | MAM & MAM Overseas Ltd.", desc: "Guides for workers going abroad and employers hiring from Bangladesh." },
-      contact: { title: "Contact | MAM & MAM Overseas Ltd.", desc: "Contact MAM & MAM Overseas Ltd." },
-      track: { title: "Track Your File | MAM & MAM Overseas Ltd.", desc: "Check your application, BMET clearance and air ticket status with your passport and mobile number." },
-      team: { title: "Expert Team | MAM & MAM Overseas Ltd.", desc: "Meet the MAM & MAM Overseas Ltd. team handling recruitment, visa and BMET clearance for workers and employers." }
+      home: { title: "Mam & Mam Overseas Ltd. | Licensed Recruiting Agency RL 1217", desc: "Find verified overseas jobs in Saudi Arabia, Malaysia and Fiji through Mam & Mam Overseas Ltd., licensed recruiting agency RL 1217." },
+      jobs: { title: "Overseas Jobs | Mam & Mam Overseas Ltd.", desc: "Search overseas job circulars by country, salary, trade and experience." },
+      services: { title: "Services | Mam & Mam Overseas Ltd.", desc: "Recruitment, document processing, medical and visa support for workers and employers." },
+      about: { title: "About Us | Mam & Mam Overseas Ltd.", desc: "About Mam & Mam Overseas Ltd., recruiting licence RL 1217." },
+      blog: { title: "Blog | Mam & Mam Overseas Ltd.", desc: "Guides for workers going abroad and employers hiring from Bangladesh." },
+      contact: { title: "Contact | Mam & Mam Overseas Ltd.", desc: "Contact Mam & Mam Overseas Ltd." },
+      track: { title: "Track Your File | Mam & Mam Overseas Ltd.", desc: "Check your application, BMET clearance and air ticket status with your passport and mobile number." },
+      team: { title: "Expert Team | Mam & Mam Overseas Ltd.", desc: "Meet the Mam & Mam Overseas Ltd. team handling recruitment, visa and BMET clearance for workers and employers." }
     },
     packages: [
       { id: "pk1", name: "Basic", price: 0, posts: 1, featured: 0 },
@@ -52,7 +52,7 @@ export const INITIAL = {
       { id: "p1", title: "Before you fly: a document checklist for overseas workers", date: "2026-11-04T09:00:00.000Z", excerpt: "Passport validity, medical report, visa, emigration clearance and your employment contract: what to collect and check before departure.",
         body: "Going abroad for work starts with paperwork. Getting it right early saves weeks later.\n### Passport\nMake sure your passport is valid well beyond the length of your contract. Many employers ask for at least two years of remaining validity.\n### Medical check\nMost Gulf countries require a medical test at an approved centre. Your recruiting agency will tell you which centre to use and when.\n### Visa and contract\nRead your employment contract before you sign it. Check the salary, working hours, food and accommodation terms, and the contract length. Keep a copy.\n### Emigration clearance\nYou need government emigration clearance before departure. Your agency helps with registration and the required documents.\n### Keep copies\nScan every document and keep copies with your family in Bangladesh." },
       { id: "p2", title: "How to check that a job offer is genuine", date: "2026-10-22T09:00:00.000Z", excerpt: "Fake offers usually ask for money before any interview. Here is how to protect yourself.",
-        body: "Every year workers lose money to fake job offers. A few checks protect you.\n### Check the licence\nA recruiting agency in Bangladesh must hold a government recruiting licence (RL number). Ask for it and verify it. MAM & MAM Overseas Ltd. holds licence RL 1217.\n### Never pay a stranger\nDo not send money to individuals or personal accounts for a visa. Pay only at the agency office and always take a receipt.\n### Ask for the employer details\nA real offer names the employer, the job, the salary in local currency and the contract length.\n### Visit the office\nCome to our office with your documents. We explain every step before you commit." },
+        body: "Every year workers lose money to fake job offers. A few checks protect you.\n### Check the licence\nA recruiting agency in Bangladesh must hold a government recruiting licence (RL number). Ask for it and verify it. Mam & Mam Overseas Ltd. holds licence RL 1217.\n### Never pay a stranger\nDo not send money to individuals or personal accounts for a visa. Pay only at the agency office and always take a receipt.\n### Ask for the employer details\nA real offer names the employer, the job, the salary in local currency and the contract length.\n### Visit the office\nCome to our office with your documents. We explain every step before you commit." },
       { id: "p3", title: "For employers: hiring skilled workers from Bangladesh", date: "2026-10-07T09:00:00.000Z", excerpt: "From demand letter to deployment: how we source, test and process candidates for your company.",
         body: "We handle recruitment end to end so your HR team only interviews shortlisted people.\n### 1. Demand and job order\nShare the trades, numbers, salary and benefits. We prepare the job circular and start sourcing.\n### 2. Screening and trade test\nCandidates are screened on experience and documents. Trade tests can be arranged for skilled roles.\n### 3. Interview\nInterview online or in person in Dhaka. Your selections move straight to medical and visa processing.\n### 4. Deployment\nWe complete visa, clearance and travel, and stay in touch after arrival." }
     ]
