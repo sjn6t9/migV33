@@ -224,22 +224,26 @@ function viewFor(u) {
       jobs: db.jobs, applications: db.applications, orders: db.orders, messages: can(u, "messages") ? db.messages : [], workers: db.workers,
       clearances: db.clearances.map(cleanCl), ledger: db.ledger, tickets: db.tickets, users: db.users.map(x => cleanUser(x, true))
     });
-    if (u.role === "admin") { const c = smtpConf(); pub.smtp = { host: c.host || "", port: c.port || 465, user: c.user || "", from: c.from || "", hasPass: !!c.pass }; }
+    if (u.role === "admin") { const c = smtpConf(); pub.smtp = { host: c.host || "", port: c.port || 465, user: c.user || "", from: c.from || "", hasPass: !!c.pass, local: !!c.local }; }
   }
   return pub;
 }
 
 /* ======================= email ======================= */
 let mailer = null;
-const smtpConf = () => db.smtp?.host ? db.smtp : { host: process.env.SMTP_HOST, port: process.env.SMTP_PORT, user: process.env.SMTP_USER, pass: process.env.SMTP_PASS, from: process.env.MAIL_FROM };
+// SMTP_LOCAL=1: send through this server's own mail service (installed by deploy/mail.sh) as MAIL_FROM
+const LOCAL_MAIL = process.env.SMTP_LOCAL === "1";
+const smtpConf = () => LOCAL_MAIL ? { host: "127.0.0.1", port: 25, user: "", pass: "", from: process.env.MAIL_FROM || "", local: true }
+  : db.smtp?.host ? db.smtp : { host: process.env.SMTP_HOST, port: process.env.SMTP_PORT, user: process.env.SMTP_USER, pass: process.env.SMTP_PASS, from: process.env.MAIL_FROM };
 const mailFrom = () => { const c = smtpConf(); return c.from || c.user; };
 async function getMailer() {
   if (mailer !== null) return mailer;
   mailer = false; const c = smtpConf();
-  if (!c.host || !c.user || !c.pass) return mailer;
+  if (!c.host || (!c.local && (!c.user || !c.pass)) || (c.local && !c.from)) return mailer;
   try {
     const nm = (await import("nodemailer")).default; const port = Number(c.port || 465);
-    mailer = nm.createTransport({ host: c.host, port, secure: port === 465, auth: { user: c.user, pass: c.pass } });
+    mailer = c.local ? nm.createTransport({ host: c.host, port, secure: false, ignoreTLS: true, name: "localhost" })
+      : nm.createTransport({ host: c.host, port, secure: port === 465, auth: { user: c.user, pass: c.pass } });
   } catch (e) { console.warn("nodemailer is not installed; emails are not sent.", e.message); }
   return mailer;
 }

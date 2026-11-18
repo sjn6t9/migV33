@@ -403,6 +403,13 @@ export function Admin({ u }) {
 function EmailSettings() {
   const m = store.S.smtp || {};
   const save = e => { const [d] = formData(e); act("admin.smtp", d); };
+  if (m.local) return (
+    <div className="card">
+      <h3>Email sending (verification codes)</h3>
+      <p>Codes are sent from <b data-notr>{m.from}</b> by this server's own mail service. Nothing to set up here.</p>
+      <div className="row"><button className="btn" type="button" onClick={() => act("admin.smtpTest")}>Send test email to me</button></div>
+    </div>
+  );
   return (
     <form className="card fgrid" onSubmit={save} key={m.host + m.user}>
       <h3 className="full">Email sending (verification codes)</h3>

@@ -15,6 +15,7 @@
 #      the config is tested before reload and a backup is kept), with HTTPS
 #   6. for a .bd main domain: runs the domain's own DNS server (server/dns.cjs, service "mam-dns")
 #      so the registrar only needs the name servers ns1.migv33.tech and ns2.migv33.tech
+#      and its email: noreply@ sends verification codes, info@ is forwarded (deploy/mail.sh)
 #   7. if DNS or HTTPS is not ready yet, tries again by itself every 10 minutes until it is
 #   8. prints a one-time link for creating the admin account
 set -euo pipefail
@@ -159,6 +160,8 @@ EOF
   if systemctl is-active --quiet mam-dns; then echo "DNS server is answering for $DOMAIN and www.$DOMAIN -> $MYIP"
   else journalctl -u mam-dns -n 15 --no-pager; warn "The DNS server did not start (see above). The rest of the site is not affected."; fi
   # restart the DNS server too when the code updates
+  # email for the domain: noreply@ for verification codes, info@ forwarded (deploy/mail.sh)
+  if [ "${SELF_MAIL:-1}" = 1 ]; then say "Email for $DOMAIN"; bash "$APP/deploy/mail.sh" "$DOMAIN" || warn "Email setup did not finish (see above). The rest of the site is not affected."; fi
   grep -q "mam-dns" /usr/local/bin/$SVC-update || sed -i "s|^  systemctl restart $SVC\$|  systemctl restart $SVC; systemctl is-enabled --quiet mam-dns \&\& systemctl restart mam-dns|" /usr/local/bin/$SVC-update
 fi
 

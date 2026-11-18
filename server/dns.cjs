@@ -1,9 +1,11 @@
 // Tiny authoritative DNS server for the agency's own domain (Node built-ins only).
 //
 // It answers for the zones in DNS_ZONES (default mamandmam.bd):
-//   <zone>  and  www.<zone>  ->  A  DNS_IP
+//   <zone>, www.<zone>, mail.<zone>  ->  A  DNS_IP
 //   NS  -> DNS_NS (default ns1.migv33.tech, ns2.migv33.tech)
 //   SOA -> first name server
+//   MX 10 mail.<zone>, SPF and DMARC TXT records, and the DKIM key from
+//   /etc/mam-dns/dkim-<zone>.txt (written by deploy/mail.sh) as mail._domainkey.<zone>
 // Every other question gets REFUSED, so it is not an open resolver.
 //
 // Env: DNS_IP (required), DNS_ZONES, DNS_NS, DNS_BIND (default DNS_IP), DNS_PORT (default 53)
@@ -20,7 +22,9 @@ const PORT = Number(process.env.DNS_PORT || 53);
 const TTL = 300;
 const SERIAL = Number(new Date().toISOString().slice(0, 10).replace(/-/g, "") + "01");
 
-const T = { A: 1, NS: 2, SOA: 6, ANY: 255 };
+const T = { A: 1, NS: 2, SOA: 6, MX: 15, TXT: 16, ANY: 255 };
+const fs = require("fs");
+const DKIM_DIR = process.env.DNS_DKIM_DIR || "/etc/mam-dns";
 
 function encName(name) {
   const parts = name.replace(/\.$/, "").split(".").filter(Boolean);
@@ -38,6 +42,24 @@ function soaData(zone) {
   return Buffer.concat([encName(NS[0]), encName("hostmaster." + zone), u32(SERIAL), u32(3600), u32(600), u32(1209600), u32(TTL)]);
 }
 function aData(ip) { return Buffer.from(ip.split(".").map(Number)); }
+function txtData(text) { // split into 255-byte character-strings
+  const b = Buffer.from(text, "utf8"), parts = [];
+  for (let i = 0; i < b.length; i += 255) { const c = b.subarray(i, i + 255); parts.push(Buffer.from([c.length]), c); }
+  return Buffer.concat(parts.length ? parts : [Buffer.from([0])]);
+}
+function dkimText(zone) { try { return fs.readFileSync(`${DKIM_DIR}/dkim-${zone}.txt`, "utf8").replace(/\s+/g, " ").trim(); } catch { return ""; } }
+
+// every record of a name in the zone: [{ type, data }], or null if the name does not exist
+function recordsFor(name, zone) {
+  const A = { type: T.A, data: aData(IP) };
+  if (name === zone) return [A, ...NS.map((n) => ({ type: T.NS, data: encName(n) })), { type: T.SOA, data: soaData(zone) },
+    { type: T.MX, data: Buffer.concat([u16(10), encName("mail." + zone)]) }, { type: T.TXT, data: txtData(`v=spf1 a mx ip4:${IP} ~all`) }];
+  if (name === "www." + zone || name === "mail." + zone) return [A];
+  if (name === "_dmarc." + zone) return [{ type: T.TXT, data: txtData(`v=DMARC1; p=none; adkim=r; aspf=r`) }];
+  if (name === "mail._domainkey." + zone) { const k = dkimText(zone); return k ? [{ type: T.TXT, data: txtData(k) }] : null; }
+  if (name === "_domainkey." + zone && dkimText(zone)) return []; // empty non-terminal
+  return null;
+}
 
 function parseQuestion(msg) {
   if (msg.length < 12) return null;
@@ -67,18 +89,11 @@ function answer(msg) {
   if (!zone || (q.qclass !== 1 && q.qclass !== 255)) return Buffer.concat([header(5, false, 0, 0), question]); // REFUSED
 
   const QP = 12; // the question name starts at byte 12
-  const isApex = q.name === zone, isWww = q.name === "www." + zone;
-  const ans = [];
-  if (isApex || isWww) {
-    if (q.qtype === T.A || q.qtype === T.ANY) ans.push(rr(QP, T.A, aData(IP)));
-  }
-  if (isApex) {
-    if (q.qtype === T.NS || q.qtype === T.ANY) NS.forEach((n) => ans.push(rr(QP, T.NS, encName(n))));
-    if (q.qtype === T.SOA || q.qtype === T.ANY) ans.push(rr(QP, T.SOA, soaData(zone)));
-  }
+  const recs = recordsFor(q.name, zone);
+  const ans = (recs || []).filter((r) => q.qtype === T.ANY ? true : r.type === q.qtype).map((r) => rr(QP, r.type, r.data));
   if (ans.length) return Buffer.concat([header(0, true, ans.length, 0), question, ...ans]);
   // name exists but has no record of this type (NODATA), or the name does not exist (NXDOMAIN)
-  const rcode = isApex || isWww ? 0 : 3;
+  const rcode = recs ? 0 : 3;
   const zoneName = encName(zone);
   const soa = Buffer.concat([zoneName, u16(T.SOA), u16(1), u32(TTL), u16(soaData(zone).length), soaData(zone)]);
   return Buffer.concat([header(rcode, true, 0, 1), question, soa]);
