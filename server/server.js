@@ -727,6 +727,13 @@ A["admin.ledgerAdd"] = async (d, u) => {
   notify(ag.id, d.type === "charge" ? `New charge on your account: ${str(d.desc, 100)} (${bdt(amount)}).` : `Payment of ${bdt(amount)} recorded.`);
   return { msg: "Entry added." };
 };
+A["admin.ledgerEdit"] = async (d, u) => { // change rate × quantity (and details/date) of a charge
+  needPerm(u, "ledger"); const l = db.ledger.find(x => x.id === d.id); must(l && l.type === "charge", "Entry not found.");
+  must(!l.mr, "This entry comes from a money receipt.");
+  const qty = numv(d.qty, 1, 10000), rate = numv(d.rate, 0, 1e8), amount = Math.round(qty * rate * 100) / 100; must(amount >= 1 && amount <= 1e9, "Enter the rate and quantity.");
+  Object.assign(l, { qty, rate, amount }); if (str(d.desc)) l.desc = str(d.desc, 200); if (/^\d{4}-\d{2}-\d{2}$/.test(d.date || "")) l.date = d.date;
+  return { msg: `Saved: ${rate.toLocaleString("en-US")} × ${qty} = ${amount.toLocaleString("en-US")} BDT.` };
+};
 A["admin.ledgerConfirm"] = async ({ id: lid, ok }, u) => {
   needPerm(u, "ledger"); const l = db.ledger.find(x => x.id === lid); must(l && l.status === "pending", "Entry not found.");
   l.status = ok ? "confirmed" : "rejected";
@@ -1271,6 +1278,12 @@ A["admin.mr"] = async (d, u) => {
     const qty = numv(d.qty ?? 1, 1, 10000), rate = numv(d.rate, 0, 1e8), desc = str(d.desc, 200); must(desc && rate > 0, "Enter the details and the rate.");
     M.charges.push({ id: id("mc"), accountId: acc.id, date: /^\d{4}-\d{2}-\d{2}$/.test(d.date || "") ? d.date : new Date(Date.now() + 6 * 3600e3).toISOString().slice(0, 10), desc, qty, rate, amount: r2(qty * rate), by: u.name, at: now() });
     return { msg: "Added to the payment history." };
+  }
+  if (d.op === "chargeEdit") {
+    const c = M.charges.find(x => x.id === d.id); must(c, "Entry not found.");
+    const qty = numv(d.qty, 1, 10000), rate = numv(d.rate, 0, 1e8); must(rate > 0, "Enter the rate and quantity.");
+    Object.assign(c, { qty, rate, amount: r2(qty * rate) }); if (str(d.desc)) c.desc = str(d.desc, 200);
+    return { msg: `Saved: ${rate.toLocaleString("en-US")} × ${qty} = ${c.amount.toLocaleString("en-US")} BDT.` };
   }
   if (d.op === "chargeDelete") { const c = M.charges.find(x => x.id === d.id); must(c, "Entry not found."); M.charges = M.charges.filter(x => x !== c); return { msg: "Entry deleted." }; }
   if (d.op === "void") { // cancel a receipt; it stays in the list marked Cancelled

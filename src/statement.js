@@ -16,7 +16,7 @@ const payWay = (method, channel) => {
 export function agentRows(ledger, agentId) {
   return ledger.filter(l => l.agentId === agentId && l.status !== "rejected").map(l => ({
     id: l.id, date: l.date, details: l.desc, ref: l.ref, pending: l.status !== "confirmed", src: l,
-    rate: l.type === "charge" ? `${amt(l.rate || l.amount)}X${l.qty || 1}` : payWay(l.method),
+    rate: l.type === "charge" ? `${amt(l.rate || l.amount)}X${l.qty || 1}` : payWay(l.method), rq: l.type === "charge" && !l.mr ? { rate: l.rate || l.amount, qty: l.qty || 1 } : null,
     debit: l.type === "charge" ? Number(l.amount) : 0, credit: l.type === "payment" ? Number(l.amount) : 0
   }));
 }
@@ -24,7 +24,7 @@ export function agentRows(ledger, agentId) {
 export function accountRows(acc, charges, receipts) {
   const rows = [];
   if (acc.price > 0) rows.push({ id: "price", date: (acc.created || "").slice(0, 10), details: "Total price", rate: `${amt(acc.price)}X1`, debit: acc.price, credit: 0 });
-  for (const c of charges.filter(c => c.accountId === acc.id)) rows.push({ id: c.id, date: c.date, details: c.desc, rate: `${amt(c.rate)}X${c.qty}`, debit: c.amount, credit: 0, src: c, charge: true });
+  for (const c of charges.filter(c => c.accountId === acc.id)) rows.push({ id: c.id, date: c.date, details: c.desc, rate: `${amt(c.rate)}X${c.qty}`, rq: { rate: c.rate, qty: c.qty }, debit: c.amount, credit: 0, src: c, charge: true });
   for (const r of receipts.filter(r => r.accountId === acc.id && r.status === "approved" && !r.void))
     rows.push({ id: r.id, date: r.date, details: `Money Received${r.purpose ? ` · ${r.purpose}` : ""} (${r.no})`, ref: r.ref, rate: payWay(r.method, r.channel), debit: 0, credit: r.amount, receipt: r });
   return rows;

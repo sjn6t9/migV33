@@ -245,6 +245,7 @@ export function Admin({ u }) {
       {sel ? <div className="card stack" id="agent-history">
         <div className="row between"><h3>{`Payment history: ${sel.agent?.business || sel.name}`}</h3><button className="btn sm" onClick={() => { ui.ledgerAgent = null; commit(); }}><LuX /> Close</button></div>
         <Statement key={sel.id} title={sel.agent?.business || sel.name} sub={[sel.name, sel.agent?.phone, sel.email].filter(Boolean).join(" · ")} rows={agentRows(S.ledger, sel.id)}
+          onRate={(r, v) => act("admin.ledgerEdit", { id: r.id, ...v })}
           actions={r => <div className="row tight nowrap">
             {r.pending && <><button className="btn sm pri" onClick={() => confirmLedger(r.id, true)}><LuCheck /> Confirm</button><button className="btn sm danger" onClick={() => confirmLedger(r.id, false)}><LuX /> Reject</button></>}
             {!r.src?.mr && <button className="btn sm link danger" aria-label="Delete entry" onClick={() => confirmBox("Delete this entry from the payment history?", () => act("admin.ledgerDelete", { id: r.id }), "Delete")}><LuTrash2 /></button>}
@@ -776,8 +777,9 @@ function LedgerAddForm({ sel }) {
     <Field label="Type"><select value={type} onChange={e => setType(e.target.value)}><option value="charge">Debit: charge (agent owes)</option><option value="payment">Credit: money received</option></select></Field>
     <Field label="Date"><input type="date" name="date" defaultValue={new Date(Date.now() - new Date().getTimezoneOffset() * 6e4).toISOString().slice(0, 10)} required /></Field>
     {type === "charge" ? <>
-      <Field label="Quantity"><input type="number" min="1" step="1" value={qty} onChange={e => setQty(e.target.value)} required /></Field>
-      <Field label="Rate (BDT)" hint={total ? `Debit: ${num(total)} BDT` : ""}><input type="number" min="1" value={rate} onChange={e => setRate(e.target.value)} required placeholder="6000" /></Field>
+      <Field label="Rate (BDT) × Quantity" hint={total ? `Debit: ${num(rate)} × ${qty || 0} = ${num(total)} BDT` : "e.g. 6000 × 1"}><div className="st-rq">
+        <input type="number" min="1" value={rate} onChange={e => setRate(e.target.value)} required placeholder="6000" aria-label="Rate (BDT)" /><span>X</span>
+        <input type="number" min="1" step="1" value={qty} onChange={e => setQty(e.target.value)} required aria-label="Quantity" className="q" /></div></Field>
     </> : <>
       <Field label="Amount (BDT)"><input type="number" min="1" value={rate} onChange={e => setRate(e.target.value)} required /></Field>
       <Field label="Received by"><select name="method" defaultValue="Cash"><option>Cash</option><optgroup label="Mobile banking">{MFS.map(x => <option key={x} value={`Mobile banking · ${x}`}>{x}</option>)}</optgroup><optgroup label="Bank">{BANKS.map(x => <option key={x} value={`Bank transfer · ${x}`}>{x}</option>)}</optgroup><option value="Cheque">Cheque</option></select></Field>

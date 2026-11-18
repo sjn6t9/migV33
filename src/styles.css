@@ -959,3 +959,9 @@ html[lang="bn"] .btn{font-weight:600}
 .nowrap{white-space:nowrap}
 @media (max-width:640px){.st-sum{grid-template-columns:1fr 1fr}.st-sum>div:last-child{grid-column:1/-1}}
 .st-tbl td.b{min-width:210px}
+.st-rate-btn{border:0;background:none;font:inherit;font-weight:600;color:inherit;cursor:pointer;display:inline-flex;align-items:center;gap:6px;padding:2px 0}
+.st-rate-btn svg{opacity:.45;font-size:13px}.st-rate-btn:hover svg{opacity:1}
+.st-rq{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.st-rq input{width:110px;padding:6px 8px}.st-rq input.q{width:64px}
+.st-rq span{font-weight:800}
+.st-rate-ed{min-width:330px}

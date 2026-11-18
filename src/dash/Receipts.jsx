@@ -335,6 +335,7 @@ export function MrAccount({ aid }) {
     </> : <>
       <Statement title={a.name || a.passport || a.mobile || "Account"} sub={[a.passport && `Passport ${a.passport}`, a.mobile, a.email].filter(Boolean).join(" · ")}
         rows={accountRows(a, MR().charges || [], MR().receipts)}
+        onRate={(r, v) => act("admin.mr", { op: "chargeEdit", id: r.id, ...v })}
         actions={r => r.charge ? <button className="btn sm link danger" aria-label="Delete entry" onClick={() => confirmBox("Delete this entry from the payment history?", () => act("admin.mr", { op: "chargeDelete", id: r.id }), "Delete")}><LuTrash2 /></button>
           : r.receipt ? <button className="ec-ico view" aria-label="View receipt" title="View receipt" onClick={() => openModal("mrView", { rid: r.receipt.id })}><LuEye /></button> : null} />
       <ChargeForm aid={a.id} />
@@ -352,8 +353,9 @@ function ChargeForm({ aid }) {
     <h4 className="full">Add a charge (debit)</h4>
     <Field label="Details" full><input type="text" name="desc" maxLength={200} required placeholder="e.g. 1 ITALY (FC) PP (A06852056)" /></Field>
     <Field label="Date"><input type="date" name="date" defaultValue={today()} /></Field>
-    <Field label="Quantity"><input type="number" min="1" step="1" value={qty} onChange={e => setQty(e.target.value)} /></Field>
-    <Field label="Rate (BDT)" hint={Number(rate) > 0 ? `Debit: ${tk((Number(qty) || 1) * Number(rate))} BDT` : ""}><input type="number" min="1" value={rate} onChange={e => setRate(e.target.value)} placeholder="6000" /></Field>
+    <Field label="Rate (BDT) × Quantity" hint={Number(rate) > 0 ? `Debit: ${tk((Number(qty) || 1) * Number(rate))} BDT` : "e.g. 6000 × 1"}><div className="st-rq">
+      <input type="number" min="1" value={rate} onChange={e => setRate(e.target.value)} placeholder="6000" aria-label="Rate (BDT)" /><span>X</span>
+      <input type="number" min="1" step="1" value={qty} onChange={e => setQty(e.target.value)} aria-label="Quantity" className="q" /></div></Field>
     <div className="full"><button className="btn pri" type="submit"><LuPlus /> Add</button></div>
   </form>;
 }
