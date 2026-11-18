@@ -10,6 +10,7 @@ import { CardAdmin, AgentDocsView } from "./dash/shared.jsx";
 import { Home, Jobs, JobDetail, Services, About, Blog, Post, Contact, Track, Setup, Team, waLink } from "./pages/Public.jsx";
 import { Dashboard } from "./dash/Dashboard.jsx";
 import { ClPayForm } from "./dash/Agent.jsx";
+import { StatusCell, ClPayCell } from "./dash/Admin.jsx";
 import { LANGS, getLang, setLang, t, onLang } from "./i18n.js";
 import { VisitingCard, VerifyMember, VerifyBody } from "./VCard.jsx";
 import { currentTheme, toggleTheme } from "./theme.js";
@@ -316,7 +317,7 @@ function CandidateCard({ aid }) {
       <table><tbody>{rows.map(([k, v]) => <tr key={k}><th>{k}</th><td>{v || "—"}</td></tr>)}</tbody></table>
       {p.passportFile && <div className="row between notice mt14"><span><LuFileText /> Passport copy · {p.passportFile.name}</span><button className="btn sm" onClick={() => downloadFile(p.passportFile.data, `Passport-${(p.passportNo || c.name).replace(/[^\w-]/g, "")}.${fileExt(p.passportFile)}`)}><LuDownload /> Download</button></div>}
       <div className="notice mt14">{p.cv ? <>CV file: <b>{p.cv.name}</b> ({kb(p.cv.size)}). On the live server this opens and downloads from secure storage.</> : c.via ? "Submitted by an agent. Documents are held by the agency." : "No CV uploaded."}</div>
-      <h4 className="mt16 mb6">Status history</h4>{a.history.map((h, i) => <div key={i} className="small">{fdate(h.at)} — {LABEL[h.s]}</div>)}
+      <h4 className="mt16 mb6">Status history</h4>{a.history.map((h, i) => <div key={i} className="small">{fdate(h.at)} — {h.s === "custom" ? h.t : LABEL[h.s]}</div>)}
     </>
   );
 }
@@ -333,7 +334,7 @@ function ClearanceCard({ cid, admin }) {
   return (
     <>
       <h3>BMET clearance: {w.name}</h3>
-      <p className="muted small mb14">Submitted {fdate(c.created)} by {w.via} · <Pill s={c.status} /></p>
+      <p className="muted small mb14">{c.ref ? <><b data-notr>{c.ref}</b> · </> : null}Submitted {fdate(c.created)} by {w.via} · <Pill s={c.status} label={c.status === "custom" ? c.statusText : undefined} /></p>
       <ClPipe c={c} />
       <table className="mt14"><tbody>{rows.map(([k, v]) => <tr key={k}><th>{k}</th><td>{v || "—"}</td></tr>)}</tbody></table>
       {c.files && <><h4 className="mt16 mb6">Uploaded documents</h4>
@@ -341,10 +342,10 @@ function ClearanceCard({ cid, admin }) {
           {(c.files.others || []).map((f, i) => <ClFile key={i} c={c} f={f} label={`Other document ${i + 1}`} />)}</div></>}
       <h4 className="mt16 mb6">Documents ({c.docs.length}/{CL_DOCS.length})</h4>
       <div className="row tight">{CL_DOCS.map(d => <span key={d} className={`chip${c.docs.includes(d) ? "" : " missing"}`}>{c.docs.includes(d) ? "✓ " : ""}{d}</span>)}</div>
-      <h4 className="mt16 mb6">History</h4>{c.history.map((h, i) => <div key={i} className="small">{fdate(h.at)} — {LABEL[h.s]}</div>)}
+      <h4 className="mt16 mb6">History</h4>{c.history.map((h, i) => <div key={i} className="small">{fdate(h.at)} — {h.s === "custom" ? h.t : LABEL[h.s]}</div>)}
       {admin ? <div className="stack mt16">
-        <label className="f">Update status
-          <select value={c.status} onChange={e => setClStatus(c.id, e.target.value)}>{[...CL_STAGES, "rejected"].map(s => <option key={s} value={s}>{LABEL[s]}</option>)}</select></label>
+        <label className="f">Update status</label><StatusCell c={c} wide />
+        {c.agentId && <><h4 className="mb6">Payment</h4><ClPayCell c={c} /></>}
         <CardAdmin c={c} />
       </div> : <div className="mt16"><CardDownload c={c} /></div>}
     </>

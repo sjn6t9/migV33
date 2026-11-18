@@ -223,7 +223,7 @@ export function Candidate({ u }) {
       <div className="card"><h3 className="mb6">My clearance files</h3>
         {C.length ? C.map(c => (
           <div className="listrow" key={c.id}>
-            <div className="row between"><div><b>{c.country}</b> <span className="muted small">· {c.fullName || u.name} · {c.passportNo || u.profile?.passportNo}</span></div><Pill s={c.status} /></div>
+            <div className="row between"><div><b>{c.country}</b> <span className="muted small">· {c.fullName || u.name} · {c.passportNo || u.profile?.passportNo}</span></div><Pill s={c.status} label={c.status === "custom" ? c.statusText : undefined} /></div>
             <ClPipe c={c} />
             {c.card && <div className="mt8"><CardDownload c={c} /></div>}
             {c.status === "approved" && !c.card && <p className="muted small mt6">Approved. The agency will send your clearance card here.</p>}

@@ -4,7 +4,7 @@ import { getLang } from "./i18n.js";
 // and every change goes through act() in actions.js, which returns the updated state.
 
 export * from "./constants.js";
-import { INITIAL, HOURS_PER_MONTH } from "./constants.js";
+import { INITIAL, HOURS_PER_MONTH, LABEL } from "./constants.js";
 
 export const now = () => new Date().toISOString();
 export const uid = p => p + Math.random().toString(36).slice(2, 9);
@@ -82,6 +82,9 @@ export function clPerson(c) {
   const u = user(c.candidateId) || { name: "Removed user", profile: {} }; const p = u.profile || {};
   return { name: c.fullName || u.name, passport: c.passportNo || p.passportNo || "", passportExpiry: p.passportExpiry, phone: p.phone, district: p.district, trade: p.trade, father: "", dob: "", via: "Job seeker (direct)", kind: "candidate", ownerId: c.candidateId };
 }
+// a custom status (written by the agency) keeps the file at its last real stage
+export const clStage = c => (c.status === "custom" ? c.baseStage || "pending" : c.status);
+export const clLabel = c => (c.status === "custom" ? c.statusText || "Custom" : LABEL[c.status] || c.status);
 export const clOpen = c => !["approved", "rejected"].includes(c.status);
 export const cardPending = c => c.status === "approved" && !c.card;
 

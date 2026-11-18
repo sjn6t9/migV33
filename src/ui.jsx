@@ -25,7 +25,7 @@ export function Logo({ size = 48, className = "", square = false }) {
   return <img className={`logo-mark wide ${className}`} src={src} srcSet={`${src} 1x, ${w > 160 ? "/brand/logo-w640.webp?v=2" : "/brand/logo-w320.webp?v=2"} 2x`} width={w} height={size} alt="" decoding="async" />;
 }
 
-export const Pill = ({ s }) => <span className={`pill p-${s}`}>{LABEL[s] || s}</span>;
+export const Pill = ({ s, label }) => <span className={`pill p-${s}`}>{label || LABEL[s] || s}</span>;
 export const Empty = ({ children, style }) => <div className="empty" style={style}>{children}</div>;
 /* empty office details: a hint for admin/staff, a plain dash for visitors */
 export const Unset = () => (["admin", "staff"].includes(me()?.role) ? <span className="unset">Not set yet (Admin › Settings)</span> : <span className="muted">—</span>);
@@ -45,7 +45,7 @@ function Stepper({ stages, status, history }) {
   );
 }
 export const Pipe = ({ a }) => <Stepper stages={STAGES} status={a.status} history={a.history} />;
-export const ClPipe = ({ c }) => <Stepper stages={CL_STAGES} status={c.status} history={c.history} />;
+export const ClPipe = ({ c }) => <Stepper stages={CL_STAGES} status={c.status === "custom" ? c.baseStage || "pending" : c.status} history={c.history} />;
 
 export function SaveButton({ j, full }) {
   const u = me(); const saved = u?.role === "candidate" && u.saved.includes(j.id);

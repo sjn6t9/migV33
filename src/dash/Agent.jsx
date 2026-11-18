@@ -13,7 +13,7 @@ function ClRow({ c }) {
   const w = worker(c.workerId) || { name: "Removed worker" };
   return (
     <div className="listrow">
-      <div className="row between"><div><b>{w.name}</b> <span className="muted small">· {w.passport} · {c.country}</span></div><Pill s={c.status} /></div>
+      <div className="row between"><div><b>{w.name}</b> <span className="muted small">· {w.passport} · {c.country}</span></div><Pill s={c.status} label={c.status === "custom" ? c.statusText : undefined} /></div>
       <ClPipe c={c} />
       {c.card && <div className="mt8"><CardDownload c={c} /></div>}
       {c.status === "approved" && !c.card && <p className="muted small mt6">Approved. The agency will send the clearance card here.</p>}
@@ -101,7 +101,7 @@ export function Agent({ u }) {
       <div className="tbl"><table><thead><tr><th>Worker</th><th>Passport</th><th>Trade</th><th>Clearance</th><th>Actions</th></tr></thead><tbody>
         {W.length ? W.map(w => { const c = C.find(x => x.workerId === w.id); return (
           <tr key={w.id}><td><b>{w.name}</b><div className="muted small">{w.district}{w.phone ? ` · ${w.phone}` : ""}</div></td><td className="num">{w.passport}<div className="muted small">Exp. {fdate(w.passportExpiry)}</div></td>
-            <td>{w.trade || "—"} <span className="muted small">{w.experience ? `${w.experience} yr` : ""}</span></td><td>{c ? <Pill s={c.status} /> : <span className="muted small">None</span>}</td>
+            <td>{w.trade || "—"} <span className="muted small">{w.experience ? `${w.experience} yr` : ""}</span></td><td>{c ? <Pill s={c.status} label={c.status === "custom" ? c.statusText : undefined} /> : <span className="muted small">None</span>}</td>
             <td><div className="row tight nowrap"><button className="btn sm" onClick={() => { ui.editWorker = w.id; commit(); window.scrollTo(0, 0); }}><LuPencil /> Edit</button>
               {!c && <button className="btn sm" onClick={() => { ui.clWorker = w.id; setTab("agent", "clearance"); }}><LuStamp /> Apply clearance</button>}
               <button className="btn sm danger" onClick={() => del(w)} aria-label={`Remove ${w.name}`}><LuTrash2 /></button></div></td></tr>); })
@@ -210,9 +210,9 @@ const EC_STATUS = {
   dd: "Pending DD Approval", director: "Pending Director Approval", adg: "Pending ADG Approval", final: "Pending Final Approval", approved: "Final Approved", rejected: "Rejected"
 };
 // "Approved" only once the agency has uploaded the clearance card; before that a finally approved file shows "Final Approved"
-const ecStatus = c => c.status === "approved" && c.card ? ["Approved", "s-approved"] : [EC_STATUS[c.status] || c.status, `s-${c.status === "approved" ? "final" : c.status}`];
+const ecStatus = c => c.status === "custom" ? [c.statusText || "Custom", "s-custom"] : c.status === "approved" && c.card ? ["Approved", "s-approved"] : [EC_STATUS[c.status] || c.status, `s-${c.status === "approved" ? "final" : c.status}`];
 const ecPay = c => {
-  if (!["final", "approved"].includes(c.status)) return "na";
+  if (!["final", "approved"].includes(c.status === "custom" ? c.baseStage : c.status)) return "na";
   if (c.payment?.status === "paid" || c.card?.feePaid) return "paid";
   return c.payment?.status === "submitted" ? "pending" : "unpaid";
 };
@@ -254,7 +254,7 @@ function ClearanceList({ C, W, active }) {
         <select className="ec-type" value={type} onChange={e => { setType(e.target.value); setPage(1); }} aria-label="Type">{TYPES.map(([v, l]) => <option key={v} value={v}>{l}</option>)}</select>
         <label className="ec-search"><input type="text" value={q} onChange={e => { setQ(e.target.value); setPage(1); }} placeholder="EC Ref No, name or passport" /><LuSearch /></label>
       </div>
-      <div className="tbl ec-tbl"><table><thead><tr><th>SL</th><th>Worker name</th><th>Passport No</th><th>EC Ref No</th><th>Country</th><th>Status</th><th>Submission Date</th><th>Payment Status</th><th>Option</th></tr></thead><tbody>
+      <div className="tbl ec-tbl grid"><table><thead><tr><th>SL</th><th>Worker name</th><th>Passport No</th><th>EC Ref No</th><th>Country</th><th>Status</th><th>Submission Date</th><th>Payment Status</th><th>Option</th></tr></thead><tbody>
         {shown.length ? shown.map(({ c, w }, i) => { const pay = ecPay(c); return (
           <tr key={c.id}>
             <td>{(pg - 1) * per + i + 1}</td>

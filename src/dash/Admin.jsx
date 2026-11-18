@@ -1,10 +1,10 @@
 import React from "react";
 import {
   LuLayoutDashboard, LuUsers, LuBriefcase, LuFileText, LuStamp, LuWallet, LuPackage, LuNewspaper, LuSearch, LuSettings, LuMessageSquare,
-  LuCheck, LuX, LuTrash2, LuPencil, LuEye, LuEyeOff, LuBadgeCheck, LuRotateCcw, LuBan, LuTicket, LuUpload, LuImage, LuUserCog, LuImagePlus, LuQuote, LuGalleryHorizontal, LuArrowUp, LuArrowDown, LuTimer, LuPlus
+  LuCheck, LuX, LuTrash2, LuPencil, LuEye, LuEyeOff, LuBadgeCheck, LuRotateCcw, LuBan, LuTicket, LuUpload, LuImage, LuUserCog, LuImagePlus, LuQuote, LuGalleryHorizontal, LuArrowUp, LuArrowDown, LuTimer, LuPlus, LuDownload
 } from "react-icons/lu";
 import { FaWhatsapp, FaFacebookF, FaYoutube, FaLinkedinIn, FaTiktok } from "react-icons/fa6";
-import { STAFF_PERMS, TEAM_DEPTS, store, commit, user, job, worker, company, live, money, num, fdate, bdtFmt, balanceOf, candOf, clPerson, clOpen, cardPending, now, COUNTRIES, STAGES, CL_STAGES, CL_DOCS, PAY_METHODS, PAGES, LABEL } from "../store.js";
+import { clStage, STAFF_PERMS, TEAM_DEPTS, store, commit, user, job, worker, company, live, money, num, fdate, bdtFmt, balanceOf, candOf, clPerson, clOpen, cardPending, now, COUNTRIES, STAGES, CL_STAGES, CL_DOCS, PAY_METHODS, PAGES, LABEL } from "../store.js";
 import { toast, formData, setTab, openModal, confirmBox, deleteUser, act, readUpload, compressImage } from "../actions.js";
 import { downloadFile as dlFile } from "../actions.js";
 import { Rail, Tiles, Pill, Empty, Bars, Stars, Avatar } from "../ui.jsx";
@@ -244,28 +244,7 @@ export function Admin({ u }) {
     </tbody></table></div> : <Empty>No applications.</Empty>}
   </>;
 
-  if (t === "clearance") {
-    const f = ui.clFilter;
-    const match = (k, c) => k === "all" || (k === "open" ? openCl(c) : k === "card" ? cardPending(c) : k === "sent" ? !!c.card : k === "pay" ? c.payment?.status === "submitted" : c.status === k);
-    const L = S.clearances.filter(c => match(f, c)).sort((a, b) => b.created.localeCompare(a.created));
-    const cnt = k => S.clearances.filter(c => match(k, c)).length;
-    body = <>
-      <h2>BMET clearance applications</h2>
-      <p className="muted small">Status flow: {CL_STAGES.map(s => LABEL[s]).join(" › ")}. When a file reaches Final Approval, the agent sends a payment receipt (check it under Payments to check). When a file is Approved, upload the clearance card: the agent then sees Approved and can download it.</p>
-      <FilterButtons cur={f} onPick={k => { ui.clFilter = k; commit(); }} items={[["all", "All"], ["pending", "New (Pending)"], ["open", "In progress"], ["card", "Card to upload"], ["pay", "Payments to check"], ["sent", "Card sent"], ["rejected", "Rejected"]].map(([k, l]) => [k, l, cnt(k)])} />
-      <div className="tbl"><table><thead><tr><th>Applicant</th><th>Filed by</th><th>Destination</th><th>Documents</th><th>Submitted</th><th>Status</th><th>Payment</th><th>Clearance card</th></tr></thead><tbody>
-        {L.length ? L.map(c => { const p = clPerson(c); return (
-          <tr key={c.id}><td><b>{p.name}</b><div className="muted small num">{p.passport || "No passport no."}</div></td><td>{p.via}</td><td>{c.country}<div className="muted small">{c.employer}</div></td><td className="num">{c.files ? `${c.docs.length} uploaded` : `${c.docs.length} listed`}</td><td>{fdate(c.created)}</td>
-            <td><select className="auto slim" value={c.status} onChange={e => setClStatus(c.id, e.target.value)} aria-label="Clearance status">{[...CL_STAGES, "rejected"].map(s => <option key={s} value={s}>{LABEL[s]}</option>)}</select></td>
-            <td><ClPayCell c={c} /></td>
-            <td><div className="row tight nowrap">
-              {c.card ? <span className="pill p-approved">Sent {fdate(c.card.sentAt)}</span> : c.status === "approved" ? <button className="btn sm acc" onClick={() => openModal("clearance", { cid: c.id, admin: true })}><LuUpload /> Upload card</button> : <span className="muted small">After approval</span>}
-              <button className="btn sm" onClick={() => openModal("clearance", { cid: c.id, admin: true })}><LuEye /> Details</button>
-            </div></td></tr>); })
-          : <tr><td colSpan={8}><Empty>No clearance applications in this list.</Empty></td></tr>}
-      </tbody></table></div>
-    </>;
-  }
+  if (t === "clearance") body = <AdminClearanceList />;
 
   if (t === "ledger") {
     const sel = ui.ledgerAgent ? user(ui.ledgerAgent) : null;
@@ -513,9 +492,9 @@ function AdminJobForm() {
 
 
 /* clearance payment (agent files): the agent's receipt after Final Approval, approved or rejected here */
-function ClPayCell({ c }) {
+export function ClPayCell({ c }) {
   const p = c.payment;
-  if (!c.agentId || !["final", "approved"].includes(c.status)) return <span className="muted small">N/A</span>;
+  if (!c.agentId || !["final", "approved"].includes(clStage(c))) return <span className="muted small">N/A</span>;
   if (p?.status === "paid" || c.card?.feePaid) return <span className="ec-badge pay-paid">Paid</span>;
   if (p?.status === "submitted") return (
     <div className="stack6 small">
@@ -527,4 +506,85 @@ function ClPayCell({ c }) {
       </div>
     </div>);
   return <span className="ec-badge pay-unpaid">{p?.status === "rejected" ? "Receipt rejected" : "Unpaid"}</span>;
+}
+
+
+/* ---------- BMET clearance applications (admin): one row per worker, bordered grid ---------- */
+const ecDay = iso => { const d = new Date(iso); return isNaN(d) ? "—" : `${String(d.getDate()).padStart(2, "0")}-${String(d.getMonth() + 1).padStart(2, "0")}-${d.getFullYear()}`; };
+const SENT_IDX = CL_STAGES.indexOf("sent_bmet");
+const pastSent = c => c.status === "rejected" || CL_STAGES.indexOf(clStage(c)) >= SENT_IDX; // from "Send to BMET" on, Details replaces the document downloads
+
+function AdminClearanceList() {
+  const S = store.S; const f = ui.clFilter || "all";
+  const [q, setQ] = React.useState(""); const [per, setPer] = React.useState(25); const [page, setPage] = React.useState(1);
+  const match = (k, c) => k === "all" || (k === "open" ? clOpen(c) : k === "card" ? cardPending(c) : k === "sent" ? !!c.card : k === "pay" ? c.payment?.status === "submitted" : c.status === k);
+  const cnt = k => S.clearances.filter(c => match(k, c)).length;
+  const rows = S.clearances.filter(c => match(f, c)).sort((a, b) => b.created.localeCompare(a.created))
+    .map(c => ({ c, p: clPerson(c) }))
+    .filter(({ c, p }) => { const k = q.trim().toLowerCase(); return !k || [c.ref, p.name, p.passport, c.country].some(v => String(v || "").toLowerCase().includes(k)); });
+  const pages = Math.max(1, Math.ceil(rows.length / per)); const pg = Math.min(page, pages);
+  const shown = rows.slice((pg - 1) * per, pg * per);
+  return <>
+    <h2>BMET clearance applications</h2>
+    <p className="muted small">{`Status flow: ${CL_STAGES.map(x => LABEL[x]).join(" › ")}. Choose “Custom…” in Status to write your own status. The EC Ref No can be changed until the file is Approved. When a file reaches Final Approval, the agent sends a payment receipt (Payments to check). When a file is Approved, upload the clearance card in Details: the agent then sees Approved and can download it.`}</p>
+    <FilterButtons cur={f} onPick={k => { ui.clFilter = k; setPage(1); commit(); }} items={[["all", "All"], ["pending", "New (Pending)"], ["open", "In progress"], ["card", "Card to upload"], ["pay", "Payments to check"], ["sent", "Card sent"], ["rejected", "Rejected"]].map(([k, l]) => [k, l, cnt(k)])} />
+    <div className="ec-tools mt8">
+      <label className="ec-show">Show <select value={per} onChange={e => { setPer(Number(e.target.value)); setPage(1); }}>{[10, 25, 50, 100].map(n => <option key={n} value={n}>{n}</option>)}</select></label>
+      <span className="grow" />
+      <label className="ec-search"><input type="text" value={q} onChange={e => { setQ(e.target.value); setPage(1); }} placeholder="EC Ref No, name or passport" /><LuSearch /></label>
+    </div>
+    <div className="tbl ec-tbl grid"><table><thead><tr><th>SL</th><th>Worker name</th><th>Passport No</th><th>EC Ref No</th><th>Country</th><th>Status</th><th>Submission Date</th><th>Download Documents</th></tr></thead><tbody>
+      {shown.length ? shown.map(({ c, p }, i) => (
+        <tr key={c.id}>
+          <td>{(pg - 1) * per + i + 1}</td>
+          <td><b>{p.name}</b><div className="muted small">{p.via}</div></td>
+          <td className="num" data-notr>{p.passport || "—"}</td>
+          <td><RefCell c={c} /></td>
+          <td>{c.country}</td>
+          <td><StatusCell c={c} /></td>
+          <td className="num">{ecDay(c.created)}</td>
+          <td>{pastSent(c)
+            ? <div className="stack6"><button className="btn sm" onClick={() => openModal("clearance", { cid: c.id, admin: true })}><LuEye /> Details</button>
+                {c.payment?.status === "submitted" && <span className="ec-badge pay-pending">Payment to check</span>}
+                {cardPending(c) && <span className="ec-badge s-final">Card to upload</span>}
+                {c.card && <span className="ec-badge s-approved">Card sent</span>}</div>
+            : <DocButtons c={c} />}</td>
+        </tr>)) : <tr><td colSpan={8}><Empty>No clearance applications in this list.</Empty></td></tr>}
+    </tbody></table></div>
+    {rows.length > 0 && <div className="row between mt8"><span className="muted small">{`Showing ${(pg - 1) * per + 1} to ${Math.min(pg * per, rows.length)} of ${rows.length} entries`}</span>
+      <div className="row tight"><button className="btn sm" disabled={pg <= 1} onClick={() => setPage(pg - 1)}>Previous</button><span className="small b">{pg} / {pages}</span><button className="btn sm" disabled={pg >= pages} onClick={() => setPage(pg + 1)}>Next</button></div></div>}
+  </>;
+}
+
+function DocButtons({ c }) {
+  const F = c.files ? [["passport", "Passport"], ["visa", "Visa"], ["contract", "Contract"]].filter(([k]) => c.files[k]).map(([k, l]) => [l, c.files[k]]).concat((c.files.others || []).map((x, i) => [`Other ${i + 1}`, x])) : [];
+  if (!F.length) return <button className="btn sm" onClick={() => openModal("clearance", { cid: c.id, admin: true })}><LuEye /> Details</button>;
+  return <div className="ec-docs">{F.map(([l, x]) => <button key={l} className="btn sm" title={x.name} onClick={() => dlFile(x.data, x.name)}><LuDownload /> {l}</button>)}</div>;
+}
+
+function RefCell({ c }) {
+  const [ed, setEd] = React.useState(false); const [v, setV] = React.useState(c.ref || "");
+  const locked = c.status === "approved" || !!c.card;
+  const save = async () => { if (await act("admin.clRef", { id: c.id, ref: v })) setEd(false); };
+  if (ed) return (
+    <div className="ec-refedit"><input type="text" value={v} onChange={e => setV(e.target.value.toUpperCase())} onKeyDown={e => { if (e.key === "Enter") save(); if (e.key === "Escape") setEd(false); }} autoFocus aria-label="EC Ref No" data-notr />
+      <button className="btn sm pri" onClick={save} aria-label="Save"><LuCheck /></button><button className="btn sm" onClick={() => setEd(false)} aria-label="Cancel"><LuX /></button></div>);
+  return <div className="ec-refcell"><span className="ec-ref" data-notr>{c.ref || "—"}</span>
+    {!locked && <button className="btn sm link" title="Change EC Ref No" aria-label="Change EC Ref No" onClick={() => { setV(c.ref || ""); setEd(true); }}><LuPencil /></button>}</div>;
+}
+
+export function StatusCell({ c, wide }) {
+  const [custom, setCustom] = React.useState(false); const [v, setV] = React.useState(c.status === "custom" ? c.statusText || "" : "");
+  const pick = val => { if (val === "custom") { setV(c.status === "custom" ? c.statusText || "" : ""); setCustom(true); } else { setCustom(false); setClStatus(c.id, val); } };
+  const saveCustom = async () => { if (await act("admin.clStatus", { id: c.id, status: "custom", text: v })) setCustom(false); };
+  return (
+    <div className={`stack6${wide ? "" : " ec-status"}`}>
+      <select className="auto slim" value={custom ? "custom" : c.status} onChange={e => pick(e.target.value)} aria-label="Clearance status">
+        {[...CL_STAGES, "rejected"].map(x => <option key={x} value={x}>{LABEL[x]}</option>)}
+        <option value="custom">{c.status === "custom" && !custom ? `Custom: ${c.statusText}` : "Custom…"}</option>
+      </select>
+      {custom && <div className="ec-refedit"><input type="text" value={v} maxLength={80} placeholder="Write the status" onChange={e => setV(e.target.value)} onKeyDown={e => { if (e.key === "Enter") saveCustom(); if (e.key === "Escape") setCustom(false); }} autoFocus />
+        <button className="btn sm pri" onClick={saveCustom} aria-label="Save status"><LuCheck /></button><button className="btn sm" onClick={() => setCustom(false)} aria-label="Cancel"><LuX /></button></div>}
+    </div>
+  );
 }

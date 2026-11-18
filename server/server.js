@@ -344,7 +344,7 @@ A["track.lookup"] = async ({ passport, phone }, u, ctx) => {
   limit(ctx.ip, "track", 30, 3600e3);
   const P = str(passport, 30).toUpperCase(); const dg = v => String(v || "").replace(/\D/g, ""); const pm = (a, b) => dg(a).length >= 6 && dg(b).length >= 6 && dg(a).slice(-6) === dg(b).slice(-6);
   if (!P) return { result: false };
-  const strip = c => ({ id: c.id, country: c.country, status: c.status, history: c.history, created: c.created, card: c.card ? { sentAt: c.card.sentAt } : null });
+  const strip = c => ({ id: c.id, country: c.country, status: c.status, statusText: c.statusText, baseStage: c.baseStage, history: c.history, created: c.created, card: c.card ? { sentAt: c.card.sentAt } : null });
   const appView = a => { const j = job(a.jobId); return { id: a.id, status: a.status, history: a.history, appliedAt: a.appliedAt, job: j ? { title: j.title, city: j.city, country: j.country } : null }; };
   const w = db.workers.find(x => x.passport.toUpperCase() === P && pm(x.phone, phone));
   if (w) return { result: { name: w.name, passport: w.passport, clearances: db.clearances.filter(c => c.workerId === w.id).map(strip), apps: db.applications.filter(a => a.workerId === w.id).map(appView), tickets: db.tickets.filter(t => t.workerId === w.id).map(t => ({ id: t.id, from: t.from, to: t.to, status: t.status, prefDate: t.prefDate, airline: t.airline, pnr: t.pnr, flightDate: t.flightDate })) } };
@@ -643,14 +643,30 @@ A["admin.job"] = async ({ id: jid, op, v }, u) => {
   if (op === "delete") { db.jobs = db.jobs.filter(x => x.id !== jid); db.applications = db.applications.filter(a => a.jobId !== jid); return { msg: "Job deleted." }; }
   throw new Fail("Unknown operation.");
 };
-A["admin.clStatus"] = async ({ id: cid, status }, u) => {
-  needPerm(u, "clearance"); const c = db.clearances.find(x => x.id === cid); must(c, "File not found."); must([...CL_STAGES, "rejected"].includes(status), "Unknown status.");
-  if (c.status === status) return {};
-  c.status = status; c.history.push({ s: status, at: now() });
+A["admin.clStatus"] = async ({ id: cid, status, text }, u) => {
+  needPerm(u, "clearance"); const c = db.clearances.find(x => x.id === cid); must(c, "File not found."); must([...CL_STAGES, "rejected", "custom"].includes(status), "Unknown status.");
   const name = c.workerId ? worker(c.workerId)?.name : c.fullName || user(c.candidateId)?.name;
+  if (status === "custom") { // a status written by the agency, e.g. "Fingerprint taken"; the progress bar stays at the last stage
+    const t = str(text, 80); must(t.length >= 2, "Write the status (at least 2 letters).");
+    if (c.status === "custom" && c.statusText === t) return {};
+    if (c.status !== "custom") c.baseStage = CL_STAGES.includes(c.status) ? c.status : (c.baseStage || "pending");
+    c.status = "custom"; c.statusText = t; c.history.push({ s: "custom", t, at: now() });
+    notify(c.agentId || c.candidateId, `BMET clearance for ${name}: ${t}.`);
+    return { msg: `Clearance status: ${t}. ${c.agentId ? "Agent" : "Job seeker"} notified.` };
+  }
+  if (c.status === status) return {};
+  c.status = status; delete c.statusText; c.history.push({ s: status, at: now() });
   const payNow = c.agentId && ["final", "approved"].includes(status) && !["submitted", "paid"].includes(c.payment?.status) ? " Send the payment receipt from BMET clearance (Unpaid)." : "";
   notify(c.agentId || c.candidateId, `BMET clearance for ${name}: ${LABEL[status]}.${status === "approved" ? " The clearance card will be sent to your portal." : ""}${payNow}`);
   return { msg: `Clearance status: ${LABEL[status]}. ${c.agentId ? "Agent" : "Job seeker"} notified.` };
+};
+/* the EC reference number can be set or changed by the agency until the file is Approved */
+A["admin.clRef"] = async ({ id: cid, ref }, u) => {
+  needPerm(u, "clearance"); const c = db.clearances.find(x => x.id === cid); must(c, "File not found.");
+  must(c.status !== "approved" && !c.card, "The EC Ref No cannot be changed after the file is Approved.");
+  const r = str(ref, 40).toUpperCase().replace(/\s+/g, ""); must(/^[A-Z0-9][A-Z0-9\-/]{3,39}$/.test(r), "Enter a valid EC Ref No (letters, numbers and dashes).");
+  must(!db.clearances.some(x => x.id !== c.id && String(x.ref || "").toUpperCase() === r), "Another file already has this EC Ref No.");
+  c.ref = r; return { msg: `EC Ref No saved: ${r}` };
 };
 A["admin.card"] = async ({ id: cid, file, fee }, u) => {
   needPerm(u, "clearance"); const c = db.clearances.find(x => x.id === cid); must(c && c.status === "approved", "Upload the card after the file is Approved.");
@@ -668,7 +684,7 @@ A["admin.card"] = async ({ id: cid, file, fee }, u) => {
 const CL_PAYABLE = ["final", "approved"];
 A["agent.clPayment"] = async (d, u) => {
   needRole(u, "agent"); const c = db.clearances.find(x => x.id === d.id); must(c && c.agentId === u.id, "File not found.");
-  must(CL_PAYABLE.includes(c.status), "Payment opens after the Final Approval.");
+  must(CL_PAYABLE.includes(c.status === "custom" ? c.baseStage : c.status), "Payment opens after the Final Approval.");
   must(!(c.payment && ["submitted", "paid"].includes(c.payment.status)) && !c.card?.feePaid, "A payment for this file is already sent.");
   const amount = numv(d.amount, 1, 10000000); must(amount > 0, "Enter the amount you paid.");
   must(d.file, "Attach the payment receipt.");
