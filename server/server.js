@@ -193,7 +193,7 @@ const cleanUser = (u, full) => {
   if (!full) { delete x.email; if (x.profile) delete x.profile.passportFile; if (x.agent) x.agent = { business: x.agent.business, phone: x.agent.phone }; delete x.perms; }
   return x;
 };
-const cleanCl = c => ({ ...c, files: c.files ? { passport: fileRef(c.files.passport), visa: fileRef(c.files.visa), contract: fileRef(c.files.contract), others: (c.files.others || []).map(fileRef) } : c.files, card: c.card ? { ...c.card, data: `/api/files/${c.card.id}` } : null });
+const cleanCl = c => ({ ...c, files: c.files ? { passport: fileRef(c.files.passport), visa: fileRef(c.files.visa), contract: fileRef(c.files.contract), others: (c.files.others || []).map(fileRef) } : c.files, card: c.card ? { ...c.card, data: `/api/files/${c.card.id}` } : null, payment: c.payment ? { ...c.payment, file: fileRef(c.payment.file) } : null });
 
 function viewFor(u) {
   const live = db.jobs.filter(j => j.status === "active");
@@ -542,7 +542,16 @@ A["agent.workerDelete"] = async ({ id: wid }, u) => {
   db.workers = db.workers.filter(x => x.id !== wid); return { msg: "Worker removed." };
 };
 A["agent.clearance"] = async (d, u) => {
-  needRole(u, "agent"); const w = worker(d.workerId); must(w && w.agentId === u.id, "Choose one of your workers."); must(COUNTRIES[d.country], "Select a country.");
+  needRole(u, "agent");
+  if (!d.workerId && d.newWorker) { // a worker typed into the application form is added to "My workers" first
+    const nw = d.newWorker, pass = str(nw.passport, 30).toUpperCase();
+    must(str(nw.name).length >= 2 && pass, "Enter the worker's name and passport number.");
+    must(!db.workers.some(x => x.passport.toUpperCase() === pass), `A worker with passport ${pass} is already registered. Choose them from your workers.`);
+    must(COUNTRIES[d.country], "Select a country."); must(d.files?.passport && d.files?.visa, "Upload the passport copy and visa copy."); must(str(d.employer), "Enter the employer / sponsor name.");
+    const nwr = { id: id("w"), agentId: u.id, name: str(nw.name, 120), father: "", passport: pass, passportExpiry: "", dob: "", phone: str(nw.phone, 30), district: "", trade: str(nw.trade, 80), experience: 0, created: now() };
+    db.workers.push(nwr); d.workerId = nwr.id;
+  }
+  const w = worker(d.workerId); must(w && w.agentId === u.id, "Choose one of your workers."); must(COUNTRIES[d.country], "Select a country.");
   must(!db.clearances.some(c => c.workerId === w.id && c.status !== "rejected"), "This worker already has an open clearance file.");
   must(d.files?.passport && d.files?.visa, "Upload the passport copy and visa copy."); must(str(d.employer), "Enter the employer / sponsor name.");
   const files = { passport: storeFile(d.files.passport, u.id), visa: storeFile(d.files.visa, u.id), contract: d.files.contract ? storeFile(d.files.contract, u.id) : null, others: [] };
@@ -639,7 +648,8 @@ A["admin.clStatus"] = async ({ id: cid, status }, u) => {
   if (c.status === status) return {};
   c.status = status; c.history.push({ s: status, at: now() });
   const name = c.workerId ? worker(c.workerId)?.name : c.fullName || user(c.candidateId)?.name;
-  notify(c.agentId || c.candidateId, `BMET clearance for ${name}: ${LABEL[status]}.${status === "approved" ? " The clearance card will be sent to your portal." : ""}`);
+  const payNow = c.agentId && ["final", "approved"].includes(status) && !["submitted", "paid"].includes(c.payment?.status) ? " Send the payment receipt from BMET clearance (Unpaid)." : "";
+  notify(c.agentId || c.candidateId, `BMET clearance for ${name}: ${LABEL[status]}.${status === "approved" ? " The clearance card will be sent to your portal." : ""}${payNow}`);
   return { msg: `Clearance status: ${LABEL[status]}. ${c.agentId ? "Agent" : "Job seeker"} notified.` };
 };
 A["admin.card"] = async ({ id: cid, file, fee }, u) => {
@@ -648,11 +658,34 @@ A["admin.card"] = async ({ id: cid, file, fee }, u) => {
   const replacing = !!c.card; const f = replacing ? Number(c.card.fee || 0) : numv(fee, 0, 1e7);
   if (c.card) dropFile(c.card);
   const isCand = !c.agentId;
-  c.card = { ...ref, fee: f, feeNote: isCand && f > 0 ? (c.card?.feePaid ? "paid" : "pay at the office") : "", sentAt: now(), feePaid: c.card?.feePaid || false };
+  c.card = { ...ref, fee: f, feeNote: isCand && f > 0 ? (c.card?.feePaid ? "paid" : "pay at the office") : "", sentAt: now(), feePaid: c.card?.feePaid || c.payment?.status === "paid" || false };
   const name = c.workerId ? worker(c.workerId)?.name : c.fullName;
   if (!replacing && f > 0 && c.agentId) db.ledger.push({ id: id("l"), agentId: c.agentId, type: "charge", desc: `BMET clearance card fee: ${name}`, amount: f, date: now().slice(0, 10), method: "", ref: "", status: "confirmed" });
   notify(owner, `${replacing ? "Updated clearance card" : "Clearance card"} for ${name} is ready. Download it from your portal${f > 0 && !replacing ? `. Card fee: ${bdt(f)}` : ""}.`);
   return { msg: `Clearance card sent to the ${c.agentId ? "agent" : "job seeker"}.` };
+};
+/* clearance fee: after Final Approval the agent sends a payment receipt; the agency approves it and the file shows Paid */
+const CL_PAYABLE = ["final", "approved"];
+A["agent.clPayment"] = async (d, u) => {
+  needRole(u, "agent"); const c = db.clearances.find(x => x.id === d.id); must(c && c.agentId === u.id, "File not found.");
+  must(CL_PAYABLE.includes(c.status), "Payment opens after the Final Approval.");
+  must(!(c.payment && ["submitted", "paid"].includes(c.payment.status)) && !c.card?.feePaid, "A payment for this file is already sent.");
+  const amount = numv(d.amount, 1, 10000000); must(amount > 0, "Enter the amount you paid.");
+  must(d.file, "Attach the payment receipt.");
+  if (c.payment?.file) dropFile(c.payment.file);
+  c.payment = { status: "submitted", amount, method: str(d.method, 40), ref: str(d.ref, 80), file: storeFile(d.file, u.id), at: now(), note: "" };
+  const w = worker(c.workerId);
+  notifyAdmins(`Clearance payment receipt: ${w?.name || "worker"} (${c.ref}), BDT ${amount} from ${u.agent?.business || u.name}.`, "clearance");
+  return { msg: "Payment receipt sent. The agency will check it and mark the file Paid." };
+};
+A["admin.clPayment"] = async ({ id: cid, op, note }, u) => {
+  needPerm(u, "clearance"); const c = db.clearances.find(x => x.id === cid); must(c?.payment?.status === "submitted", "No payment receipt is waiting for this file.");
+  const w = worker(c.workerId);
+  if (op === "approve") { c.payment.status = "paid"; c.payment.checkedAt = now(); if (c.card) c.card.feePaid = true; notify(c.agentId, `Payment approved for ${w?.name || "your worker"} (${c.ref}). The file is Paid.`); return { msg: "Payment approved. The agent now sees Paid." }; }
+  must(op === "reject", "Unknown action.");
+  c.payment.status = "rejected"; c.payment.note = str(note, 300); c.payment.checkedAt = now();
+  notify(c.agentId, `Payment receipt for ${w?.name || "your worker"} (${c.ref}) was not accepted${c.payment.note ? `: ${c.payment.note}` : ""}. Please send it again.`);
+  return { msg: "Receipt rejected. The agent is asked to send it again." };
 };
 A["admin.cardFeePaid"] = async ({ id: cid, v }, u) => { needPerm(u, "clearance"); const c = db.clearances.find(x => x.id === cid); must(c?.card, "No card."); c.card.feePaid = !!v; c.card.feeNote = v ? "paid" : "pay at the office"; return { msg: v ? "Card fee marked as received." : "Card fee marked as unpaid." }; };
 A["admin.ticketBook"] = async (d, u) => {

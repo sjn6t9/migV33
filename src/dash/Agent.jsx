@@ -1,7 +1,7 @@
 import React from "react";
 import { LuLayoutDashboard, LuUser, LuUsers, LuStamp, LuBriefcase, LuWallet, LuBell, LuPencil, LuTrash2, LuSend, LuPlus, LuEye, LuTicket, LuPlaneTakeoff } from "react-icons/lu";
 import { store, commit, worker, job, live, money, fdate, bdtFmt, balanceOf, unread, now, COUNTRIES, CL_DOCS, PAY_METHODS, loadState } from "../store.js";
-import { toast, formData, setTab, openModal, confirmBox, withdraw, readUpload, act, DOC_TYPES, downloadFile, cardFileName } from "../actions.js";
+import { toast, formData, setTab, openModal, closeModal, confirmBox, withdraw, readUpload, act, DOC_TYPES, downloadFile, cardFileName } from "../actions.js";
 import { LuDownload, LuMaximize2, LuMinimize2, LuRefreshCw, LuSearch, LuFileText, LuBanknote, LuCirclePlus, LuX } from "react-icons/lu";
 import { Rail, Tiles, Pill, Pipe, ClPipe, Empty, CardDownload, Avatar } from "../ui.jsx";
 import { NotifPanel, LedgerTable, Field, Options, AgentDocUploads, AGENT_DOCS } from "./shared.jsx";
@@ -207,10 +207,17 @@ export function Agent({ u }) {
 /* ---------- BMET clearance: list of EC applications (one row per worker) ---------- */
 const EC_STATUS = {
   pending: "Pending Agency Review", received: "Received by Agency", sent_bmet: "Sent to BMET", section: "Pending Section Approval", ad: "Pending AD Approval",
-  dd: "Pending DD Approval", director: "Pending Director Approval", adg: "Pending ADG Approval", final: "Pending Final Approval", approved: "Approved", rejected: "Rejected"
+  dd: "Pending DD Approval", director: "Pending Director Approval", adg: "Pending ADG Approval", final: "Pending Final Approval", approved: "Final Approved", rejected: "Rejected"
 };
-const ecPay = c => c.status !== "approved" ? "na" : c.card?.feePaid ? "paid" : "unpaid";
+// "Approved" only once the agency has uploaded the clearance card; before that a finally approved file shows "Final Approved"
+const ecStatus = c => c.status === "approved" && c.card ? ["Approved", "s-approved"] : [EC_STATUS[c.status] || c.status, `s-${c.status === "approved" ? "final" : c.status}`];
+const ecPay = c => {
+  if (!["final", "approved"].includes(c.status)) return "na";
+  if (c.payment?.status === "paid" || c.card?.feePaid) return "paid";
+  return c.payment?.status === "submitted" ? "pending" : "unpaid";
+};
 const ecDate = iso => { const d = new Date(iso); return isNaN(d) ? "N/A" : `${String(d.getDate()).padStart(2, "0")}-${String(d.getMonth() + 1).padStart(2, "0")}-${d.getFullYear()}`; };
+const PAY_LABEL = { na: "N/A", paid: "Paid", unpaid: "Unpaid", pending: "Payment Pending" };
 const TYPES = [["all", "All Types"], ["open", "In progress"], ["approved", "Approved"], ["card", "Card received"], ["rejected", "Rejected"]];
 
 function ClearanceList({ C, W, active }) {
@@ -227,17 +234,16 @@ function ClearanceList({ C, W, active }) {
   const exportCsv = () => {
     const esc = v => `"${String(v ?? "").replace(/"/g, '""')}"`;
     const lines = [["SL", "Worker name", "Passport No", "EC Ref No", "Country", "Status", "Submission Date", "Payment Status"].map(esc).join(",")]
-      .concat(rows.map(({ c, w }, i) => [i + 1, w.name, w.passport, c.ref, c.country, EC_STATUS[c.status] || c.status, ecDate(c.created), { na: "N/A", paid: "Paid", unpaid: "Unpaid" }[ecPay(c)]].map(esc).join(",")));
+      .concat(rows.map(({ c, w }, i) => [i + 1, w.name, w.passport, c.ref, c.country, ecStatus(c)[0], ecDate(c.created), PAY_LABEL[ecPay(c)]].map(esc).join(",")));
     const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob(["\ufeff" + lines.join("\r\n")], { type: "text/csv;charset=utf-8" }));
     a.download = `EC-Applications-${new Date().toISOString().slice(0, 10)}.csv`; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 2000);
   };
   return <>
     <div className="ec-head">
       <div><h2>BMET clearance applications</h2><div className="crumbs"><a href="#dashboard" onClick={e => { e.preventDefault(); setTab("agent", "overview"); }}>Home</a> <span>›</span> <b>EC Application List</b></div></div>
-      <button className="btn dark" onClick={() => setForm(f => !f)} disabled={!W.length}>{form ? <LuX /> : <LuCirclePlus />} {form ? "Close the form" : "Create New Application"}</button>
+      <button className="btn dark" onClick={() => setForm(f => !f)}>{form ? <LuX /> : <LuCirclePlus />} {form ? "Close the form" : "Create New Application"}</button>
     </div>
-    {!W.length && <div className="notice">Add a worker first. <button className="btn link sm" onClick={() => setTab("agent", "workers")}>Add worker</button></div>}
-    {form && W.length > 0 && <GroupEcForm C={C} W={W} active={active} onDone={() => setForm(false)} />}
+    {form && <GroupEcForm C={C} W={W} active={active} onDone={() => setForm(false)} />}
     <div className={`card ec-card${full ? " ec-full" : ""}`}>
       <div className="ec-tools">
         <button className="btn sm" onClick={exportCsv} disabled={!rows.length}><LuDownload /> Export</button>
@@ -256,13 +262,13 @@ function ClearanceList({ C, W, active }) {
             <td className="num" data-notr>{w.passport || "—"}</td>
             <td><a href="#" className="ec-ref" data-notr onClick={e => { e.preventDefault(); openModal("clearance", { cid: c.id }); }}>{c.ref || c.id}</a></td>
             <td>{c.country}</td>
-            <td><span className={`ec-badge s-${c.status}`}>{EC_STATUS[c.status] || c.status}</span></td>
+            <td><span className={`ec-badge ${ecStatus(c)[1]}`}>{ecStatus(c)[0]}</span></td>
             <td className="num">{ecDate(c.created)}</td>
-            <td><span className={`ec-badge pay-${pay}`}>{{ na: "N/A", paid: "Paid", unpaid: "Unpaid" }[pay]}</span></td>
+            <td><span className={`ec-badge pay-${pay}`}>{PAY_LABEL[pay]}</span>{pay === "unpaid" && c.payment?.status === "rejected" && <div className="small bad mt4">{c.payment.note ? `Receipt not accepted: ${c.payment.note}` : "Receipt not accepted"}</div>}</td>
             <td><div className="ec-opts">
               <button className="ec-ico view" title="View details" aria-label="View details" onClick={() => openModal("clearance", { cid: c.id })}><LuEye /></button>
               {c.card && <button className="ec-ico pdf" title="Download clearance card" aria-label="Download clearance card" onClick={() => downloadFile(c.card.data, cardFileName(c))}><LuFileText /></button>}
-              {pay === "unpaid" && <button className="ec-ico pay" title="Pay the agency" aria-label="Pay the agency" onClick={() => setTab("agent", "account")}><LuBanknote /></button>}
+              {pay === "unpaid" && <button className="ec-ico pay" title="Submit payment receipt" aria-label="Submit payment receipt" onClick={() => openModal("clPay", { cid: c.id })}><LuBanknote /></button>}
             </div></td>
           </tr>); }) : <tr><td colSpan={9}><Empty>{C.length ? "No application matches your search." : "No clearance applications yet."}</Empty></td></tr>}
       </tbody></table></div>
@@ -278,23 +284,31 @@ function GroupEcForm({ C, W, active, onDone }) {
   const free = W.filter(w => !C.some(c => c.workerId === w.id && c.status !== "rejected"));
   const [sel, setSel] = React.useState(() => ui.clWorker && free.some(w => w.id === ui.clWorker) ? [ui.clWorker] : []);
   const [busy, setBusy] = React.useState(false);
+  const [fresh, setFresh] = React.useState(() => (ui.clWorker || W.length ? [] : [1])); // workers typed in here (not yet in My workers)
+  const nextKey = React.useRef(2);
   const toggle = id => setSel(L => L.includes(id) ? L.filter(x => x !== id) : [...L, id]);
   const submit = async e => {
     e.preventDefault(); const form = e.currentTarget; const fd = new FormData(form); const d = Object.fromEntries(fd);
     if (!active) return toast("Your account must be approved first.");
-    if (!sel.length) return toast("Select at least one worker.");
+    const list = [...sel.map(id => ({ key: id, id })), ...fresh.map(k => ({ key: `n${k}`, nw: { name: (d[`nwName_n${k}`] || "").trim(), passport: (d[`nwPass_n${k}`] || "").trim(), phone: d[`nwPhone_n${k}`] || "", trade: d[`nwTrade_n${k}`] || "" } }))];
+    if (!list.length) return toast("Select at least one worker.");
+    if (!String(d.employer || "").trim()) return toast("Enter the employer / sponsor name.");
     const pick = n => { const f = fd.get(n); return f && f.size ? f : null; };
-    for (const id of sel) { const w = worker(id); if (!pick(`pass_${id}`) || !pick(`visa_${id}`)) return toast(`Upload the passport copy and visa copy for ${w.name}.`); }
+    for (const x of list) {
+      const name = x.id ? worker(x.id).name : x.nw.name || "the new worker";
+      if (x.nw && (x.nw.name.length < 2 || !x.nw.passport)) return toast("Enter the worker's name and passport number.");
+      if (!pick(`pass_${x.key}`) || !pick(`visa_${x.key}`)) return toast(`Upload the passport copy and visa copy for ${name}.`);
+    }
     setBusy(true); let ok = 0;
     try {
-      for (const id of sel) {
-        const w = worker(id), contractF = pick(`contract_${id}`);
-        const files = { passport: await readUpload(pick(`pass_${id}`), { imageMax: 1800 }), visa: await readUpload(pick(`visa_${id}`), { imageMax: 1800 }), contract: contractF ? await readUpload(contractF, { imageMax: 1800 }) : null };
-        const r = await act("agent.clearance", { workerId: id, country: d.country, employer: d.employer, visaNo: d[`visaNo_${id}`] || "", visaType: d.visaType, flightDate: d.flightDate, notes: d.notes, files }, { quiet: true });
+      for (const x of list) {
+        const contractF = pick(`contract_${x.key}`);
+        const files = { passport: await readUpload(pick(`pass_${x.key}`), { imageMax: 1800 }), visa: await readUpload(pick(`visa_${x.key}`), { imageMax: 1800 }), contract: contractF ? await readUpload(contractF, { imageMax: 1800 }) : null };
+        const r = await act("agent.clearance", { ...(x.id ? { workerId: x.id } : { newWorker: x.nw }), country: d.country, employer: d.employer, visaNo: d[`visaNo_${x.key}`] || "", visaType: d.visaType, flightDate: d.flightDate, notes: d.notes, files }, { quiet: true });
         if (r) ok++; else break; // the server's reason is shown; the workers already sent leave the list
       }
-      if (ok && ok < sel.length) setSel(L => L.slice(ok));
-      if (ok === sel.length) { toast(`${ok} EC application(s) submitted.`); ui.clWorker = ""; setSel([]); form.reset(); onDone(); }
+      if (ok && ok < list.length) { const done = new Set(list.slice(0, ok).map(x => x.key)); setSel(L => L.filter(id => !done.has(id))); setFresh(L => L.filter(k => !done.has(`n${k}`))); }
+      if (ok === list.length) { toast(`${ok} EC application(s) submitted.`); ui.clWorker = ""; setSel([]); setFresh([]); form.reset(); onDone(); }
     } catch (err) { toast(err.message); }
     finally { setBusy(false); }
   };
@@ -308,21 +322,68 @@ function GroupEcForm({ C, W, active, onDone }) {
       <Field label="Planned flight date"><input type="date" name="flightDate" /></Field>
       <fieldset className="plain full"><legend className="small b">Workers</legend>
         {free.length ? <div className="ec-pick">{free.map(w => <label key={w.id} className={`check ec-chip${sel.includes(w.id) ? " on" : ""}`}><input type="checkbox" checked={sel.includes(w.id)} onChange={() => toggle(w.id)} /> {w.name} <span className="muted small" data-notr>{w.passport}</span></label>)}</div>
-          : <p className="muted small">All your workers already have an open clearance file.</p>}
+          : <p className="muted small">{W.length ? "All your workers already have an open clearance file." : "No saved workers yet. Add a new worker below."}</p>}
       </fieldset>
       {sel.map(id => { const w = worker(id); return (
         <div key={id} className="full ec-worker">
           <div className="b mb6">{w.name} <span className="muted small" data-notr>· {w.passport}</span></div>
-          <div className="fgrid">
-            <Field label="Visa number"><input type="text" name={`visaNo_${id}`} /></Field>
-            <Field label="Upload passport copy" hint="PDF or JPG"><input type="file" name={`pass_${id}`} accept={DOC_TYPES} /></Field>
-            <Field label="Upload visa copy" hint="PDF or JPG"><input type="file" name={`visa_${id}`} accept={DOC_TYPES} /></Field>
-            <Field label="Upload employment contract (optional)" hint="PDF or JPG"><input type="file" name={`contract_${id}`} accept={DOC_TYPES} /></Field>
-          </div>
+          <EcDocs k={id} />
         </div>); })}
+      {fresh.map(k => (
+        <div key={`n${k}`} className="full ec-worker ec-new">
+          <div className="row between mb6"><b>New worker</b><button type="button" className="btn sm link danger" onClick={() => setFresh(L => L.filter(x => x !== k))}><LuX /> Remove</button></div>
+          <div className="fgrid mb6">
+            <Field label="Worker's full name"><input type="text" name={`nwName_n${k}`} maxLength={120} /></Field>
+            <Field label="Passport number"><input type="text" name={`nwPass_n${k}`} maxLength={30} style={{ textTransform: "uppercase" }} /></Field>
+            <Field label="Mobile number (optional)"><input type="tel" name={`nwPhone_n${k}`} maxLength={30} /></Field>
+            <Field label="Trade (optional)"><input type="text" name={`nwTrade_n${k}`} maxLength={80} placeholder="e.g. Mason" /></Field>
+          </div>
+          <EcDocs k={`n${k}`} />
+        </div>))}
+      <div className="full"><button type="button" className="btn sm" onClick={() => setFresh(L => [...L, nextKey.current++])}><LuPlus /> Add a new worker</button>
+        <span className="muted small"> The new worker is also saved in My workers.</span></div>
       <Field label="Notes for the agency" full><textarea name="notes" className="short" /></Field>
-      <div className="full row"><button className="btn pri" type="submit" disabled={!active || busy || !sel.length}><LuSend /> {busy ? "Uploading…" : sel.length > 1 ? `Submit ${sel.length} applications` : "Submit application"}</button>
+      <div className="full row"><button className="btn pri" type="submit" disabled={!active || busy || !(sel.length + fresh.length)}><LuSend /> {busy ? "Uploading…" : sel.length + fresh.length > 1 ? `Submit ${sel.length + fresh.length} applications` : "Submit application"}</button>
         {fee > 0 && <span className="muted small">{`Processing charge of ${bdtFmt(fee)} per worker is added to your account.`}</span>}</div>
+    </form>
+  );
+}
+
+function EcDocs({ k }) {
+  return (
+    <div className="fgrid">
+      <Field label="Visa number"><input type="text" name={`visaNo_${k}`} /></Field>
+      <Field label="Upload passport copy" hint="PDF or JPG"><input type="file" name={`pass_${k}`} accept={DOC_TYPES} /></Field>
+      <Field label="Upload visa copy" hint="PDF or JPG"><input type="file" name={`visa_${k}`} accept={DOC_TYPES} /></Field>
+      <Field label="Upload employment contract (optional)" hint="PDF or JPG"><input type="file" name={`contract_${k}`} accept={DOC_TYPES} /></Field>
+    </div>
+  );
+}
+
+/* modal: the agent sends the payment receipt for a finally approved file */
+export function ClPayForm({ cid }) {
+  const c = store.S.clearances.find(x => x.id === cid); const [busy, setBusy] = React.useState(false);
+  if (!c) return <p className="muted">File not found.</p>;
+  const w = worker(c.workerId) || { name: "", passport: "" };
+  const submit = async e => {
+    e.preventDefault(); const fd = new FormData(e.currentTarget); const f = fd.get("receipt");
+    if (!(Number(fd.get("amount")) > 0)) return toast("Enter the amount you paid.");
+    if (!f || !f.size) return toast("Attach the payment receipt.");
+    setBusy(true);
+    try { const file = await readUpload(f, { imageMax: 1800 }); const r = await act("agent.clPayment", { id: c.id, amount: fd.get("amount"), method: fd.get("method"), ref: fd.get("ref"), file }); if (r) closeModal(); }
+    catch (err) { toast(err.message); } finally { setBusy(false); }
+  };
+  return (
+    <form className="stack12" onSubmit={submit} noValidate>
+      <h3>Submit payment receipt</h3>
+      <p className="muted small"><b>{w.name}</b> · <span data-notr>{w.passport} · {c.ref}</span></p>
+      <div className="fgrid">
+        <Field label="Amount paid (BDT)"><input type="number" name="amount" min="1" step="any" required autoFocus /></Field>
+        <Field label="Payment method"><select name="method"><Options list={PAY_METHODS} /></select></Field>
+        <Field label="Transaction / reference no."><input type="text" name="ref" maxLength={80} /></Field>
+        <Field label="Payment receipt" hint="Photo or PDF of the receipt"><input type="file" name="receipt" accept={DOC_TYPES} required /></Field>
+      </div>
+      <div className="row"><button className="btn pri" type="submit" disabled={busy}><LuSend /> {busy ? "Uploading…" : "Submit"}</button><button className="btn" type="button" onClick={closeModal}>Cancel</button></div>
     </form>
   );
 }

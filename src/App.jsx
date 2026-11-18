@@ -9,6 +9,7 @@ import { Logo, Toast, ModalFrame, Pill, ClPipe, CardDownload, Avatar } from "./u
 import { CardAdmin, AgentDocsView } from "./dash/shared.jsx";
 import { Home, Jobs, JobDetail, Services, About, Blog, Post, Contact, Track, Setup, Team, waLink } from "./pages/Public.jsx";
 import { Dashboard } from "./dash/Dashboard.jsx";
+import { ClPayForm } from "./dash/Agent.jsx";
 import { LANGS, getLang, setLang, t, onLang } from "./i18n.js";
 import { VisitingCard, VerifyMember, VerifyBody } from "./VCard.jsx";
 import { currentTheme, toggleTheme } from "./theme.js";
@@ -211,6 +212,7 @@ function ModalHost() {
       {m.type === "memberCheck" && <VerifyBody m={findMember(m.key)} onClose={close} />}
       {m.type === "agentdocs" && user(m.uid) && <AgentDocsView u={user(m.uid)} />}
       {m.type === "clearance" && <ClearanceCard cid={m.cid} admin={m.admin} />}
+      {m.type === "clPay" && <ClPayForm cid={m.cid} />}
     </ModalFrame>
   );
 }

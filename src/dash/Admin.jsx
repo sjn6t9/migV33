@@ -6,6 +6,7 @@ import {
 import { FaWhatsapp, FaFacebookF, FaYoutube, FaLinkedinIn, FaTiktok } from "react-icons/fa6";
 import { STAFF_PERMS, TEAM_DEPTS, store, commit, user, job, worker, company, live, money, num, fdate, bdtFmt, balanceOf, candOf, clPerson, clOpen, cardPending, now, COUNTRIES, STAGES, CL_STAGES, CL_DOCS, PAY_METHODS, PAGES, LABEL } from "../store.js";
 import { toast, formData, setTab, openModal, confirmBox, deleteUser, act, readUpload, compressImage } from "../actions.js";
+import { downloadFile as dlFile } from "../actions.js";
 import { Rail, Tiles, Pill, Empty, Bars, Stars, Avatar } from "../ui.jsx";
 import { LedgerTable, StatusSelect, Field, Options, JobFields, blankJob } from "./shared.jsx";
 import { setClStatus } from "../actions.js";
@@ -245,22 +246,23 @@ export function Admin({ u }) {
 
   if (t === "clearance") {
     const f = ui.clFilter;
-    const match = (k, c) => k === "all" || (k === "open" ? openCl(c) : k === "card" ? cardPending(c) : k === "sent" ? !!c.card : c.status === k);
+    const match = (k, c) => k === "all" || (k === "open" ? openCl(c) : k === "card" ? cardPending(c) : k === "sent" ? !!c.card : k === "pay" ? c.payment?.status === "submitted" : c.status === k);
     const L = S.clearances.filter(c => match(f, c)).sort((a, b) => b.created.localeCompare(a.created));
     const cnt = k => S.clearances.filter(c => match(k, c)).length;
     body = <>
       <h2>BMET clearance applications</h2>
-      <p className="muted small">Status flow: {CL_STAGES.map(s => LABEL[s]).join(" › ")}. When a file is Approved, upload the clearance card and send it to the agent or job seeker.</p>
-      <FilterButtons cur={f} onPick={k => { ui.clFilter = k; commit(); }} items={[["all", "All"], ["pending", "New (Pending)"], ["open", "In progress"], ["card", "Card to upload"], ["sent", "Card sent"], ["rejected", "Rejected"]].map(([k, l]) => [k, l, cnt(k)])} />
-      <div className="tbl"><table><thead><tr><th>Applicant</th><th>Filed by</th><th>Destination</th><th>Documents</th><th>Submitted</th><th>Status</th><th>Clearance card</th></tr></thead><tbody>
+      <p className="muted small">Status flow: {CL_STAGES.map(s => LABEL[s]).join(" › ")}. When a file reaches Final Approval, the agent sends a payment receipt (check it under Payments to check). When a file is Approved, upload the clearance card: the agent then sees Approved and can download it.</p>
+      <FilterButtons cur={f} onPick={k => { ui.clFilter = k; commit(); }} items={[["all", "All"], ["pending", "New (Pending)"], ["open", "In progress"], ["card", "Card to upload"], ["pay", "Payments to check"], ["sent", "Card sent"], ["rejected", "Rejected"]].map(([k, l]) => [k, l, cnt(k)])} />
+      <div className="tbl"><table><thead><tr><th>Applicant</th><th>Filed by</th><th>Destination</th><th>Documents</th><th>Submitted</th><th>Status</th><th>Payment</th><th>Clearance card</th></tr></thead><tbody>
         {L.length ? L.map(c => { const p = clPerson(c); return (
           <tr key={c.id}><td><b>{p.name}</b><div className="muted small num">{p.passport || "No passport no."}</div></td><td>{p.via}</td><td>{c.country}<div className="muted small">{c.employer}</div></td><td className="num">{c.files ? `${c.docs.length} uploaded` : `${c.docs.length} listed`}</td><td>{fdate(c.created)}</td>
             <td><select className="auto slim" value={c.status} onChange={e => setClStatus(c.id, e.target.value)} aria-label="Clearance status">{[...CL_STAGES, "rejected"].map(s => <option key={s} value={s}>{LABEL[s]}</option>)}</select></td>
+            <td><ClPayCell c={c} /></td>
             <td><div className="row tight nowrap">
               {c.card ? <span className="pill p-approved">Sent {fdate(c.card.sentAt)}</span> : c.status === "approved" ? <button className="btn sm acc" onClick={() => openModal("clearance", { cid: c.id, admin: true })}><LuUpload /> Upload card</button> : <span className="muted small">After approval</span>}
               <button className="btn sm" onClick={() => openModal("clearance", { cid: c.id, admin: true })}><LuEye /> Details</button>
             </div></td></tr>); })
-          : <tr><td colSpan={7}><Empty>No clearance applications in this list.</Empty></td></tr>}
+          : <tr><td colSpan={8}><Empty>No clearance applications in this list.</Empty></td></tr>}
       </tbody></table></div>
     </>;
   }
@@ -507,4 +509,22 @@ function AdminJobForm() {
       <div className="full row"><button className="btn pri" type="submit">{editing ? "Save changes" : "Post job"}</button><button className="btn" type="button" onClick={close}>Cancel</button></div>
     </form>
   </>;
+}
+
+
+/* clearance payment (agent files): the agent's receipt after Final Approval, approved or rejected here */
+function ClPayCell({ c }) {
+  const p = c.payment;
+  if (!c.agentId || !["final", "approved"].includes(c.status)) return <span className="muted small">N/A</span>;
+  if (p?.status === "paid" || c.card?.feePaid) return <span className="ec-badge pay-paid">Paid</span>;
+  if (p?.status === "submitted") return (
+    <div className="stack6 small">
+      <span><b className="num">{bdtFmt(p.amount)}</b> · {p.method}{p.ref ? <> · <span className="num" data-notr>{p.ref}</span></> : null}</span>
+      <div className="row tight nowrap">
+        <button className="btn sm" title="View receipt" aria-label="View receipt" onClick={() => dlFile(p.file.data, p.file.name)}><LuEye /></button>
+        <button className="btn sm pri" onClick={() => confirmBox(`Approve the payment of ${bdtFmt(p.amount)}? The agent will see Paid.`, () => act("admin.clPayment", { id: c.id, op: "approve" }), "Approve")}><LuCheck /> Approve</button>
+        <button className="btn sm danger" onClick={() => confirmBox("Reject this receipt? The agent is asked to send it again.", () => act("admin.clPayment", { id: c.id, op: "reject" }), "Reject")}><LuX /></button>
+      </div>
+    </div>);
+  return <span className="ec-badge pay-unpaid">{p?.status === "rejected" ? "Receipt rejected" : "Unpaid"}</span>;
 }

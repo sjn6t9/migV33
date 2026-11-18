@@ -707,3 +707,8 @@ html[lang="bn"] .btn{font-weight:600}
 .ec-ico{width:28px;height:28px;font-size:14px;border-radius:6px}
 .ec-tbl td:nth-child(2){min-width:96px}
 .ec-tbl td:nth-child(6){min-width:110px}
+.ec-badge.s-final{background:#eef6ff;color:#1d5fa8;border-color:#c7ddf5}
+.ec-badge.pay-pending{background:#fff6e0;color:#8a5a00;border-color:#f0d9a0}
+.ec-new{border-color:var(--brand)}
+.stack6{display:flex;flex-direction:column;gap:6px}
+.mt4{margin-top:4px}.bad{color:var(--bad)}
