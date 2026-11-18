@@ -237,7 +237,7 @@ function viewFor(u) {
       clearances: db.clearances.map(cleanCl), ledger: db.ledger, tickets: db.tickets, users: db.users.map(x => cleanUser(x, true))
     });
     if (can(u, "jobs")) pub.jobTemplates = db.jobTemplates;
-    if (can(u, "receipts")) pub.mr = { accounts: db.mr.accounts, receipts: db.mr.receipts };
+    if (can(u, "receipts")) pub.mr = { accounts: db.mr.accounts, receipts: db.mr.receipts.map(r => mrOut(r)) };
     if (u.role === "admin") { const c = smtpConf(); pub.smtp = { host: c.host || "", port: c.port || 465, user: c.user || "", from: c.from || "", hasPass: !!c.pass, local: !!c.local }; }
   }
   return pub;
@@ -778,11 +778,21 @@ A["admin.staff"] = async (d, u) => {
   must(u?.role === "admin", "Only the admin can manage staff.", 403);
   const perms = (d.perms || []).filter(p => STAFF_PERMS.some(s => s[0] === p));
   if (d.op === "add") {
-    const email = str(d.email, 200).toLowerCase(); must(str(d.name) && emailOk(email), "Enter the name and a valid email."); must(String(d.pass || "").length >= 8, "Password must be at least 8 characters.");
+    const email = str(d.email, 200).toLowerCase(); must((str(d.name) || d.memberId) && emailOk(email), "Enter the name and a valid email."); must(String(d.pass || "").length >= 8, "Password must be at least 8 characters.");
     must(!db.users.some(x => x.email === email), "An account with this email already exists.");
-    db.users.push({ id: id("u"), role: "staff", name: str(d.name, 120), email, pass: hashPass(String(d.pass)), status: "active", created: now(), perms }); return { msg: "Staff account created." };
+    const role = d.role === "admin" ? "admin" : "staff", m = d.memberId ? db.team.find(x => x.id === d.memberId) : null;
+    must(!d.memberId || m, "Team member not found.");
+    must(!m || !db.users.some(x => x.memberId === m.id), "This team member already has an ID.");
+    db.users.push({ id: id("u"), role, name: str(d.name, 120) || m?.name, email, pass: hashPass(String(d.pass)), status: "active", created: now(), perms: role === "admin" ? [] : perms, ...(m ? { memberId: m.id } : {}) });
+    return { msg: role === "admin" ? "Admin account created." : "Staff account created." };
   }
   if (d.op === "perms") { const x = user(d.id); must(x?.role === "staff", "Staff member not found."); x.perms = perms; return {}; }
+  if (d.op === "member") { // link an ID to an Expert Team member (name and designation on receipts)
+    const x = user(d.id); must(x && (x.role === "staff" || x.role === "admin"), "Account not found.");
+    const m = d.memberId ? db.team.find(y => y.id === d.memberId) : null; must(!d.memberId || m, "Team member not found.");
+    must(!m || !db.users.some(y => y.id !== x.id && y.memberId === m.id), "This team member already has an ID.");
+    if (m) { x.memberId = m.id; x.name = m.name; } else delete x.memberId; return { msg: m ? `Linked to ${m.name}.` : "Link removed." };
+  }
   throw new Fail("Unknown operation.");
 };
 A["admin.post"] = async (d, u) => {
@@ -892,6 +902,15 @@ async function handleApi(req, res, url) {
   let { token, u } = sessionUser(req);
   if (u && !zoneAllows(zone, u)) { token = null; u = null; } // a session from the other site does not count here
   if (req.method === "GET" && url.pathname === "/api/state") return send(res, 200, viewFor(u));
+  const rm = req.method === "GET" && /^\/api\/receipt\/([a-f0-9]{24})(?:\/sig\/([ra]))?$/.exec(url.pathname);
+  if (rm) { // money receipt opened from its QR code: anyone with the link may see it
+    const r = db.mr.receipts.find(x => x.token === rm[1] && x.status === "approved");
+    if (!r) return send(res, 404, { error: "Receipt not found." });
+    if (!rm[2]) return send(res, 200, { receipt: mrOut(r, true) });
+    const f = db.files[(rm[2] === "r" ? r.received : r.approved)?.sig]; if (!f) return send(res, 404, { error: "File not found." });
+    res.writeHead(200, { ...baseHeaders, "Content-Type": f.mime, "Content-Length": f.size, "Cache-Control": "private, max-age=3600", "Content-Security-Policy": "default-src 'none'; sandbox" });
+    return fs.createReadStream(path.join(DATA_DIR, "files", f.id)).pipe(res);
+  }
   if (req.method === "GET" && url.pathname.startsWith("/api/files/")) {
     const f = db.files[url.pathname.slice(11)];
     if (!f || !(f.chat ? mayReadChatFile(u, f, url.searchParams.get("k")) : mayRead(u, f))) return send(res, 404, { error: "File not found." });
@@ -1140,6 +1159,19 @@ function aboutView() {
 // A payer account is found or created from any of: name, mobile, passport no., email, agent name.
 // Each payment gets a numbered money receipt (MR-2026-0001); the payer's details are copied onto the receipt.
 if (!db.mr) db.mr = { accounts: [], receipts: [], seq: {} };
+for (const r of db.mr.receipts) { // receipts made before approval existed wait for approval
+  if (!r.status) { r.status = "pending"; r.received = { uid: null, name: r.by || "Office", title: "", sig: null }; }
+}
+// who signs: name, designation (from the Expert Team member, if linked) and the signature file at that moment
+const mrSigner = u => { const m = u.memberId && db.team.find(x => x.id === u.memberId); return { uid: u.id, name: u.name || "Office", title: m?.title || u.title || "", sig: u.signature?.id || null, at: now() }; };
+// what the browser gets: signature pictures as links (staff: stored files; public page: through the receipt's own link)
+const mrOut = (r, pub) => {
+  const sig = (s, k) => s ? { name: s.name, title: s.title, at: s.at, sigUrl: s.sig && db.files[s.sig] ? (pub ? `/api/receipt/${r.token}/sig/${k}` : `/api/files/${s.sig}`) : "" } : null;
+  const x = { id: r.id, no: r.no, accountId: r.accountId, payer: r.payer, amount: r.amount, method: r.method, ref: r.ref, purpose: r.purpose, note: r.note, date: r.date, created: r.created,
+    status: r.status, token: r.status === "approved" ? r.token : "", received: sig(r.received, "r"), approved: sig(r.approved, "a"), void: r.void || null };
+  if (pub) { delete x.accountId; delete x.id; if (x.payer) x.payer = { ...x.payer, email: x.payer.email ? x.payer.email.replace(/^(.).*(@.*)$/, "$1***$2") : "" }; }
+  return x;
+};
 const MR_METHODS = ["Cash", "bKash", "Nagad", "Rocket", "Bank transfer", "Cheque", "Card"];
 const mrNorm = { mobile: v => String(v || "").replace(/[^\d+]/g, ""), passport: v => String(v || "").replace(/\s+/g, "").toUpperCase(), email: v => String(v || "").trim().toLowerCase() };
 const mrPayer = p => {
@@ -1157,16 +1189,29 @@ A["admin.mr"] = async (d, u) => {
     const amount = Math.round(Number(d.amount) * 100) / 100;
     must(amount > 0 && amount < 1e9, "Enter the amount received.");
     const method = MR_METHODS.includes(d.method) ? d.method : "Cash";
-    const date = /^\d{4}-\d{2}-\d{2}$/.test(d.date || "") ? d.date : now().slice(0, 10);
+    const date = /^\d{4}-\d{2}-\d{2}$/.test(d.date || "") ? d.date : new Date(Date.now() + 6 * 3600e3).toISOString().slice(0, 10); // Bangladesh date
     let acc = d.accountId ? M.accounts.find(a => a.id === d.accountId) : mrFind(x);
     if (d.accountId) must(acc, "Account not found.");
     if (acc) { for (const k in x) if (x[k]) acc[k] = x[k]; acc.updated = now(); }
     else { acc = { id: id("ma"), ...x, created: now(), updated: now() }; M.accounts.unshift(acc); }
     const yr = date.slice(0, 4); M.seq[yr] = (M.seq[yr] || 0) + 1;
     const r = { id: id("mr"), no: `MR-${yr}-${String(M.seq[yr]).padStart(4, "0")}`, accountId: acc.id, payer: { name: acc.name, mobile: acc.mobile, passport: acc.passport, email: acc.email, agent: acc.agent },
-      amount, method, ref: str(d.ref, 80), purpose: str(d.purpose, 160), note: str(d.note, 400), date, by: u.name || "Office", created: now() };
+      amount, method, ref: str(d.ref, 80), purpose: str(d.purpose, 160), note: str(d.note, 400), date, status: "pending", received: mrSigner(u), created: now() };
     M.receipts.unshift(r);
-    return { msg: `Payment saved. Receipt ${r.no} is ready.`, receiptId: r.id, accountId: acc.id };
+    notifyAdmins(`Payment ${r.no} (BDT ${amount.toLocaleString("en-US")}) is waiting for approval.`, "receipts");
+    return { msg: `Payment ${r.no} saved. It waits for approval by an admin or another staff member.`, receiptId: r.id, accountId: acc.id };
+  }
+  if (d.op === "approve") { // a second person signs as Authorized signature; then the receipt and its QR code exist
+    const r = M.receipts.find(x => x.id === d.id); must(r, "Receipt not found."); must(r.status === "pending" && !r.void, "This payment is not waiting for approval.");
+    must(u.role === "admin" || r.received?.uid !== u.id, "Another admin or staff member must approve a payment you entered.");
+    must(u.signature?.id && db.files[u.signature.id], "Upload your signature first (Money receipts › My signature).");
+    r.approved = mrSigner(u); r.status = "approved"; r.token = crypto.randomBytes(12).toString("hex");
+    return { msg: `Approved. Money receipt ${r.no} is ready to download.` };
+  }
+  if (d.op === "discard") { // remove an entry that was not approved (wrong entry)
+    const r = M.receipts.find(x => x.id === d.id); must(r, "Receipt not found."); must(r.status === "pending", "An approved receipt cannot be deleted. Cancel it instead.");
+    must(u.role === "admin" || r.received?.uid === u.id, "Only the admin or the person who entered it can delete this entry.");
+    M.receipts = M.receipts.filter(x => x !== r); return { msg: `Entry ${r.no} deleted.` };
   }
   if (d.op === "account") { // update a payer's details
     const acc = M.accounts.find(a => a.id === d.id); must(acc, "Account not found.");
@@ -1180,6 +1225,16 @@ A["admin.mr"] = async (d, u) => {
     r.void = { by: u.name || "Admin", at: now(), reason: str(d.reason, 200) }; return { msg: `Receipt ${r.no} cancelled.` };
   }
   must(false, "Unknown request.");
+};
+/* signature picture (PNG) of an admin or staff member: their own, or anyone's when the admin sets it */
+A["staff.signature"] = async (d, u) => {
+  must(u && (u.role === "admin" || u.role === "staff"), "Only admin and staff accounts have a signature.", 403);
+  const x = d.uid && d.uid !== u.id ? user(d.uid) : u;
+  if (x !== u) must(u.role === "admin" && x && (x.role === "staff" || x.role === "admin"), "Only the admin can change another person's signature.", 403);
+  // the old picture is kept: receipts already signed still show it
+  if (d.remove) { x.signature = null; return { msg: "Signature removed." }; }
+  must(d.file, "Choose your signature picture (PNG).");
+  x.signature = storeFile(d.file, x.id, { pdf: false }); return { msg: "Signature saved. It appears on money receipts you sign." };
 };
 
 A["admin.about"] = async (d, u) => {

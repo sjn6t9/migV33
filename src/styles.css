@@ -910,3 +910,21 @@ html[lang="bn"] .btn{font-weight:600}
 .ok-note{background:#e6f6ea;color:#1f7a3d;border:1px solid #b9e3c5;border-radius:8px;padding:8px 12px;margin:8px 0 0}
 .ec-tbl .row6{flex-wrap:nowrap}
 .ec-tbl th.r{white-space:nowrap}
+.mr-wait{background:#fff6e0;color:#8a5a00;border-color:#f0d89a;display:inline-flex;align-items:center;gap:4px}
+.mr-ok{color:#1f7a3d;display:inline-flex;align-items:center;gap:3px}
+.mr-mysig{padding:12px 14px;margin-bottom:14px}
+.mr-sigbox{display:flex;gap:14px;align-items:center;flex-wrap:wrap}
+.mr-sigpic{width:200px;height:72px;border:1px dashed var(--line);border-radius:8px;background:#fff;display:grid;place-items:center;overflow:hidden;flex:none}
+.mr-sigpic img{max-width:92%;max-height:64px}
+.mr-sigpic span{display:inline-flex;gap:6px;align-items:center;color:#5b6b64}
+.mr-sigs{display:flex;gap:6px 18px;flex-wrap:wrap;margin-top:8px}
+.mr-member{display:flex;gap:12px;align-items:center;border:1px solid var(--line);border-radius:10px;padding:10px 12px;background:var(--soft)}
+.mr-member img,.mr-av{width:44px;height:44px;border-radius:50%;object-fit:cover}
+.mr-av{width:40px;height:40px}
+.mr-link{max-width:420px}
+.mr-vpage .mr-vcard{max-width:860px;width:100%;margin:0 auto;padding:20px}
+.mr-valid{display:flex;align-items:center;gap:8px;background:#e6f6ea;color:#1f7a3d;border:1px solid #b9e3c5;border-radius:10px;padding:12px 14px;font-weight:700;font-size:17px}
+.mr-vlist{display:grid;grid-template-columns:max-content 1fr;gap:6px 16px;margin:14px 0 4px}
+.mr-vlist dt{color:var(--muted);font-weight:600;font-size:14px}.mr-vlist dd{margin:0}
+.mr-sigbox>.stack6{flex:1;min-width:240px}
+.mr-vpage .verify-brand{color:#fff;text-decoration:none}

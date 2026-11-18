@@ -12,6 +12,9 @@ if (shared) history.replaceState(null, "", `/#job-${shared[1]}`);
 // visiting-card QR codes point to /v/<member id>; show the verification page
 const verify = location.pathname.match(/^\/v\/([a-z0-9]+)\/?$/i);
 if (verify) history.replaceState(null, "", `/#verify-${verify[1]}`);
+// money-receipt QR codes point to /r/<code>; show that receipt
+const receipt = location.pathname.match(/^\/r\/([a-f0-9]{24})\/?$/i);
+if (receipt) history.replaceState(null, "", `/#receipt-${receipt[1]}`);
 applyTheme();
 loadState();
 initLang().finally(() => createRoot(document.getElementById("root")).render(<App />));

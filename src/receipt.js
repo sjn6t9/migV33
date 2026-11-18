@@ -40,11 +40,12 @@ async function fontsReady() {
   await Promise.race([Promise.all(["800 40px Inter", "700 30px Inter", "500 30px Inter", "600 30px 'Noto Sans Bengali'"].map(f => document.fonts.load(f, "MAM বাংলা").catch(() => null))), new Promise(r => setTimeout(r, 2000))]);
 }
 
+export const receiptUrl = r => r.token ? `${(window.__SITE__?.main || location.origin).replace(/\/$/, "")}/r/${r.token}` : "";
 /** Draw receipt `r` (from the server) with the office details in `settings`. Returns a canvas. */
 export async function drawReceipt(r, settings = {}) {
   await fontsReady();
   const c = document.createElement("canvas"); c.width = W; c.height = H; const g = c.getContext("2d");
-  const logo = await loadImg("/brand/logo-w320.webp?v=2");
+  const [logo, sigR, sigA] = await Promise.all([loadImg("/brand/logo-w320.webp?v=2"), r.received?.sigUrl ? loadImg(r.received.sigUrl) : null, r.approved?.sigUrl ? loadImg(r.approved.sigUrl) : null]);
   g.fillStyle = "#fff"; g.fillRect(0, 0, W, H);
 
   // faint logo behind the details
@@ -102,23 +103,26 @@ export async function drawReceipt(r, settings = {}) {
   g.textAlign = "left";
   if (r.note) { g.fillStyle = MUTED; g.font = `500 20px ${F}`; g.fillText(clip(g, "Note: " + r.note, 960), L, 944); }
 
-  // QR (receipt details, readable by any QR scanner) and signatures
-  drawQR(g, `${OFFICE.name}\nMoney receipt ${r.no}\nDate ${r.date}\nReceived from ${p.name || p.passport || p.mobile || p.email || p.agent || "-"}\nAmount BDT ${tk(r.amount)}\n${OFFICE.site}`, W / 2 - 60, 930, 120, INK);
-  const sig = (x, label, name) => {
-    g.fillStyle = INK; g.fillRect(x, 1030, 380, 2);
-    g.textAlign = "center"; g.font = `600 21px ${F}`; g.fillText(label, x + 190, 1060);
-    if (name) { g.font = `600 24px ${F}`; g.fillText(clip(g, name, 370), x + 190, 1018); }
+  // QR code: opens this receipt on the website, so anyone can check it
+  const url = receiptUrl(r);
+  if (url) { drawQR(g, url, W / 2 - 62, 924, 124, INK); g.textAlign = "center"; g.fillStyle = MUTED; g.font = `600 15px ${F}`; g.fillText("Scan to verify", W / 2, 1066); }
+  const sig = (x, label, s, img) => {
+    if (img) { const mh = 84, mw = 300, k = Math.min(mw / img.width, mh / img.height); const w = img.width * k, h = img.height * k; g.drawImage(img, x + 190 - w / 2, 1018 - h, w, h); }
+    g.fillStyle = INK; g.fillRect(x, 1022, 380, 2); g.textAlign = "center";
+    if (s?.name) { g.font = `700 21px ${F}`; g.fillText(clip(g, s.name + (s.title ? ", " + s.title : ""), 380), x + 190, 1047); }
+    g.fillStyle = MUTED; g.font = `600 17px ${F}`; g.fillText(label, x + 190, 1071);
   };
-  sig(L, "Received by", r.by); sig(W - 70 - 380, "Authorized signature", "");
+  sig(L, "Received by", r.received, sigR); sig(W - 70 - 380, "Authorized signature", r.approved, sigA);
 
   // footer
   g.fillStyle = GREEN; g.fillRect(0, H - 44, W, 44);
   g.fillStyle = "#fff"; g.textAlign = "center"; g.font = `500 19px ${F}`;
   g.fillText(`Computer generated receipt · ${OFFICE.name} · ${OFFICE.site}`, W / 2, H - 15);
 
-  if (r.void) { // cancelled stamp
-    g.save(); g.translate(W / 2, 640); g.rotate(-0.22); g.globalAlpha = .85; g.strokeStyle = RED; g.lineWidth = 10;
-    rr(g, -330, -80, 660, 160, 24); g.stroke(); g.fillStyle = RED; g.textAlign = "center"; g.font = `800 96px ${F}`; g.fillText("CANCELLED", 0, 34); g.restore();
+  const stamp = r.void ? ["CANCELLED", RED] : r.status !== "approved" ? ["NOT APPROVED YET", "#c98e1e"] : null;
+  if (stamp) {
+    g.save(); g.translate(W / 2, 640); g.rotate(-0.22); g.globalAlpha = .85; g.strokeStyle = stamp[1]; g.lineWidth = 10; g.font = `800 ${r.void ? 96 : 76}px ${F}`;
+    const tw = g.measureText(stamp[0]).width + 120; rr(g, -tw / 2, -80, tw, 160, 24); g.stroke(); g.fillStyle = stamp[1]; g.textAlign = "center"; g.fillText(stamp[0], 0, r.void ? 34 : 27); g.restore();
   }
   return c;
 }
@@ -185,6 +189,7 @@ export function xlsx(sheetName, rows, widths = [], filename = "export.xlsx") {
   ]), filename);
 }
 
+const signer = s => s ? s.name + (s.title ? `, ${s.title}` : "") : "";
 export function receiptXlsx(r, settings = {}) {
   const p = r.payer || {};
   xlsx(r.no, [
@@ -192,17 +197,18 @@ export function receiptXlsx(r, settings = {}) {
     [{ v: "MONEY RECEIPT", s: 3 }], [{ v: "Receipt No.", s: 1 }, r.no], [{ v: "Date", s: 1 }, rDate(r.date)], [],
     [{ v: "Received with thanks from", s: 1 }, p.name], [{ v: "Passport No.", s: 1 }, p.passport], [{ v: "Mobile", s: 1 }, p.mobile], [{ v: "Email", s: 1 }, p.email], [{ v: "Agent", s: 1 }, p.agent], [],
     [{ v: "Purpose of payment", s: 1 }, r.purpose], [{ v: "Payment method", s: 1 }, r.method], [{ v: "Transaction / Ref No.", s: 1 }, r.ref],
-    [{ v: "Amount (BDT)", s: 1 }, { v: r.amount, s: 4 }], [{ v: "Amount in words", s: 1 }, takaWords(r.amount)], [{ v: "Note", s: 1 }, r.note], [{ v: "Received by", s: 1 }, r.by],
+    [{ v: "Amount (BDT)", s: 1 }, { v: r.amount, s: 4 }], [{ v: "Amount in words", s: 1 }, takaWords(r.amount)], [{ v: "Note", s: 1 }, r.note],
+    [{ v: "Received by", s: 1 }, signer(r.received)], [{ v: "Authorized signature", s: 1 }, signer(r.approved)], [{ v: "Verify online", s: 1 }, receiptUrl(r)],
     ...(r.void ? [[], [{ v: "Status", s: 1 }, `CANCELLED${r.void.reason ? " · " + r.void.reason : ""}`]] : [])
   ], [28, 60], `${r.no}.xlsx`);
 }
 
 /** A list of receipts (e.g. the current search) as one Excel sheet. */
 export function receiptsXlsx(list, title = "Money receipts") {
-  const head = ["Receipt No.", "Date", "Name", "Passport No.", "Mobile", "Email", "Agent", "Purpose", "Method", "Ref No.", "Amount (BDT)", "Received by", "Status"].map(v => ({ v, s: 1 }));
-  const live = list.filter(r => !r.void);
+  const head = ["Receipt No.", "Date", "Name", "Passport No.", "Mobile", "Email", "Agent", "Purpose", "Method", "Ref No.", "Amount (BDT)", "Received by", "Approved by", "Status"].map(v => ({ v, s: 1 }));
+  const live = list.filter(r => !r.void && r.status === "approved");
   xlsx("Receipts", [[{ v: `${OFFICE.name} · ${title}`, s: 3 }], [], head,
-    ...list.map(r => [r.no, r.date, r.payer?.name, r.payer?.passport, r.payer?.mobile, r.payer?.email, r.payer?.agent, r.purpose, r.method, r.ref, { v: r.amount, s: 2 }, r.by, r.void ? "Cancelled" : "Valid"]),
-    [], ["", "", "", "", "", "", "", "", "", { v: "Total", s: 1 }, { v: live.reduce((s, r) => s + r.amount, 0), s: 4 }]
-  ], [15, 12, 24, 15, 15, 24, 20, 24, 14, 16, 15, 18, 11], `money-receipts-${new Date().toISOString().slice(0, 10)}.xlsx`);
+    ...list.map(r => [r.no, r.date, r.payer?.name, r.payer?.passport, r.payer?.mobile, r.payer?.email, r.payer?.agent, r.purpose, r.method, r.ref, { v: r.amount, s: 2 }, signer(r.received), signer(r.approved), r.void ? "Cancelled" : r.status === "approved" ? "Approved" : "Waiting for approval"]),
+    [], ["", "", "", "", "", "", "", "", "", { v: "Total approved", s: 1 }, { v: live.reduce((s, r) => s + r.amount, 0), s: 4 }]
+  ], [15, 12, 24, 15, 15, 24, 20, 24, 14, 16, 15, 22, 22, 18], `money-receipts-${new Date().toISOString().slice(0, 10)}.xlsx`);
 }

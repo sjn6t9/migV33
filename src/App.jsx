@@ -10,7 +10,7 @@ import { CardAdmin, AgentDocsView } from "./dash/shared.jsx";
 import { Home, Jobs, JobDetail, Services, About, Blog, Post, Contact, Track, Setup, Team, waLink } from "./pages/Public.jsx";
 import { Dashboard } from "./dash/Dashboard.jsx";
 import { ClPayForm } from "./dash/Agent.jsx";
-import { MrEntry, MrView, MrAccount } from "./dash/Receipts.jsx";
+import { MrEntry, MrView, MrAccount, VerifyReceipt } from "./dash/Receipts.jsx";
 import { StatusCell, ClPayCell } from "./dash/Admin.jsx";
 import { LANGS, getLang, setLang, t, onLang } from "./i18n.js";
 import { VisitingCard, VerifyMember, VerifyBody } from "./VCard.jsx";
@@ -36,10 +36,11 @@ export default function App() {
   else if (h.startsWith("post-")) { page = "post"; arg = h.slice(5); }
   else if (h === "setup" || h.startsWith("setup-")) { page = "setup"; arg = h.slice(6); }
   else if (h.startsWith("verify-")) { page = "verify"; arg = h.slice(7); }
+  else if (h.startsWith("receipt-")) { page = "receipt"; arg = h.slice(8); }
   else if (!PAGES.includes(h) && h !== "dashboard") page = "home";
   const panelSite = SITE.admin ? "admin" : SITE.agent ? "agent" : null; // admin.<domain> or agent.<domain>
   if (panelSite && h.startsWith("handoff-")) { page = "handoff"; arg = h.slice(8); }
-  else if (panelSite && !["dashboard", "setup", "job", "post", "verify"].includes(page)) page = "dashboard"; // the panel opens straight to the dashboard
+  else if (panelSite && !["dashboard", "setup", "job", "post", "verify", "receipt"].includes(page)) page = "dashboard"; // the panel opens straight to the dashboard
   useEffect(() => {
     if (page !== "handoff") return;
     history.replaceState(null, "", "#dashboard"); // the one-time pass leaves the address bar at once
@@ -55,11 +56,13 @@ export default function App() {
     if (page === "post") { const p = S.posts.find(x => x.id === arg); if (p) title = `${p.title} | MAM & MAM Overseas Ltd.`; }
     if (page === "dashboard") title = "Dashboard | MAM & MAM Overseas Ltd.";
     if (page === "verify") title = "Verify team member | MAM & MAM Overseas Ltd.";
+    if (page === "receipt") title = "Verify money receipt | MAM & MAM Overseas Ltd.";
     document.title = t(title);
     document.querySelector('meta[name="description"]')?.setAttribute("content", seo.desc);
   });
 
   if (page === "verify") return <><VerifyMember id={arg} /><Toast /></>;
+  if (page === "receipt") return <><VerifyReceipt token={arg} /><Toast /></>;
   if (panelSite) return (
     <>
       <PanelHeader kind={panelSite} />

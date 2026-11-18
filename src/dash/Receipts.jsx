@@ -1,12 +1,12 @@
 // Admin panel › Money receipts: payment entry (any of name, mobile, passport, email, agent),
 // search to find and update a payer's account, and receipts downloadable as PNG, PDF and Excel.
 import React from "react";
-import { LuPlus, LuSearch, LuEye, LuDownload, LuFileSpreadsheet, LuFileText, LuImage, LuPrinter, LuPencil, LuX, LuReceipt, LuUserRound, LuBan } from "react-icons/lu";
+import { LuPlus, LuSearch, LuEye, LuDownload, LuFileSpreadsheet, LuFileText, LuImage, LuPrinter, LuPencil, LuX, LuReceipt, LuUserRound, LuBan, LuCheck, LuSignature, LuUpload, LuTrash2, LuClock, LuQrCode, LuExternalLink } from "react-icons/lu";
 import { store, user } from "../store.js";
 import { act, openModal, closeModal, toast, confirmBox } from "../actions.js";
 import { Field } from "./shared.jsx";
 import { Tiles, Empty } from "../ui.jsx";
-import { drawReceipt, receiptPng, receiptPdf, receiptXlsx, receiptsXlsx, takaWords, tk, rDate } from "../receipt.js";
+import { drawReceipt, receiptPng, receiptPdf, receiptXlsx, receiptsXlsx, takaWords, tk, rDate, receiptUrl } from "../receipt.js";
 
 const METHODS = ["Cash", "bKash", "Nagad", "Rocket", "Bank transfer", "Cheque", "Card"];
 const PURPOSES = ["Visa processing fee", "Medical fee", "BMET clearance fee", "Air ticket", "Service charge", "Advance payment", "Final payment", "Training fee"];
@@ -21,6 +21,49 @@ export function mrMatch(q) {
 }
 const accReceipts = aid => MR().receipts.filter(r => r.accountId === aid);
 const paid = list => list.filter(r => !r.void).reduce((s, r) => s + r.amount, 0);
+const me = () => user(store.S.session);
+const ok = r => r.status === "approved" && !r.void;
+const canApprove = r => { const u = me(); return r.status === "pending" && !r.void && (u?.role === "admin" || r.received?.uid !== u?.id); };
+const canDiscard = r => { const u = me(); return r.status === "pending" && (u?.role === "admin" || r.received?.uid === u?.id); };
+export function approve(r) {
+  if (!me()?.signature) { toast("Upload your signature first (My signature, at the top of Money receipts)."); return; }
+  confirmBox(`Approve payment ${r.no} of BDT ${tk(r.amount)} from ${r.payer.name || r.payer.passport || r.payer.mobile || "the payer"}? Your name and signature go on the receipt as Authorized signature.`, async () => { if (await act("admin.mr", { op: "approve", id: r.id })) openModal("mrView", { rid: r.id }); }, "Approve");
+}
+const discard = r => confirmBox(`Delete entry ${r.no}? It was not approved, so no receipt was made.`, async () => { if (await act("admin.mr", { op: "discard", id: r.id })) closeModal(); }, "Delete entry");
+export function StatusBadge({ r }) {
+  return r.void ? <span className="ec-badge s-rejected">Cancelled</span> : r.status === "approved" ? <span className="ec-badge s-approved">Approved</span> : <span className="ec-badge mr-wait"><LuClock /> Waiting for approval</span>;
+}
+/* signature picture: keep transparency, make the paper (near-white) transparent, trim the empty edges */
+export async function readSignature(file) {
+  if (!file || !/^image\//.test(file.type)) throw new Error("Choose a PNG picture of the signature.");
+  const url = URL.createObjectURL(file);
+  try {
+    const img = new Image(); img.src = url; await img.decode();
+    const sc = Math.min(1, 900 / img.width, 400 / img.height), w = Math.max(1, Math.round(img.width * sc)), h = Math.max(1, Math.round(img.height * sc));
+    const c = document.createElement("canvas"); c.width = w; c.height = h; const g = c.getContext("2d"); g.drawImage(img, 0, 0, w, h);
+    const d = g.getImageData(0, 0, w, h), px = d.data; let x0 = w, y0 = h, x1 = -1, y1 = -1;
+    for (let i = 0; i < px.length; i += 4) {
+      const lum = (px[i] * 299 + px[i + 1] * 587 + px[i + 2] * 114) / 1000;
+      if (lum > 215) px[i + 3] = 0; else if (lum > 170) px[i + 3] = Math.min(px[i + 3], Math.round(255 * (215 - lum) / 45));
+      if (px[i + 3] > 24) { const p = i / 4, x = p % w, y = (p - x) / w; if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y; }
+    }
+    if (x1 < 0) throw new Error("No signature found in this picture. Sign with a dark pen on white paper.");
+    g.putImageData(d, 0, 0); const pad = 6; x0 = Math.max(0, x0 - pad); y0 = Math.max(0, y0 - pad); x1 = Math.min(w - 1, x1 + pad); y1 = Math.min(h - 1, y1 + pad);
+    const t = document.createElement("canvas"); t.width = x1 - x0 + 1; t.height = y1 - y0 + 1; t.getContext("2d").drawImage(c, x0, y0, t.width, t.height, 0, 0, t.width, t.height);
+    return { name: "signature.png", data: t.toDataURL("image/png") };
+  } catch (e) { throw new Error(e.message && !/decode/i.test(e.message) ? e.message : "This picture could not be read. Try another file."); }
+  finally { URL.revokeObjectURL(url); }
+}
+export function SignatureBox({ u, title = "My signature", note }) {
+  const pick = async e => { const f = e.target.files[0]; e.target.value = ""; if (!f) return; try { await act("staff.signature", { uid: u.id, file: await readSignature(f) }); } catch (er) { toast(er.message); } };
+  const sig = u.signature?.id ? `/api/files/${u.signature.id}` : "";
+  return <div className="mr-sigbox">
+    <div className="mr-sigpic">{sig ? <img src={sig} alt={`Signature of ${u.name}`} /> : <span className="muted small"><LuSignature /> No signature yet</span>}</div>
+    <div className="stack6"><b className="small">{title}</b><span className="muted small">{note || "PNG picture of the signature (dark pen on white paper is fine: the white is removed)."}</span>
+      <div className="row6"><label className="btn sm"><LuUpload /> {sig ? "Change" : "Upload PNG"}<input type="file" accept="image/png,image/jpeg,image/webp" hidden onChange={pick} /></label>
+        {sig && <button type="button" className="btn sm danger" onClick={() => confirmBox("Remove this signature? Receipts already signed keep it.", () => act("staff.signature", { uid: u.id, remove: true }), "Remove")}><LuTrash2 /> Remove</button>}</div></div>
+  </div>;
+}
 const agentNames = () => [...new Set(store.S.users.filter(u => u.role === "agent").map(u => u.agent?.business || u.name).filter(Boolean))];
 
 /* ---------------- main page ---------------- */
@@ -28,33 +71,39 @@ export function ReceiptsAdmin() {
   const { accounts, receipts } = MR();
   const [q, setQ] = React.useState(""); const [view, setView] = React.useState("receipts"); const [n, setN] = React.useState(25);
   const m = mrMatch(q);
-  const R = receipts.filter(m), Acc = accounts.filter(a => m(a) || (q && accReceipts(a.id).some(m)));
-  const d = today(), mo = d.slice(0, 7), live = receipts.filter(r => !r.void);
+  const Rall = receipts.filter(m), pend = Rall.filter(r => r.status === "pending" && !r.void);
+  const R = view === "pending" ? pend : Rall, Acc = accounts.filter(a => m(a) || (q && accReceipts(a.id).some(m)));
+  const d = today(), mo = d.slice(0, 7), live = receipts.filter(ok); const u = me();
+  const waiting = receipts.filter(r => r.status === "pending" && !r.void).length;
   const sum = l => `৳ ${tk(paid(l)).replace(/\.00$/, "")}`;
   return <>
     <div className="ec-head"><div><h2>Money receipts</h2><p className="muted small">Payment entry and money receipts. Search by anything to find a payer's account.</p></div>
       <button className="btn pri" onClick={() => openModal("mrEntry", {})}><LuPlus /> New payment entry</button></div>
-    <Tiles items={[[sum(live.filter(r => r.date === d)), "Received today"], [sum(live.filter(r => r.date.startsWith(mo))), "This month"], [String(live.length), "Receipts"], [String(accounts.length), "Accounts"]]} />
+    {u && <div className="card mr-mysig"><SignatureBox u={u} note={u.signature ? "Shown on receipts as Received by (payments you enter) or Authorized signature (payments you approve)." : "Upload it before you approve payments. It is shown on receipts you sign."} /></div>}
+    <Tiles items={[[sum(live.filter(r => r.date === d)), "Received today"], [sum(live.filter(r => r.date.startsWith(mo))), "This month"], [String(waiting), "Waiting for approval", waiting > 0], [String(live.length), "Approved receipts"]]} />
     <div className="ec-tools mt14">
-      <div className="mr-seg" role="tablist">{[["receipts", "Receipts", R.length], ["accounts", "Accounts", Acc.length]].map(([k, l, c]) => <button key={k} role="tab" aria-selected={view === k} className={view === k ? "on" : ""} onClick={() => setView(k)}>{l} <span>{c}</span></button>)}</div>
+      <div className="mr-seg" role="tablist">{[["receipts", "Receipts", Rall.length], ["pending", "Waiting for approval", pend.length], ["accounts", "Accounts", Acc.length]].map(([k, l, c]) => <button key={k} role="tab" aria-selected={view === k} className={view === k ? "on" : ""} onClick={() => setView(k)}>{l} <span>{c}</span></button>)}</div>
       <span className="grow" />
       <label className="ec-search mr-search"><input type="text" value={q} onChange={e => { setQ(e.target.value); setN(25); }} placeholder="Search name, mobile, passport, email, agent or receipt no." /><LuSearch /></label>
-      {view === "receipts" && <button className="btn" disabled={!R.length} onClick={() => receiptsXlsx(R, q ? `Search: ${q}` : "All receipts")}><LuFileSpreadsheet /> Excel</button>}
+      {view !== "accounts" && <button className="btn" disabled={!R.length} onClick={() => receiptsXlsx(R, q ? `Search: ${q}` : "All receipts")}><LuFileSpreadsheet /> Excel</button>}
     </div>
-    {view === "receipts" ? (R.length ? <div className="tbl ec-tbl grid"><table><thead><tr><th>SL</th><th>Receipt No.</th><th>Date</th><th>Name</th><th>Passport No.</th><th>Mobile</th><th>Agent</th><th>Method</th><th className="r">Amount (BDT)</th><th>Receipt</th></tr></thead><tbody>
+    {view !== "accounts" ? (R.length ? <div className="tbl ec-tbl grid"><table><thead><tr><th>SL</th><th>Receipt No.</th><th>Date</th><th>Name</th><th>Passport / Mobile</th><th>Agent</th><th className="r">Amount (BDT)</th><th>Status</th><th>Entry / approval</th><th>Receipt</th></tr></thead><tbody>
       {R.slice(0, n).map((r, i) => <tr key={r.id} className={r.void ? "mr-void" : ""}>
-        <td>{i + 1}</td><td className="ec-ref" data-notr>{r.no}{r.void && <span className="ec-badge s-rejected ms6">Cancelled</span>}</td><td className="num">{rDate(r.date)}</td>
-        <td data-notr>{r.payer.name || "—"}</td><td className="num" data-notr>{r.payer.passport || "—"}</td><td className="num" data-notr>{r.payer.mobile || "—"}</td><td data-notr>{r.payer.agent || "—"}</td>
-        <td>{r.method}</td><td className="num r b">{tk(r.amount)}</td>
-        <td><div className="row6"><button className="ec-ico view" title="View receipt" aria-label="View receipt" onClick={() => openModal("mrView", { rid: r.id })}><LuEye /></button><DlMenu r={r} /></div></td>
-      </tr>)}</tbody></table></div> : <Empty>{q ? "No receipt matches your search." : "No payments yet. Use New payment entry to add the first one."}</Empty>)
+        <td>{i + 1}</td><td className="ec-ref" data-notr>{r.no}</td><td className="num">{rDate(r.date)}</td>
+        <td data-notr>{r.payer.name || "—"}</td><td className="num" data-notr><div className="ec-sub"><span>{r.payer.passport || "—"}</span><span className="muted small">{r.payer.mobile}</span></div></td><td data-notr>{r.payer.agent || "—"}</td>
+        <td className="num r"><b>{tk(r.amount)}</b><div className="muted small">{r.method}</div></td>
+        <td><StatusBadge r={r} /></td>
+        <td><div className="ec-sub"><span className="small" data-notr>{r.received?.name || "—"}</span>{r.approved ? <span className="small mr-ok" data-notr><LuCheck /> {r.approved.name}</span> : null}</div></td>
+        <td><div className="row6"><button className="ec-ico view" title="View receipt" aria-label="View receipt" onClick={() => openModal("mrView", { rid: r.id })}><LuEye /></button>
+          {ok(r) || r.void ? <DlMenu r={r} /> : canApprove(r) ? <button className="btn sm pri" onClick={() => approve(r)}><LuCheck /> Approve</button> : null}</div></td>
+      </tr>)}</tbody></table></div> : <Empty>{q ? "No receipt matches your search." : view === "pending" ? "Nothing is waiting for approval." : "No payments yet. Use New payment entry to add the first one."}</Empty>)
       : (Acc.length ? <div className="tbl ec-tbl grid"><table><thead><tr><th>SL</th><th>Name</th><th>Mobile</th><th>Passport No.</th><th>Email</th><th>Agent</th><th className="r">Receipts</th><th className="r">Total paid (BDT)</th><th>Actions</th></tr></thead><tbody>
         {Acc.slice(0, n).map((a, i) => { const l = accReceipts(a.id); return <tr key={a.id}>
           <td>{i + 1}</td><td data-notr><b>{a.name || "—"}</b></td><td className="num" data-notr>{a.mobile || "—"}</td><td className="num" data-notr>{a.passport || "—"}</td><td data-notr>{a.email || "—"}</td><td data-notr>{a.agent || "—"}</td>
-          <td className="num r">{l.length}</td><td className="num r b">{tk(paid(l))}</td>
+          <td className="num r">{l.length}</td><td className="num r b">{tk(paid(l.filter(ok)))}</td>
           <td><div className="row6"><button className="btn sm pri" onClick={() => openModal("mrEntry", { aid: a.id })}><LuPlus /> Payment</button><button className="btn sm" onClick={() => openModal("mrAccount", { aid: a.id })}><LuPencil /> Account</button></div></td>
         </tr>; })}</tbody></table></div> : <Empty>{q ? "No account matches your search." : "No accounts yet. An account is made with the first payment entry."}</Empty>)}
-    {(view === "receipts" ? R : Acc).length > n && <div className="center mt14"><button className="btn" onClick={() => setN(n + 50)}>Show more</button></div>}
+    {(view !== "accounts" ? R : Acc).length > n && <div className="center mt14"><button className="btn" onClick={() => setN(n + 50)}>Show more</button></div>}
   </>;
 }
 
@@ -92,6 +141,7 @@ export function MrEntry({ aid: aid0 }) {
   };
   return <form className="mr-entry" onSubmit={submit} noValidate>
     <h2 className="row6"><LuReceipt /> Payment entry</h2>
+    <p className="muted small mb14">{`You sign as Received by. After an admin or another staff member approves the payment, the money receipt with its QR code is made.`}</p>
     <div className="mr-find">
       <label className="ec-search"><input type="text" value={q} onChange={e => setQ(e.target.value)} placeholder="Search an existing account: name, mobile, passport, email or agent" aria-label="Search an existing account" /><LuSearch /></label>
       {q.trim() && <div className="mr-found">{found.length ? found.map(a => <button type="button" key={a.id} onClick={() => choose(a)}>
@@ -115,7 +165,7 @@ export function MrEntry({ aid: aid0 }) {
       </div>
       <datalist id="mr-purposes">{PURPOSES.map(x => <option key={x} value={x} />)}</datalist>
     </fieldset>
-    <div className="row between mt14"><button type="button" className="btn" onClick={closeModal}>Cancel</button><button className="btn pri" disabled={busy}><LuReceipt /> Save & make receipt</button></div>
+    <div className="row between mt14"><button type="button" className="btn" onClick={closeModal}>Cancel</button><button className="btn pri" disabled={busy}><LuReceipt /> Save entry</button></div>
   </form>;
 }
 const pick = a => ({ name: a.name || "", mobile: a.mobile || "", passport: a.passport || "", email: a.email || "", agent: a.agent || "" });
@@ -124,27 +174,77 @@ const norm = (k, v) => k === "mobile" ? v.replace(/[^\d+]/g, "") : k === "passpo
 /* ---------------- receipt view ---------------- */
 export function MrView({ rid, fresh }) {
   const r = MR().receipts.find(x => x.id === rid); const [src, setSrc] = React.useState(null);
-  const S = store.S.settings; const u = user(store.S.session);
-  React.useEffect(() => { let on = true; if (r) drawReceipt(r, S).then(c => on && setSrc(c.toDataURL("image/png"))); return () => { on = false; }; }, [r?.id, r?.void, r?.payer?.name]);
+  const S = store.S.settings; const u = me();
+  React.useEffect(() => { let on = true; setSrc(null); if (r) drawReceipt(r, S).then(c => on && setSrc(c.toDataURL("image/png"))); return () => { on = false; }; }, [r?.id, r?.void, r?.status, r?.payer?.name]);
   if (!r) return <p>Receipt not found.</p>;
   const run = f => Promise.resolve(f(r, S)).catch(er => toast(er.message));
   const print = () => { const w = window.open("", "_blank"); if (!w) { toast("Allow pop-ups to print."); return; } w.document.write(`<title>${r.no}</title><style>@page{size:A5 landscape;margin:0}body{margin:0}img{width:100%;display:block}</style><img src="${src}" onload="setTimeout(()=>print(),200)">`); w.document.close(); };
   const voidIt = () => confirmBox(`Cancel receipt ${r.no}? It stays in the list marked Cancelled.`, () => act("admin.mr", { op: "void", id: r.id }), "Cancel receipt");
+  const done = ok(r) || r.void;
   return <>
-    <div className="row between"><h2 className="row6"><LuReceipt /> <span data-notr>{r.no}</span></h2>{r.void && <span className="ec-badge s-rejected">Cancelled</span>}</div>
-    {fresh && <p className="ok-note small">Payment saved. Download or print the receipt.</p>}
+    <div className="row between"><h2 className="row6"><LuReceipt /> <span data-notr>{r.no}</span></h2><StatusBadge r={r} /></div>
+    {fresh && r.status === "pending" && <p className="ok-note small">{`Payment saved. An admin or another staff member must approve it; then the money receipt can be downloaded.`}</p>}
+    <div className="mr-sigs small">
+      <span><b>Received by:</b> <span data-notr>{r.received?.name || "—"}</span>{r.received?.at && <span className="muted"> · {fdt(r.received.at)}</span>}</span>
+      <span><b>Authorized signature:</b> {r.approved ? <><span data-notr>{r.approved.name}</span><span className="muted"> · {fdt(r.approved.at)}</span></> : <span className="muted">waiting for approval</span>}</span>
+    </div>
     <div className="mr-preview">{src ? <img src={src} alt={`Money receipt ${r.no}`} /> : <div className="mr-ph">Making the receipt…</div>}</div>
     <p className="muted small mt8">{`${tk(r.amount)} BDT · ${takaWords(r.amount)}`}</p>
     <div className="mr-actions">
-      <button className="btn pri" onClick={() => run(receiptPng)}><LuImage /> PNG</button>
-      <button className="btn pri" onClick={() => run(receiptPdf)}><LuFileText /> PDF</button>
-      <button className="btn pri" onClick={() => run(receiptXlsx)}><LuFileSpreadsheet /> Excel</button>
-      <button className="btn" disabled={!src} onClick={print}><LuPrinter /> Print</button>
+      {done ? <>
+        <button className="btn pri" onClick={() => run(receiptPng)}><LuImage /> PNG</button>
+        <button className="btn pri" onClick={() => run(receiptPdf)}><LuFileText /> PDF</button>
+        <button className="btn pri" onClick={() => run(receiptXlsx)}><LuFileSpreadsheet /> Excel</button>
+        <button className="btn" disabled={!src} onClick={print}><LuPrinter /> Print</button>
+        {r.token && <a className="btn" href={receiptUrl(r)} target="_blank" rel="noopener"><LuQrCode /> Verify page</a>}
+      </> : <>
+        {canApprove(r) ? <button className="btn pri" onClick={() => approve(r)}><LuCheck /> Approve & sign</button>
+          : <span className="muted small">{r.received?.uid === u?.id ? "You entered this payment: another admin or staff member approves it." : "Waiting for approval."}</span>}
+        {canDiscard(r) && <button className="btn danger" onClick={() => discard(r)}><LuTrash2 /> Delete entry</button>}
+      </>}
       <span className="grow" />
       <button className="btn" onClick={() => openModal("mrAccount", { aid: r.accountId })}><LuUserRound /> Account</button>
-      {u?.role === "admin" && !r.void && <button className="btn danger" onClick={voidIt}><LuBan /> Cancel receipt</button>}
+      {u?.role === "admin" && ok(r) && <button className="btn danger" onClick={voidIt}><LuBan /> Cancel receipt</button>}
     </div>
   </>;
+}
+const fdt = iso => new Date(iso).toLocaleString("en-GB", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" });
+
+/* ---------------- public page: the QR code on a receipt opens /r/<code> ---------------- */
+export function VerifyReceipt({ token }) {
+  const [st, setSt] = React.useState({ loading: true }); const [src, setSrc] = React.useState(null);
+  React.useEffect(() => {
+    let on = true;
+    fetch(`/api/receipt/${encodeURIComponent(token)}`).then(x => x.ok ? x.json() : null).then(async j => {
+      if (!on) return; setSt({ r: j?.receipt || null });
+      if (j?.receipt) { const c = await drawReceipt(j.receipt, store.S.settings || {}); if (on) setSrc(c.toDataURL("image/png")); }
+    }).catch(() => on && setSt({ error: true }));
+    return () => { on = false; };
+  }, [token]);
+  const r = st.r, S = store.S.settings || {};
+  return <div className="verify-page mr-vpage">
+    <div className="verify-top"><a className="verify-brand" href="/#home"><img src="/brand/logo-w160.webp?v=2" width="64" height="40" alt="" /> <span className="vb-name">MAM &amp; MAM OVERSEAS LTD.</span></a></div>
+    <div className="card mr-vcard">
+      {st.loading ? <p className="muted">Checking the receipt…</p> : st.error ? <p>No connection to the server. Check your internet and try again.</p>
+        : !r ? <><div className="verify-bad"><LuBan /> <span>Receipt not found</span></div><p className="verify-note">{`This QR code does not match a money receipt of MAM & MAM Overseas Ltd. Contact our office to check.`}</p></>
+        : <>
+          {r.void ? <div className="verify-bad"><LuBan /> <span>{`Receipt ${r.no} was cancelled`}</span></div>
+            : <div className="mr-valid"><LuCheck /> <span>{`Valid money receipt ${r.no}`}</span></div>}
+          <dl className="mr-vlist">
+            <dt>Received from</dt><dd data-notr>{r.payer.name || r.payer.passport || r.payer.mobile || "—"}</dd>
+            {r.payer.passport && <><dt>Passport No.</dt><dd data-notr>{r.payer.passport}</dd></>}
+            <dt>Amount</dt><dd><b>{`BDT ${tk(r.amount)}`}</b> <span className="muted small">{takaWords(r.amount)}</span></dd>
+            <dt>Date</dt><dd>{rDate(r.date)}</dd>
+            {r.purpose && <><dt>Purpose</dt><dd>{r.purpose}</dd></>}
+            <dt>Received by</dt><dd data-notr>{r.received?.name}{r.received?.title ? `, ${r.received.title}` : ""}</dd>
+            <dt>Approved by</dt><dd data-notr>{r.approved?.name}{r.approved?.title ? `, ${r.approved.title}` : ""}</dd>
+          </dl>
+          <div className="mr-preview">{src ? <img src={src} alt={`Money receipt ${r.no}`} /> : <div className="mr-ph">Making the receipt…</div>}</div>
+          <div className="mr-actions"><button className="btn pri" onClick={() => receiptPng(r, S)}><LuImage /> PNG</button><button className="btn pri" onClick={() => receiptPdf(r, S)}><LuFileText /> PDF</button><span className="grow" /><a className="btn" href="/#home"><LuExternalLink /> Visit Website</a></div>
+        </>}
+    </div>
+    <p className="verify-foot">Recruiting Licence RL 1217 · {location.host}</p>
+  </div>;
 }
 
 /* ---------------- account: update details, see all receipts ---------------- */
@@ -160,11 +260,11 @@ export function MrAccount({ aid }) {
       <datalist id="mr-agents2">{agentNames().map(n => <option key={n} value={n} />)}</datalist>
       <div className="row between mt14"><span className="muted small">New receipts use these details. Receipts already made keep the details they were made with.</span><button className="btn pri">Update account</button></div>
     </form>
-    <div className="row between mt14"><h3>{`Payments (${l.length}) · Total ${tk(paid(l))} BDT`}</h3><div className="row6">
+    <div className="row between mt14"><h3>{`Payments (${l.length}) · Approved total ${tk(paid(l.filter(ok)))} BDT`}</h3><div className="row6">
       <button className="btn sm" disabled={!l.length} onClick={() => receiptsXlsx(l, `Account: ${a.name || a.passport || a.mobile}`)}><LuFileSpreadsheet /> Excel</button>
       <button className="btn sm pri" onClick={() => openModal("mrEntry", { aid: a.id })}><LuPlus /> New payment</button></div></div>
-    {l.length ? <div className="tbl ec-tbl grid mt8"><table><thead><tr><th>Receipt No.</th><th>Date</th><th>Purpose</th><th>Method</th><th className="r">Amount</th><th /></tr></thead><tbody>
-      {l.map(r => <tr key={r.id} className={r.void ? "mr-void" : ""}><td className="ec-ref" data-notr>{r.no}{r.void && <span className="ec-badge s-rejected ms6">Cancelled</span>}</td><td className="num">{rDate(r.date)}</td><td>{r.purpose || "—"}</td><td>{r.method}</td><td className="num r b">{tk(r.amount)}</td>
+    {l.length ? <div className="tbl ec-tbl grid mt8"><table><thead><tr><th>Receipt No.</th><th>Date</th><th>Purpose</th><th>Method</th><th className="r">Amount</th><th>Status</th><th /></tr></thead><tbody>
+      {l.map(r => <tr key={r.id} className={r.void ? "mr-void" : ""}><td className="ec-ref" data-notr>{r.no}</td><td className="num">{rDate(r.date)}</td><td>{r.purpose || "—"}</td><td>{r.method}</td><td className="num r b">{tk(r.amount)}</td><td><StatusBadge r={r} /></td>
         <td><button className="ec-ico view" aria-label="View receipt" title="View receipt" onClick={() => openModal("mrView", { rid: r.id })}><LuEye /></button></td></tr>)}</tbody></table></div>
       : <p className="muted small">No payments yet.</p>}
   </>;

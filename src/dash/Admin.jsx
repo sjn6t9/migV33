@@ -10,7 +10,7 @@ import { downloadFile as dlFile } from "../actions.js";
 import { Rail, Tiles, Pill, Empty, Bars, Stars, Avatar } from "../ui.jsx";
 import { LedgerTable, StatusSelect, Field, Options, JobFields, blankJob } from "./shared.jsx";
 import { setClStatus } from "../actions.js";
-import { ReceiptsAdmin } from "./Receipts.jsx";
+import { ReceiptsAdmin, SignatureBox } from "./Receipts.jsx";
 import { LuReceipt } from "react-icons/lu";
 import { ShareButton, storeCard } from "../Share.jsx";
 import { ChatInbox, useInboxUnread } from "../LiveChat.jsx";
@@ -145,34 +145,7 @@ export function Admin({ u }) {
     </>;
   }
 
-  if (t === "staff") {
-    const staff = S.users.filter(x => x.role === "staff");
-    const add = e => {
-      const [d, fd] = formData(e);
-      const form = e.currentTarget;
-      act("admin.staff", { op: "add", name: d.name, email: d.email, pass: d.pass, perms: fd.getAll("perms") }).then(r => r && form.reset());
-    };
-    const toggle = (x, k) => act("admin.staff", { op: "perms", id: x.id, perms: x.perms.includes(k) ? x.perms.filter(p => p !== k) : [...x.perms, k] }, { quiet: true });
-    body = <>
-      <h2>Staff &amp; permissions</h2>
-      <p className="muted">Staff (employee) accounts sign in like everyone else and see only the sections you allow.</p>
-      <form className="card fgrid" onSubmit={add}>
-        <h3 className="full">Add staff member</h3>
-        <Field label="Name"><input type="text" name="name" required /></Field>
-        <Field label="Email (login)"><input type="email" name="email" required /></Field>
-        <Field label="Password" hint="At least 6 characters"><input type="password" name="pass" minLength={6} required /></Field>
-        <fieldset className="plain full"><legend className="small b">Can open</legend><div className="grid checkgrid">{STAFF_PERMS.map(([k, l]) => <label key={k} className="check"><input type="checkbox" name="perms" value={k} defaultChecked={["apps", "clearance", "tickets"].includes(k)} /> {l}</label>)}</div></fieldset>
-        <div className="full"><button className="btn pri" type="submit">Create staff account</button></div>
-      </form>
-      {staff.length ? staff.map(x => (
-        <div className="card stack8" key={x.id}>
-          <div className="row between"><div className="row"><Avatar name={x.name} size={40} /><div><b>{x.name}</b><div className="muted small">{x.email}</div></div><Pill s={x.status} /></div>
-            <div className="row tight">{x.status === "active" ? <button className="btn sm" onClick={() => act("admin.userState", { id: x.id, status: "suspended" })}><LuBan /> Suspend</button> : <button className="btn sm" onClick={() => act("admin.userState", { id: x.id, status: "active" })}>Reactivate</button>}<button className="btn sm danger" onClick={() => deleteUser(x.id)} aria-label={`Delete ${x.name}`}><LuTrash2 /></button></div></div>
-          <div className="grid checkgrid">{STAFF_PERMS.map(([k, l]) => <label key={k} className="check"><input type="checkbox" checked={x.perms.includes(k)} onChange={() => toggle(x, k)} /> {l}</label>)}</div>
-        </div>
-      )) : <Empty>No staff accounts yet.</Empty>}
-    </>;
-  }
+  if (t === "staff") body = <StaffAdmin u={u} />;
 
   if (t === "overview") {
     const byStatus = [...STAGES, "rejected"].map(s => [LABEL[s], S.applications.filter(a => a.status === s).length]);
@@ -751,4 +724,46 @@ function DocForm({ d, onDone }) {
       <div className="full row"><button className="btn pri" type="submit" disabled={busy}><LuCheck /> {busy ? "Uploading…" : d ? "Save" : "Add document"}</button><button type="button" className="btn" onClick={onDone}>Cancel</button></div>
     </form>
   );
+}
+
+/* Staff & permissions: admin and staff IDs, made from an Expert Team member or by hand; each has a signature for money receipts */
+function StaffAdmin({ u }) {
+  const S = store.S; const team = S.team || [];
+  const ids = S.users.filter(x => (x.role === "staff" || x.role === "admin") && x.id !== u.id);
+  const taken = new Set(S.users.map(x => x.memberId).filter(Boolean));
+  const [mid, setMid] = React.useState(""); const [role, setRole] = React.useState("staff");
+  const m = team.find(x => x.id === mid);
+  const add = e => {
+    const [d, fd] = formData(e); const form = e.currentTarget;
+    act("admin.staff", { op: "add", role, memberId: mid || undefined, name: d.name, email: d.email, pass: d.pass, perms: fd.getAll("perms") }).then(r => { if (r) { form.reset(); setMid(""); setRole("staff"); } });
+  };
+  const toggle = (x, k) => act("admin.staff", { op: "perms", id: x.id, perms: x.perms.includes(k) ? x.perms.filter(p => p !== k) : [...x.perms, k] }, { quiet: true });
+  const member = x => team.find(y => y.id === x.memberId);
+  return <>
+    <h2>Staff &amp; permissions</h2>
+    <p className="muted">Admin and staff accounts sign in like everyone else. Staff see only the sections you allow; an admin sees everything.</p>
+    <div className="card mr-mysig mb14"><SignatureBox u={u} title={`My signature (${u.name})`} note="Shown on money receipts you enter or approve." /></div>
+    <form className="card fgrid" onSubmit={add} key={mid + role}>
+      <h3 className="full">Create admin / staff ID</h3>
+      <Field label="From Expert Team" hint="Choose a team member: the name and designation come from the Expert Team." full>
+        <select value={mid} onChange={e => setMid(e.target.value)}><option value="">— Not from the team (type the name) —</option>
+          {team.map(t => <option key={t.id} value={t.id} disabled={taken.has(t.id)} data-notr>{`${t.name} · ${t.title}${taken.has(t.id) ? " (has an ID)" : ""}`}</option>)}</select></Field>
+      {m ? <div className="mr-member full">{m.photo?.data ? <img src={m.photo.data} alt="" /> : <Avatar name={m.name} size={44} />}<div><b data-notr>{m.name}</b><div className="muted small" data-notr>{m.title}{m.dept ? ` · ${m.dept}` : ""}</div></div></div>
+        : <Field label="Name"><input type="text" name="name" required /></Field>}
+      <Field label="ID type"><select value={role} onChange={e => setRole(e.target.value)}><option value="staff">Staff</option><option value="admin">Admin (full access)</option></select></Field>
+      <Field label="Email (login)"><input type="email" name="email" required defaultValue={m?.email || ""} /></Field>
+      <Field label="Password" hint="At least 8 characters"><input type="password" name="pass" minLength={8} required autoComplete="new-password" /></Field>
+      {role === "staff" && <fieldset className="plain full"><legend className="small b">Can open</legend><div className="grid checkgrid">{STAFF_PERMS.map(([k, l]) => <label key={k} className="check"><input type="checkbox" name="perms" value={k} defaultChecked={["apps", "clearance", "tickets"].includes(k)} /> {l}</label>)}</div></fieldset>}
+      <div className="full"><button className="btn pri" type="submit">{role === "admin" ? "Create admin ID" : "Create staff ID"}</button></div>
+    </form>
+    {ids.length ? ids.map(x => { const tm = member(x); return (
+      <div className="card stack8" key={x.id}>
+        <div className="row between"><div className="row">{tm?.photo?.data ? <img className="mr-av" src={tm.photo.data} alt="" /> : <Avatar name={x.name} size={40} />}<div><b data-notr>{x.name}</b> <span className="ec-badge">{x.role === "admin" ? "Admin" : "Staff"}</span><div className="muted small" data-notr>{[tm?.title, x.email].filter(Boolean).join(" · ")}</div></div><Pill s={x.status} /></div>
+          <div className="row tight">{x.status === "active" ? <button className="btn sm" onClick={() => act("admin.userState", { id: x.id, status: "suspended" })}><LuBan /> Suspend</button> : <button className="btn sm" onClick={() => act("admin.userState", { id: x.id, status: "active" })}>Reactivate</button>}<button className="btn sm danger" onClick={() => deleteUser(x.id)} aria-label={`Delete ${x.name}`}><LuTrash2 /></button></div></div>
+        <label className="f mr-link">Expert Team member<select value={x.memberId || ""} onChange={e => act("admin.staff", { op: "member", id: x.id, memberId: e.target.value })}><option value="">— Not linked —</option>
+          {team.map(t => <option key={t.id} value={t.id} disabled={taken.has(t.id) && t.id !== x.memberId} data-notr>{`${t.name} · ${t.title}`}</option>)}</select></label>
+        <SignatureBox u={x} title="Signature" note="Shown on money receipts this person enters or approves." />
+        {x.role === "staff" && <div className="grid checkgrid">{STAFF_PERMS.map(([k, l]) => <label key={k} className="check"><input type="checkbox" checked={x.perms.includes(k)} onChange={() => toggle(x, k)} /> {l}</label>)}</div>}
+      </div>); }) : <Empty>No other admin or staff IDs yet.</Empty>}
+  </>;
 }
