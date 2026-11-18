@@ -5,6 +5,7 @@ import { drawQR } from "./qr.js";
 const W = 1600, H = 1131;
 const GREEN = "#006a4e", DEEP = "#004d38", RED = "#d01c32", INK = "#14231d", MUTED = "#5b6b64", LINE = "#cfdad5", TINT = "#eef6f2";
 const F = "Inter, 'Noto Sans Bengali', 'Noto Kufi Arabic', Hind, Arial, sans-serif";
+export const TAGLINE = "Government Licensed Recruiting Agency • Recruiting Licence Number: RL1217";
 export const OFFICE = { name: "MAM & MAM OVERSEAS LTD.", site: "www.mamandmam.bd", email: "info@mamandmam.bd", licence: "RL 1217" };
 
 /* ---------- amount in words (Bangladeshi system: crore, lakh, thousand) ---------- */
@@ -59,7 +60,7 @@ export async function drawReceipt(r, settings = {}) {
   if (logo) { const lh = 136, lw = Math.min(222, lh * logo.width / logo.height); g.drawImage(logo, 56 + (236 - lw) / 2, 47, lw, lh); }
   g.fillStyle = "#fff"; g.textAlign = "left";
   fitFont(g, OFFICE.name, 820, 52, 800); g.fillText(OFFICE.name, 326, 98);
-  g.font = `500 25px ${F}`; g.globalAlpha = .93; g.fillText(`Government licensed recruiting agency · Recruiting Licence ${OFFICE.licence}`, 326, 138); g.globalAlpha = 1;
+  fitFont(g, TAGLINE, 870, 25, 500); g.globalAlpha = .93; g.fillText(TAGLINE, 326, 138); g.globalAlpha = 1;
   g.font = `500 21px ${F}`; g.globalAlpha = .85;
   const contact = [settings.address, settings.phone].filter(Boolean).join("  ·  ");
   if (contact) g.fillText(clip(g, contact, 880), 326, 174);
@@ -193,7 +194,7 @@ const signer = s => s ? s.name + (s.title ? `, ${s.title}` : "") : "";
 export function receiptXlsx(r, settings = {}) {
   const p = r.payer || {};
   xlsx(r.no, [
-    [{ v: OFFICE.name, s: 3 }], [`Government licensed recruiting agency · Recruiting Licence ${OFFICE.licence}`], [[settings.address, settings.phone, OFFICE.site].filter(Boolean).join(" · ")], [],
+    [{ v: OFFICE.name, s: 3 }], [TAGLINE], [[settings.address, settings.phone, OFFICE.site].filter(Boolean).join(" · ")], [],
     [{ v: "MONEY RECEIPT", s: 3 }], [{ v: "Receipt No.", s: 1 }, r.no], [{ v: "Date", s: 1 }, rDate(r.date)], [],
     [{ v: "Received with thanks from", s: 1 }, p.name], [{ v: "Passport No.", s: 1 }, p.passport], [{ v: "Mobile", s: 1 }, p.mobile], [{ v: "Email", s: 1 }, p.email], [{ v: "Agent", s: 1 }, p.agent], [],
     [{ v: "Purpose of payment", s: 1 }, r.purpose], [{ v: "Payment method", s: 1 }, r.method], [{ v: "Transaction / Ref No.", s: 1 }, r.ref],
