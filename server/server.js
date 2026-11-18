@@ -939,7 +939,9 @@ function indexHtml(req) {
   const zone = hostZone(req);
   const site = { admin: zone === "admin", agent: zone === "agent", main: ADMIN_HOST || AGENT_HOST ? mainUrl() : "" }; // the admin panel's address is never sent to the public site
   const head = `<script>window.__SITE__=${JSON.stringify(site).replace(/</g, "\\u003c")}</script>${zone === "admin" || zone === "agent" ? '<meta name="robots" content="noindex, nofollow">' : ""}`;
-  return fs.readFileSync(path.join(STATIC_DIR, "index.html"), "utf8").replace(/__ORIGIN__/g, escHtml(siteOrigin(req))).replace("</head>", head + "</head>");
+  // the aipraktor chat widget is registered for the public site only (it refuses other addresses)
+  const body = zone === "main" ? '<script src="https://www.aipraktor.com/embed.js" data-site="site_83b1a0b1018eadaa" async></script>' : "";
+  return fs.readFileSync(path.join(STATIC_DIR, "index.html"), "utf8").replace(/__ORIGIN__/g, escHtml(siteOrigin(req))).replace("</head>", head + "</head>").replace("</body>", body + "</body>");
 }
 function serveJobShare(req, res, jid) {
   const idx = path.join(STATIC_DIR, "index.html"); if (!fs.existsSync(idx)) return send(res, 503, "Site files are missing.", { "Content-Type": "text/plain" });
