@@ -557,9 +557,37 @@ function AdminClearanceList() {
 }
 
 function DocButtons({ c }) {
-  const F = c.files ? [["passport", "Passport"], ["visa", "Visa"], ["contract", "Contract"]].filter(([k]) => c.files[k]).map(([k, l]) => [l, c.files[k]]).concat((c.files.others || []).map((x, i) => [`Other ${i + 1}`, x])) : [];
+  const F = c.files ? [["passport", "Passport copy"], ["visa", "Visa copy"], ["contract", "Employment contract"]].filter(([k]) => c.files[k]).map(([k, l]) => [l, c.files[k]]).concat((c.files.others || []).map((x, i) => [`Other document ${i + 1}`, x])) : [];
   if (!F.length) return <button className="btn sm" onClick={() => openModal("clearance", { cid: c.id, admin: true })}><LuEye /> Details</button>;
-  return <div className="ec-docs">{F.map(([l, x]) => <button key={l} className="btn sm" title={x.name} onClick={() => dlFile(x.data, x.name)}><LuDownload /> {l}</button>)}</div>;
+  return <DocMenu files={F} />;
+}
+
+/* "Downloads" button: opens a small list with one download button per uploaded document */
+function DocMenu({ files }) {
+  const [open, setOpen] = React.useState(null); const ref = React.useRef(); // open = where to draw the list (fixed, so the table never cuts it off)
+  React.useEffect(() => {
+    if (!open) return;
+    const off = e => { if (ref.current && !ref.current.contains(e.target)) setOpen(null); };
+    const esc = e => { if (e.key === "Escape") setOpen(null); };
+    const close = () => setOpen(null);
+    document.addEventListener("mousedown", off); document.addEventListener("keydown", esc); window.addEventListener("scroll", close, true); window.addEventListener("resize", close);
+    return () => { document.removeEventListener("mousedown", off); document.removeEventListener("keydown", esc); window.removeEventListener("scroll", close, true); window.removeEventListener("resize", close); };
+  }, [open]);
+  const toggle = e => {
+    if (open) return setOpen(null);
+    const r = e.currentTarget.getBoundingClientRect(), W = 240, H = 16 + files.length * 52;
+    const left = Math.max(8, Math.min(window.innerWidth - W - 8, document.dir === "rtl" ? r.left : r.right - W));
+    const top = r.bottom + 4 + H > window.innerHeight ? Math.max(8, r.top - 4 - H) : r.bottom + 4;
+    setOpen({ left, top, width: W });
+  };
+  return (
+    <div className="ec-dl" ref={ref}>
+      <button className="btn sm" aria-expanded={!!open} onClick={toggle}><LuDownload /> Downloads <span className="ec-dl-n">{files.length}</span></button>
+      {open && <div className="ec-dl-menu" role="menu" style={open}>
+        {files.map(([l, x]) => <button key={l} role="menuitem" className="ec-dl-item" title={x.name} onClick={() => dlFile(x.data, x.name)}><LuDownload /> <span>{l}</span><small data-notr>{x.name}</small></button>)}
+      </div>}
+    </div>
+  );
 }
 
 function RefCell({ c }) {
