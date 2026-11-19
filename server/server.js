@@ -1020,9 +1020,27 @@ const siteOrigin = req => `${req.headers["x-forwarded-proto"] || "http"}://${req
    they draw: closed, the round button; open (desktop popup), their card (16px in, 86px above the bottom) plus the button.
    On phones their window covers the whole screen and is left as it is. The caption is our own element (their button lives in
    their iframe) and hides while their chat window is open. */
-const AI_WIDGET = `<style>.floaters{bottom:104px}.ai-cap{position:fixed;right:86px;bottom:31px;z-index:2147483646;background:#fff;color:#0b3b2c;border:1px solid #d6e3dd;border-radius:999px;padding:5px 12px;font:600 13px Inter,system-ui,sans-serif;box-shadow:0 4px 14px rgba(0,0,0,.16);pointer-events:none;white-space:nowrap;transition:opacity .2s}.ai-cap.hide{opacity:0;visibility:hidden}</style>
+const AI_WIDGET = `<style>body.ai-open .floaters,body.ai-open .ai-cap{visibility:hidden}.floaters{bottom:104px}.ai-cap{position:fixed;right:86px;bottom:31px;z-index:2147483646;background:#fff;color:#0b3b2c;border:1px solid #d6e3dd;border-radius:999px;padding:5px 12px;font:600 13px Inter,system-ui,sans-serif;box-shadow:0 4px 14px rgba(0,0,0,.16);pointer-events:none;white-space:nowrap;transition:opacity .2s}.ai-cap.hide{opacity:0;visibility:hidden}</style>
 <script src="https://www.aipraktor.com/embed.js" data-site="site_83b1a0b1018eadaa" async></script>
-<script>(function(){var cap;setInterval(function(){var f=document.getElementById("aipraktor-chat");if(!f){if(cap)cap.classList.add("hide");return}if(!cap){cap=document.createElement("div");cap.className="ai-cap hide";cap.textContent="Chat to Ai Assistant";document.body.appendChild(cap)}var r=f.getBoundingClientRect();var small=r.width<=120&&r.height<=120&&r.width>0;cap.classList.toggle("hide",!small);var w=f.offsetWidth,h=f.offsetHeight,full=w>=innerWidth-4&&h>=innerHeight-4,clip="";if(small)clip="circle(29px at 50% 50%)";else if(!full&&w>150&&h>200){var x0=16,y0=16,x1=w-17,y1=h-86,q=14,cx=w-45,cy=h-44,R=29;clip="path('M"+(x0+q)+","+y0+" H"+(x1-q)+" A"+q+","+q+" 0 0 1 "+x1+","+(y0+q)+" V"+(y1-q)+" A"+q+","+q+" 0 0 1 "+(x1-q)+","+y1+" H"+(x0+q)+" A"+q+","+q+" 0 0 1 "+x0+","+(y1-q)+" V"+(y0+q)+" A"+q+","+q+" 0 0 1 "+(x0+q)+","+y0+" Z M"+(cx-R)+","+cy+" A"+R+","+R+" 0 1 0 "+(cx+R)+","+cy+" A"+R+","+R+" 0 1 0 "+(cx-R)+","+cy+" Z')"}if(clip){if(f.style.getPropertyValue("clip-path")!==clip)f.style.setProperty("clip-path",clip,"important")}else f.style.removeProperty("clip-path");if(small){cap.style.bottom=Math.max(8,innerHeight-r.bottom+r.height/2-14)+"px";cap.style.right=Math.max(8,innerWidth-r.left-6)+"px"}},250)})();</script>`;
+<script>(function(){
+var cap,forced=null,root=document.documentElement;
+function vv(){var v=window.visualViewport;return v?{w:v.width,h:v.height,t:v.offsetTop,l:v.offsetLeft}:{w:innerWidth,h:innerHeight,t:0,l:0}}
+function setFull(f){var v=vv();var put=function(k,x){if(f.style.getPropertyValue(k)!==x)f.style.setProperty(k,x,"important")};
+put("left",v.l+"px");put("top",v.t+"px");put("right","auto");put("bottom","auto");put("width",v.w+"px");put("height",v.h+"px");put("max-width","none");put("max-height","none");put("border-radius","0");f.style.removeProperty("clip-path");
+if(root.style.overflow!=="hidden"){root.dataset.aiOv=root.style.overflow||"";root.style.overflow="hidden"}}
+function unFull(f){var w=f.style.getPropertyValue("width"),h=f.style.getPropertyValue("height");f.style.cssText=forced;if(w)f.style.setProperty("width",w,"important");if(h)f.style.setProperty("height",h,"important");forced=null;root.style.overflow=root.dataset.aiOv||"";delete root.dataset.aiOv}
+/* phones: an open chat fills the whole screen (and follows the on-screen keyboard); computers: the card is clipped to its own shape */
+setInterval(function(){var f=document.getElementById("aipraktor-chat");if(!f){if(cap)cap.classList.add("hide");return}
+if(!cap){cap=document.createElement("div");cap.className="ai-cap hide";cap.textContent="Chat to Ai Assistant";document.body.appendChild(cap)}
+var phone=innerWidth<=640,r=f.getBoundingClientRect(),w=f.offsetWidth,h=f.offsetHeight;
+var small=r.width<=120&&r.height<=120&&r.width>0;
+if(forced!==null&&(small||!phone||!r.width)){unFull(f);r=f.getBoundingClientRect();w=f.offsetWidth;h=f.offsetHeight;small=r.width<=120&&r.height<=120&&r.width>0}
+if(phone&&!small&&r.width>0){if(forced===null)forced=f.style.cssText;setFull(f);cap.classList.add("hide");document.body.classList.add("ai-open");return}
+document.body.classList.remove("ai-open");cap.classList.toggle("hide",!small);
+var full=w>=innerWidth-4&&h>=innerHeight-4,clip="";if(small)clip="circle(29px at 50% 50%)";else if(!full&&w>150&&h>200){var x0=16,y0=16,x1=w-17,y1=h-86,q=14,cx=w-45,cy=h-44,R=29;clip="path('M"+(x0+q)+","+y0+" H"+(x1-q)+" A"+q+","+q+" 0 0 1 "+x1+","+(y0+q)+" V"+(y1-q)+" A"+q+","+q+" 0 0 1 "+(x1-q)+","+y1+" H"+(x0+q)+" A"+q+","+q+" 0 0 1 "+x0+","+(y1-q)+" V"+(y0+q)+" A"+q+","+q+" 0 0 1 "+(x0+q)+","+y0+" Z M"+(cx-R)+","+cy+" A"+R+","+R+" 0 1 0 "+(cx+R)+","+cy+" A"+R+","+R+" 0 1 0 "+(cx-R)+","+cy+" Z')"}
+if(clip){if(f.style.getPropertyValue("clip-path")!==clip)f.style.setProperty("clip-path",clip,"important")}else f.style.removeProperty("clip-path");
+if(small){cap.style.bottom=Math.max(8,innerHeight-r.bottom+r.height/2-14)+"px";cap.style.right=Math.max(8,innerWidth-r.left-6)+"px"}},200);
+})();</script>`;
 function indexHtml(req) {
   const zone = hostZone(req);
   const site = { admin: zone === "admin", agent: zone === "agent", main: ADMIN_HOST || AGENT_HOST ? mainUrl() : "" }; // the admin panel's address is never sent to the public site
