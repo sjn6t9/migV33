@@ -1,3 +1,4 @@
+import { VisaFileForm } from "./dash/Visa.jsx";
 import React, { useState, useEffect, useSyncExternalStore } from "react";
 import { LuMenu, LuBell, LuCheck, LuMoon, LuSun, LuLanguages, LuLogOut, LuLayoutDashboard, LuLogIn, LuUserPlus, LuSend, LuMailCheck, LuRefreshCw, LuDownload, LuFileText, LuKeyRound, LuWifiOff, LuPhone, LuMail } from "react-icons/lu";
 import { FaWhatsapp, FaFacebookF, FaYoutube, FaLinkedinIn, FaTiktok } from "react-icons/fa6";
@@ -279,7 +280,7 @@ function ModalHost() {
   const m = store.ui.modal; if (!m) return null;
   const close = closeModal;
   return (
-    <ModalFrame onClose={close} wide={m.type === "share" || m.type === "vcard" || m.type === "mrEntry" || m.type === "mrView" || m.type === "mrAccount" || m.type === "salaryPay" || m.type === "salaryView"} className={m.type === "memberCheck" ? "modal-verify" : ""}>
+    <ModalFrame onClose={close} wide={m.type === "share" || m.type === "vcard" || m.type === "mrEntry" || m.type === "mrView" || m.type === "mrAccount" || m.type === "salaryPay" || m.type === "salaryView" || m.type === "visaFile"} className={m.type === "memberCheck" ? "modal-verify" : ""}>
       {m.type === "confirm" && <>
         <h3>Please confirm</h3><p className="confirm-msg">{m.msg}</p>
         <div className="row"><button className="btn pri" autoFocus onClick={() => { closeModal(); m.onYes(); }}>{m.yes}</button><button className="btn" onClick={close}>Cancel</button></div>
@@ -295,6 +296,7 @@ function ModalHost() {
       {m.type === "agentdocs" && user(m.uid) && <AgentDocsView u={user(m.uid)} />}
       {m.type === "clearance" && <ClearanceCard cid={m.cid} admin={m.admin} />}
       {m.type === "clPay" && <ClPayForm cid={m.cid} />}
+      {m.type === "visaFile" && <VisaFileForm key={m.id || "new"} id={m.id} />}
       {m.type === "mrEntry" && <MrEntry key={m.aid || m.pp || "new"} aid={m.aid} pp={m.pp} />}
       {m.type === "mrView" && <MrView rid={m.rid} fresh={m.fresh} />}
       {m.type === "mrAccount" && <MrAccount key={m.aid} aid={m.aid} />}

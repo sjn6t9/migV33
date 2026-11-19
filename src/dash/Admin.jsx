@@ -11,13 +11,14 @@ import { Rail, Tiles, Pill, Empty, Bars, Stars, Avatar, RoleBadges } from "../ui
 import { StatusSelect, Field, Options, JobFields, blankJob } from "./shared.jsx";
 import { setClStatus } from "../actions.js";
 import { ReceiptsAdmin, SignatureBox } from "./Receipts.jsx";
+import { VisaAdmin } from "./Visa.jsx";
 import { OfficeAccount, SalaryAdmin, MySalary, MoneyWithMe } from "./Accounts.jsx";
 import { StatementsAdmin } from "./Statements.jsx";
 import { PassportEntry, PassportPick, ppLine } from "./Passports.jsx";
 import { Statement } from "./Statement.jsx";
 import { agentRows } from "../statement.js";
 import { MFS, BANKS } from "../banks.js";
-import { LuReceipt, LuLandmark, LuBanknote, LuScrollText, LuBookUser, LuFileCheck2, LuHandCoins } from "react-icons/lu";
+import { LuReceipt, LuLandmark, LuBanknote, LuScrollText, LuBookUser, LuFileCheck2, LuHandCoins, LuPlaneTakeoff } from "react-icons/lu";
 import { ShareButton, storeCard } from "../Share.jsx";
 import { ChatInbox, useInboxUnread } from "../LiveChat.jsx";
 
@@ -32,7 +33,7 @@ function FilterButtons({ items, cur, onPick }) {
 const PAY_SUB = [["receipts", "Money receipts", LuReceipt], ["ledger", "Agent accounts", LuWallet], ["office", "Main account", LuLandmark], ["salary", "Salary accounts", LuBanknote], ["statements", "Statements", LuScrollText], ["packages", "Employer packages", LuPackage]];
 const TABS = [
   ["overview", "Overview", LuLayoutDashboard], ["users", "Accounts", LuUsers], ["jobs", "Job moderation", LuBriefcase], ["apps", "Applications", LuFileText],
-  ["clearance", "BMET clearance", LuStamp], ["tickets", "Air tickets", LuTicket], ["pay", "Payments & receipts", LuReceipt], ["mysalary", "My salary", LuWallet], ["mymoney", "Money with me", LuHandCoins],
+  ["clearance", "BMET clearance", LuStamp], ["visa", "Visa applications", LuPlaneTakeoff], ["tickets", "Air tickets", LuTicket], ["pay", "Payments & receipts", LuReceipt], ["mysalary", "My salary", LuWallet], ["mymoney", "Money with me", LuHandCoins],
   ["content", "Website content", LuImage], ["about", "About page", LuInfo], ["slides", "Home slideshow", LuGalleryHorizontal], ["blog", "Blog", LuNewspaper], ["seo", "SEO", LuSearch], ["settings", "Site settings", LuSettings],
   ["chat", "Live chat", LuMessagesSquare], ["messages", "Messages", LuMessageSquare], ["staff", "Staff & permissions", LuUserCog]
 ];
@@ -235,6 +236,7 @@ export function Admin({ u }) {
     </tbody></table></div> : <Empty>No applications.</Empty>}
   </>;
 
+  if (t === "visa") body = <VisaAdmin />;
   if (t === "clearance") body = <>
     <nav className="pay-tabs" aria-label="BMET clearance">{[["apps", "Applications", LuFileCheck2], ["pp", "Passport entry", LuBookUser]].map(([k, l, I]) => <button key={k} className={(ui.clSub || "apps") === k ? "on" : ""} aria-current={(ui.clSub || "apps") === k ? "page" : undefined} onClick={() => { ui.clSub = k; commit(); }}><I /> {l}{k === "pp" && <span className="count soft">{(S.passports || []).length}</span>}</button>)}</nav>
     {(ui.clSub || "apps") === "pp" ? <PassportEntry /> : <AdminClearanceList />}</>;

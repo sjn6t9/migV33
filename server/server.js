@@ -243,6 +243,7 @@ function viewFor(u) {
     if (can(u, "office")) pub.office = { entries: db.office.entries, auto: officeAuto(), leaders: leaders() };
     { const me = leaders().find(x => x.uid === u.id); if (me) pub.myMoney = { entries: db.office.entries.filter(e => e.people?.includes(me.k)), me }; }
     if (PP_PERMS.some(k => can(u, k))) pub.passports = db.passports;
+    if (can(u, "visa")) pub.visa = db.visa;
     if (isStaffRole(u)) pub.mySalary = { monthly: db.salary.profiles[u.id]?.monthly ?? null, pays: db.salary.pays.filter(p => p.uid === u.id).map(p => salaryOut(p)) };
     if (can(u, "salary")) pub.salary = { profiles: db.salary.profiles, pays: db.salary.pays.map(p => salaryOut(p)) };
     if (can(u, "receipts")) pub.mr = { accounts: db.mr.accounts, receipts: db.mr.receipts.map(r => mrOut(r)), charges: db.mr.charges };
@@ -1739,8 +1740,30 @@ A["admin.statement"] = async (d, u) => {
 // The office keeps a list of passports (name, number, country, gender, reference). It is used when making money receipts,
 // account entries and BMET clearance applications. A reference that is one of our agents lets that agent use the passport too.
 if (!db.passports) db.passports = [];
+/* ---------- Visa applications › KSA visa › HR files ---------- */
+if (!db.visa) db.visa = { files: [], seq: 0 };
+const MOFA_ST = ["Not applied", "Applied", "Issued", "Rejected", "Cancelled"], VISA_ST = ["Pending", "Applied", "Issued", "Stamped", "Rejected", "Cancelled"];
+const okDay = v => (/^\d{4}-\d{2}-\d{2}$/.test(v || "") ? v : "");
+A["admin.visa"] = async (d, u) => {
+  needPerm(u, "visa");
+  if (d.op === "save") {
+    const x = d.file || {}, old = d.id && db.visa.files.find(f => f.id === d.id); must(!d.id || old, "File not found.");
+    const ag = x.agentId ? user(x.agentId) : null; must(!x.agentId || ag?.role === "agent", "Agent not found.");
+    const v = { country: "KSA", name: str(x.name, 120), passport: ppNorm(x.passport).slice(0, 20), agentId: ag ? ag.id : null, agent: ag ? agentName(ag) : str(x.agent, 120),
+      mofaId: str(x.mofaId, 40), visaNo: str(x.visaNo, 40), sponsorId: str(x.sponsorId, 40), sponsorName: str(x.sponsorName, 160),
+      mofaStatus: MOFA_ST.includes(x.mofaStatus) ? x.mofaStatus : "Not applied", visaStatus: VISA_ST.includes(x.visaStatus) ? x.visaStatus : "Pending",
+      medicalSlipDate: okDay(x.medicalSlipDate), profession: str(x.profession, 120), visaProfession: str(x.visaProfession, 120), extra: typeof x.extra === "object" && x.extra ? Object.fromEntries(Object.entries(x.extra).slice(0, 60).map(([k, w]) => [str(k, 60), str(w, 300)])) : {}, note: str(x.note, 1000) };
+    must(v.name.length >= 2, "Enter the client's full name."); must(/^[A-Z0-9]{6,15}$/.test(v.passport), "Check the passport number (letters and numbers, 6 to 15).");
+    must(!db.visa.files.some(f => f !== old && f.passport === v.passport && f.visaStatus !== "Cancelled"), `A file for passport ${v.passport} already exists.`);
+    if (old) { Object.assign(old, v, { updated: now(), updatedBy: u.name }); return { msg: "Client file saved." }; }
+    db.visa.files.push({ id: id("vf"), sl: ++db.visa.seq, ...v, created: now(), by: u.name });
+    return { msg: `Client file created for ${v.name}.` };
+  }
+  if (d.op === "delete") { must(db.visa.files.some(f => f.id === d.id), "File not found."); db.visa.files = db.visa.files.filter(f => f.id !== d.id); return { msg: "Client file deleted." }; }
+  must(false, "Unknown request.");
+};
 const ppNorm = v => String(v || "").replace(/\s+/g, "").toUpperCase();
-const PP_PERMS = ["clearance", "receipts", "ledger", "office"];
+const PP_PERMS = ["clearance", "receipts", "ledger", "office", "visa"];
 A["admin.passport"] = async (d, u) => {
   needPerm(u, "clearance");
   const read = x => {
