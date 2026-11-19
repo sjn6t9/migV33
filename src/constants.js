@@ -59,13 +59,13 @@ export const INITIAL = {
 };
 
 /* KSA visa › HR files: every field of a client file (Create Client File), in form order */
-export const VISA_FIELDS = ["agentId", "remark", "gccSlipNo", "medicalSlipDate", "mofaStatus", "visaStatus",
+export const VISA_FIELDS = ["agentId", "remark", "gccSlipNo", "medicalSlipDate", "medicalResult", "mofaStatus", "visaStatus",
   "name", "fatherName", "motherName", "dob", "birthPlace", "prevNationality", "nationality", "sex", "marital", "sect", "religion", "address", "mofaId", "oldMofaId",
   "passport", "issuePlace", "issueDate", "expiryDate", "validity",
   "visaNo", "visaDate", "sponsorName", "sponsorId", "issuePlaceEn", "issuePlaceAr", "qualificationEn", "qualificationAr", "professionEn", "professionAr", "travelPurpose", "musaned", "wakala", "mofaProfession", "enjazProfessionAr", "enjazProfessionEn",
   "pcUrl", "pcRef", "licenseNo", "licenseType", "pcIssueDate", "pcOffice",
   "stayEn", "stayAr", "arrivalEn", "arrivalAr", "departureEn", "departureAr", "finger", "salary", "food", "experience", "note"];
-export const VISA_DATES = ["medicalSlipDate", "dob", "issueDate", "expiryDate", "visaDate", "pcIssueDate"];
+export const VISA_DATES = ["medicalSlipDate", "dob", "issueDate", "expiryDate", "pcIssueDate"]; // the visa date is Hijri (e.g. 1446/06/30), so it stays text
 /* the same check links the office uses every day */
 export const VISA_LINKS = [["Visa Check", "https://visa.mofa.gov.sa/Enjaz/GetVisaInformation/Person"], ["Medical Check", "https://wafid.com/en/medical-status-search/"],
   ["Mofa Check", "https://visa.mofa.gov.sa/VisaPerson/GetApplicantData"], ["Medical Update", "https://visa.mofa.gov.sa/VisaPerson/CheckMedicalResult"],

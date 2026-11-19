@@ -1755,9 +1755,9 @@ A["admin.visa"] = async (d, u) => {
       mofaStatus: MOFA_ST.includes(x.mofaStatus) ? x.mofaStatus : "Not applied", visaStatus: VISA_ST.includes(x.visaStatus) ? x.visaStatus : "Pending", name: str(x.name, 120) });
     must(v.name.length >= 2, "Enter the client's full name."); must(/^[A-Z0-9]{6,15}$/.test(v.passport), "Check the passport number (letters and numbers, 6 to 15).");
     must(!db.visa.files.some(f => f !== old && f.passport === v.passport && f.visaStatus !== "Cancelled"), `A file for passport ${v.passport} already exists.`);
-    if (old) { Object.assign(old, v, { updated: now(), updatedBy: u.name }); return { msg: "Client file saved." }; }
-    db.visa.files.push({ id: id("vf"), sl: ++db.visa.seq, ...v, created: now(), by: u.name });
-    return { msg: `Client file created for ${v.name}.` };
+    if (old) { Object.assign(old, v, { updated: now(), updatedBy: u.name }); return { msg: "Client file saved.", id: old.id }; }
+    const f = { id: id("vf"), sl: ++db.visa.seq, ...v, created: now(), by: u.name }; db.visa.files.push(f);
+    return { msg: `Client file created for ${v.name}.`, id: f.id };
   }
   /* Fetch by passport: what the office already has for this passport (passport entry, BMET clearance workers, earlier visa files) */
   if (d.op === "fetch") {

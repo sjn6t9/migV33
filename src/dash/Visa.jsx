@@ -1,9 +1,9 @@
 // Visa applications › KSA visa › HR files: a dashboard of client files (MOFA, visa, sponsor, medical) and the Create Client File form.
 import React from "react";
-import { LuFilePlus2, LuSearch, LuPencil, LuTrash2, LuFileSpreadsheet, LuX, LuExternalLink, LuCheck, LuArrowLeft } from "react-icons/lu";
+import { LuFilePlus2, LuSearch, LuPencil, LuTrash2, LuFileSpreadsheet, LuX, LuExternalLink, LuCheck, LuArrowLeft, LuDownload, LuFileText } from "react-icons/lu";
 import { VISA_FIELDS, VISA_DATES, VISA_LINKS } from "../constants.js";
 import { store, commit } from "../store.js";
-import { act, openModal, closeModal, confirmBox } from "../actions.js";
+import { act, openModal, closeModal, confirmBox, toast } from "../actions.js";
 import { Field } from "./shared.jsx";
 import { Empty } from "../ui.jsx";
 import { PassportPick } from "./Passports.jsx";
@@ -61,6 +61,7 @@ function HrFiles() {
           <td className="num">{f.sl}</td><td>{f.agent || <span className="muted">Office</span>}</td><td className="b">{f.name}</td><td className="num">{f.mofaId || "—"}</td><td className="num">{f.passport}</td>
           <td className="num">{f.visaNo || "—"}</td><td className="num">{f.sponsorId || "—"}</td><td><Pill s={f.mofaStatus} /></td><td><Pill s={f.visaStatus} /></td>
           <td className="nowrap"><button className="btn sm" onClick={() => openModal("visaFile", { id: f.id })}><LuPencil /> Edit</button>
+            <button className="btn sm" title="KSA Embassy application file" onClick={() => embassyPdf(f)}><LuFileText /> PDF</button>
             <button className="btn sm link danger" aria-label={`Delete ${f.name}`} onClick={() => confirmBox(`Delete the client file of ${f.name}?`, () => act("admin.visa", { op: "delete", id: f.id }), "Delete")}><LuTrash2 /></button></td>
           <td className="nowrap">{day(f.created)}</td><td className="nowrap">{day(f.medicalSlipDate)}</td><td>{f.sponsorName || "—"}</td>
           <td>{pm == null ? <span className="muted">—</span> : <span className={`vf-pill ${pm ? "ok" : "bad"}`} title={`${f.mofaProfession || f.profession || ""} / ${f.enjazProfessionEn || f.visaProfession || ""}`}>{pm ? "Match" : "Not match"}</span>}</td>
@@ -74,8 +75,8 @@ function HrFiles() {
 export function VisaLinks() {
   return <div className="vf-links" role="group" aria-label="Check websites">{VISA_LINKS.map(([l, u]) => <a key={l} className="btn sm" href={u} target="_blank" rel="noopener noreferrer"><LuExternalLink /> {l}</a>)}</div>;
 }
-const RELIGION = ["Muslim", "Hindu", "Christian", "Buddhist", "Other"], MARITAL = ["Single", "Married", "Divorced", "Widowed"], VALIDITY = ["5 Years", "10 Years"];
-const PURPOSE = ["Work", "Visit", "Business", "Family visit", "Umrah", "Hajj", "Residence"], LICENSE = ["Professional Light", "Professional Medium", "Professional Heavy", "Non-professional Light", "Motorcycle", "No licence"];
+const RELIGION = ["Muslim", "Hindu", "Christian", "Buddhist", "Other"], MARITAL = ["Unmarried", "Married", "Divorced", "Widowed"], VALIDITY = ["5 Years", "10 Years"];
+const PURPOSE = ["Work", "Transit", "Visit", "Umrah", "Residence", "Hajj", "Diplomacy"], LICENSE = ["Professional Light", "Professional Medium", "Professional Heavy", "Non-professional Light", "Motorcycle", "No licence"];
 const REQUIRED = { name: "Full name", dob: "Date of birth", sex: "Sex", mofaId: "MOFA application ID", passport: "Passport no.", issueDate: "Issue date", expiryDate: "Expiry date", visaNo: "Visa no.", visaDate: "Visa date", sponsorName: "Sponsor name", sponsorId: "Sponsor ID", issuePlaceEn: "Place of issue (English)", issuePlaceAr: "Place of issue (Arabic)", professionEn: "Profession (English)", professionAr: "Profession (Arabic)", travelPurpose: "Travel purpose", wakala: "Wakala", pcRef: "PC ref no." };
 /** the reference number inside a police clearance QR link */
 export function pcRefFrom(url) {
@@ -90,6 +91,16 @@ export function pcRefFrom(url) {
 }
 const addYears = (d, n) => { const x = new Date(d + "T00:00:00Z"); x.setUTCFullYear(x.getUTCFullYear() + n); x.setUTCDate(x.getUTCDate() - 1); return x.toISOString().slice(0, 10); };
 
+/* after Save Client File: the embassy file is ready to download */
+function Saved({ id, onEdit }) {
+  const f = files().find(x => x.id === id) || {}; const [busy, setBusy] = React.useState(false);
+  return <div className="vf-saved"><div className="vf-saved-i"><LuCheck /></div><h2>Client file saved</h2><p className="muted">{`${f.name || ""} · ${f.passport || ""}`}</p>
+    <p className="small muted">The KSA Embassy application file (4 pages) is ready.</p>
+    <div className="row6 mt14 center"><button className="btn pri" disabled={busy} onClick={() => embassyPdf(f, setBusy)}><LuDownload /> Download PDF</button><button className="btn" onClick={onEdit}><LuPencil /> Edit again</button><button className="btn" onClick={closeModal}>Close</button></div></div>;
+}
+export async function embassyPdf(f, setBusy = () => {}) {
+  setBusy(true); try { const { ksaPdf } = await import("../ksaPdf.js"); await ksaPdf(f, store.S.settings || {}); } catch (e) { toast(e.message || "The PDF could not be made."); } finally { setBusy(false); }
+}
 const Sec = ({ n, title, sub, children }) => <section className="vf-sec"><div className="vf-sec-h"><span className="vf-num">{n}</span><div><h4>{title}</h4>{sub && <p className="muted small">{sub}</p>}</div></div>{children}</section>;
 /* Create / edit a client file: the same sections as the office's MOFA client file */
 export function VisaFileForm({ id }) {
@@ -107,7 +118,9 @@ export function VisaFileForm({ id }) {
   const searchVisa = async () => { setBusy("visa"); const r = await act("admin.visa", { op: "visaSearch", ...qv, id }); setBusy(""); set({ ...(qv.visaNo ? { visaNo: qv.visaNo } : {}), ...(qv.sponsorId ? { sponsorId: qv.sponsorId } : {}), ...(r?.found || {}) }); };
   const pcUrl = v => { const ref = pcRefFrom(v); set({ pcUrl: v, ...(ref ? { pcRef: ref } : {}) }); };
   const validity = v => set({ validity: v, ...(v && f.issueDate ? { expiryDate: addYears(f.issueDate, parseInt(v, 10)) } : {}) });
-  const save = async e => { e.preventDefault(); setBusy("save"); const r = await act("admin.visa", { op: "save", id, file: f }); setBusy(""); if (r) closeModal(); };
+  const [done, setDone] = React.useState(null);
+  const save = async e => { e.preventDefault(); setBusy("save"); const r = await act("admin.visa", { op: "save", id: id || done, file: f }); setBusy(""); if (r?.id) setDone(r.id); };
+  if (done) return <Saved id={done} onEdit={() => setDone(null)} />;
   return <form onSubmit={save} noValidate className="vf-form">
     <h2>{old ? `Client file · SL ${old.sl}` : "Create Client File"}</h2><p className="muted small">KSA Visa · HR Files · Add a new client file to the system.</p>
     <VisaLinks />
@@ -120,6 +133,7 @@ export function VisaFileForm({ id }) {
         <Field label="Mofa status">{S("mofaStatus", MOFA_ST, "Not applied")}</Field>
         <Field label="Visa status">{S("visaStatus", VISA_ST, "Pending")}</Field>
         <Field label="Profession match"><div className={`vf-box ${pm == null ? "" : pm ? "ok" : "bad"}`}>{pm == null ? "Not checked" : pm ? "Match" : "Not match"}</div></Field>
+        <Field label="Medical report">{S("medicalResult", ["FIT", "UNFIT", "Pending"])}</Field>
         <Field label="GCC slip info"><div className="vf-two">{T("gccSlipNo", { placeholder: "Slip no." })}{T("medicalSlipDate", { "aria-label": "Medical slip date" })}</div></Field>
       </div>
     </Sec>
@@ -158,7 +172,7 @@ export function VisaFileForm({ id }) {
       </div>
       <div className="fgrid">
         <Field label={L("visaNo", "Visa no.")}>{T("visaNo", { maxLength: 40 })}</Field>
-        <Field label={L("visaDate", "Visa date")}>{T("visaDate")}</Field>
+        <Field label={L("visaDate", "Visa date")}>{T("visaDate", { placeholder: "e.g. 1446/06/30", maxLength: 20 })}</Field>
         <Field label={L("sponsorName", "Sponsor name")}>{T("sponsorName")}</Field>
         <Field label={L("sponsorId", "Sponsor ID")}>{T("sponsorId", { maxLength: 40 })}</Field>
         <Field label={L("issuePlaceEn", "Place of issue (English)")}>{T("issuePlaceEn")}</Field>
