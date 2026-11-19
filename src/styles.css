@@ -1125,3 +1125,13 @@ body.tc-full-on .team-fab{display:none}
 .pp-pop .mr-found{border:0;padding:0;margin-top:6px;max-height:280px;overflow-y:auto}
 .field-head{display:flex;align-items:center;justify-content:space-between;gap:8px}
 .count.soft{background:color-mix(in srgb,currentColor 18%,transparent);color:inherit}
+/* statements: amounts never hidden; long bank names wrap instead of pushing the balance out of view */
+.st-tbl table{width:100%;table-layout:auto}
+.st-tbl td.num,.st-tbl th.r{white-space:nowrap}
+.st-tbl .st-rate{white-space:normal;min-width:90px;max-width:190px;overflow-wrap:anywhere}
+.st-tbl td.b{min-width:180px}
+.st-tbl .st-act{width:1%;white-space:nowrap}
+.st-tbl td.b{min-width:150px}
+.st-tbl .st-rate{max-width:150px;min-width:80px}
+.st-tbl th,.st-tbl td{padding-left:10px;padding-right:10px}
+.st-tbl .st-rate{overflow-wrap:break-word;word-break:normal}
