@@ -1135,3 +1135,14 @@ body.tc-full-on .team-fab{display:none}
 .st-tbl .st-rate{max-width:150px;min-width:80px}
 .st-tbl th,.st-tbl td{padding-left:10px;padding-right:10px}
 .st-tbl .st-rate{overflow-wrap:break-word;word-break:normal}
+.hold{display:flex;flex-direction:column;gap:14px}
+.hold-top{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px}
+.hold-tile{display:flex;flex-direction:column;gap:4px;padding:12px 14px;border:1px solid var(--line,#e3e6ec);border-radius:12px;background:var(--card,#fff);text-align:left;font:inherit;color:inherit}
+button.hold-tile{cursor:pointer}
+.hold-tile b{font-size:1.15rem}
+.hold-tile.tot{background:var(--soft,#f3f6fb)}
+.hold-tile.on,.hold-row.on td{outline:2px solid var(--pri,#1d4ed8);outline-offset:-2px}
+.hold-group h4{margin:0 0 6px;display:flex;align-items:baseline;flex-wrap:wrap}
+.hold-tbl td.num,.hold-tbl th.r{text-align:right;white-space:nowrap}
+.hold-row{cursor:pointer}.hold-row:hover td{background:var(--soft,#f3f6fb)}
+.hold-tbl td.neg{color:#b42318}

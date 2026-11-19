@@ -11,13 +11,13 @@ import { Rail, Tiles, Pill, Empty, Bars, Stars, Avatar, RoleBadges } from "../ui
 import { StatusSelect, Field, Options, JobFields, blankJob } from "./shared.jsx";
 import { setClStatus } from "../actions.js";
 import { ReceiptsAdmin, SignatureBox } from "./Receipts.jsx";
-import { OfficeAccount, SalaryAdmin, MySalary } from "./Accounts.jsx";
+import { OfficeAccount, SalaryAdmin, MySalary, MoneyWithMe } from "./Accounts.jsx";
 import { StatementsAdmin } from "./Statements.jsx";
 import { PassportEntry, PassportPick, ppLine } from "./Passports.jsx";
 import { Statement } from "./Statement.jsx";
 import { agentRows } from "../statement.js";
 import { MFS, BANKS } from "../banks.js";
-import { LuReceipt, LuLandmark, LuBanknote, LuScrollText, LuBookUser, LuFileCheck2 } from "react-icons/lu";
+import { LuReceipt, LuLandmark, LuBanknote, LuScrollText, LuBookUser, LuFileCheck2, LuHandCoins } from "react-icons/lu";
 import { ShareButton, storeCard } from "../Share.jsx";
 import { ChatInbox, useInboxUnread } from "../LiveChat.jsx";
 
@@ -32,7 +32,7 @@ function FilterButtons({ items, cur, onPick }) {
 const PAY_SUB = [["receipts", "Money receipts", LuReceipt], ["ledger", "Agent accounts", LuWallet], ["office", "Main account", LuLandmark], ["salary", "Salary accounts", LuBanknote], ["statements", "Statements", LuScrollText], ["packages", "Employer packages", LuPackage]];
 const TABS = [
   ["overview", "Overview", LuLayoutDashboard], ["users", "Accounts", LuUsers], ["jobs", "Job moderation", LuBriefcase], ["apps", "Applications", LuFileText],
-  ["clearance", "BMET clearance", LuStamp], ["tickets", "Air tickets", LuTicket], ["pay", "Payments & receipts", LuReceipt], ["mysalary", "My salary", LuWallet],
+  ["clearance", "BMET clearance", LuStamp], ["tickets", "Air tickets", LuTicket], ["pay", "Payments & receipts", LuReceipt], ["mysalary", "My salary", LuWallet], ["mymoney", "Money with me", LuHandCoins],
   ["content", "Website content", LuImage], ["about", "About page", LuInfo], ["slides", "Home slideshow", LuGalleryHorizontal], ["blog", "Blog", LuNewspaper], ["seo", "SEO", LuSearch], ["settings", "Site settings", LuSettings],
   ["chat", "Live chat", LuMessagesSquare], ["messages", "Messages", LuMessageSquare], ["staff", "Staff & permissions", LuUserCog]
 ];
@@ -40,7 +40,7 @@ const TABS = [
 export function Admin({ u }) {
   const S = store.S; const R = u.role; const isAdmin = R === "admin";
   const chatUnread = useInboxUnread(isAdmin || !!u.perms?.includes("chat"));
-  const can0 = k => k === "overview" || k === "mysalary" || isAdmin || (k !== "staff" && u.perms?.includes(k === "slides" || k === "about" ? "content" : k));
+  const can0 = k => k === "mymoney" ? !!S.myMoney : k === "overview" || k === "mysalary" || isAdmin || (k !== "staff" && u.perms?.includes(k === "slides" || k === "about" ? "content" : k));
   // employer packages only matter when paid job posting is on (or orders are still open)
   const paySubs = PAY_SUB.filter(([k]) => (k === "statements" ? ["ledger", "receipts", "salary", "office"].some(can0) : can0(k)) && (k !== "packages" || S.settings.paidPosting || S.orders.some(o => o.status === "pending")));
   const can = k => k === "pay" ? paySubs.length > 0 : PAY_SUB.some(x => x[0] === k) ? paySubs.some(x => x[0] === k) : can0(k);
@@ -363,6 +363,7 @@ export function Admin({ u }) {
   if (t === "office") body = <OfficeAccount />;
   if (t === "salary") body = <SalaryAdmin />;
   if (t === "mysalary") body = <MySalary />;
+  if (t === "mymoney") body = <MoneyWithMe />;
   if (t === "statements") body = <StatementsAdmin can={can0} />;
   if (t === "messages") body = <>
     <h2>Contact messages</h2>
@@ -377,7 +378,7 @@ export function Admin({ u }) {
 
   return (
     <div className="wrap dash">
-      <Rail role={R} items={TABS.filter(([k]) => can(k)).map(([k, l, I]) => [k, l, I, { users: pendU, jobs: pendJ, clearance: pendC, tickets: pendT, mysalary: (S.mySalary?.pays || []).filter(p => !p.void && p.status === "pending").length, pay: (can("ledger") ? pendP : 0) + (can("packages") ? pendO : 0) + (can("receipts") ? pendR : 0), messages: newMsg, chat: chatUnread }[k]])} />
+      <Rail role={R} items={TABS.filter(([k]) => can(k)).map(([k, l, I]) => [k, l, I, { users: pendU, jobs: pendJ, clearance: pendC, tickets: pendT, mysalary: (S.mySalary?.pays || []).filter(p => !p.void && p.status === "pending").length, mymoney: (S.myMoney?.entries || []).filter(e => e.status === "pending" && !e.accepted?.includes(u.id)).length, pay: (can("ledger") ? pendP : 0) + (can("packages") ? pendO : 0) + (can("receipts") ? pendR : 0), messages: newMsg, chat: chatUnread }[k]])} />
       <div className="panel">{top === "pay" && <nav className="pay-tabs" aria-label="Payments & receipts">
         {paySubs.map(([k, l, I]) => { const n = { ledger: pendP, packages: pendO, receipts: pendR }[k]; return <button key={k} className={t === k ? "on" : ""} aria-current={t === k ? "page" : undefined} onClick={() => { ui.paySub = k; commit(); }}><I /> {l}{n > 0 && <span className="count">{n}</span>}</button>; })}
       </nav>}{body}</div>

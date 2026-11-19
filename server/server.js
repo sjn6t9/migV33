@@ -240,7 +240,8 @@ function viewFor(u) {
       clearances: db.clearances.map(cleanCl), ledger: db.ledger, tickets: db.tickets, users: db.users.map(x => cleanUser(x, true))
     });
     if (can(u, "jobs")) pub.jobTemplates = db.jobTemplates;
-    if (can(u, "office")) pub.office = { entries: db.office.entries, auto: officeAuto() };
+    if (can(u, "office")) pub.office = { entries: db.office.entries, auto: officeAuto(), leaders: leaders() };
+    if (leaders().some(x => x.uid === u.id)) pub.myMoney = { entries: db.office.entries.filter(e => e.people?.includes(u.id)), me: leaders().find(x => x.uid === u.id) };
     if (PP_PERMS.some(k => can(u, k))) pub.passports = db.passports;
     if (isStaffRole(u)) pub.mySalary = { monthly: db.salary.profiles[u.id]?.monthly ?? null, pays: db.salary.pays.filter(p => p.uid === u.id).map(p => salaryOut(p)) };
     if (can(u, "salary")) pub.salary = { profiles: db.salary.profiles, pays: db.salary.pays.map(p => salaryOut(p)) };
@@ -1522,19 +1523,48 @@ function officeAuto() {
   return out;
 }
 const monthName = m => { const [y, mo] = String(m).split("-"); return new Date(Date.UTC(+y, +mo - 1, 1)).toLocaleString("en-GB", { month: "long", year: "numeric", timeZone: "UTC" }); };
+// where money is: office cash, a bank, a mobile wallet, or with the Managing Director / a Director / the Chairman.
+// Money with one of them counts only after that person accepts it in their own ID.
+const leaders = () => db.users.filter(x => isStaffRole(x) && x.status !== "suspended").map(x => { const m = x.memberId && db.team.find(t => t.id === x.memberId); return m && /chairman|director/i.test(m.title || "") ? { uid: x.id, name: x.name, title: m.title } : null; }).filter(Boolean);
+const personOf = method => { const m = /^Person · (\S+)$/.exec(String(method || "")); return m ? m[1] : null; };
 A["admin.office"] = async (d, u) => {
   needPerm(u, "office");
   if (d.op === "add") {
     const list = (Array.isArray(d.rows) ? d.rows : [d]).slice(0, 50); must(list.length, "Add at least one entry.");
+    const L = leaders(), lead = uid => L.find(x => x.uid === uid);
     const made = list.map((x, i) => {
       const at = list.length > 1 ? ` (row ${i + 1})` : "", amount = r2(Number(x.amount));
       must(amount > 0 && amount < 1e10 && str(x.desc), `Enter the amount and details${at}.`);
-      return { id: id("of"), date: okDate(x.date), type: x.type === "out" ? "out" : "in", desc: str(x.desc, 200), amount, method: str(x.method, 80), ref: str(x.ref, 80), by: u.name, at: now() };
+      const type = x.type === "out" ? "out" : x.type === "transfer" ? "transfer" : "in";
+      const e = { id: id("of"), date: okDate(x.date), type, desc: str(x.desc, 200), amount, ref: str(x.ref, 80), by: u.name, byId: u.id, at: now() };
+      if (type === "transfer") { e.from = str(x.from, 80); e.to = str(x.to, 80); must(e.from && e.to && e.from !== e.to, `Choose where the money goes from and to${at}.`); }
+      else e.method = str(x.method, 80) || "Cash";
+      const people = [...new Set([e.method, e.from, e.to].map(personOf).filter(Boolean))];
+      for (const p of people) must(lead(p), `Choose a Managing Director, Director or Chairman${at}.`);
+      e.people = people; e.accepted = people.filter(p => p === u.id); e.status = e.accepted.length === people.length ? "accepted" : "pending";
+      return e;
     });
-    db.office.entries.push(...made); return { msg: made.length > 1 ? `${made.length} entries added.` : "Entry added." };
+    db.office.entries.push(...made);
+    for (const e of made) for (const p of e.people.filter(p => !e.accepted.includes(p)))
+      notify(p, `${u.name} asks you to confirm BDT ${e.amount.toLocaleString("en-US")} ${e.type === "transfer" ? "moved" : e.type === "out" ? "paid out" : "received"} by you: ${e.desc.slice(0, 80)}. Open Money with me.`);
+    const wait = made.filter(e => e.status === "pending").length;
+    return { msg: `${made.length > 1 ? `${made.length} entries added.` : "Entry added."}${wait ? ` ${wait} waiting for the director's confirmation.` : ""}` };
   }
   if (d.op === "delete") { const e = db.office.entries.find(x => x.id === d.id); must(e, "Entry not found."); db.office.entries = db.office.entries.filter(x => x !== e); return { msg: "Entry deleted." }; }
   must(false, "Unknown request.");
+};
+/* the Managing Director, a Director or the Chairman confirms (or refuses) money entered as being with them */
+A["office.accept"] = async (d, u) => {
+  must(isStaffRole(u), "Not allowed.", 403);
+  const e = db.office.entries.find(x => x.id === d.id); must(e && e.people?.includes(u.id), "Request not found."); must(e.status === "pending", "This request is already answered.");
+  if (d.ok) {
+    e.accepted = [...new Set([...(e.accepted || []), u.id])]; if (e.accepted.length === e.people.length) e.status = "accepted";
+    notifyAdmins(`${u.name} confirmed BDT ${e.amount.toLocaleString("en-US")}: ${e.desc.slice(0, 80)}.`, "office");
+    return { msg: e.status === "accepted" ? "Confirmed. It is now in the main account." : "Confirmed. Waiting for the other person." };
+  }
+  e.status = "rejected"; e.rejected = { by: u.name, at: now(), text: str(d.text, 200) };
+  notifyAdmins(`${u.name} did not confirm BDT ${e.amount.toLocaleString("en-US")}: ${e.desc.slice(0, 80)}${e.rejected.text ? ` (${e.rejected.text})` : ""}.`, "office");
+  return { msg: "Marked as not received. The office has been told." };
 };
 const salaryOut = (p, pub) => {
   const sig = p.by?.sig && db.files[p.by.sig] ? (pub ? `/api/salary/${p.token}/sig` : `/api/files/${p.by.sig}`) : "";
@@ -1642,7 +1672,7 @@ function stmtSource(kind, ref) {
   }
   if (kind === "office") {
     return { title: "Mam & Mam Overseas Ltd. · Main account", sub: "Office cash book", email: "", label: "MAIN ACCOUNT", cash: true, heads: ["Money in", "Money out"],
-      rows: [...db.office.entries, ...officeAuto()].map(e => ({ date: e.date, details: e.desc, rate: short(e.method), debit: e.type === "in" ? e.amount : 0, credit: e.type === "out" ? e.amount : 0 })) };
+      rows: [...db.office.entries.filter(e => (e.status || "accepted") === "accepted" && e.type !== "transfer"), ...officeAuto()].map(e => ({ date: e.date, details: e.desc, rate: personOf(e.method) ? (db.users.find(x => x.id === personOf(e.method))?.name || "DIRECTOR").toUpperCase() : short(e.method), debit: e.type === "in" ? e.amount : 0, credit: e.type === "out" ? e.amount : 0 })) };
   }
   must(false, "Choose an account.");
 }
