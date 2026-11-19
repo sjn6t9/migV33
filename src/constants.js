@@ -57,3 +57,17 @@ export const INITIAL = {
         body: "We handle recruitment end to end so your HR team only interviews shortlisted people.\n### 1. Demand and job order\nShare the trades, numbers, salary and benefits. We prepare the job circular and start sourcing.\n### 2. Screening and trade test\nCandidates are screened on experience and documents. Trade tests can be arranged for skilled roles.\n### 3. Interview\nInterview online or in person in Dhaka. Your selections move straight to medical and visa processing.\n### 4. Deployment\nWe complete visa, clearance and travel, and stay in touch after arrival." }
     ]
 };
+
+/* KSA visa › HR files: every field of a client file (Create Client File), in form order */
+export const VISA_FIELDS = ["agentId", "remark", "gccSlipNo", "medicalSlipDate", "mofaStatus", "visaStatus",
+  "name", "fatherName", "motherName", "dob", "birthPlace", "prevNationality", "nationality", "sex", "marital", "sect", "religion", "address", "mofaId", "oldMofaId",
+  "passport", "issuePlace", "issueDate", "expiryDate", "validity",
+  "visaNo", "visaDate", "sponsorName", "sponsorId", "issuePlaceEn", "issuePlaceAr", "qualificationEn", "qualificationAr", "professionEn", "professionAr", "travelPurpose", "musaned", "wakala", "mofaProfession", "enjazProfessionAr", "enjazProfessionEn",
+  "pcUrl", "pcRef", "licenseNo", "licenseType", "pcIssueDate", "pcOffice",
+  "stayEn", "stayAr", "arrivalEn", "arrivalAr", "departureEn", "departureAr", "finger", "salary", "food", "experience", "note"];
+export const VISA_DATES = ["medicalSlipDate", "dob", "issueDate", "expiryDate", "visaDate", "pcIssueDate"];
+/* the same check links the office uses every day */
+export const VISA_LINKS = [["Visa Check", "https://visa.mofa.gov.sa/Enjaz/GetVisaInformation/Person"], ["Medical Check", "https://wafid.com/en/medical-status-search/"],
+  ["Mofa Check", "https://visa.mofa.gov.sa/VisaPerson/GetApplicantData"], ["Medical Update", "https://visa.mofa.gov.sa/VisaPerson/CheckMedicalResult"],
+  ["Tasheer Finger", "https://vc.tasheer.com"], ["Takamul", "https://svp-international.qiwa.sa"],
+  ["Apostille Check", "https://mofa-servicedirectory.apostille.mygov.bd"], ["PDO/LMS Check", "https://training.oep.gov.bd/pdo-certificate"]];

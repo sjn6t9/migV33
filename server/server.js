@@ -8,7 +8,7 @@ import fs from "node:fs";
 import path from "node:path";
 import crypto from "node:crypto";
 import { fileURLToPath } from "node:url";
-import { COUNTRIES, HOURLY, STAGES, CL_STAGES, STAFF_PERMS, LABEL, INITIAL, TEAM_DEPTS } from "../src/constants.js";
+import { COUNTRIES, HOURLY, STAGES, CL_STAGES, STAFF_PERMS, LABEL, INITIAL, TEAM_DEPTS, VISA_FIELDS, VISA_DATES } from "../src/constants.js";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 loadEnv(path.join(HERE, "..", ".env"));
@@ -1749,15 +1749,35 @@ A["admin.visa"] = async (d, u) => {
   if (d.op === "save") {
     const x = d.file || {}, old = d.id && db.visa.files.find(f => f.id === d.id); must(!d.id || old, "File not found.");
     const ag = x.agentId ? user(x.agentId) : null; must(!x.agentId || ag?.role === "agent", "Agent not found.");
-    const v = { country: "KSA", name: str(x.name, 120), passport: ppNorm(x.passport).slice(0, 20), agentId: ag ? ag.id : null, agent: ag ? agentName(ag) : str(x.agent, 120),
-      mofaId: str(x.mofaId, 40), visaNo: str(x.visaNo, 40), sponsorId: str(x.sponsorId, 40), sponsorName: str(x.sponsorName, 160),
-      mofaStatus: MOFA_ST.includes(x.mofaStatus) ? x.mofaStatus : "Not applied", visaStatus: VISA_ST.includes(x.visaStatus) ? x.visaStatus : "Pending",
-      medicalSlipDate: okDay(x.medicalSlipDate), profession: str(x.profession, 120), visaProfession: str(x.visaProfession, 120), extra: typeof x.extra === "object" && x.extra ? Object.fromEntries(Object.entries(x.extra).slice(0, 60).map(([k, w]) => [str(k, 60), str(w, 300)])) : {}, note: str(x.note, 1000) };
+    const v = { country: "KSA" };
+    for (const k of VISA_FIELDS) v[k] = VISA_DATES.includes(k) ? okDay(x[k]) : str(x[k], ["address", "note", "pcUrl", "remark"].includes(k) ? 1000 : 160);
+    Object.assign(v, { passport: ppNorm(x.passport).slice(0, 20), agentId: ag ? ag.id : null, agent: ag ? agentName(ag) : "",
+      mofaStatus: MOFA_ST.includes(x.mofaStatus) ? x.mofaStatus : "Not applied", visaStatus: VISA_ST.includes(x.visaStatus) ? x.visaStatus : "Pending", name: str(x.name, 120) });
     must(v.name.length >= 2, "Enter the client's full name."); must(/^[A-Z0-9]{6,15}$/.test(v.passport), "Check the passport number (letters and numbers, 6 to 15).");
     must(!db.visa.files.some(f => f !== old && f.passport === v.passport && f.visaStatus !== "Cancelled"), `A file for passport ${v.passport} already exists.`);
     if (old) { Object.assign(old, v, { updated: now(), updatedBy: u.name }); return { msg: "Client file saved." }; }
     db.visa.files.push({ id: id("vf"), sl: ++db.visa.seq, ...v, created: now(), by: u.name });
     return { msg: `Client file created for ${v.name}.` };
+  }
+  /* Fetch by passport: what the office already has for this passport (passport entry, BMET clearance workers, earlier visa files) */
+  if (d.op === "fetch") {
+    const pp = ppNorm(d.passport); must(/^[A-Z0-9]{6,15}$/.test(pp), "Enter the passport number.");
+    const out = {}, put = o => { for (const [k, w] of Object.entries(o)) if (w && !out[k]) out[k] = w; };
+    const old = db.visa.files.filter(f => f.passport === pp && f.id !== d.id).sort((a, b) => b.created.localeCompare(a.created))[0];
+    if (old) { const { id: _i, sl, created, by, updated, updatedBy, ...rest } = old; put(rest); }
+    const p = db.passports.find(x => x.passport === pp); if (p) put({ name: p.name, sex: p.gender, agentId: p.agentId });
+    const w = (db.workers || []).find(x => ppNorm(x.passport) === pp); if (w) put({ name: w.name, agentId: w.agentId, address: w.district, mofaProfession: w.trade });
+    const c = db.users.find(x => x.role === "candidate" && ppNorm(x.profile?.passport) === pp); if (c) put({ name: c.name, dob: c.profile?.dob, sex: c.profile?.gender, address: c.profile?.address, mofaProfession: c.profile?.trade });
+    must(Object.keys(out).length, `Nothing found for passport ${pp}. Fill in the form.`);
+    return { msg: `Found passport ${pp}${old ? " (from an earlier file)" : ""}.`, found: out };
+  }
+  /* Search by visa number / sponsor ID: copy the visa and sponsor details from another file with the same visa */
+  if (d.op === "visaSearch") {
+    const vn = str(d.visaNo, 40), si = str(d.sponsorId, 40); must(vn || si, "Enter the visa number or the sponsor ID.");
+    const hit = db.visa.files.filter(f => f.id !== d.id && ((vn && f.visaNo === vn) || (!vn && si && f.sponsorId === si))).sort((a, b) => b.created.localeCompare(a.created))[0];
+    must(hit, `No earlier file with this ${vn ? "visa number" : "sponsor ID"}. Fill in the visa details (Visa Check opens Enjaz).`);
+    const K = ["visaNo", "visaDate", "sponsorName", "sponsorId", "issuePlaceEn", "issuePlaceAr", "qualificationEn", "qualificationAr", "professionEn", "professionAr", "travelPurpose", "musaned", "wakala", "enjazProfessionAr", "enjazProfessionEn", "stayEn", "stayAr", "salary", "food"];
+    return { msg: `Visa details copied from ${hit.name}'s file (SL ${hit.sl}).`, found: Object.fromEntries(K.filter(k => hit[k]).map(k => [k, hit[k]])) };
   }
   if (d.op === "delete") { must(db.visa.files.some(f => f.id === d.id), "File not found."); db.visa.files = db.visa.files.filter(f => f.id !== d.id); return { msg: "Client file deleted." }; }
   must(false, "Unknown request.");
