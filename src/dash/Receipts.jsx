@@ -159,7 +159,9 @@ export function MrEntry({ aid: aid0 }) {
   const [p, setP] = React.useState(acc ? { ...blank, ...pick(acc) } : blank);
   const [agentId, setAgentId] = React.useState(acc?.agentId || ""); const [agentOther, setAgentOther] = React.useState(!!(acc && !acc.agentId && acc.agent));
   const [price, setPrice] = React.useState(acc?.price != null ? String(acc.price) : "");
-  const [amount, setAmount] = React.useState(""); const [method, setMethod] = React.useState("Cash"); const [channel, setChannel] = React.useState(""); const [chOther, setChOther] = React.useState(false);
+  const newLine = () => ({ k: Math.random().toString(36).slice(2), amount: "", date: today(), method: "Cash", channel: "", chOther: false, ref: "", purpose: "" });
+  const [lines, setLines] = React.useState(() => [newLine()]);
+  const setLine = (i, v) => setLines(lines.map((L, j) => (j === i ? { ...L, ...v } : L)));
   const [q, setQ] = React.useState(""); const [busy, setBusy] = React.useState(false);
   const found = q.trim() ? MR().accounts.filter(mrMatch(q)).slice(0, 6) : [];
   const auto = !aid && MR().accounts.find(a => ["passport", "mobile", "email"].some(k => p[k] && norm(k, p[k]) === a[k]));
@@ -167,21 +169,26 @@ export function MrEntry({ aid: aid0 }) {
   const choose = a => { setAid(a.id); setP({ ...blank, ...pick(a) }); setAgentId(a.agentId || ""); setAgentOther(!a.agentId && !!a.agent); setPrice(a.price != null ? String(a.price) : ""); setQ(""); };
   const clear = () => { setAid(null); setP(blank); setAgentId(""); setAgentOther(false); setPrice(""); };
   const has = Object.values(p).some(v => v.trim()) || !!agentId;
-  const amt = Number(amount) > 0 ? Number(amount) : 0;
+  const amt = lines.reduce((t, L) => t + (Number(L.amount) > 0 ? Number(L.amount) : 0), 0);
   const ag = agentId && agents().find(x => x.id === agentId);
   const before = target ? paid(accReceipts(target.id).filter(ok)) : 0;
   const bal = ag ? { kind: "agent", before: balanceOf(ag.id), paid: amt, after: balanceOf(ag.id) - amt }
     : (Number(price) || 0) + (target ? charges(target.id).reduce((s, c) => s + c.amount, 0) : 0) > 0 ? (() => { const pay = (Number(price) || 0) + (target ? charges(target.id).reduce((s, c) => s + c.amount, 0) : 0); return { kind: "price", price: pay, before, paid: amt, after: pay - before - amt }; })() : null;
-  const chans = channelsFor(method);
   const pickAgent = v => { if (v === "__other") { setAgentId(""); setAgentOther(true); } else { setAgentId(v); setAgentOther(false); const x = agents().find(y => y.id === v); setP({ ...p, agent: x ? x.name : "" }); } };
   const submit = async e => {
     e.preventDefault(); const d = Object.fromEntries(new FormData(e.currentTarget));
     if (!has) { toast("Enter at least one of: name, mobile, passport no., email or agent name."); return; }
-    if (!(amt > 0)) { toast("Enter the amount received."); return; }
-    if (chans && method !== "Cheque" && !channel.trim()) { toast(method === "Mobile banking" ? "Choose the mobile banking service." : "Choose the bank."); return; }
+    const many = lines.length > 1;
+    for (const [i, L] of lines.entries()) {
+      const at = many ? ` (payment ${i + 1})` : "", ch = channelsFor(L.method);
+      if (!(Number(L.amount) > 0)) { toast(`Enter the amount received${at}.`); return; }
+      if (ch && L.method !== "Cheque" && !L.channel.trim()) { toast((L.method === "Mobile banking" ? "Choose the mobile banking service" : "Choose the bank") + `${at}.`); return; }
+    }
     setBusy(true);
     const r = await act("admin.mr", { op: "entry", accountId: aid || (auto ? auto.id : undefined), payer: { ...p, agent: ag ? ag.name : agentOther ? p.agent : "" }, agentId: agentId || "",
-      price: agentId ? undefined : price, amount: amt, date: d.date, method, channel: chans ? channel : "", ref: d.ref, purpose: d.purpose, note: d.note });
+      price: agentId ? undefined : price, note: d.note,
+      lines: lines.map(L => ({ amount: Number(L.amount), date: L.date, method: L.method, channel: channelsFor(L.method) ? L.channel : "", ref: L.ref, purpose: L.purpose })) });
+    if (r?.receiptIds?.length > 1) { setBusy(false); openModal("mrAccount", { aid: r.accountId }); return; }
     setBusy(false); if (r?.receiptId) openModal("mrView", { rid: r.receiptId, fresh: true });
   };
   return <form className="mr-entry" onSubmit={submit} noValidate>
@@ -203,25 +210,32 @@ export function MrEntry({ aid: aid0 }) {
         {agentOther && <Field label="Agent name"><input type="text" value={p.agent} onChange={e => setP({ ...p, agent: e.target.value })} maxLength={120} placeholder="Agent or office" /></Field>}
       </div>
     </fieldset>
-    <fieldset className="card mr-box"><legend>Payment</legend>
-      <div className="fgrid">
-        <Field label="Amount (BDT)"><input type="number" name="amount" min="1" step="0.01" required placeholder="0.00" inputMode="decimal" value={amount} onChange={e => setAmount(e.target.value)} /></Field>
-        <Field label="Date"><input type="date" name="date" defaultValue={today()} /></Field>
-        <Field label="Payment method"><select value={method} onChange={e => { setMethod(e.target.value); setChannel(""); setChOther(false); }}>{METHODS.map(x => <option key={x}>{x}</option>)}</select></Field>
-        {chans && <Field label={method === "Mobile banking" ? "Mobile banking service" : "Bank"}>
-          <select value={chOther ? "__other" : channel} onChange={e => { if (e.target.value === "__other") { setChOther(true); setChannel(""); } else { setChOther(false); setChannel(e.target.value); } }}>
-            <option value="">{method === "Mobile banking" ? "— Choose the service —" : "— Choose the bank —"}</option>
-            {chans.map(x => <option key={x} value={x} data-notr>{x}</option>)}<option value="__other">Other (type the name)</option></select></Field>}
-        {chans && chOther && <Field label={method === "Mobile banking" ? "Service name" : "Bank name"}><input type="text" value={channel} onChange={e => setChannel(e.target.value)} maxLength={80} /></Field>}
-        <Field label={method === "Mobile banking" ? "Transaction ID" : method === "Cheque" ? "Cheque No." : "Transaction / Ref No."}><input type="text" name="ref" maxLength={80} placeholder="Optional" /></Field>
+    <fieldset className="card mr-box"><legend>{lines.length > 1 ? `Payments (${lines.length})` : "Payment"}</legend>
+      {lines.map((L, i) => { const ch = channelsFor(L.method); return <div key={L.k} className={lines.length > 1 ? "mr-line" : ""}>
+        {lines.length > 1 && <div className="mr-line-head"><b>{`Payment ${i + 1}`}</b><button type="button" className="btn sm link danger" onClick={() => setLines(lines.filter((_, j) => j !== i))} aria-label={`Remove payment ${i + 1}`}><LuX /> Remove</button></div>}
+        <div className="fgrid">
+          <Field label="Amount (BDT)"><input type="number" min="1" step="0.01" required placeholder="0.00" inputMode="decimal" value={L.amount} onChange={e => setLine(i, { amount: e.target.value })} aria-label={`Amount (BDT), payment ${i + 1}`} /></Field>
+          <Field label="Date"><input type="date" value={L.date} onChange={e => setLine(i, { date: e.target.value })} /></Field>
+          <Field label="Payment method"><select value={L.method} onChange={e => setLine(i, { method: e.target.value, channel: "", chOther: false })}>{METHODS.map(x => <option key={x}>{x}</option>)}</select></Field>
+          {ch && <Field label={L.method === "Mobile banking" ? "Mobile banking service" : "Bank"}>
+            <select value={L.chOther ? "__other" : L.channel} onChange={e => setLine(i, e.target.value === "__other" ? { chOther: true, channel: "" } : { chOther: false, channel: e.target.value })}>
+              <option value="">{L.method === "Mobile banking" ? "— Choose the service —" : "— Choose the bank —"}</option>
+              {ch.map(x => <option key={x} value={x} data-notr>{x}</option>)}<option value="__other">Other (type the name)</option></select></Field>}
+          {ch && L.chOther && <Field label={L.method === "Mobile banking" ? "Service name" : "Bank name"}><input type="text" value={L.channel} onChange={e => setLine(i, { channel: e.target.value })} maxLength={80} /></Field>}
+          <Field label={L.method === "Mobile banking" ? "Transaction ID" : L.method === "Cheque" ? "Cheque No." : "Transaction / Ref No."}><input type="text" value={L.ref} onChange={e => setLine(i, { ref: e.target.value })} maxLength={80} placeholder="Optional" /></Field>
+          <Field label="Purpose of payment" full><input type="text" value={L.purpose} onChange={e => setLine(i, { purpose: e.target.value })} maxLength={160} list="mr-purposes" placeholder="e.g. Visa processing fee" /></Field>
+        </div>
+      </div>; })}
+      <button type="button" className="btn sm mr-add-line" onClick={() => setLines([...lines, { ...newLine(), date: lines[lines.length - 1].date }])}><LuPlus /> Add another payment</button>
+      {lines.length > 1 && <p className="muted small">{`Each payment gets its own money receipt. Total: ${tk(amt)} BDT.`}</p>}
+      <div className="fgrid mt14">
         {!agentId && <Field label="Total price (BDT)" hint="What this payer has to pay in total. Leave empty if not needed."><input type="number" min="0" step="0.01" inputMode="decimal" value={price} onChange={e => setPrice(e.target.value)} placeholder="Optional" /></Field>}
-        <Field label="Purpose of payment" full><input type="text" name="purpose" maxLength={160} list="mr-purposes" placeholder="e.g. Visa processing fee" /></Field>
         <Field label="Note" full><textarea name="note" className="short" maxLength={400} placeholder="Optional" /></Field>
       </div>
       <datalist id="mr-purposes">{PURPOSES.map(x => <option key={x} value={x} />)}</datalist>
       {bal && <BalanceBox b={bal} note={ag ? `Agent account of ${ag.name}. The payment is added to it when approved.` : "Only approved payments are counted."} />}
     </fieldset>
-    <div className="row between mt14"><button type="button" className="btn" onClick={closeModal}>Cancel</button><button className="btn pri" disabled={busy}><LuReceipt /> Save entry</button></div>
+    <div className="row between mt14"><button type="button" className="btn" onClick={closeModal}>Cancel</button><button className="btn pri" disabled={busy}><LuReceipt /> {lines.length > 1 ? `Save ${lines.length} payments` : "Save entry"}</button></div>
   </form>;
 }
 const pick = a => ({ name: a.name || "", mobile: a.mobile || "", passport: a.passport || "", email: a.email || "", agent: a.agent || "" });

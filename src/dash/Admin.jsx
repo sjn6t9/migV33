@@ -25,9 +25,11 @@ function FilterButtons({ items, cur, onPick }) {
   return <div className="row">{items.map(([k, t, n]) => <button key={k} className={`btn sm${cur === k ? " pri" : ""}`} onClick={() => onPick(k)}>{t}{n !== undefined ? ` (${n})` : ""}</button>)}</div>;
 }
 
+// sections inside "Payments & receipts" (each still needs its own staff permission)
+const PAY_SUB = [["receipts", "Money receipts", LuReceipt], ["ledger", "Agent accounts", LuWallet], ["packages", "Employer packages", LuPackage]];
 const TABS = [
   ["overview", "Overview", LuLayoutDashboard], ["users", "Accounts", LuUsers], ["jobs", "Job moderation", LuBriefcase], ["apps", "Applications", LuFileText],
-  ["clearance", "BMET clearance", LuStamp], ["tickets", "Air tickets", LuTicket], ["ledger", "Agent accounts", LuWallet], ["packages", "Payments & packages", LuPackage], ["receipts", "Money receipts", LuReceipt],
+  ["clearance", "BMET clearance", LuStamp], ["tickets", "Air tickets", LuTicket], ["pay", "Payments & receipts", LuReceipt],
   ["content", "Website content", LuImage], ["about", "About page", LuInfo], ["slides", "Home slideshow", LuGalleryHorizontal], ["blog", "Blog", LuNewspaper], ["seo", "SEO", LuSearch], ["settings", "Site settings", LuSettings],
   ["chat", "Live chat", LuMessagesSquare], ["messages", "Messages", LuMessageSquare], ["staff", "Staff & permissions", LuUserCog]
 ];
@@ -35,10 +37,15 @@ const TABS = [
 export function Admin({ u }) {
   const S = store.S; const R = u.role; const isAdmin = R === "admin";
   const chatUnread = useInboxUnread(isAdmin || !!u.perms?.includes("chat"));
-  const can = k => k === "overview" || isAdmin || (k !== "staff" && u.perms?.includes(k === "slides" || k === "about" ? "content" : k));
+  const can0 = k => k === "overview" || isAdmin || (k !== "staff" && u.perms?.includes(k === "slides" || k === "about" ? "content" : k));
+  // employer packages only matter when paid job posting is on (or orders are still open)
+  const paySubs = PAY_SUB.filter(([k]) => can0(k) && (k !== "packages" || S.settings.paidPosting || S.orders.some(o => o.status === "pending")));
+  const can = k => k === "pay" ? paySubs.length > 0 : PAY_SUB.some(x => x[0] === k) ? paySubs.some(x => x[0] === k) : can0(k);
+  if (PAY_SUB.some(x => x[0] === ui.tab[R])) { ui.paySub = ui.tab[R]; ui.tab[R] = "pay"; } // old links to the separate sections
   if (!can(ui.tab[R])) ui.tab[R] = "overview";
-  const t = ui.tab[R];
-  const go = tab => setTab(R, tab);
+  if (ui.tab[R] === "pay" && !paySubs.some(x => x[0] === ui.paySub)) ui.paySub = paySubs[0]?.[0];
+  const top = ui.tab[R], t = top === "pay" ? ui.paySub : top;
+  const go = tab => { if (PAY_SUB.some(x => x[0] === tab)) { ui.paySub = tab; tab = "pay"; } setTab(R, tab); };
   const agents = S.users.filter(x => x.role === "agent");
   const pendU = S.users.filter(x => x.status === "pending" || x.company?.verify === "pending").length;
   const pendJ = S.jobs.filter(j => j.status === "pending").length;
@@ -47,6 +54,7 @@ export function Admin({ u }) {
   const pendC = S.clearances.filter(c => c.status === "pending" || cardPending(c)).length;
   const pendP = S.ledger.filter(l => l.status === "pending").length;
   const pendT = S.tickets.filter(x => x.status === "requested").length;
+  const pendR = (S.mr?.receipts || []).filter(r => r.status === "pending" && !r.void).length;
   let body;
 
   if (t === "tickets") {
@@ -360,8 +368,10 @@ export function Admin({ u }) {
 
   return (
     <div className="wrap dash">
-      <Rail role={R} items={TABS.filter(([k]) => can(k)).map(([k, l, I]) => [k, l, I, { users: pendU, jobs: pendJ, clearance: pendC, tickets: pendT, ledger: pendP, packages: pendO, messages: newMsg, chat: chatUnread }[k]])} />
-      <div className="panel">{body}</div>
+      <Rail role={R} items={TABS.filter(([k]) => can(k)).map(([k, l, I]) => [k, l, I, { users: pendU, jobs: pendJ, clearance: pendC, tickets: pendT, pay: (can("ledger") ? pendP : 0) + (can("packages") ? pendO : 0) + (can("receipts") ? pendR : 0), messages: newMsg, chat: chatUnread }[k]])} />
+      <div className="panel">{top === "pay" && <nav className="pay-tabs" aria-label="Payments & receipts">
+        {paySubs.map(([k, l, I]) => { const n = { ledger: pendP, packages: pendO, receipts: pendR }[k]; return <button key={k} className={t === k ? "on" : ""} aria-current={t === k ? "page" : undefined} onClick={() => { ui.paySub = k; commit(); }}><I /> {l}{n > 0 && <span className="count">{n}</span>}</button>; })}
+      </nav>}{body}</div>
     </div>
   );
 }
@@ -769,23 +779,38 @@ function StaffAdmin({ u }) {
 const confirmLedger = (lid, ok) => act("admin.ledgerConfirm", { id: lid, ok });
 /* add a line to an agent's payment history: a charge (quantity × rate) or a payment received */
 function LedgerAddForm({ sel }) {
-  const [type, setType] = React.useState("charge"); const [qty, setQty] = React.useState("1"); const [rate, setRate] = React.useState("");
-  const add = e => { const [d] = formData(e); const form = e.currentTarget; act("admin.ledgerAdd", { ...d, type, qty: type === "charge" ? qty : 1, rate, agentId: sel.id }).then(r => { if (r) { form.reset(); setQty("1"); setRate(""); } }); };
-  const total = (type === "charge" ? Number(qty) || 0 : 1) * (Number(rate) || 0);
-  return <form className="fgrid divider" onSubmit={add} key={sel.id}>
-    <h4 className="full">Add to payment history</h4>
-    <Field label="Type"><select value={type} onChange={e => setType(e.target.value)}><option value="charge">Debit: charge (agent owes)</option><option value="payment">Credit: money received</option></select></Field>
-    <Field label="Date"><input type="date" name="date" defaultValue={new Date(Date.now() - new Date().getTimezoneOffset() * 6e4).toISOString().slice(0, 10)} required /></Field>
-    {type === "charge" ? <>
-      <Field label="Rate (BDT) × Quantity" hint={total ? `Debit: ${num(rate)} × ${qty || 0} = ${num(total)} BDT` : "e.g. 6000 × 1"}><div className="st-rq">
-        <input type="number" min="1" value={rate} onChange={e => setRate(e.target.value)} required placeholder="6000" aria-label="Rate (BDT)" /><span>X</span>
-        <input type="number" min="1" step="1" value={qty} onChange={e => setQty(e.target.value)} required aria-label="Quantity" className="q" /></div></Field>
-    </> : <>
-      <Field label="Amount (BDT)"><input type="number" min="1" value={rate} onChange={e => setRate(e.target.value)} required /></Field>
-      <Field label="Received by"><select name="method" defaultValue="Cash"><option>Cash</option><optgroup label="Mobile banking">{MFS.map(x => <option key={x} value={`Mobile banking · ${x}`}>{x}</option>)}</optgroup><optgroup label="Bank">{BANKS.map(x => <option key={x} value={`Bank transfer · ${x}`}>{x}</option>)}</optgroup><option value="Cheque">Cheque</option></select></Field>
-      <Field label="Reference no."><input type="text" name="ref" /></Field>
-    </>}
-    <Field label="Details" full><input type="text" name="desc" required placeholder={type === "charge" ? "e.g. 1 QATAR (NON) (FC) PP (A16406219)" : "e.g. Money Received"} /></Field>
-    <div className="full"><button className="btn pri" type="submit">Add</button></div>
+  const day = () => new Date(Date.now() - new Date().getTimezoneOffset() * 6e4).toISOString().slice(0, 10);
+  const blankRow = (type = "charge", date = day()) => ({ k: Math.random().toString(36).slice(2), type, date, rate: "", qty: "1", method: "Cash", ref: "", desc: "" });
+  const [rows, setRows] = React.useState(() => [blankRow()]); const [busy, setBusy] = React.useState(false);
+  const set = (i, v) => setRows(rows.map((r, j) => (j === i ? { ...r, ...v } : r)));
+  const total = r => (r.type === "charge" ? Number(r.qty) || 0 : 1) * (Number(r.rate) || 0);
+  const add = async e => {
+    e.preventDefault();
+    for (const [i, r] of rows.entries()) if (!(total(r) >= 1) || !r.desc.trim()) { toast(`Enter the amount and description${rows.length > 1 ? ` (row ${i + 1})` : ""}.`); return; }
+    setBusy(true);
+    const res = await act("admin.ledgerAdd", { agentId: sel.id, rows: rows.map(r => ({ type: r.type, date: r.date, desc: r.desc, rate: r.rate, qty: r.type === "charge" ? r.qty : 1, method: r.method, ref: r.ref })) });
+    setBusy(false); if (res) setRows([blankRow(rows[rows.length - 1].type, rows[rows.length - 1].date)]);
+  };
+  const sum = rows.reduce((t, r) => t + (r.type === "charge" ? 1 : -1) * total(r), 0);
+  return <form className="divider ledger-add" onSubmit={add} noValidate key={sel.id}>
+    <h4>Add to payment history</h4>
+    {rows.map((r, i) => <div key={r.k} className={`fgrid${rows.length > 1 ? " mr-line" : ""}`}>
+      {rows.length > 1 && <div className="mr-line-head full"><b>{`Entry ${i + 1}`}</b><button type="button" className="btn sm link danger" onClick={() => setRows(rows.filter((_, j) => j !== i))} aria-label={`Remove entry ${i + 1}`}><LuX /> Remove</button></div>}
+      <Field label="Type"><select value={r.type} onChange={e => set(i, { type: e.target.value })}><option value="charge">Debit: charge (agent owes)</option><option value="payment">Credit: money received</option></select></Field>
+      <Field label="Date"><input type="date" value={r.date} onChange={e => set(i, { date: e.target.value })} required /></Field>
+      {r.type === "charge" ? <>
+        <Field label="Rate (BDT) × Quantity" hint={total(r) ? `Debit: ${num(r.rate)} × ${r.qty || 0} = ${num(total(r))} BDT` : "e.g. 6000 × 1"}><div className="st-rq">
+          <input type="number" min="1" value={r.rate} onChange={e => set(i, { rate: e.target.value })} placeholder="6000" aria-label="Rate (BDT)" /><span>X</span>
+          <input type="number" min="1" step="1" value={r.qty} onChange={e => set(i, { qty: e.target.value })} aria-label="Quantity" className="q" /></div></Field>
+      </> : <>
+        <Field label="Amount (BDT)"><input type="number" min="1" value={r.rate} onChange={e => set(i, { rate: e.target.value })} /></Field>
+        <Field label="Received by"><select value={r.method} onChange={e => set(i, { method: e.target.value })}><option>Cash</option><optgroup label="Mobile banking">{MFS.map(x => <option key={x} value={`Mobile banking · ${x}`}>{x}</option>)}</optgroup><optgroup label="Bank">{BANKS.map(x => <option key={x} value={`Bank transfer · ${x}`}>{x}</option>)}</optgroup><option value="Cheque">Cheque</option></select></Field>
+        <Field label="Reference no."><input type="text" value={r.ref} onChange={e => set(i, { ref: e.target.value })} /></Field>
+      </>}
+      <Field label="Details" full><input type="text" value={r.desc} onChange={e => set(i, { desc: e.target.value })} placeholder={r.type === "charge" ? "e.g. 1 QATAR (NON) (FC) PP (A16406219)" : "e.g. Money Received"} /></Field>
+    </div>)}
+    <div className="row6 mt8"><button type="button" className="btn sm" onClick={() => { const l = rows[rows.length - 1]; setRows([...rows, blankRow(l.type, l.date)]); }}><LuPlus /> Add another entry</button>
+      {rows.length > 1 && <span className="muted small">{`${rows.length} entries · balance change ${sum >= 0 ? "+" : "−"}${num(Math.abs(sum))} BDT`}</span>}</div>
+    <div className="mt14"><button className="btn pri" type="submit" disabled={busy}>{rows.length > 1 ? `Add ${rows.length} entries` : "Add"}</button></div>
   </form>;
 }

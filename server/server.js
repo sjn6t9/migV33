@@ -718,14 +718,19 @@ A["admin.ticketBook"] = async (d, u) => {
   return { msg: "Ticket marked as booked." };
 };
 A["admin.ticketCancel"] = async ({ id: tid }, u) => { needPerm(u, "tickets"); const t = db.tickets.find(x => x.id === tid); must(t && t.status === "requested", "Ticket not found."); t.status = "cancelled"; notify(t.agentId, `Ticket request for ${worker(t.workerId)?.name} was cancelled by the agency.`); return { msg: "Request cancelled." }; };
-A["admin.ledgerAdd"] = async (d, u) => {
+A["admin.ledgerAdd"] = async (d, u) => { // one entry, or several at once (d.rows)
   needPerm(u, "ledger"); const ag = user(d.agentId); must(ag?.role === "agent", "Choose an agent.");
-  const charge = d.type !== "payment", qty = charge && d.qty != null && d.qty !== "" ? numv(d.qty, 1, 10000) : 1;
-  const rate = d.rate != null && d.rate !== "" ? numv(d.rate, 0, 1e8) : numv(d.amount, 0, 1e8);
-  const amount = Math.round(qty * rate * 100) / 100; must(amount >= 1 && amount <= 1e9 && str(d.desc), "Enter the amount and description.");
-  db.ledger.push({ id: id("l"), agentId: ag.id, type: charge ? "charge" : "payment", desc: str(d.desc, 200), amount, ...(charge ? { qty, rate } : {}), date: str(d.date, 10) || now().slice(0, 10), method: str(d.method, 80), ref: str(d.ref, 80), status: "confirmed" });
-  notify(ag.id, d.type === "charge" ? `New charge on your account: ${str(d.desc, 100)} (${bdt(amount)}).` : `Payment of ${bdt(amount)} recorded.`);
-  return { msg: "Entry added." };
+  const list = Array.isArray(d.rows) ? d.rows.slice(0, 50) : [d]; must(list.length, "Add at least one entry.");
+  const made = list.map((x, i) => {
+    const at = list.length > 1 ? ` (row ${i + 1})` : "";
+    const charge = x.type !== "payment", qty = charge && x.qty != null && x.qty !== "" ? numv(x.qty, 1, 10000) : 1;
+    const rate = x.rate != null && x.rate !== "" ? numv(x.rate, 0, 1e8) : numv(x.amount, 0, 1e8);
+    const amount = Math.round(qty * rate * 100) / 100; must(amount >= 1 && amount <= 1e9 && str(x.desc), `Enter the amount and description${at}.`);
+    return { id: id("l"), agentId: ag.id, type: charge ? "charge" : "payment", desc: str(x.desc, 200), amount, ...(charge ? { qty, rate } : {}), date: /^\d{4}-\d{2}-\d{2}$/.test(x.date || "") ? x.date : now().slice(0, 10), method: charge ? "" : str(x.method, 80), ref: charge ? "" : str(x.ref, 80), status: "confirmed" };
+  });
+  db.ledger.push(...made);
+  for (const l of made) notify(ag.id, l.type === "charge" ? `New charge on your account: ${l.desc.slice(0, 100)} (${bdt(l.amount)}).` : `Payment of ${bdt(l.amount)} recorded.`);
+  return { msg: made.length > 1 ? `${made.length} entries added.` : "Entry added." };
 };
 A["admin.ledgerEdit"] = async (d, u) => { // change rate × quantity (and details/date) of a charge
   needPerm(u, "ledger"); const l = db.ledger.find(x => x.id === d.id); must(l && l.type === "charge", "Entry not found.");
@@ -1202,27 +1207,35 @@ A["admin.mr"] = async (d, u) => {
   if (d.op === "entry") {
     const x = mrPayer(d.payer);
     must(Object.values(x).some(Boolean), "Enter at least one of: name, mobile, passport no., email or agent name.");
-    const amount = Math.round(Number(d.amount) * 100) / 100;
-    must(amount > 0 && amount < 1e9, "Enter the amount received.");
-    const method = MR_METHODS.includes(d.method) ? d.method : "Cash";
-    const channel = MR_CHANNEL.includes(method) ? str(d.channel, 80) : "";
-    must(channel || method === "Cheque" || !MR_CHANNEL.includes(method), method === "Mobile banking" ? "Choose the mobile banking service." : "Choose the bank.");
+    // one payment, or several at once (d.lines): each line becomes its own money receipt
+    const lines = (Array.isArray(d.lines) && d.lines.length ? d.lines.slice(0, 20) : [d]).map((L, i, all) => {
+      const at = all.length > 1 ? ` (payment ${i + 1})` : "";
+      const amount = Math.round(Number(L.amount) * 100) / 100; must(amount > 0 && amount < 1e9, `Enter the amount received${at}.`);
+      const method = MR_METHODS.includes(L.method) ? L.method : "Cash";
+      const channel = MR_CHANNEL.includes(method) ? str(L.channel, 80) : "";
+      must(channel || method === "Cheque" || !MR_CHANNEL.includes(method), (method === "Mobile banking" ? "Choose the mobile banking service" : "Choose the bank") + `${at}.`);
+      const date = /^\d{4}-\d{2}-\d{2}$/.test(L.date || "") ? L.date : new Date(Date.now() + 6 * 3600e3).toISOString().slice(0, 10); // Bangladesh date
+      return { amount, method, channel, date, ref: str(L.ref, 80), purpose: str(L.purpose ?? d.purpose, 160) };
+    });
     const ag = d.agentId ? user(d.agentId) : null; must(!d.agentId || ag?.role === "agent", "Agent not found.");
     if (ag) x.agent = agentName(ag);
     const price = d.price === "" || d.price == null ? null : r2(Number(d.price)); must(price === null || (price >= 0 && price < 1e9), "Check the price.");
-    const date = /^\d{4}-\d{2}-\d{2}$/.test(d.date || "") ? d.date : new Date(Date.now() + 6 * 3600e3).toISOString().slice(0, 10); // Bangladesh date
     let acc = d.accountId ? M.accounts.find(a => a.id === d.accountId) : mrFind(x);
     if (d.accountId) must(acc, "Account not found.");
     if (acc) { for (const k in x) if (x[k]) acc[k] = x[k]; acc.updated = now(); }
     else { acc = { id: id("ma"), ...x, created: now(), updated: now() }; M.accounts.unshift(acc); }
     if ("agentId" in d) acc.agentId = ag ? ag.id : null;
     if (!acc.agentId && price !== null) acc.price = price; // the total this payer has to pay (not for agents: they have their agent account)
-    const yr = date.slice(0, 4); M.seq[yr] = (M.seq[yr] || 0) + 1;
-    const r = { id: id("mr"), no: `MR-${yr}-${String(M.seq[yr]).padStart(4, "0")}`, accountId: acc.id, payer: { name: acc.name, mobile: acc.mobile, passport: acc.passport, email: acc.email, agent: acc.agent },
-      agentId: acc.agentId || null, amount, method, channel, ref: str(d.ref, 80), purpose: str(d.purpose, 160), note: str(d.note, 400), date, status: "pending", received: mrSigner(u), created: now() };
-    M.receipts.unshift(r);
-    notifyAdmins(`Payment ${r.no} (BDT ${amount.toLocaleString("en-US")}) is waiting for approval.`, "receipts");
-    return { msg: `Payment ${r.no} saved. It waits for approval by an admin or another staff member.`, receiptId: r.id, accountId: acc.id };
+    const made = lines.map(L => {
+      const yr = L.date.slice(0, 4); M.seq[yr] = (M.seq[yr] || 0) + 1;
+      const r = { id: id("mr"), no: `MR-${yr}-${String(M.seq[yr]).padStart(4, "0")}`, accountId: acc.id, payer: { name: acc.name, mobile: acc.mobile, passport: acc.passport, email: acc.email, agent: acc.agent },
+        agentId: acc.agentId || null, ...L, note: str(d.note, 400), status: "pending", received: mrSigner(u), created: now() };
+      M.receipts.unshift(r); return r;
+    });
+    const total = made.reduce((t, r) => t + r.amount, 0), nos = made.map(r => r.no).join(", ");
+    notifyAdmins(made.length > 1 ? `${made.length} payments (${nos}, BDT ${total.toLocaleString("en-US")}) are waiting for approval.` : `Payment ${nos} (BDT ${total.toLocaleString("en-US")}) is waiting for approval.`, "receipts");
+    return { msg: made.length > 1 ? `${made.length} payments saved (${nos}). They wait for approval by an admin or another staff member.` : `Payment ${nos} saved. It waits for approval by an admin or another staff member.`,
+      receiptId: made[0].id, receiptIds: made.map(r => r.id), accountId: acc.id };
   }
   if (d.op === "approve") { // a second person signs as Authorized signature; then the receipt and its QR code exist
     const r = M.receipts.find(x => x.id === d.id); must(r, "Receipt not found."); must(r.status === "pending" && !r.void, "This payment is not waiting for approval.");

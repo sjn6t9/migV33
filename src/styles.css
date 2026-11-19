@@ -1013,3 +1013,13 @@ body.drawer-on .floaters,body.drawer-on .ai-cap,body.drawer-on #aipraktor-chat{v
 .bell-item.new{background:color-mix(in srgb,var(--brand) 7%,transparent)}
 .bell-item.new .bell-dot{background:var(--accent,#d01c32)}
 .bell-empty{padding:16px 10px;margin:0}
+/* several payments / entries in one form */
+.mr-line{border:1px dashed var(--line);border-radius:10px;padding:10px 12px 12px;margin-bottom:10px;background:color-mix(in srgb,var(--soft) 45%,transparent)}
+.mr-line-head{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px}
+.mr-add-line{margin-top:4px}
+.ledger-add h4{margin:0 0 8px}
+/* Payments & receipts: section tabs */
+.pay-tabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px;border-bottom:1px solid var(--line);padding-bottom:10px}
+.pay-tabs button{display:inline-flex;align-items:center;gap:7px;border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:999px;padding:8px 14px;font:inherit;font-weight:600;font-size:14.5px;cursor:pointer}
+.pay-tabs button.on{background:var(--brand);border-color:var(--brand);color:var(--brand-ink)}
+.pay-tabs button .count{margin-inline-start:2px}
