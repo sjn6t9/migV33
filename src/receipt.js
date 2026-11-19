@@ -249,7 +249,7 @@ export const monthName = m => { const [y, mo] = String(m || "").split("-"); retu
 export async function drawSalary(p, settings = {}) {
   await fontsReady();
   const c = document.createElement("canvas"); c.width = W; c.height = H; const g = c.getContext("2d");
-  const [logo, sig] = await Promise.all([loadImg("/brand/logo-w320.webp?v=2"), p.by?.sigUrl ? loadImg(p.by.sigUrl) : null]);
+  const [logo, sig, rsig] = await Promise.all([loadImg("/brand/logo-w320.webp?v=2"), p.by?.sigUrl ? loadImg(p.by.sigUrl) : null, p.recv?.sigUrl ? loadImg(p.recv.sigUrl) : null]);
   g.fillStyle = "#fff"; g.fillRect(0, 0, W, H);
   if (logo) { g.globalAlpha = .05; const lw = 640, lh = lw * logo.height / logo.width; g.drawImage(logo, (W - lw) / 2, 330 + (560 - lh) / 2, lw, lh); g.globalAlpha = 1; }
   const hb = g.createLinearGradient(0, 0, W, 230); hb.addColorStop(0, GREEN); hb.addColorStop(1, DEEP); g.fillStyle = hb; g.fillRect(0, 0, W, 230);
@@ -295,10 +295,11 @@ export async function drawSalary(p, settings = {}) {
     if (name) { g.font = `700 21px ${F}`; g.fillText(clip(g, name, 380), x + 190, 1047); }
     g.fillStyle = MUTED; g.font = `600 17px ${F}`; g.fillText(label, x + 190, 1071);
   };
-  sigLine(L, "Received by", p.name, null); sigLine(W - 70 - 380, "Authorized signature", p.by ? p.by.name + (p.by.title ? ", " + p.by.title : "") : "", sig);
+  sigLine(L, p.status === "received" ? "Received by" : "Received by (not confirmed yet)", p.name, p.status === "received" ? rsig : null); sigLine(W - 70 - 380, "Authorized signature", p.by ? p.by.name + (p.by.title ? ", " + p.by.title : "") : "", sig);
   g.fillStyle = GREEN; g.fillRect(0, H - 44, W, 44); g.fillStyle = "#fff"; g.textAlign = "center"; g.font = `500 19px ${F}`;
   g.fillText(`Computer generated salary receipt · ${OFFICE.name} · ${OFFICE.site}`, W / 2, H - 15);
-  if (p.void) { g.save(); g.translate(W / 2, 600); g.rotate(-0.22); g.globalAlpha = .85; g.strokeStyle = RED; g.lineWidth = 10; rr(g, -330, -80, 660, 160, 24); g.stroke(); g.fillStyle = RED; g.textAlign = "center"; g.font = `800 96px ${F}`; g.fillText("CANCELLED", 0, 34); g.restore(); }
+  const stamp = p.void ? ["CANCELLED", RED, 96] : p.status === "problem" ? ["NOT RECEIVED", RED, 80] : p.status !== "received" ? ["NOT CONFIRMED YET", "#c98e1e", 70] : null;
+  if (stamp) { g.save(); g.translate(W / 2, 600); g.rotate(-0.22); g.globalAlpha = .85; g.font = `800 ${stamp[2]}px ${F}`; const tw = g.measureText(stamp[0]).width + 110; g.strokeStyle = stamp[1]; g.lineWidth = 10; rr(g, -tw / 2, -80, tw, 160, 24); g.stroke(); g.fillStyle = stamp[1]; g.textAlign = "center"; g.fillText(stamp[0], 0, stamp[2] * 0.36); g.restore(); }
   return c;
 }
 export async function salaryPng(p, s) { const c = await drawSalary(p, s); save(await new Promise(res => c.toBlob(res, "image/png")), `${p.no}.png`); }

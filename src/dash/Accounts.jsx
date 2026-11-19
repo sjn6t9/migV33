@@ -68,9 +68,15 @@ function OfficeForm() {
 
 /* ---------------- Salary accounts ---------------- */
 const SAL = () => store.S.salary || { profiles: {}, pays: [] };
+const allPays = () => { const a = store.S.salary?.pays || [], b = store.S.mySalary?.pays || []; return [...a, ...b.filter(x => !a.some(y => y.id === x.id))]; };
+const done = p => !p.void && p.status === "received";
+export function SalaryStatus({ p }) {
+  return p.void ? <span className="ec-badge s-rejected">Cancelled</span> : p.status === "received" ? <span className="ec-badge s-approved"><LuCheck /> Received</span>
+    : p.status === "problem" ? <span className="ec-badge s-rejected">Not received</span> : <span className="ec-badge mr-wait">Waiting for confirmation</span>;
+}
 const team = () => store.S.users.filter(u => (u.role === "admin" || u.role === "staff") && u.status !== "deleted");
 const titleOf = u => { const m = u.memberId && (store.S.team || []).find(t => t.id === u.memberId); return m?.title || (u.role === "admin" ? "Admin" : "Staff"); };
-const live = l => l.filter(p => !p.void);
+const live = l => l.filter(done);
 export function SalaryAdmin() {
   const ui = store.ui; const [sel, setSel] = React.useState(ui.salaryUid || null);
   const pick = id => { ui.salaryUid = id; setSel(id); setTimeout(() => document.getElementById("salary-person")?.scrollIntoView({ behavior: "smooth" }), 60); };
@@ -81,11 +87,13 @@ export function SalaryAdmin() {
     <div className="ec-head"><div><h2>Salary accounts</h2><p className="muted small">Choose a person to pay a salary. The salary receipt has a QR code and is emailed to the person.</p></div></div>
     {people.length ? <div className="tbl ec-tbl grid"><table><thead><tr><th>Name</th><th>Designation</th><th className="r">Monthly salary</th><th>{`Paid for ${monthName(month)}`}</th><th className="r">Total paid</th><th>Actions</th></tr></thead><tbody>
       {people.map(p => { const pays = live(SAL().pays.filter(y => y.uid === p.id)), cur = pays.filter(y => y.month === month).reduce((t, y) => t + y.paid, 0), prof = SAL().profiles[p.id];
+        const wait = SAL().pays.filter(y => y.uid === p.id && !y.void && y.status !== "received");
         return <tr key={p.id} className={sel === p.id ? "sel" : ""}>
           <td><b data-notr>{p.name}</b><RoleBadges role={p.role} size={14} /><div className="muted small" data-notr>{p.email}</div></td>
           <td data-notr>{titleOf(p)}</td>
           <td className="num r"><MonthlyCell uid={p.id} value={prof?.monthly} /></td>
-          <td>{cur ? <span className="mr-ok"><LuCheck /> {tk(cur)}</span> : <span className="muted">Not paid</span>}</td>
+          <td>{cur ? <span className="mr-ok"><LuCheck /> {tk(cur)}</span> : <span className="muted">Not paid</span>}
+            {wait.map(y => <div key={y.id}><button className="btn sm link" onClick={() => openModal("salaryView", { id: y.id })}><SalaryStatus p={y} /> <span className="small">{`${y.no} · ${tk(y.paid)}`}</span></button></div>)}</td>
           <td className="num r b">{tk(pays.reduce((t, y) => t + y.paid, 0))}</td>
           <td><div className="row6 nowrap">{(p.id !== me?.id || me?.role === "admin") && <button className="btn sm pri" onClick={() => { pick(p.id); openModal("salaryPay", { uid: p.id }); }}><LuBanknote /> Pay salary</button>}
             <button className="btn sm" onClick={() => pick(p.id)}><LuHistory /> History</button></div></td>
@@ -94,7 +102,7 @@ export function SalaryAdmin() {
     {x && <div className="card stack mt14" id="salary-person">
       <div className="row between"><h3>{`Salary history: ${x.name}`}<RoleBadges role={x.role} size={15} /></h3><button className="btn sm" onClick={() => pick(null)}><LuX /> Close</button></div>
       <Statement key={x.id} title={x.name} sub={[titleOf(x), x.email].filter(Boolean).join(" · ")} kind="SALARY ACCOUNT" heads={["Salary (net)", "Paid"]} balText={b => (b > 0 ? "Still to pay" : b < 0 ? "Paid in advance" : "All paid")}
-        rows={live(SAL().pays.filter(p => p.uid === x.id)).map(p => ({ id: p.id, date: p.date, details: `Salary ${monthName(p.month)} (${p.no})`, ref: p.ref, rate: way(p.method, p.channel), debit: p.net, credit: p.paid, pay: p }))}
+        rows={SAL().pays.filter(p => p.uid === x.id && !p.void).map(p => ({ id: p.id, date: p.date, details: `Salary ${monthName(p.month)} (${p.no})`, ref: p.ref, rate: way(p.method, p.channel), debit: p.net, credit: p.paid, pay: p, pending: p.status !== "received", sub: p.status === "problem" ? `Not received: ${p.problem?.text || ""}` : p.status !== "received" ? "Waiting for the person to confirm" : p.recv ? `Received ${rDate(p.recv.at.slice(0, 10))}` : "Received" }))}
         empty="No salary paid yet."
         actions={r => <button className="ec-ico view" aria-label="View salary receipt" title="View salary receipt" onClick={() => openModal("salaryView", { id: r.id })}><LuEye /></button>} />
       {SAL().pays.some(p => p.uid === x.id && p.void) && <p className="muted small">{`Cancelled receipts are not in the history: ${SAL().pays.filter(p => p.uid === x.id && p.void).map(p => p.no).join(", ")}.`}</p>}
@@ -126,7 +134,7 @@ export function SalaryPay({ uid }) {
     setBusy(true);
     const r = await act("admin.salary", { op: "pay", uid, month: f.month, basic: f.basic, bonus: f.bonus, deduct: f.deduct, paid: f.paid, date: f.date, method: f.method, channel: ch ? f.channel : "", ref: f.ref, note: f.note });
     setBusy(false);
-    if (r?.payId) { openModal("salaryView", { id: r.payId, fresh: true }); if (r.email) mailSalary(r.payId); }
+    if (r?.payId) openModal("salaryView", { id: r.payId, fresh: true });
   };
   return <form onSubmit={submit} noValidate>
     <h2 className="row6"><LuBanknote /> Pay salary</h2>
@@ -151,23 +159,26 @@ export function SalaryPay({ uid }) {
 }
 
 /** the payer's browser makes the PDF; the server emails it */
-export async function mailSalary(id) {
-  const p = SAL().pays.find(x => x.id === id); if (!p) return;
+export async function mailSalary(id, own) {
+  const p = allPays().find(x => x.id === id); if (!p) return;
   try {
     const blob = await salaryPdfBlob(p, store.S.settings);
     const pdf = await new Promise((res, rej) => { const fr = new FileReader(); fr.onload = () => res(fr.result); fr.onerror = rej; fr.readAsDataURL(blob); });
-    await act("admin.salary", { op: "mail", id, pdf });
+    await act(own ? "staff.salary" : "admin.salary", { op: "mail", id, pdf });
   } catch { toast("The salary receipt PDF could not be made for the email. Try Send by email again."); }
 }
 export function SalaryView({ id, fresh }) {
-  const p = SAL().pays.find(x => x.id === id); const [src, setSrc] = React.useState(null); const S = store.S.settings; const me = user(store.S.session);
-  React.useEffect(() => { let on = true; if (p) drawSalary(p, S).then(c => on && setSrc(c.toDataURL("image/png"))); return () => { on = false; }; }, [p?.id, p?.void]);
+  const p = allPays().find(x => x.id === id); const [src, setSrc] = React.useState(null); const S = store.S.settings; const me = user(store.S.session);
+  const mine = p?.uid === me?.id, office = !!store.S.salary;
+  React.useEffect(() => { let on = true; if (p) drawSalary(p, S).then(c => on && setSrc(c.toDataURL("image/png"))); return () => { on = false; }; }, [p?.id, p?.void, p?.status]);
   if (!p) return <p>Salary receipt not found.</p>;
   const run = f => Promise.resolve(f(p, S)).catch(e => toast(e.message));
   const print = () => { const w = window.open("", "_blank"); if (!w) { toast("Allow pop-ups to print."); return; } w.document.write(`<title>${p.no}</title><style>@page{size:A5 landscape;margin:0}body{margin:0}img{width:100%;display:block}</style><img src="${src}" onload="setTimeout(()=>print(),200)">`); w.document.close(); };
   return <>
-    <div className="row between"><h2 className="row6"><LuBanknote /> <span data-notr>{p.no}</span></h2>{p.void && <span className="ec-badge s-rejected">Cancelled</span>}</div>
-    {fresh && <p className="ok-note small">{p.email ? `Salary saved. The receipt is being emailed to ${p.email}.` : "Salary saved. This person has no email: download the receipt."}</p>}
+    <div className="row between"><h2 className="row6"><LuBanknote /> <span data-notr>{p.no}</span></h2><SalaryStatus p={p} /></div>
+    {fresh && <p className="ok-note small">{`Salary saved. ${p.name} gets a request to confirm receiving it. After that it is added to the salary statement${p.email ? " and the receipt is emailed" : ""}.`}</p>}
+    {p.status === "problem" && <p className="notice small">{`${p.name} says it was not received: ${p.problem?.text || ""}`}</p>}
+    {mine && p.status !== "received" && !p.void && <ReceiveBox p={p} />}
     <div className="mr-preview">{src ? <img src={src} alt={`Salary receipt ${p.no}`} /> : <div className="mr-ph">Making the receipt…</div>}</div>
     <p className="muted small mt8">{`${p.name} · ${monthName(p.month)} · paid ${tk(p.paid)} BDT · ${takaWords(p.paid)}`}</p>
     {p.email && <p className={`small mt8 ${p.mailed?.ok ? "mr-ok" : "muted"}`}>{p.mailed ? (p.mailed.ok ? `Emailed to ${p.mailed.to} · ${fdt(p.mailed.at)}` : `Not emailed to ${p.mailed.to} (${fdt(p.mailed.at)})`) : `Not emailed yet to ${p.email}`}</p>}
@@ -175,10 +186,10 @@ export function SalaryView({ id, fresh }) {
       <button className="btn pri" onClick={() => run(salaryPng)}><LuImage /> PNG</button>
       <button className="btn pri" onClick={() => run(salaryPdf)}><LuFileText /> PDF</button>
       <button className="btn" disabled={!src} onClick={print}><LuPrinter /> Print</button>
-      {!p.void && p.email && <button className="btn" onClick={() => mailSalary(p.id)}><LuMail /> Send by email</button>}
+      {done(p) && p.email && <button className="btn" onClick={() => mailSalary(p.id, mine && !office)}><LuMail /> Send by email</button>}
       <a className="btn" href={salaryUrl(p)} target="_blank" rel="noopener"><LuQrCode /> Verify page</a>
       <span className="grow" />
-      {me?.role === "admin" && !p.void && <button className="btn danger" onClick={() => confirmBox(`Cancel salary receipt ${p.no}? It is taken out of the salary history and the main account.`, () => act("admin.salary", { op: "void", id: p.id }), "Cancel receipt")}><LuBan /> Cancel receipt</button>}
+      {me?.role === "admin" && office && !p.void && <button className="btn danger" onClick={() => confirmBox(`Cancel salary receipt ${p.no}? It is taken out of the salary history and the main account.`, () => act("admin.salary", { op: "void", id: p.id }), "Cancel receipt")}><LuBan /> Cancel receipt</button>}
     </div>
   </>;
 }
@@ -201,13 +212,16 @@ export function VerifySalary({ token }) {
       {st.loading ? <p className="muted">Checking the receipt…</p> : st.error ? <p>No connection to the server. Check your internet and try again.</p>
         : !p ? <><div className="verify-bad"><LuBan /> <span>Receipt not found</span></div><p className="verify-note">{`This QR code does not match a salary receipt of Mam & Mam Overseas Ltd.`}</p></>
         : <>
-          {p.void ? <div className="verify-bad"><LuBan /> <span>{`Salary receipt ${p.no} was cancelled`}</span></div> : <div className="mr-valid"><LuCheck /> <span>{`Valid salary receipt ${p.no}`}</span></div>}
+          {p.void ? <div className="verify-bad"><LuBan /> <span>{`Salary receipt ${p.no} was cancelled`}</span></div>
+            : p.status !== "received" ? <div className="verify-bad sal-wait"><LuBanknote /> <span>{`Salary receipt ${p.no}: ${p.status === "problem" ? "the staff member says it was not received" : "waiting for the staff member to confirm"}`}</span></div>
+            : <div className="mr-valid"><LuCheck /> <span>{`Valid salary receipt ${p.no}`}</span></div>}
           <dl className="mr-vlist">
             <dt>Paid to</dt><dd data-notr>{p.name}{p.title ? `, ${p.title}` : ""}</dd>
             <dt>Salary month</dt><dd>{monthName(p.month)}</dd>
             <dt>Amount paid</dt><dd><b>{`BDT ${tk(p.paid)}`}</b></dd>
             <dt>Paid on</dt><dd>{rDate(p.date)}</dd>
             <dt>Paid by</dt><dd data-notr>{p.by?.name}{p.by?.title ? `, ${p.by.title}` : ""}</dd>
+            {p.recv && <><dt>Received</dt><dd>{rDate(p.recv.at.slice(0, 10))}</dd></>}
           </dl>
           <div className="mr-preview">{src ? <img src={src} alt={`Salary receipt ${p.no}`} /> : <div className="mr-ph">Making the receipt…</div>}</div>
           <div className="mr-actions"><span className="grow" /><a className="btn" href="/#home"><LuExternalLink /> Visit Website</a></div>
@@ -215,4 +229,31 @@ export function VerifySalary({ token }) {
     </div>
     <p className="verify-foot">Recruiting Licence RL 1217 · {location.host}</p>
   </div>;
+}
+
+/* the person's own side: confirm a salary, see their salary statement and receipts */
+function ReceiveBox({ p }) {
+  const [txt, setTxt] = React.useState(""); const [no, setNo] = React.useState(false);
+  const receive = async () => { const r = await act("staff.salary", { op: "receive", id: p.id }); if (r?.email) mailSalary(p.id, true); };
+  return <div className="sal-req">
+    <b>{`Did you receive BDT ${tk(p.paid)} for ${monthName(p.month)}?`}</b>
+    <span className="muted small">{`Paid on ${rDate(p.date)} by ${p.by?.name || "the office"} · ${[p.method, p.channel].filter(Boolean).join(" · ")}${p.ref ? " · " + p.ref : ""}`}</span>
+    {no ? <div className="row6"><input type="text" value={txt} onChange={e => setTxt(e.target.value)} maxLength={300} placeholder="What is wrong? e.g. not received yet, amount is less" aria-label="What is wrong" />
+      <button className="btn sm danger" onClick={() => act("staff.salary", { op: "problem", id: p.id, text: txt })}>Send</button><button className="btn sm" onClick={() => setNo(false)}>Back</button></div>
+      : <div className="row6"><button className="btn pri" onClick={receive}><LuCheck /> Yes, I received it</button><button className="btn" onClick={() => setNo(true)}><LuX /> Not received</button></div>}
+  </div>;
+}
+export function MySalary() {
+  const me = user(store.S.session); const M = store.S.mySalary || { pays: [], monthly: null };
+  const open = M.pays.filter(p => !p.void && p.status !== "received");
+  return <>
+    <div className="ec-head"><div><h2>My salary</h2><p className="muted small">{M.monthly != null ? `Monthly salary: ${tk(M.monthly)} BDT. ` : ""}When the office pays your salary, confirm here that you received it. Then it is added to your salary statement and the receipt is emailed to you.</p></div></div>
+    {open.length > 0 && <div className="stack mb14">{open.map(p => <div key={p.id} className="card sal-card"><div className="row between"><b>{`Salary ${monthName(p.month)} · ${p.no}`}</b><SalaryStatus p={p} /></div>
+      {p.status === "problem" ? <p className="small">{`You said: ${p.problem?.text || "Not received"}. The office will contact you.`}</p> : null}<ReceiveBox p={p} />
+      <button className="btn sm link" onClick={() => openModal("salaryView", { id: p.id })}><LuEye /> See the receipt</button></div>)}</div>}
+    <div className="card"><Statement title={me?.name || "My salary"} sub={me?.email} kind="SALARY ACCOUNT" heads={["Salary (net)", "Paid"]} balText={b => (b > 0 ? "Still to receive" : b < 0 ? "Received in advance" : "All received")}
+      rows={M.pays.filter(done).map(p => ({ id: p.id, date: p.date, details: `Salary ${monthName(p.month)} (${p.no})`, ref: p.ref, rate: way(p.method, p.channel), debit: p.net, credit: p.paid }))}
+      empty="No salary received yet."
+      actions={r => <button className="ec-ico view" aria-label="View salary receipt" title="View salary receipt" onClick={() => openModal("salaryView", { id: r.id })}><LuEye /></button>} /></div>
+  </>;
 }
