@@ -113,7 +113,7 @@ function Holdings({ H, waiting, sel, onPick }) {
   const Row = ({ h, extra }) => <><tr className={`hold-row${sel === h.key ? " on" : ""}`} onClick={() => onPick(h.key)} title="Show these entries"><td className="b">{holderName(h)}{extra}</td><td className="num">{tk(h.in)}</td><td className="num">{tk(h.out)}</td><td className={`num b${h.bal < 0 ? " neg" : ""}`}>{tk(h.bal)}</td></tr>
     {Object.entries(h.vias || {}).sort((a, b) => (b[1].in - b[1].out) - (a[1].in - a[1].out)).map(([n, v]) => <tr key={n} className="hold-sub"><td>{`↳ ${n}`}</td><td className="num">{tk(v.in)}</td><td className="num">{tk(v.out)}</td><td className="num">{tk(v.in - v.out)}</td></tr>)}</>;
   const Group = ({ title, list, none }) => <div className="hold-group"><h4>{title}<span className="muted small ms6">{`${tk(sum(list))} BDT`}</span></h4>
-    {list.length ? <div className="tbl-wrap"><table className="tbl hold-tbl"><thead><tr><th>Name</th><th className="r">Money in</th><th className="r">Money out</th><th className="r">Balance</th></tr></thead><tbody>{list.map(h => <Row key={h.key} h={h} extra={h.kind === "person" && <>{wait(h.k).length > 0 && <span className="ec-badge mr-wait ms6">{`${wait(h.k).length} waiting`}</span>}{L.find(l => l.k === h.k && !l.uid) && <span className="muted small ms6">No login ID yet</span>}</>} />)}</tbody></table></div> : <p className="muted small">{none}</p>}</div>;
+    {list.length ? <div className="tbl-wrap"><table className="tbl hold-tbl"><thead><tr><th>Name</th><th className="r">Money in</th><th className="r">Money out</th><th className="r">Balance</th></tr></thead><tbody>{list.map(h => <Row key={h.key} h={h} extra={h.kind === "person" && <>{wait(h.k).length > 0 && <span className="ec-badge mr-wait ms6">{`${wait(h.k).length} waiting`}</span>}{L.find(l => l.k === h.k && !l.uid) && <span className="muted small ms6">No admin ID chosen</span>}</>} />)}</tbody></table></div> : <p className="muted small">{none}</p>}</div>;
   return <div className="card hold">
     <div className="hold-top">
       <button type="button" className={`hold-tile${sel === "cash" ? " on" : ""}`} onClick={() => onPick("cash")}><span className="muted small">Cash in office (with me)</span><b>{`${tk(cash.bal)} BDT`}</b></button>
@@ -125,10 +125,19 @@ function Holdings({ H, waiting, sel, onPick }) {
     <Group title="Banks" list={banks} none="No money in any bank yet." />
     <Group title="Mobile wallets" list={wallets} none="No money in any mobile wallet yet." />
     <Group title="Managing Director, Directors and Chairman" list={people} none="" />
-    {L.some(l => !l.uid) && <p className="muted small">{`To confirm money, ${L.filter(l => !l.uid).map(l => l.name).join(", ")} need an admin or staff ID linked to their Expert Team profile (Staff & permissions). Until then their entries wait as Pending.`}</p>}
+    <LeaderIds L={L} />
     {waiting.length > 0 && <p className="muted small mt8">{`${waiting.length} ${waiting.length > 1 ? "entries are" : "entry is"} waiting for confirmation. They are shown dimmed and are not counted until confirmed.`}</p>}
     <p className="muted small mt8">Click a row to see only its entries.</p>
   </div>;
+}
+/* which admin ID gets the confirmation requests of each leader (admins only) */
+function LeaderIds({ L }) {
+  const me = user(store.S.session); if (me?.role !== "admin") return L.some(l => !l.uid) ? <p className="muted small">{`An admin must choose the admin ID of ${L.filter(l => !l.uid).map(l => l.name).join(", ")} before they can confirm.`}</p> : null;
+  return <div className="hold-ids"><h4>Confirmation requests go to</h4>
+    {L.map(l => <label key={l.k} className="hold-id"><span><b>{l.name}</b><span className="muted small">{` · ${l.title}`}</span></span>
+      <select value={l.uid || ""} onChange={e => act("admin.office", { op: "leaderId", k: l.k, uid: e.target.value })} aria-label={`Admin ID of ${l.name}`}>
+        <option value="">Choose the admin ID…</option>{team().map(u => <option key={u.id} value={u.id}>{`${u.name} · ${u.email}`}</option>)}</select></label>)}
+    <p className="muted small">They confirm from their own admin ID, in Money with me. No separate account is needed.</p></div>;
 }
 /* in the ID of the MD / a Director / the Chairman: money the office says is with them */
 export function MoneyWithMe() {
@@ -138,12 +147,12 @@ export function MoneyWithMe() {
   const ok = M.entries.filter(okEntry), bal = ok.reduce((t, e) => t + moves(e).filter(m => m.h.key === key).reduce((s, m) => s + m.amount, 0), 0);
   return <>
     <div className="ec-head"><div><h2>Money with me</h2><p className="muted small">The Account Manager enters money that came to you or that you paid. Confirm each one. Only confirmed entries go into the main account.</p></div></div>
-    <div className="card hold"><div className="hold-top"><div className="hold-tile tot"><span className="muted small">{`With ${me.name}${M.me?.title ? ` · ${M.me.title}` : ""}`}</span><b>{`${tk(bal)} BDT`}</b></div><div className="hold-tile"><span className="muted small">Waiting for you</span><b>{pend.length}</b></div></div>
+    <div className="card hold"><div className="hold-top"><div className="hold-tile tot"><span className="muted small">{`With ${M.me?.name || me.name}${M.me?.title ? ` · ${M.me.title}` : ""}`}</span><b>{`${tk(bal)} BDT`}</b></div><div className="hold-tile"><span className="muted small">Waiting for you</span><b>{pend.length}</b></div></div>
       {mine && Object.keys(mine.vias).length > 0 && <div className="tbl-wrap"><table className="tbl hold-tbl"><thead><tr><th>Account</th><th className="r">Money in</th><th className="r">Money out</th><th className="r">Balance</th></tr></thead><tbody>
         {Object.entries(mine.vias).map(([n, v]) => <tr key={n}><td className="b">{n}</td><td className="num">{tk(v.in)}</td><td className="num">{tk(v.out)}</td><td className="num b">{tk(v.in - v.out)}</td></tr>)}</tbody></table></div>}</div>
     {pend.length > 0 && <div className="card"><h3>Please confirm</h3>
       {pend.map(e => <MoneyReq key={e.id} e={e} mk={mk} />)}</div>}
-    <div className="card"><Statement title={`Mam & Mam Overseas Ltd. · Money with ${me.name}`} kind="MONEY WITH ME" cash heads={["Money in", "Money out"]} rows={officeRows(M.entries, key, true)} empty="Nothing yet." /></div>
+    <div className="card"><Statement title={`Mam & Mam Overseas Ltd. · Money with ${M.me?.name || me.name}`} kind="MONEY WITH ME" cash heads={["Money in", "Money out"]} rows={officeRows(M.entries, key, true)} empty="Nothing yet." /></div>
   </>;
 }
 function MoneyReq({ e, mk }) {

@@ -1530,8 +1530,10 @@ const LEADERS = [{ k: "md", name: "Sujon Islam", title: "Managing Director" }, {
 const leaders = () => LEADERS.map(L => {
   const norm = x => String(x || "").toLowerCase().replace(/[^a-z]/g, "");
   const m = db.team.find(t => norm(t.name) === norm(L.name)) || db.team.find(t => norm(t.title) === norm(L.title));
-  const x = m && db.users.find(y => y.memberId === m.id && isStaffRole(y) && y.status !== "suspended" && y.status !== "deleted");
-  return { k: L.k, name: m?.name || L.name, title: m?.title || L.title, uid: x?.id || null };
+  const ok = y => y && isStaffRole(y) && y.status !== "suspended" && y.status !== "deleted";
+  // 1) the admin ID chosen for them in Main account, 2) an ID linked to their Expert Team profile, 3) an admin/staff ID with the same name
+  const pick = db.office.leaderIds?.[L.k], x = (pick && db.users.find(y => y.id === pick && ok(y))) || (m && db.users.find(y => y.memberId === m.id && ok(y))) || db.users.find(y => ok(y) && norm(y.name) === norm(L.name));
+  return { k: L.k, name: m?.name || L.name, title: m?.title || L.title, uid: x?.id || null, idName: x?.name || null };
 });
 // "Person · md" or "Person · md | Bank transfer · Sonali Bank PLC"
 const personOf = method => { const m = /^Person · ([a-z]+)(?: \| (.+))?$/.exec(String(method || "")); return m ? m[1] : null; };
@@ -1558,6 +1560,14 @@ A["admin.office"] = async (d, u) => {
       notify(p, `${u.name} asks you to confirm BDT ${e.amount.toLocaleString("en-US")} ${e.type === "transfer" ? "moved" : e.type === "out" ? "paid out" : "received"} by you: ${e.desc.slice(0, 80)}. Open Money with me.`);
     const wait = made.filter(e => e.status === "pending").length;
     return { msg: `${made.length > 1 ? `${made.length} entries added.` : "Entry added."}${wait ? ` ${wait} waiting for the director's confirmation.` : ""}` };
+  }
+  if (d.op === "leaderId") {
+    must(u.role === "admin", "Only an admin can do this.", 403); must(LEADERS.some(x => x.k === d.k), "Unknown person.");
+    const x = d.uid && db.users.find(y => y.id === d.uid); must(!d.uid || (x && isStaffRole(x)), "Choose an admin or staff ID.");
+    db.office.leaderIds = { ...(db.office.leaderIds || {}), [d.k]: d.uid || null };
+    const L = leaders().find(y => y.k === d.k);
+    if (x) for (const e of db.office.entries.filter(e => e.status === "pending" && e.people?.includes(d.k) && !e.accepted?.includes(d.k))) notify(x.id, `${e.by} asks you to confirm BDT ${e.amount.toLocaleString("en-US")}: ${e.desc.slice(0, 80)}. Open Money with me.`);
+    return { msg: x ? `Requests for ${L.name} now go to ${x.name}'s ID.` : "Removed." };
   }
   if (d.op === "delete") { const e = db.office.entries.find(x => x.id === d.id); must(e, "Entry not found."); db.office.entries = db.office.entries.filter(x => x !== e); return { msg: "Entry deleted." }; }
   must(false, "Unknown request.");

@@ -1150,3 +1150,7 @@ button.hold-tile{cursor:pointer}
 .hold-sub td:first-child{padding-left:22px}
 .pb-via{display:flex;flex-direction:column;gap:4px}
 .stack6{display:flex;flex-direction:column;gap:6px}
+.hold-ids{display:flex;flex-direction:column;gap:8px;border-top:1px solid var(--line,#e3e6ec);padding-top:12px}
+.hold-ids h4{margin:0}
+.hold-id{display:grid;grid-template-columns:minmax(180px,1fr) minmax(200px,2fr);gap:10px;align-items:center}
+@media(max-width:640px){.hold-id{grid-template-columns:1fr}}
