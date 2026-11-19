@@ -12,10 +12,11 @@ import { StatusSelect, Field, Options, JobFields, blankJob } from "./shared.jsx"
 import { setClStatus } from "../actions.js";
 import { ReceiptsAdmin, SignatureBox } from "./Receipts.jsx";
 import { OfficeAccount, SalaryAdmin } from "./Accounts.jsx";
+import { StatementsAdmin } from "./Statements.jsx";
 import { Statement } from "./Statement.jsx";
 import { agentRows } from "../statement.js";
 import { MFS, BANKS } from "../banks.js";
-import { LuReceipt, LuLandmark, LuBanknote } from "react-icons/lu";
+import { LuReceipt, LuLandmark, LuBanknote, LuScrollText } from "react-icons/lu";
 import { ShareButton, storeCard } from "../Share.jsx";
 import { ChatInbox, useInboxUnread } from "../LiveChat.jsx";
 
@@ -27,7 +28,7 @@ function FilterButtons({ items, cur, onPick }) {
 }
 
 // sections inside "Payments & receipts" (each still needs its own staff permission)
-const PAY_SUB = [["receipts", "Money receipts", LuReceipt], ["ledger", "Agent accounts", LuWallet], ["office", "Main account", LuLandmark], ["salary", "Salary accounts", LuBanknote], ["packages", "Employer packages", LuPackage]];
+const PAY_SUB = [["receipts", "Money receipts", LuReceipt], ["ledger", "Agent accounts", LuWallet], ["office", "Main account", LuLandmark], ["salary", "Salary accounts", LuBanknote], ["statements", "Statements", LuScrollText], ["packages", "Employer packages", LuPackage]];
 const TABS = [
   ["overview", "Overview", LuLayoutDashboard], ["users", "Accounts", LuUsers], ["jobs", "Job moderation", LuBriefcase], ["apps", "Applications", LuFileText],
   ["clearance", "BMET clearance", LuStamp], ["tickets", "Air tickets", LuTicket], ["pay", "Payments & receipts", LuReceipt],
@@ -40,7 +41,7 @@ export function Admin({ u }) {
   const chatUnread = useInboxUnread(isAdmin || !!u.perms?.includes("chat"));
   const can0 = k => k === "overview" || isAdmin || (k !== "staff" && u.perms?.includes(k === "slides" || k === "about" ? "content" : k));
   // employer packages only matter when paid job posting is on (or orders are still open)
-  const paySubs = PAY_SUB.filter(([k]) => can0(k) && (k !== "packages" || S.settings.paidPosting || S.orders.some(o => o.status === "pending")));
+  const paySubs = PAY_SUB.filter(([k]) => (k === "statements" ? ["ledger", "receipts", "salary", "office"].some(can0) : can0(k)) && (k !== "packages" || S.settings.paidPosting || S.orders.some(o => o.status === "pending")));
   const can = k => k === "pay" ? paySubs.length > 0 : PAY_SUB.some(x => x[0] === k) ? paySubs.some(x => x[0] === k) : can0(k);
   if (PAY_SUB.some(x => x[0] === ui.tab[R])) { ui.paySub = ui.tab[R]; ui.tab[R] = "pay"; } // old links to the separate sections
   if (!can(ui.tab[R])) ui.tab[R] = "overview";
@@ -358,6 +359,7 @@ export function Admin({ u }) {
   if (t === "receipts") body = <ReceiptsAdmin />;
   if (t === "office") body = <OfficeAccount />;
   if (t === "salary") body = <SalaryAdmin />;
+  if (t === "statements") body = <StatementsAdmin can={can0} />;
   if (t === "messages") body = <>
     <h2>Contact messages</h2>
     {S.messages.length ? S.messages.map(m => (

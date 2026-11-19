@@ -1,5 +1,6 @@
 // Payment history (statement of account): Date · Details · Rate · Debit · Credit · Balance, with a running balance.
 // Used for agents (their agent account) and for payers in Money receipts. Saved as PDF (A4) or Excel.
+import { drawQR } from "./qr.js";
 import { TAGLINE, OFFICE, xlsx, pdfFromCanvases, saveBlob, loadImg, rr, fitFont, clip, fontsReady, FONT as F, GREEN, DEEP, RED, INK, MUTED, LINE, TINT } from "./receipt.js";
 
 const localDay = () => new Date(Date.now() - new Date().getTimezoneOffset() * 6e4).toISOString().slice(0, 10);
@@ -50,7 +51,7 @@ const isBad = (b, cash) => (cash ? b < 0 : b > 0); // red: money owed to the off
 /* ---------------- PDF (A4 portrait, 1240 × 1754 px per page) ---------------- */
 const PW = 1240, PH = 1754, M = 40;
 const COLS = [["Date", 112, "l"], ["Details", 452, "l"], ["Rate", 142, "l"], ["Debit", 148, "r"], ["Credit", 148, "r"], ["Balance", 158, "r"]];
-export async function statementPdf(st) {
+export async function statementCanvases(st) {
   await fontsReady(); const logo = await loadImg("/brand/logo-w320.webp?v=2");
   const { rows, debit, credit, balance } = st.calc;
   const first = 32, rest = 42, RH = 36; // rows per page
@@ -66,10 +67,15 @@ export async function statementPdf(st) {
       fitFont(g, TAGLINE, 660, 19, 500); g.globalAlpha = .93; g.fillText(TAGLINE, 262, 112); g.font = `500 17px ${F}`; g.globalAlpha = .85; g.fillText(`${OFFICE.site}  ·  ${OFFICE.email}`, 262, 144); g.globalAlpha = 1;
       rr(g, PW - M - 230, 62, 230, 56, 28); g.fillStyle = "#fff"; g.fill(); g.fillStyle = RED; g.textAlign = "center"; g.font = `800 21px ${F}`; g.fillText(st.kind || "PAYMENT HISTORY", PW - M - 115, 98);
       g.textAlign = "left"; g.fillStyle = MUTED; g.font = `600 18px ${F}`; g.fillText(st.label || "Statement of", M, 232);
-      g.fillStyle = INK; fitFont(g, st.title, 700, 34, 800); g.fillText(clip(g, st.title, 700), M, 274);
-      g.fillStyle = MUTED; g.font = `500 18px ${F}`; if (st.sub) g.fillText(clip(g, st.sub, 700), M, 304);
-      g.textAlign = "right"; g.fillText(`Period: ${st.from ? sdate(st.from) : "Start"} – ${st.to ? sdate(st.to) : sdate(localDay())}`, PW - M, 274);
-      g.fillText(`Printed: ${new Date().toLocaleString("en-GB", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })}`, PW - M, 304);
+      const tw = st.qrUrl ? 600 : 700;
+      g.fillStyle = INK; fitFont(g, st.title, tw, 34, 800); g.fillText(clip(g, st.title, tw), M, 274);
+      g.fillStyle = MUTED; g.font = `500 18px ${F}`; if (st.sub) g.fillText(clip(g, st.sub, tw), M, 304);
+      const qx = st.qrUrl ? PW - M - 112 : PW - M; // QR code: opens the issued statement on the website
+      if (st.qrUrl) { drawQR(g, st.qrUrl, qx + 6, 198, 106, INK); g.textAlign = "center"; g.fillStyle = MUTED; g.font = `600 12px ${F}`; g.fillText("Scan to verify", qx + 59, 318); }
+      g.textAlign = "right"; g.fillStyle = MUTED; g.font = `500 18px ${F}`;
+      if (st.no) { g.fillStyle = INK; g.font = `800 20px ${F}`; g.fillText(`Statement No. ${st.no}`, qx - 18, 236); g.fillStyle = MUTED; g.font = `500 18px ${F}`; }
+      g.fillText(`Period: ${st.from ? sdate(st.from) : "Start"} – ${st.to ? sdate(st.to) : sdate(st.at || localDay())}`, qx - 18, 274);
+      g.fillText(`${st.no ? "Issued" : "Printed"}: ${new Date(st.at || Date.now()).toLocaleString("en-GB", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })}`, qx - 18, 304);
       // totals
       const bad = isBad(balance, st.cash);
       const bx = [[st.cash ? "Money in" : "Total debit", amt(debit), INK], [st.cash ? "Money out" : "Total credit", amt(credit), INK], [balWord(balance, st.cash), amt(Math.abs(balance)), bad ? RED : GREEN]];
@@ -83,7 +89,7 @@ export async function statementPdf(st) {
     // table header
     g.fillStyle = "#c9e3b2"; g.fillRect(M, y, PW - 2 * M, RH + 4); g.strokeStyle = "#8aa57a"; g.lineWidth = 1.5; g.strokeRect(M, y, PW - 2 * M, RH + 4);
     let x = M; g.fillStyle = INK; g.font = `800 18px ${F}`;
-    for (const [h, w, al] of COLS) { g.textAlign = al === "r" ? "right" : "left"; g.fillText(h, al === "r" ? x + w - 10 : x + 10, y + 26); x += w; }
+    for (const [h0, w, al] of COLS) { const h = h0 === "Debit" && st.heads ? st.heads[0] : h0 === "Credit" && st.heads ? st.heads[1] : h0; g.textAlign = al === "r" ? "right" : "left"; g.fillText(h, al === "r" ? x + w - 10 : x + 10, y + 26); x += w; }
     y += RH + 4;
     chunk.forEach((r, k) => {
       g.fillStyle = r.opening ? "#eef3ea" : k % 2 ? "#f6f8f7" : "#fff"; g.fillRect(M, y, PW - 2 * M, RH);
@@ -111,7 +117,15 @@ export async function statementPdf(st) {
     g.fillText(`Computer generated statement · ${OFFICE.name} · ${OFFICE.site} · Page ${pi + 1} of ${pages.length}`, PW / 2, PH - 14);
     return c;
   });
-  saveBlob(await pdfFromCanvases(canvases, 595.28, 841.89, `${st.kind || "Payment history"} ${st.title}`), `${fileName(st)}.pdf`);
+  return canvases;
+}
+export async function statementPdfBlob(st) { return pdfFromCanvases(await statementCanvases(st), 595.28, 841.89, `${st.no ? st.no + " " : ""}${st.kind || "Payment history"} ${st.title}`); }
+export async function statementPdf(st) { saveBlob(await statementPdfBlob(st), `${st.no || fileName(st)}.pdf`); }
+export async function statementPrint(st) {
+  const w = window.open("", "_blank"); if (!w) throw new Error("Allow pop-ups to print.");
+  w.document.write("<title>Printing…</title><p style='font-family:sans-serif'>Making the statement…</p>");
+  const urls = (await statementCanvases(st)).map(c => c.toDataURL("image/jpeg", .92));
+  w.document.open(); w.document.write(`<title>${st.no || "Statement"}</title><style>@page{size:A4;margin:0}body{margin:0}img{width:100%;display:block;page-break-after:always}</style>${urls.map((u, i) => `<img src="${u}"${i === urls.length - 1 ? ' onload="setTimeout(()=>print(),250)"' : ""}>`).join("")}`); w.document.close();
 }
 const fileName = st => `payment-history-${String(st.title).replace(/[^\w]+/g, "-").replace(/^-|-$/g, "").toLowerCase() || "account"}`;
 

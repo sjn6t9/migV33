@@ -17,6 +17,8 @@ const receipt = location.pathname.match(/^\/r\/([a-f0-9]{24})\/?$/i);
 if (receipt) history.replaceState(null, "", `/#receipt-${receipt[1]}`);
 const salary = location.pathname.match(/^\/s\/([a-f0-9]{24})\/?$/i); // salary receipt QR codes
 if (salary) history.replaceState(null, "", `/#salary-${salary[1]}`);
+const stmt = location.pathname.match(/^\/st\/([a-f0-9]{24})\/?$/i); // statement QR codes
+if (stmt) history.replaceState(null, "", `/#statement-${stmt[1]}`);
 applyTheme();
 loadState();
 initLang().finally(() => createRoot(document.getElementById("root")).render(<App />));

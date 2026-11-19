@@ -21,7 +21,7 @@ function RateCell({ r, onSave }) {
   </form></td>;
 }
 
-export function Statement({ title, sub, kind = "PAYMENT HISTORY", rows, actions, onRate, cash, heads, balText, empty = "No entries yet." }) {
+export function Statement({ title, sub, kind = "PAYMENT HISTORY", rows, actions, onRate, cash, heads, balText, tools, empty = "No entries yet." }) {
   const [from, setFrom] = React.useState(""); const [to, setTo] = React.useState("");
   const calc = withBalance(rows, from, to); const st = { title, sub, kind, from, to, calc, cash };
   const run = f => Promise.resolve(f(st)).catch(e => toast(e.message || "The file could not be made."));
@@ -37,8 +37,9 @@ export function Statement({ title, sub, kind = "PAYMENT HISTORY", rows, actions,
       <label className="st-date">To <input type="date" value={to} onChange={e => setTo(e.target.value)} /></label>
       {(from || to) && <button className="btn sm link" onClick={() => { setFrom(""); setTo(""); }}><LuX /> All dates</button>}
       <span className="grow" />
+      {tools ? tools(st) : <>
       <button className="btn sm pri" disabled={!rows.length} onClick={() => run(statementPdf)}><LuFileText /> PDF</button>
-      <button className="btn sm pri" disabled={!rows.length} onClick={() => run(statementXlsx)}><LuFileSpreadsheet /> Excel</button>
+      <button className="btn sm pri" disabled={!rows.length} onClick={() => run(statementXlsx)}><LuFileSpreadsheet /> Excel</button></>}
     </div>
     {calc.rows.length ? <div className="tbl st-tbl"><table><thead><tr><th>DATE</th><th>Details</th><th>RATE</th><th className="r">{heads?.[0] || "Debit"}</th><th className="r">{heads?.[1] || "Credit"}</th><th className="r">Balance</th>{actions && <th />}</tr></thead><tbody>
       {calc.rows.map(r => <tr key={r.id} className={r.pending ? "dim" : r.opening ? "st-open" : ""}>

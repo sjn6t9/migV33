@@ -957,6 +957,8 @@ async function handleApi(req, res, url) {
   if (u && isStaffRole(u)) seen.set(u.id, Date.now()); // online / offline in the team chat
   if (u && !zoneAllows(zone, u)) { token = null; u = null; } // a session from the other site does not count here
   if (req.method === "GET" && url.pathname === "/api/state") return send(res, 200, viewFor(u));
+  const stm = req.method === "GET" && /^\/api\/statement\/([a-f0-9]{24})$/.exec(url.pathname);
+  if (stm) { const x = db.statements.list.find(y => y.token === stm[1]); return x ? send(res, 200, { statement: stmtOut(x, true) }) : send(res, 404, { error: "Statement not found." }); }
   const sm = req.method === "GET" && /^\/api\/salary\/([a-f0-9]{24})(\/sig)?$/.exec(url.pathname);
   if (sm) { // salary receipt opened from its QR code
     const p = db.salary.pays.find(x => x.token === sm[1]); if (!p) return send(res, 404, { error: "Receipt not found." });
@@ -1573,6 +1575,77 @@ A["admin.salary"] = async (d, u) => {
   if (d.op === "void") {
     must(u.role === "admin", "Only the admin can cancel a salary receipt.", 403);
     const p = S.pays.find(x => x.id === d.id); must(p && !p.void, "Salary receipt not found."); p.void = { by: u.name, at: now() }; return { msg: `Salary receipt ${p.no} cancelled.` };
+  }
+  must(false, "Unknown request.");
+};
+
+/* ======================= statements (with a QR code to check them) ======================= */
+// A statement is issued from the server's own records (agent account, money-receipt payer, salary, main account);
+// the issued copy is kept, so the QR code on the printout shows exactly what was issued.
+if (!db.statements) db.statements = { list: [], seq: {} };
+const STMT_PERM = { agent: "ledger", payer: "receipts", staff: "salary", office: "office" };
+const short = (m, c) => { const x = String(c || "").replace(/\s*\(.*\)\s*$/, "") || String(m || "").split("·").pop().trim().replace(/\s*\(.*\)\s*$/, ""); return (x || "Cash").toUpperCase(); };
+const fmtN = n => Number(n || 0).toLocaleString("en-US", { maximumFractionDigits: 2 });
+function stmtSource(kind, ref) {
+  if (kind === "agent") {
+    const a = user(ref); must(a?.role === "agent", "Agent not found.");
+    return { title: agentName(a), sub: [a.name, a.agent?.phone, a.email].filter(Boolean).join(" · "), email: a.email, label: "PAYMENT HISTORY",
+      rows: db.ledger.filter(l => l.agentId === a.id && l.status === "confirmed").map(l => ({ date: l.date, details: l.desc, rate: l.type === "charge" ? `${fmtN(l.rate || l.amount)}X${l.qty || 1}` : short(l.method), debit: l.type === "charge" ? Number(l.amount) : 0, credit: l.type === "payment" ? Number(l.amount) : 0 })) };
+  }
+  if (kind === "payer") {
+    const acc = db.mr.accounts.find(x => x.id === ref); must(acc, "Account not found.");
+    const rows = [];
+    if (acc.price > 0) rows.push({ date: (acc.created || "").slice(0, 10), details: "Total price", rate: `${fmtN(acc.price)}X1`, debit: acc.price, credit: 0 });
+    for (const c of db.mr.charges.filter(c => c.accountId === acc.id)) rows.push({ date: c.date, details: c.desc, rate: `${fmtN(c.rate)}X${c.qty}`, debit: c.amount, credit: 0 });
+    for (const r of db.mr.receipts.filter(r => r.accountId === acc.id && r.status === "approved" && !r.void)) rows.push({ date: r.date, details: `Money Received${r.purpose ? " · " + r.purpose : ""} (${r.no})`, rate: short(r.method, r.channel), debit: 0, credit: r.amount });
+    return { title: acc.name || acc.passport || acc.mobile || "Account", sub: [acc.passport && `Passport ${acc.passport}`, acc.mobile, acc.email, acc.agent && `Agent: ${acc.agent}`].filter(Boolean).join(" · "), email: acc.email, label: "PAYMENT HISTORY", rows };
+  }
+  if (kind === "staff") {
+    const x = user(ref); must(isStaffRole(x), "Account not found."); const m = x.memberId && db.team.find(t => t.id === x.memberId);
+    return { title: x.name, sub: [m?.title || (x.role === "admin" ? "Admin" : "Staff"), x.email].filter(Boolean).join(" · "), email: x.email, label: "SALARY ACCOUNT", heads: ["Salary (net)", "Paid"],
+      rows: db.salary.pays.filter(p => p.uid === x.id && !p.void).map(p => ({ date: p.date, details: `Salary ${monthName(p.month)} (${p.no})`, rate: short(p.method, p.channel), debit: p.net, credit: p.paid })) };
+  }
+  if (kind === "office") {
+    return { title: "Mam & Mam Overseas Ltd. · Main account", sub: "Office cash book", email: "", label: "MAIN ACCOUNT", cash: true, heads: ["Money in", "Money out"],
+      rows: [...db.office.entries, ...officeAuto()].map(e => ({ date: e.date, details: e.desc, rate: short(e.method), debit: e.type === "in" ? e.amount : 0, credit: e.type === "out" ? e.amount : 0 })) };
+  }
+  must(false, "Choose an account.");
+}
+function stmtCalc(rows, from, to) {
+  const all = [...rows].sort((a, b) => String(a.date).localeCompare(String(b.date)) || (a.debit ? -1 : 1) - (b.debit ? -1 : 1));
+  let bal = 0; const out = [];
+  const before = from ? all.filter(r => r.date < from) : [];
+  if (before.length) { bal = r2(before.reduce((t, r) => t + r.debit - r.credit, 0)); out.push({ date: from, details: "Opening balance", rate: "", debit: bal > 0 ? bal : 0, credit: bal < 0 ? -bal : 0, balance: bal, opening: true }); }
+  for (const r of all) { if (from && r.date < from) continue; if (to && r.date > to) continue; bal = r2(bal + r.debit - r.credit); out.push({ ...r, balance: bal }); }
+  const live = out.filter(r => !r.opening);
+  return { rows: out.slice(-1500), debit: r2(live.reduce((t, r) => t + r.debit, 0)), credit: r2(live.reduce((t, r) => t + r.credit, 0)), balance: bal };
+}
+const stmtOut = (x, pub) => { const o = { ...x }; delete o.token; if (pub) { delete o.id; delete o.ref; delete o.email; delete o.mailed; } else o.url = `/st/${x.token}`; return o; };
+A["admin.statement"] = async (d, u) => {
+  const L = db.statements;
+  if (d.op === "issue") {
+    const kind = d.kind; must(STMT_PERM[kind], "Choose an account."); needPerm(u, STMT_PERM[kind]);
+    const src = stmtSource(kind, d.ref), day = v => (/^\d{4}-\d{2}-\d{2}$/.test(v || "") ? v : "");
+    const from = day(d.from), to = day(d.to), calc = stmtCalc(src.rows, from, to), yr = bdDay().slice(0, 4); L.seq[yr] = (L.seq[yr] || 0) + 1;
+    const st = { id: id("st"), no: `ST-${yr}-${String(L.seq[yr]).padStart(4, "0")}`, token: crypto.randomBytes(12).toString("hex"), kind, ref: d.ref, label: src.label, cash: !!src.cash, heads: src.heads || null,
+      title: src.title, sub: src.sub, email: src.email || "", from, to, ...calc, issuedBy: u.name || "Office", at: now() };
+    L.list.unshift(st); if (L.list.length > 3000) L.list.length = 3000;
+    return { statement: { ...stmtOut(st), token: st.token } };
+  }
+  if (d.op === "mail") {
+    const st = L.list.find(x => x.id === d.id); must(st, "Statement not found."); needPerm(u, STMT_PERM[st.kind]);
+    const to = mrNorm.email(d.to || st.email); must(/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(to), "Enter the email address.");
+    const pdf = Buffer.from(String(d.pdf || "").replace(/^data:application\/pdf;base64,/, ""), "base64");
+    must(pdf.length > 100 && pdf.length < 12e6 && pdf.subarray(0, 5).toString() === "%PDF-", "The statement PDF is missing.");
+    const mailer = await getMailer(); must(mailer, "Email is not set up on this server. Download the PDF and send it yourself.");
+    const link = ADMIN_HOST || AGENT_HOST || process.env.CANONICAL_HOST ? `${mainUrl()}/st/${st.token}` : "", money = n => `BDT ${fmtN(n)}`;
+    const end = st.cash ? `Balance: ${money(st.balance)}` : st.kind === "staff" ? (st.balance > 0 ? `Still to pay: ${money(st.balance)}` : st.balance < 0 ? `Paid in advance: ${money(-st.balance)}` : "All paid.") : st.balance > 0 ? `Due: ${money(st.balance)}` : st.balance < 0 ? `Advance: ${money(-st.balance)}` : "Settled.";
+    try {
+      await mailer.sendMail({ from: `"Mam & Mam Overseas Ltd." <${mailFrom()}>`, to, subject: `Statement ${st.no} · ${st.title}`,
+        text: `Assalamu Alaikum,\n\nYour statement from Mam & Mam Overseas Ltd. is attached.\n\nStatement No.: ${st.no}\nAccount: ${st.title}\nPeriod: ${st.from || "start"} to ${st.to || st.at.slice(0, 10)}\n${end}\n${link ? `\nCheck this statement online: ${link}\n` : ""}\nMam & Mam Overseas Ltd. · Government Licensed Recruiting Agency · RL1217`,
+        attachments: [{ filename: `${st.no}.pdf`, content: pdf, contentType: "application/pdf" }] });
+    } catch (e) { console.error("Statement email failed:", e.message); must(false, `The statement could not be emailed to ${to}. Try again later.`); }
+    st.mailed = { to, at: now() }; return { msg: `Statement ${st.no} emailed to ${to}.` };
   }
   must(false, "Unknown request.");
 };
