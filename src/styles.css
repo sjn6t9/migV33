@@ -1091,3 +1091,11 @@ body.tc-full-on .team-fab{display:none}
   .team-chat.full.has-right .tc-left{display:none}
   .team-chat.full.has-right .tc-right{display:flex}
 }
+/* mobile fixes */
+@media (max-width:560px){.langsel select{max-width:none;padding-inline-end:0}.utilbar .util-l{min-width:0;flex:1}}
+/* tables with many columns scroll sideways on phones instead of squeezing every word onto its own line */
+@media (max-width:700px){
+  .tbl table:has(th:nth-child(5)){min-width:620px}
+  .tbl table:has(th:nth-child(8)){min-width:820px}
+  .st-tbl table{min-width:640px}
+}
