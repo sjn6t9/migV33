@@ -13,10 +13,11 @@ import { setClStatus } from "../actions.js";
 import { ReceiptsAdmin, SignatureBox } from "./Receipts.jsx";
 import { OfficeAccount, SalaryAdmin, MySalary } from "./Accounts.jsx";
 import { StatementsAdmin } from "./Statements.jsx";
+import { PassportEntry, PassportPick, ppLine } from "./Passports.jsx";
 import { Statement } from "./Statement.jsx";
 import { agentRows } from "../statement.js";
 import { MFS, BANKS } from "../banks.js";
-import { LuReceipt, LuLandmark, LuBanknote, LuScrollText } from "react-icons/lu";
+import { LuReceipt, LuLandmark, LuBanknote, LuScrollText, LuBookUser, LuFileCheck2 } from "react-icons/lu";
 import { ShareButton, storeCard } from "../Share.jsx";
 import { ChatInbox, useInboxUnread } from "../LiveChat.jsx";
 
@@ -234,7 +235,9 @@ export function Admin({ u }) {
     </tbody></table></div> : <Empty>No applications.</Empty>}
   </>;
 
-  if (t === "clearance") body = <AdminClearanceList />;
+  if (t === "clearance") body = <>
+    <nav className="pay-tabs" aria-label="BMET clearance">{[["apps", "Applications", LuFileCheck2], ["pp", "Passport entry", LuBookUser]].map(([k, l, I]) => <button key={k} className={(ui.clSub || "apps") === k ? "on" : ""} aria-current={(ui.clSub || "apps") === k ? "page" : undefined} onClick={() => { ui.clSub = k; commit(); }}><I /> {l}{k === "pp" && <span className="count soft">{(S.passports || []).length}</span>}</button>)}</nav>
+    {(ui.clSub || "apps") === "pp" ? <PassportEntry /> : <AdminClearanceList />}</>;
 
   if (t === "ledger") {
     const sel = ui.ledgerAgent ? user(ui.ledgerAgent) : null;
@@ -813,7 +816,7 @@ function LedgerAddForm({ sel }) {
         <Field label="Received by"><select value={r.method} onChange={e => set(i, { method: e.target.value })}><option>Cash</option><optgroup label="Mobile banking">{MFS.map(x => <option key={x} value={`Mobile banking · ${x}`}>{x}</option>)}</optgroup><optgroup label="Bank">{BANKS.map(x => <option key={x} value={`Bank transfer · ${x}`}>{x}</option>)}</optgroup><option value="Cheque">Cheque</option></select></Field>
         <Field label="Reference no."><input type="text" value={r.ref} onChange={e => set(i, { ref: e.target.value })} /></Field>
       </>}
-      <Field label="Details" full><input type="text" value={r.desc} onChange={e => set(i, { desc: e.target.value })} placeholder={r.type === "charge" ? "e.g. 1 QATAR (NON) (FC) PP (A16406219)" : "e.g. Money Received"} /></Field>
+      <Field label={<span className="field-head">Details<PassportPick onPick={pp => set(i, { desc: ppLine(pp) })} /></span>} full><input type="text" value={r.desc} onChange={e => set(i, { desc: e.target.value })} placeholder={r.type === "charge" ? "e.g. 1 QATAR (NON) (FC) PP (A16406219)" : "e.g. Money Received"} /></Field>
     </div>)}
     <div className="row6 mt8"><button type="button" className="btn sm" onClick={() => { const l = rows[rows.length - 1]; setRows([...rows, blankRow(l.type, l.date)]); }}><LuPlus /> Add another entry</button>
       {rows.length > 1 && <span className="muted small">{`${rows.length} entries · balance change ${sum >= 0 ? "+" : "−"}${num(Math.abs(sum))} BDT`}</span>}</div>

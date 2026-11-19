@@ -6,6 +6,7 @@ import { act, openModal, closeModal, toast, confirmBox } from "../actions.js";
 import { Field } from "./shared.jsx";
 import { Empty, RoleBadges } from "../ui.jsx";
 import { Statement } from "./Statement.jsx";
+import { PassportPick, ppLine } from "./Passports.jsx";
 import { METHODS, MFS, BANKS, channelsFor } from "../banks.js";
 import { drawSalary, salaryPng, salaryPdf, salaryPdfBlob, salaryUrl, monthName, tk, rDate, takaWords } from "../receipt.js";
 
@@ -58,7 +59,7 @@ function OfficeForm() {
       <Field label="Amount (BDT)"><input type="number" min="1" step="0.01" value={r.amount} onChange={e => set(i, { amount: e.target.value })} /></Field>
       <Field label={r.type === "in" ? "Received by" : "Paid by"}><PaidBy value={r.method} onChange={v => set(i, { method: v })} /></Field>
       <Field label="Reference no."><input type="text" value={r.ref} onChange={e => set(i, { ref: e.target.value })} maxLength={80} placeholder="Optional" /></Field>
-      <Field label="Details" full><input type="text" value={r.desc} onChange={e => set(i, { desc: e.target.value })} maxLength={200} placeholder={r.type === "in" ? "e.g. Service charge, Fiji visa (5 workers)" : "e.g. Office rent, November"} /></Field>
+      <Field label={<span className="field-head">Details<PassportPick onPick={pp => set(i, { desc: ppLine(pp) })} /></span>} full><input type="text" value={r.desc} onChange={e => set(i, { desc: e.target.value })} maxLength={200} placeholder={r.type === "in" ? "e.g. Service charge, Fiji visa (5 workers)" : "e.g. Office rent, November"} /></Field>
     </div>)}
     <div className="row6 mt8"><button type="button" className="btn sm" onClick={() => { const l = rows[rows.length - 1]; setRows([...rows, blank(l.type, l.date)]); }}><LuPlus /> Add another entry</button>
       {rows.length > 1 && <span className="muted small">{`${rows.length} entries · balance change ${sum >= 0 ? "+" : "−"}${tk(Math.abs(sum))} BDT`}</span>}</div>

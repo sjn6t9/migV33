@@ -1,12 +1,13 @@
 // Admin panel › Money receipts: payment entry (any of name, mobile, passport, email, agent),
 // search to find and update a payer's account, and receipts downloadable as PNG, PDF and Excel.
 import React from "react";
-import { LuPlus, LuSearch, LuEye, LuDownload, LuFileSpreadsheet, LuFileText, LuImage, LuPrinter, LuPencil, LuX, LuReceipt, LuUserRound, LuBan, LuCheck, LuSignature, LuUpload, LuTrash2, LuClock, LuQrCode, LuExternalLink, LuMail } from "react-icons/lu";
+import { LuPlus, LuSearch, LuEye, LuDownload, LuFileSpreadsheet, LuFileText, LuImage, LuPrinter, LuPencil, LuX, LuReceipt, LuUserRound, LuBan, LuCheck, LuSignature, LuUpload, LuTrash2, LuClock, LuQrCode, LuExternalLink, LuMail, LuBookUser } from "react-icons/lu";
 import { store, user, balanceOf } from "../store.js";
 import { act, openModal, closeModal, toast, confirmBox } from "../actions.js";
 import { Field } from "./shared.jsx";
 import { Tiles, Empty } from "../ui.jsx";
 import { Statement } from "./Statement.jsx";
+import { passports, ppMatch, PassportPick, ppLine } from "./Passports.jsx";
 import { agentRows, accountRows } from "../statement.js";
 import { drawReceipt, receiptPng, receiptPdf, receiptPdfBlob, receiptXlsx, receiptsXlsx, takaWords, tk, rDate, receiptUrl, payText } from "../receipt.js";
 
@@ -152,18 +153,22 @@ export function BalanceBox({ b, note }) {
   return <div className="mr-bal">{rows.map(([l, v, k], i) => <div key={i} className={k ? `mr-bal-end ${k}` : ""}><span>{l}</span><b className="num">{v}</b></div>)}{note && <p className="muted small">{note}</p>}</div>;
 }
 
-export function MrEntry({ aid: aid0 }) {
-  const [aid, setAid] = React.useState(aid0 || null);
+export function MrEntry({ aid: aid0, pp: pp0 }) {
+  const pp1 = pp0 && passports().find(x => x.id === pp0); // started from Passport entry
+  const acc1 = !aid0 && pp1 ? MR().accounts.find(a => a.passport === pp1.passport) : null;
+  const [aid, setAid] = React.useState(aid0 || acc1?.id || null);
   const acc = aid && MR().accounts.find(a => a.id === aid);
   const blank = { name: "", mobile: "", passport: "", email: "", agent: "" };
-  const [p, setP] = React.useState(acc ? { ...blank, ...pick(acc) } : blank);
-  const [agentId, setAgentId] = React.useState(acc?.agentId || ""); const [agentOther, setAgentOther] = React.useState(!!(acc && !acc.agentId && acc.agent));
+  const [p, setP] = React.useState(acc ? { ...blank, ...pick(acc) } : pp1 ? { ...blank, name: pp1.name, passport: pp1.passport } : blank);
+  const [agentId, setAgentId] = React.useState(acc?.agentId || (!acc && pp1?.agentId) || ""); const [agentOther, setAgentOther] = React.useState(!!(acc ? !acc.agentId && acc.agent : pp1 && !pp1.agentId && pp1.ref));
   const [price, setPrice] = React.useState(acc?.price != null ? String(acc.price) : "");
   const newLine = () => ({ k: Math.random().toString(36).slice(2), amount: "", date: today(), method: "Cash", channel: "", chOther: false, ref: "", purpose: "" });
   const [lines, setLines] = React.useState(() => [newLine()]);
   const setLine = (i, v) => setLines(lines.map((L, j) => (j === i ? { ...L, ...v } : L)));
   const [q, setQ] = React.useState(""); const [busy, setBusy] = React.useState(false);
   const found = q.trim() ? MR().accounts.filter(mrMatch(q)).slice(0, 6) : [];
+  const foundPp = q.trim() ? passports().filter(ppMatch(q)).filter(x => !MR().accounts.some(a => a.passport === x.passport)).slice(0, 5) : [];
+  const usePp = x => { setAid(null); setP({ ...blank, name: x.name, passport: x.passport, agent: x.agentId ? "" : x.ref || "" }); setAgentId(x.agentId || ""); setAgentOther(!x.agentId && !!x.ref); setPrice(""); setQ(""); };
   const auto = !aid && MR().accounts.find(a => ["passport", "mobile", "email"].some(k => p[k] && norm(k, p[k]) === a[k]));
   const target = acc || auto;
   const choose = a => { setAid(a.id); setP({ ...blank, ...pick(a) }); setAgentId(a.agentId || ""); setAgentOther(!a.agentId && !!a.agent); setPrice(a.price != null ? String(a.price) : ""); setQ(""); };
@@ -196,8 +201,9 @@ export function MrEntry({ aid: aid0 }) {
     <p className="muted small mb14">{`You sign as Received by. After an admin or another staff member approves the payment, the money receipt with its QR code is made.`}</p>
     <div className="mr-find">
       <label className="ec-search"><input type="text" value={q} onChange={e => setQ(e.target.value)} placeholder="Search an existing account: name, mobile, passport, email or agent" aria-label="Search an existing account" /><LuSearch /></label>
-      {q.trim() && <div className="mr-found">{found.length ? found.map(a => <button type="button" key={a.id} onClick={() => choose(a)}>
-        <LuUserRound /><span><b data-notr>{a.name || a.passport || a.mobile || a.email}</b><small data-notr>{[a.passport, a.mobile, a.agent].filter(Boolean).join(" · ")}</small></span><em>{`${accReceipts(a.id).length} receipts`}</em></button>)
+      {q.trim() && <div className="mr-found">{found.length || foundPp.length ? <>{found.map(a => <button type="button" key={a.id} onClick={() => choose(a)}>
+        <LuUserRound /><span><b data-notr>{a.name || a.passport || a.mobile || a.email}</b><small data-notr>{[a.passport, a.mobile, a.agent].filter(Boolean).join(" · ")}</small></span><em>{`${accReceipts(a.id).length} receipts`}</em></button>)}
+        {foundPp.map(x => <button type="button" key={x.id} onClick={() => usePp(x)}><LuBookUser /><span><b data-notr>{x.name}</b><small data-notr>{[x.passport, x.country, x.gender, x.ref].filter(Boolean).join(" · ")}</small></span><em>Passport list</em></button>)}</>
         : <p className="muted small">No account found. Fill in the details below to make a new one.</p>}</div>}
     </div>
     {acc ? <div className="mr-acc"><LuUserRound /><span>Account: <b data-notr>{acc.name || acc.passport || acc.mobile}</b> · <span className="muted">changes below update this account</span></span><button type="button" className="btn sm link" onClick={clear}><LuX /> New account</button></div>
@@ -365,7 +371,7 @@ function ChargeForm({ aid }) {
     act("admin.mr", { op: "chargeAdd", accountId: aid, desc: d.desc, date: d.date, qty, rate }).then(r => { if (r) { form.reset(); setQty("1"); setRate(""); } }); };
   return <form className="fgrid divider mt14" onSubmit={add} noValidate>
     <h4 className="full">Add a charge (debit)</h4>
-    <Field label="Details" full><input type="text" name="desc" maxLength={200} required placeholder="e.g. 1 ITALY (FC) PP (A06852056)" /></Field>
+    <Field label={<span className="field-head">Details<PassportPick onPick={pp => { const el = document.getElementById("mr-charge-desc"); if (el) el.value = ppLine(pp); }} /></span>} full><input type="text" id="mr-charge-desc" name="desc" maxLength={200} required placeholder="e.g. 1 ITALY (FC) PP (A06852056)" /></Field>
     <Field label="Date"><input type="date" name="date" defaultValue={today()} /></Field>
     <Field label="Rate (BDT) × Quantity" hint={Number(rate) > 0 ? `Debit: ${tk((Number(qty) || 1) * Number(rate))} BDT` : "e.g. 6000 × 1"}><div className="st-rq">
       <input type="number" min="1" value={rate} onChange={e => setRate(e.target.value)} placeholder="6000" aria-label="Rate (BDT)" /><span>X</span>

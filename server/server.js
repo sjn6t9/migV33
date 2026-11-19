@@ -233,6 +233,7 @@ function viewFor(u) {
     pub.jobs = db.jobs.filter(j => j.status === "active" || pub.applications.some(a => a.jobId === j.id));
     pub.tickets = db.tickets.filter(t => t.agentId === u.id);
     pub.ledger = db.ledger.filter(l => l.agentId === u.id);
+    pub.passports = db.passports.filter(p => p.agentId === u.id).map(({ by, ...p }) => p); // passports the office entered with this agent as reference
   } else if (u.role === "admin" || u.role === "staff") {
     Object.assign(pub, {
       jobs: db.jobs, applications: db.applications, orders: db.orders, messages: can(u, "messages") ? db.messages : [], workers: db.workers,
@@ -240,6 +241,7 @@ function viewFor(u) {
     });
     if (can(u, "jobs")) pub.jobTemplates = db.jobTemplates;
     if (can(u, "office")) pub.office = { entries: db.office.entries, auto: officeAuto() };
+    if (PP_PERMS.some(k => can(u, k))) pub.passports = db.passports;
     if (isStaffRole(u)) pub.mySalary = { monthly: db.salary.profiles[u.id]?.monthly ?? null, pays: db.salary.pays.filter(p => p.uid === u.id).map(p => salaryOut(p)) };
     if (can(u, "salary")) pub.salary = { profiles: db.salary.profiles, pays: db.salary.pays.map(p => salaryOut(p)) };
     if (can(u, "receipts")) pub.mr = { accounts: db.mr.accounts, receipts: db.mr.receipts.map(r => mrOut(r)), charges: db.mr.charges };
@@ -1680,6 +1682,38 @@ A["admin.statement"] = async (d, u) => {
     } catch (e) { console.error("Statement email failed:", e.message); must(false, `The statement could not be emailed to ${to}. Try again later.`); }
     st.mailed = { to, at: now() }; return { msg: `Statement ${st.no} emailed to ${to}.` };
   }
+  must(false, "Unknown request.");
+};
+
+/* ======================= passport entry (BMET Clearance) ======================= */
+// The office keeps a list of passports (name, number, country, gender, reference). It is used when making money receipts,
+// account entries and BMET clearance applications. A reference that is one of our agents lets that agent use the passport too.
+if (!db.passports) db.passports = [];
+const ppNorm = v => String(v || "").replace(/\s+/g, "").toUpperCase();
+const PP_PERMS = ["clearance", "receipts", "ledger", "office"];
+A["admin.passport"] = async (d, u) => {
+  needPerm(u, "clearance");
+  const read = x => {
+    const name = str(x.name, 120), passport = ppNorm(x.passport).slice(0, 20), country = str(x.country, 60), gender = x.gender === "Female" ? "Female" : x.gender === "Male" ? "Male" : "";
+    must(name.length >= 2, "Enter the full name."); must(/^[A-Z0-9]{6,15}$/.test(passport), "Check the passport number (letters and numbers, 6 to 15).");
+    must(country, "Choose the country."); must(gender, "Choose Male or Female.");
+    const ag = x.agentId ? user(x.agentId) : null; must(!x.agentId || ag?.role === "agent", "Agent not found.");
+    return { name, passport, country, gender, ref: ag ? agentName(ag) : str(x.ref, 120), agentId: ag ? ag.id : null };
+  };
+  if (d.op === "add") {
+    const list = (Array.isArray(d.rows) ? d.rows : [d]).slice(0, 100); must(list.length, "Add at least one passport.");
+    const made = list.map((x, i) => { let v; try { v = read(x); } catch (e) { if (list.length > 1 && e instanceof Fail) e.message += ` (row ${i + 1})`; throw e; } return v; });
+    const dup = made.find((v, i) => made.findIndex(w => w.passport === v.passport) !== i || db.passports.some(p => p.passport === v.passport));
+    must(!dup, `Passport ${dup?.passport} is already in the list.`);
+    db.passports.unshift(...made.map(v => ({ id: id("pp"), ...v, by: u.name, at: now() })));
+    return { msg: made.length > 1 ? `${made.length} passports added.` : `Passport ${made[0].passport} added.` };
+  }
+  if (d.op === "update") {
+    const p = db.passports.find(x => x.id === d.id); must(p, "Passport not found."); const v = read(d);
+    must(!db.passports.some(x => x !== p && x.passport === v.passport), `Passport ${v.passport} is already in the list.`);
+    Object.assign(p, v, { updated: now() }); return { msg: "Passport updated." };
+  }
+  if (d.op === "delete") { const p = db.passports.find(x => x.id === d.id); must(p, "Passport not found."); db.passports = db.passports.filter(x => x !== p); return { msg: `Passport ${p.passport} deleted.` }; }
   must(false, "Unknown request.");
 };
 A["admin.about"] = async (d, u) => {

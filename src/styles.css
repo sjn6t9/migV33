@@ -1113,3 +1113,15 @@ body.tc-full-on .team-fab{display:none}
 .sal-card{padding:14px 16px}
 [data-theme="dark"] .sal-req{background:#2a2412;border-color:#5c4a1c}
 .verify-bad.sal-wait{background:#fff6e0;color:#8a5a00;border-color:#f0d89a}
+/* passport entry */
+.seg2{display:inline-flex;border:1px solid var(--line);border-radius:9px;overflow:hidden}
+.seg2 button{border:0;background:var(--surface);padding:9px 16px;font:inherit;font-weight:600;cursor:pointer;color:var(--ink)}
+.seg2 button+button{border-inline-start:1px solid var(--line)}
+.seg2 button.on{background:var(--brand);color:var(--brand-ink)}
+.pp-edit{padding:6px 0}
+.pp-pick{position:relative;display:inline-flex}
+.pp-pop{position:absolute;z-index:30;top:calc(100% + 4px);inset-inline-start:0;width:min(360px,86vw);background:var(--surface);border:1px solid var(--line);border-radius:12px;box-shadow:0 12px 30px rgba(0,0,0,.15);padding:8px}
+.pp-pop .ec-search{display:flex}
+.pp-pop .mr-found{border:0;padding:0;margin-top:6px;max-height:280px;overflow-y:auto}
+.field-head{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.count.soft{background:color-mix(in srgb,currentColor 18%,transparent);color:inherit}

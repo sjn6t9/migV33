@@ -273,7 +273,7 @@ function ModalHost() {
       {m.type === "agentdocs" && user(m.uid) && <AgentDocsView u={user(m.uid)} />}
       {m.type === "clearance" && <ClearanceCard cid={m.cid} admin={m.admin} />}
       {m.type === "clPay" && <ClPayForm cid={m.cid} />}
-      {m.type === "mrEntry" && <MrEntry key={m.aid || "new"} aid={m.aid} />}
+      {m.type === "mrEntry" && <MrEntry key={m.aid || m.pp || "new"} aid={m.aid} pp={m.pp} />}
       {m.type === "mrView" && <MrView rid={m.rid} fresh={m.fresh} />}
       {m.type === "mrAccount" && <MrAccount key={m.aid} aid={m.aid} />}
       {m.type === "salaryPay" && <SalaryPay key={m.uid} uid={m.uid} />}

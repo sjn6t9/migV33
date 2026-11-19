@@ -335,11 +335,13 @@ function GroupEcForm({ C, W, active, onDone }) {
           <div className="row between mb6"><b>New worker</b><button type="button" className="btn sm link danger" onClick={() => setFresh(L => L.filter(x => x !== k))}><LuX /> Remove</button></div>
           <div className="fgrid mb6">
             <Field label="Worker's full name"><input type="text" name={`nwName_n${k}`} maxLength={120} /></Field>
-            <Field label="Passport number"><input type="text" name={`nwPass_n${k}`} maxLength={30} style={{ textTransform: "uppercase" }} /></Field>
+            <Field label="Passport number" hint={(S.passports || []).length ? "Pick from the office's passport list, or type it" : ""}><input type="text" name={`nwPass_n${k}`} maxLength={30} style={{ textTransform: "uppercase" }} list="ec-pp-list"
+              onChange={e => { const pp = (S.passports || []).find(x => x.passport === e.target.value.replace(/\s+/g, "").toUpperCase()); const nm = e.target.form?.elements[`nwName_n${k}`]; if (pp && nm && !nm.value.trim()) nm.value = pp.name; }} /></Field>
             <Field label="Mobile number (optional)"><input type="tel" name={`nwPhone_n${k}`} maxLength={30} /></Field>
             <Field label="Trade (optional)"><input type="text" name={`nwTrade_n${k}`} maxLength={80} placeholder="e.g. Mason" /></Field>
           </div>
           <EcDocs k={`n${k}`} />
+          <datalist id="ec-pp-list">{(S.passports || []).filter(x => !W.some(w => (w.passport || "").replace(/\s+/g, "").toUpperCase() === x.passport)).map(x => <option key={x.id} value={x.passport}>{`${x.name} · ${x.country}`}</option>)}</datalist>
         </div>))}
       <div className="full"><button type="button" className="btn sm" onClick={() => setFresh(L => [...L, nextKey.current++])}><LuPlus /> Add a new worker</button>
         <span className="muted small"> The new worker is also saved in My workers.</span></div>
