@@ -130,7 +130,7 @@ function Header({ navOn }) {
       <div className="acct">
         {u ? <>
           <a className="btn sm pri" href="#dashboard"><LuLayoutDashboard /> {panel[u.role]}</a>
-          <NotifBell u={u} />
+          <NotifBell key={u.id} u={u} />
           <button className="btn sm" onClick={() => openModal("password")} aria-label="Change password" title="Change password"><LuKeyRound /></button>
           <button className="btn sm" onClick={signOut} aria-label="Sign out" title="Sign out"><LuLogOut /><span className="hide-lg">Sign out</span></button>
         </> : <>
@@ -143,9 +143,31 @@ function Header({ navOn }) {
 }
 
 /* bell in the header: unread count and the latest notifications */
+/* notification sound for admin / staff: a short chime, repeated every 5 seconds until the bell is clicked */
+let AC = null;
+const unlockAudio = () => { try { AC = AC || new (window.AudioContext || window.webkitAudioContext)(); if (AC.state === "suspended") AC.resume(); } catch {} };
+if (typeof window !== "undefined") ["pointerdown", "keydown", "touchstart"].forEach(ev => window.addEventListener(ev, unlockAudio, { passive: true }));
+function chime() {
+  try {
+    unlockAudio(); if (!AC || AC.state !== "running") return; const t = AC.currentTime;
+    [[880, 0], [1318.5, 0.16]].forEach(([f, d]) => {
+      const o = AC.createOscillator(), g = AC.createGain(); o.type = "sine"; o.frequency.value = f;
+      g.gain.setValueAtTime(0.0001, t + d); g.gain.exponentialRampToValueAtTime(0.35, t + d + 0.02); g.gain.exponentialRampToValueAtTime(0.0001, t + d + 0.45);
+      o.connect(g).connect(AC.destination); o.start(t + d); o.stop(t + d + 0.5);
+    });
+  } catch {}
+}
+const ackKey = uid => `mam.bellAck.${uid}`;
+const getAck = uid => { try { return localStorage.getItem(ackKey(uid)); } catch { return null; } };
+const setAck = (uid, at) => { try { localStorage.setItem(ackKey(uid), at || ""); } catch {} };
 function NotifBell({ u }) {
   const [pos, setPos] = useState(null); const ref = React.useRef(null);
   const N = store.S.notifications.filter(n => n.uid === u.id).slice(0, 40); const n = N.filter(x => !x.read).length;
+  const staff = u.role === "admin" || u.role === "staff", newest = N.find(x => !x.read)?.at || "";
+  const [ack, setAckS] = useState(() => { const a = getAck(u.id); if (a == null) { setAck(u.id, newest); return newest; } return a; });
+  const ringing = staff && newest && newest > (ack || "");
+  useEffect(() => { if (!ringing) return; chime(); const t = setInterval(chime, 5000); return () => clearInterval(t); }, [ringing, newest]);
+  const stopRing = () => { const at = N[0]?.at || newest; setAck(u.id, at); setAckS(at); };
   useEffect(() => {
     if (!pos) return;
     const off = e => { if (ref.current && !ref.current.contains(e.target)) setPos(null); };
@@ -154,9 +176,9 @@ function NotifBell({ u }) {
     document.addEventListener("mousedown", off); document.addEventListener("keydown", esc); window.addEventListener("resize", re);
     return () => { document.removeEventListener("mousedown", off); document.removeEventListener("keydown", esc); window.removeEventListener("resize", re); };
   }, [pos]);
-  const toggle = e => { if (pos) return setPos(null); const r = e.currentTarget.getBoundingClientRect(), w = Math.min(380, window.innerWidth - 16); setPos({ top: r.bottom + 8, left: Math.max(8, Math.min(window.innerWidth - w - 8, r.right - w)), width: w }); };
+  const toggle = e => { stopRing(); if (pos) return setPos(null); const r = e.currentTarget.getBoundingClientRect(), w = Math.min(380, window.innerWidth - 16); setPos({ top: r.bottom + 8, left: Math.max(8, Math.min(window.innerWidth - w - 8, r.right - w)), width: w }); };
   return <div className="bell" ref={ref}>
-    <button className="btn sm bell-btn" onClick={toggle} aria-label={n ? `Notifications, ${n} new` : "Notifications"} title="Notifications" aria-expanded={!!pos}><LuBell />{n > 0 && <span className="count">{n > 99 ? "99+" : n}</span>}</button>
+    <button className={`btn sm bell-btn${ringing ? " ringing" : ""}`} onClick={toggle} aria-label={n ? `Notifications, ${n} new` : "Notifications"} title="Notifications" aria-expanded={!!pos}><LuBell />{n > 0 && <span className="count">{n > 99 ? "99+" : n}</span>}</button>
     {pos && <div className="bell-pop" style={pos} role="dialog" aria-label="Notifications">
       <div className="bell-head"><b>Notifications</b>{n > 0 && <button className="btn sm link" onClick={() => act("notif.readAll", {}, { quiet: true })}><LuCheck /> Mark all as read</button>}</div>
       <div className="bell-list">{N.length ? N.map(x => <div key={x.id} className={`bell-item${x.read ? "" : " new"}`}><span className="bell-dot" /><div><div>{x.text}</div><div className="muted small">{fdate(x.at)}</div></div></div>)
@@ -177,7 +199,7 @@ function PanelHeader({ kind, dash }) {
         <div className="acct">
           {SITE.main && <a className="btn sm" href={SITE.main} target="_blank" rel="noopener noreferrer"><LuExternalLink /> <span className="hide-sm">View website</span></a>}
           {u && <>
-            <NotifBell u={u} />
+            <NotifBell key={u.id} u={u} />
             <button className="btn sm" onClick={() => openModal("password")} aria-label="Change password" title="Change password"><LuKeyRound /></button>
             <button className="btn sm" onClick={kind === "agent" && SITE.main ? agentSignOut : signOut} aria-label="Sign out" title="Sign out"><LuLogOut /><span className="hide-lg">Sign out</span></button>
           </>}

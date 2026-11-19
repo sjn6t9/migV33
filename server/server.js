@@ -630,7 +630,7 @@ A["agent.ticket"] = async (d, u) => {
 A["agent.ticketCancel"] = async ({ id: tid }, u) => { const t = db.tickets.find(x => x.id === tid); must(u?.role === "agent" && t && t.agentId === u.id && t.status === "requested", "Not allowed.", 403); t.status = "cancelled"; return { msg: "Request cancelled." }; };
 A["agent.payment"] = async (d, u) => {
   must(u?.role === "agent", "Not allowed.", 403); const amount = numv(d.amount, 0, 1e8); must(amount >= 1, "Enter the amount.");
-  db.ledger.push({ id: id("l"), agentId: u.id, type: "payment", desc: str(d.desc, 200) || "Payment sent by agent", amount, date: str(d.date, 10) || now().slice(0, 10), method: str(d.method, 40), ref: str(d.ref, 80), status: "pending" });
+  db.ledger.push({ id: id("l"), at: now(), agentId: u.id, type: "payment", desc: str(d.desc, 200) || "Payment sent by agent", amount, date: str(d.date, 10) || now().slice(0, 10), method: str(d.method, 40), ref: str(d.ref, 80), status: "pending" });
   notifyAdmins(`Payment reported by ${u.agent.business}: ${bdt(amount)} via ${str(d.method, 40)}.`, "ledger");
   return { msg: "Payment submitted. It appears in your balance after confirmation." };
 };
@@ -771,7 +771,7 @@ A["admin.ledgerAdd"] = async (d, u) => { // one entry, or several at once (d.row
     const charge = x.type !== "payment", qty = charge && x.qty != null && x.qty !== "" ? numv(x.qty, 1, 10000) : 1;
     const rate = x.rate != null && x.rate !== "" ? numv(x.rate, 0, 1e8) : numv(x.amount, 0, 1e8);
     const amount = Math.round(qty * rate * 100) / 100; must(amount >= 1 && amount <= 1e9 && str(x.desc), `Enter the amount and description${at}.`);
-    return { id: id("l"), agentId: ag.id, type: charge ? "charge" : "payment", desc: str(x.desc, 200), amount, ...(charge ? { qty, rate } : {}), date: /^\d{4}-\d{2}-\d{2}$/.test(x.date || "") ? x.date : now().slice(0, 10), method: charge ? "" : str(x.method, 80), ref: charge ? "" : str(x.ref, 80), status: "confirmed" };
+    return { id: id("l"), at: now(), agentId: ag.id, type: charge ? "charge" : "payment", desc: str(x.desc, 200), amount, ...(charge ? { qty, rate } : {}), date: /^\d{4}-\d{2}-\d{2}$/.test(x.date || "") ? x.date : now().slice(0, 10), method: charge ? "" : str(x.method, 80), ref: charge ? "" : str(x.ref, 80), status: "confirmed" };
   });
   db.ledger.push(...made);
   for (const l of made) notify(ag.id, l.type === "charge" ? `New charge on your account: ${l.desc.slice(0, 100)} (${bdt(l.amount)}).` : `Payment of ${bdt(l.amount)} recorded.`);
@@ -786,7 +786,7 @@ A["admin.ledgerEdit"] = async (d, u) => { // change rate × quantity (and detail
 };
 A["admin.ledgerConfirm"] = async ({ id: lid, ok }, u) => {
   needPerm(u, "ledger"); const l = db.ledger.find(x => x.id === lid); must(l && l.status === "pending", "Entry not found.");
-  l.status = ok ? "confirmed" : "rejected";
+  l.status = ok ? "confirmed" : "rejected"; if (ok) l.confirmedAt = now();
   notify(l.agentId, ok ? `Payment of ${bdt(l.amount)} confirmed. New balance: ${bdt(balanceOf(l.agentId))}.` : `Payment of ${bdt(l.amount)} (ref ${l.ref || "—"}) could not be confirmed. Contact the office.`);
   return { msg: ok ? "Payment confirmed." : "Payment marked as not received." };
 };
@@ -1513,13 +1513,13 @@ const okDate = v => (/^\d{4}-\d{2}-\d{2}$/.test(v || "") ? v : bdDay());
 function officeAuto() {
   const out = [];
   for (const r of db.mr.receipts) if (r.status === "approved" && !r.void)
-    out.push({ id: "a-" + r.id, auto: "receipt", date: r.date, type: "in", desc: `Money receipt ${r.no}${r.payer.name ? " · " + r.payer.name : r.payer.passport ? " · " + r.payer.passport : ""}${r.purpose ? " · " + r.purpose : ""}`, amount: r.amount, method: [r.method, r.channel].filter(Boolean).join(" · "), ref: r.ref });
+    out.push({ id: "a-" + r.id, auto: "receipt", date: r.date, type: "in", desc: `Money receipt ${r.no}${r.payer.name ? " · " + r.payer.name : r.payer.passport ? " · " + r.payer.passport : ""}${r.purpose ? " · " + r.purpose : ""}`, amount: r.amount, method: [r.method, r.channel].filter(Boolean).join(" · "), ref: r.ref, at: r.approved?.at || r.created || null });
   for (const l of db.ledger) if (l.type === "payment" && l.status === "confirmed" && !l.mr) {
     const ag = user(l.agentId);
-    out.push({ id: "a-" + l.id, auto: "agent", date: l.date, type: "in", desc: `Agent payment · ${agentName(ag) || "Agent"}${l.desc ? " · " + l.desc : ""}`, amount: Number(l.amount), method: l.method, ref: l.ref });
+    out.push({ id: "a-" + l.id, auto: "agent", date: l.date, type: "in", desc: `Agent payment · ${agentName(ag) || "Agent"}${l.desc ? " · " + l.desc : ""}`, amount: Number(l.amount), method: l.method, ref: l.ref, at: l.confirmedAt || l.at || null });
   }
   for (const p of db.salary.pays) if (salaryDone(p) && p.paid > 0)
-    out.push({ id: "a-" + p.id, auto: "salary", date: p.date, type: "out", desc: `Salary ${p.no} · ${p.name} · ${monthName(p.month)}`, amount: p.paid, method: [p.method, p.channel].filter(Boolean).join(" · "), ref: p.ref });
+    out.push({ id: "a-" + p.id, auto: "salary", date: p.date, type: "out", desc: `Salary ${p.no} · ${p.name} · ${monthName(p.month)}`, amount: p.paid, method: [p.method, p.channel].filter(Boolean).join(" · "), ref: p.ref, at: p.recv?.at || p.created || null });
   return out;
 }
 const monthName = m => { const [y, mo] = String(m).split("-"); return new Date(Date.UTC(+y, +mo - 1, 1)).toLocaleString("en-GB", { month: "long", year: "numeric", timeZone: "UTC" }); };

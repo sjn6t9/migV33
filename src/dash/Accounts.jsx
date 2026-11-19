@@ -72,11 +72,11 @@ function officeRows(list, key, pendingToo) {
     if (e.type === "transfer") {
       if (!key) continue;
       const m = moves(e).find(x => x.h.key === key); if (!m) continue;
-      out.push({ id: e.id, date: e.date, details: `${e.desc} — moved ${m.amount > 0 ? `from ${methodText(e.from)}` : `to ${methodText(e.to)}`}`, ref: e.ref, rate: m.h.via ? m.h.via.toUpperCase() : "TRANSFER", debit: m.amount > 0 ? e.amount : 0, credit: m.amount < 0 ? e.amount : 0, manual: !e.auto, pending: pend || e.status === "rejected", sub, e });
+      out.push({ id: e.id, date: e.date, details: `${e.desc} — moved ${m.amount > 0 ? `from ${methodText(e.from)}` : `to ${methodText(e.to)}`}`, ref: e.ref, at: e.at, rate: m.h.via ? m.h.via.toUpperCase() : "TRANSFER", debit: m.amount > 0 ? e.amount : 0, credit: m.amount < 0 ? e.amount : 0, manual: !e.auto, pending: pend || e.status === "rejected", sub, e });
       continue;
     }
     const h = holderOf(e.method); if (key && h.key !== key) continue;
-    out.push({ id: e.id, date: e.date, details: e.desc, ref: e.ref, rate: h.kind === "person" ? h.via.toUpperCase() : way(e.method), debit: e.type === "in" ? e.amount : 0, credit: e.type === "out" ? e.amount : 0, manual: !e.auto, auto: e.auto, pending: pend || e.status === "rejected",
+    out.push({ id: e.id, date: e.date, at: e.at, details: e.desc, ref: e.ref, rate: h.kind === "person" ? h.via.toUpperCase() : way(e.method), debit: e.type === "in" ? e.amount : 0, credit: e.type === "out" ? e.amount : 0, manual: !e.auto, auto: e.auto, pending: pend || e.status === "rejected",
       sub: [h.kind === "person" && !key && `With ${personName(h.k)}`, sub].filter(Boolean).join(" · "), e });
   }
   return out;
@@ -96,7 +96,7 @@ export function OfficeAccount() {
     <Holdings H={H} waiting={waiting} sel={key} onPick={k => setKey(k === key ? "" : k)} />
     <div className="card">
       {sel && <div className="row6 mb8"><span className="ec-badge">{`Showing: ${holderName(sel)}`}</span><button className="btn sm link" onClick={() => setKey("")}><LuX /> Show the whole main account</button></div>}
-      <Statement title={`Mam & Mam Overseas Ltd. · ${sel ? `Main account · ${holderName(sel)}` : "Main account"}`} kind="MAIN ACCOUNT" cash heads={["Money in", "Money out"]} rows={rows}
+      <Statement title={`Mam & Mam Overseas Ltd. · ${sel ? `Main account · ${holderName(sel)}` : "Main account"}`} kind="MAIN ACCOUNT" cash times heads={["Money in", "Money out"]} rows={rows}
         empty={sel ? "No entries for this one yet." : "No entries yet. Add money in or money out below."}
         actions={r => r.manual ? <button className="btn sm link danger" aria-label="Delete entry" onClick={() => confirmBox("Delete this entry from the main account?", () => act("admin.office", { op: "delete", id: r.id }), "Delete")}><LuTrash2 /></button> : null} />
       <OfficeForm />
@@ -152,7 +152,7 @@ export function MoneyWithMe() {
         {Object.entries(mine.vias).map(([n, v]) => <tr key={n}><td className="b">{n}</td><td className="num">{tk(v.in)}</td><td className="num">{tk(v.out)}</td><td className="num b">{tk(v.in - v.out)}</td></tr>)}</tbody></table></div>}</div>
     {pend.length > 0 && <div className="card"><h3>Please confirm</h3>
       {pend.map(e => <MoneyReq key={e.id} e={e} mk={mk} />)}</div>}
-    <div className="card"><Statement title={`Mam & Mam Overseas Ltd. · Money with ${M.me?.name || me.name}`} kind="MONEY WITH ME" cash heads={["Money in", "Money out"]} rows={officeRows(M.entries, key, true)} empty="Nothing yet." /></div>
+    <div className="card"><Statement title={`Mam & Mam Overseas Ltd. · Money with ${M.me?.name || me.name}`} kind="MONEY WITH ME" cash times heads={["Money in", "Money out"]} rows={officeRows(M.entries, key, true)} empty="Nothing yet." /></div>
   </>;
 }
 function MoneyReq({ e, mk }) {

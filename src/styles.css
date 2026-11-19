@@ -1154,3 +1154,7 @@ button.hold-tile{cursor:pointer}
 .hold-ids h4{margin:0}
 .hold-id{display:grid;grid-template-columns:minmax(180px,1fr) minmax(200px,2fr);gap:10px;align-items:center}
 @media(max-width:640px){.hold-id{grid-template-columns:1fr}}
+.st-time{font-family:inherit;font-size:.78em;margin-top:2px}
+@keyframes bell-ring{0%,100%{transform:rotate(0)}10%,30%{transform:rotate(14deg)}20%,40%{transform:rotate(-14deg)}50%{transform:rotate(0)}}
+.bell-btn.ringing svg{animation:bell-ring 1.2s ease-in-out infinite;transform-origin:50% 10%}
+@media (prefers-reduced-motion:reduce){.bell-btn.ringing svg{animation:none}}

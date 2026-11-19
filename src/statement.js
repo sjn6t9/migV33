@@ -32,8 +32,10 @@ export function accountRows(acc, charges, receipts) {
 }
 
 /** sort, apply a date range (earlier rows become one opening balance row) and add the running balance */
+export const stime = iso => { try { return new Date(iso).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", timeZone: "Asia/Dhaka" }); } catch { return ""; } };
 export function withBalance(rows, from = "", to = "") {
-  const all = [...rows].sort((a, b) => (a.date || "").localeCompare(b.date || "") || (a.debit ? -1 : 1) - (b.debit ? -1 : 1));
+  // oldest first, so the latest transaction is at the bottom: by date, then by the time it was entered
+  const all = [...rows].sort((a, b) => (a.date || "").localeCompare(b.date || "") || (a.at && b.at ? a.at.localeCompare(b.at) : 0) || (a.debit ? -1 : 1) - (b.debit ? -1 : 1));
   let bal = 0; const out = [];
   const before = from ? all.filter(r => r.date < from && !r.pending) : [];
   if (before.length) { bal = before.reduce((s, r) => s + r.debit - r.credit, 0); out.push({ id: "open", date: from, details: "Opening balance", rate: "", debit: bal > 0 ? bal : 0, credit: bal < 0 ? -bal : 0, balance: bal, opening: true }); }
@@ -95,12 +97,14 @@ export async function statementCanvases(st) {
       g.fillStyle = r.opening ? "#eef3ea" : k % 2 ? "#f6f8f7" : "#fff"; g.fillRect(M, y, PW - 2 * M, RH);
       g.fillStyle = "#fff6c7"; g.fillRect(M + COLS[0][1] + COLS[1][1], y, COLS[2][1], RH); // rate column, as in the office sheet
       g.strokeStyle = LINE; g.lineWidth = 1; g.strokeRect(M, y, PW - 2 * M, RH);
+      const tm = st.times && r.at && !r.opening ? stime(r.at) : "";
       const cells = [sdate(r.date), r.details + (r.pending ? " (pending)" : ""), r.rate, r.debit ? amt(r.debit) : "", r.credit ? amt(r.credit) : "", r.balance == null ? "—" : amt(r.balance)];
       let cx = M;
       cells.forEach((v, ci) => {
         const [, w, al] = COLS[ci]; g.textAlign = al === "r" ? "right" : "left";
         g.fillStyle = ci === 5 && r.balance != null ? (isBad(r.balance, st.cash) ? RED : GREEN) : r.pending ? MUTED : INK;
         g.font = `${ci === 1 || ci === 5 || r.opening ? 700 : 500} 17px ${F}`;
+        if (ci === 0 && tm) { g.fillText(String(v), cx + 10, y + 17); g.font = `500 12px ${F}`; g.fillStyle = MUTED; g.fillText(tm, cx + 10, y + 32); cx += w; return; }
         g.fillText(clip(g, String(v ?? ""), w - 20), al === "r" ? cx + w - 10 : cx + 10, y + 24); cx += w;
       });
       let lx = M; for (const [, w] of COLS.slice(0, -1)) { lx += w; g.beginPath(); g.moveTo(lx, y); g.lineTo(lx, y + RH); g.stroke(); }
@@ -135,7 +139,7 @@ export function statementXlsx(st) {
     [{ v: OFFICE.name, s: 3 }], [TAGLINE], [], [{ v: `${st.kind || "Payment history"}: ${st.title}`, s: 1 }], st.sub ? [st.sub] : [],
     [`Period: ${st.from ? sdate(st.from) : "start"} to ${sdate(st.to || localDay())}`], [],
     ["DATE", "Details", "RATE", "Debit", "Credit", "Balance"].map(v => ({ v, s: 1 })),
-    ...rows.map(r => [sdate(r.date), r.details + (r.pending ? " (pending)" : ""), r.rate, r.debit ? { v: r.debit, s: 2 } : "", r.credit ? { v: r.credit, s: 2 } : "", r.balance == null ? "" : { v: r.balance, s: 2 }]),
+    ...rows.map(r => [sdate(r.date) + (st.times && r.at && !r.opening ? " " + stime(r.at) : ""), r.details + (r.pending ? " (pending)" : ""), r.rate, r.debit ? { v: r.debit, s: 2 } : "", r.credit ? { v: r.credit, s: 2 } : "", r.balance == null ? "" : { v: r.balance, s: 2 }]),
     [], ["", { v: "Total", s: 1 }, "", { v: debit, s: 4 }, { v: credit, s: 4 }, { v: balance, s: 4 }], ["", { v: balWord(balance, st.cash), s: 1 }, "", "", "", { v: st.cash ? balance : Math.abs(balance), s: 4 }]
   ], [11, 46, 14, 14, 14, 14], `${fileName(st)}.xlsx`);
 }
