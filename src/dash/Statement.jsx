@@ -21,16 +21,16 @@ function RateCell({ r, onSave }) {
   </form></td>;
 }
 
-export function Statement({ title, sub, kind = "PAYMENT HISTORY", rows, actions, onRate, empty = "No entries yet." }) {
+export function Statement({ title, sub, kind = "PAYMENT HISTORY", rows, actions, onRate, cash, heads, balText, empty = "No entries yet." }) {
   const [from, setFrom] = React.useState(""); const [to, setTo] = React.useState("");
-  const calc = withBalance(rows, from, to); const st = { title, sub, kind, from, to, calc };
+  const calc = withBalance(rows, from, to); const st = { title, sub, kind, from, to, calc, cash };
   const run = f => Promise.resolve(f(st)).catch(e => toast(e.message || "The file could not be made."));
   const b = calc.balance;
   return <div className="st">
     <div className="st-sum">
-      <div><span>Total debit</span><b className="num">{amt(calc.debit)}</b></div>
-      <div><span>Total credit</span><b className="num">{amt(calc.credit)}</b></div>
-      <div className={b > 0 ? "due" : "ok"}><span>{balWord(b)}</span><b className="num">{amt(Math.abs(b))}</b></div>
+      <div><span>{heads?.[0] || (cash ? "Money in" : "Total debit")}</span><b className="num">{amt(calc.debit)}</b></div>
+      <div><span>{heads?.[1] || (cash ? "Money out" : "Total credit")}</span><b className="num">{amt(calc.credit)}</b></div>
+      <div className={(cash ? b < 0 : b > 0) ? "due" : "ok"}><span>{balText ? balText(b) : balWord(b, cash)}</span><b className="num">{amt(cash ? b : Math.abs(b))}</b></div>
     </div>
     <div className="st-tools">
       <label className="st-date">From <input type="date" value={from} onChange={e => setFrom(e.target.value)} /></label>
@@ -40,17 +40,17 @@ export function Statement({ title, sub, kind = "PAYMENT HISTORY", rows, actions,
       <button className="btn sm pri" disabled={!rows.length} onClick={() => run(statementPdf)}><LuFileText /> PDF</button>
       <button className="btn sm pri" disabled={!rows.length} onClick={() => run(statementXlsx)}><LuFileSpreadsheet /> Excel</button>
     </div>
-    {calc.rows.length ? <div className="tbl st-tbl"><table><thead><tr><th>DATE</th><th>Details</th><th>RATE</th><th className="r">Debit</th><th className="r">Credit</th><th className="r">Balance</th>{actions && <th />}</tr></thead><tbody>
+    {calc.rows.length ? <div className="tbl st-tbl"><table><thead><tr><th>DATE</th><th>Details</th><th>RATE</th><th className="r">{heads?.[0] || "Debit"}</th><th className="r">{heads?.[1] || "Credit"}</th><th className="r">Balance</th>{actions && <th />}</tr></thead><tbody>
       {calc.rows.map(r => <tr key={r.id} className={r.pending ? "dim" : r.opening ? "st-open" : ""}>
         <td className="num nowrap">{sdate(r.date)}</td>
-        <td className="b">{r.details}{r.pending && <span className="ec-badge mr-wait ms6">Pending</span>}{r.ref && <div className="muted small">{`Ref ${r.ref}`}</div>}</td>
+        <td className="b">{r.details}{r.pending && <span className="ec-badge mr-wait ms6">Pending</span>}{r.ref && <div className="muted small">{`Ref ${r.ref}`}</div>}{r.sub && <div className="muted small">{r.sub}</div>}</td>
         <RateCell r={r} onSave={onRate} />
         <td className="num r">{r.debit ? amt(r.debit) : ""}</td>
         <td className="num r">{r.credit ? amt(r.credit) : ""}</td>
-        <td className={`num r b ${r.balance > 0 ? "st-due" : "st-ok"}`}>{r.balance == null ? "—" : amt(r.balance)}</td>
+        <td className={`num r b ${(cash ? r.balance < 0 : r.balance > 0) ? "st-due" : "st-ok"}`}>{r.balance == null ? "—" : amt(r.balance)}</td>
         {actions && <td>{!r.opening && actions(r)}</td>}
       </tr>)}
-      <tr className="st-total"><td /><td>Total</td><td /><td className="num r">{amt(calc.debit)}</td><td className="num r">{amt(calc.credit)}</td><td className={`num r ${b > 0 ? "st-due" : "st-ok"}`}>{`${amt(Math.abs(b))} ${b > 0 ? "Due" : b < 0 ? "Adv." : ""}`}</td>{actions && <td />}</tr>
+      <tr className="st-total"><td /><td>Total</td><td /><td className="num r">{amt(calc.debit)}</td><td className="num r">{amt(calc.credit)}</td><td className={`num r ${(cash ? b < 0 : b > 0) ? "st-due" : "st-ok"}`}>{cash ? amt(b) : `${amt(Math.abs(b))} ${b > 0 ? "Due" : b < 0 ? "Adv." : ""}`}</td>{actions && <td />}</tr>
     </tbody></table></div> : <Empty>{from || to ? "No entries in these dates." : empty}</Empty>}
   </div>;
 }

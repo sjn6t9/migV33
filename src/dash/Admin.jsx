@@ -11,10 +11,11 @@ import { Rail, Tiles, Pill, Empty, Bars, Stars, Avatar, RoleBadges } from "../ui
 import { StatusSelect, Field, Options, JobFields, blankJob } from "./shared.jsx";
 import { setClStatus } from "../actions.js";
 import { ReceiptsAdmin, SignatureBox } from "./Receipts.jsx";
+import { OfficeAccount, SalaryAdmin } from "./Accounts.jsx";
 import { Statement } from "./Statement.jsx";
 import { agentRows } from "../statement.js";
 import { MFS, BANKS } from "../banks.js";
-import { LuReceipt } from "react-icons/lu";
+import { LuReceipt, LuLandmark, LuBanknote } from "react-icons/lu";
 import { ShareButton, storeCard } from "../Share.jsx";
 import { ChatInbox, useInboxUnread } from "../LiveChat.jsx";
 
@@ -26,7 +27,7 @@ function FilterButtons({ items, cur, onPick }) {
 }
 
 // sections inside "Payments & receipts" (each still needs its own staff permission)
-const PAY_SUB = [["receipts", "Money receipts", LuReceipt], ["ledger", "Agent accounts", LuWallet], ["packages", "Employer packages", LuPackage]];
+const PAY_SUB = [["receipts", "Money receipts", LuReceipt], ["ledger", "Agent accounts", LuWallet], ["office", "Main account", LuLandmark], ["salary", "Salary accounts", LuBanknote], ["packages", "Employer packages", LuPackage]];
 const TABS = [
   ["overview", "Overview", LuLayoutDashboard], ["users", "Accounts", LuUsers], ["jobs", "Job moderation", LuBriefcase], ["apps", "Applications", LuFileText],
   ["clearance", "BMET clearance", LuStamp], ["tickets", "Air tickets", LuTicket], ["pay", "Payments & receipts", LuReceipt],
@@ -355,6 +356,8 @@ export function Admin({ u }) {
   if (t === "chat") body = <ChatInbox />;
   if (t === "about") body = <AboutAdmin />;
   if (t === "receipts") body = <ReceiptsAdmin />;
+  if (t === "office") body = <OfficeAccount />;
+  if (t === "salary") body = <SalaryAdmin />;
   if (t === "messages") body = <>
     <h2>Contact messages</h2>
     {S.messages.length ? S.messages.map(m => (

@@ -1,0 +1,218 @@
+// Payments & receipts › Main account (office cash book) and Salary accounts (pay admin / staff, receipt with QR code).
+import React from "react";
+import { LuPlus, LuX, LuTrash2, LuEye, LuImage, LuFileText, LuMail, LuBan, LuBanknote, LuHistory, LuCheck, LuQrCode, LuExternalLink, LuPrinter } from "react-icons/lu";
+import { store, user } from "../store.js";
+import { act, openModal, closeModal, toast, confirmBox } from "../actions.js";
+import { Field } from "./shared.jsx";
+import { Empty, RoleBadges } from "../ui.jsx";
+import { Statement } from "./Statement.jsx";
+import { METHODS, MFS, BANKS, channelsFor } from "../banks.js";
+import { drawSalary, salaryPng, salaryPdf, salaryPdfBlob, salaryUrl, monthName, tk, rDate, takaWords } from "../receipt.js";
+
+const today = () => new Date(Date.now() - new Date().getTimezoneOffset() * 6e4).toISOString().slice(0, 10);
+const key = () => Math.random().toString(36).slice(2);
+const way = (m, c) => { const x = String(c || "").replace(/\s*\(.*\)\s*$/, "") || String(m || "").split("·").pop().trim().replace(/\s*\(.*\)\s*$/, ""); return (x || "Cash").toUpperCase(); };
+const fdt = iso => new Date(iso).toLocaleString("en-GB", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" });
+
+/* method select used by both forms: Cash, mobile banking services, banks, cheque */
+function PaidBy({ value, onChange }) {
+  return <select value={value} onChange={e => onChange(e.target.value)}><option>Cash</option>
+    <optgroup label="Mobile banking">{MFS.map(x => <option key={x} value={`Mobile banking · ${x}`}>{x}</option>)}</optgroup>
+    <optgroup label="Bank">{BANKS.map(x => <option key={x} value={`Bank transfer · ${x}`}>{x}</option>)}</optgroup><option value="Cheque">Cheque</option></select>;
+}
+
+/* ---------------- Main account ---------------- */
+const AUTO = { receipt: "Money receipt", agent: "Agent payment", salary: "Salary" };
+export function OfficeAccount() {
+  const O = store.S.office || { entries: [], auto: [] };
+  const rows = [...O.entries.map(e => ({ ...e, manual: true })), ...O.auto].map(e => ({
+    id: e.id, date: e.date, details: e.desc, ref: e.ref, rate: way(e.method), debit: e.type === "in" ? e.amount : 0, credit: e.type === "out" ? e.amount : 0, manual: e.manual, auto: e.auto, sub: e.auto ? `Added automatically · ${AUTO[e.auto]}` : e.by ? `Entered by ${e.by}` : ""
+  }));
+  return <>
+    <div className="ec-head"><div><h2>Main account</h2><p className="muted small">The office cash book. Money in and money out, with the running balance. Approved money receipts, agent payments and salaries are added automatically.</p></div></div>
+    <div className="card">
+      <Statement title="Mam & Mam Overseas Ltd. · Main account" kind="MAIN ACCOUNT" cash heads={["Money in", "Money out"]} rows={rows}
+        empty="No entries yet. Add money in or money out below."
+        actions={r => r.manual ? <button className="btn sm link danger" aria-label="Delete entry" onClick={() => confirmBox("Delete this entry from the main account?", () => act("admin.office", { op: "delete", id: r.id }), "Delete")}><LuTrash2 /></button> : null} />
+      <OfficeForm />
+    </div>
+  </>;
+}
+function OfficeForm() {
+  const blank = (type = "in", date = today()) => ({ k: key(), type, date, amount: "", method: "Cash", ref: "", desc: "" });
+  const [rows, setRows] = React.useState(() => [blank()]); const [busy, setBusy] = React.useState(false);
+  const set = (i, v) => setRows(rows.map((r, j) => (j === i ? { ...r, ...v } : r)));
+  const sum = rows.reduce((t, r) => t + (r.type === "in" ? 1 : -1) * (Number(r.amount) || 0), 0);
+  const add = async e => {
+    e.preventDefault();
+    for (const [i, r] of rows.entries()) if (!(Number(r.amount) > 0) || !r.desc.trim()) { toast(`Enter the amount and details${rows.length > 1 ? ` (row ${i + 1})` : ""}.`); return; }
+    setBusy(true); const res = await act("admin.office", { op: "add", rows: rows.map(({ k, ...r }) => r) }); setBusy(false);
+    if (res) { const l = rows[rows.length - 1]; setRows([blank(l.type, l.date)]); }
+  };
+  return <form className="divider ledger-add" onSubmit={add} noValidate>
+    <h4>Add to main account</h4>
+    {rows.map((r, i) => <div key={r.k} className={`fgrid${rows.length > 1 ? " mr-line" : ""}`}>
+      {rows.length > 1 && <div className="mr-line-head full"><b>{`Entry ${i + 1}`}</b><button type="button" className="btn sm link danger" onClick={() => setRows(rows.filter((_, j) => j !== i))}><LuX /> Remove</button></div>}
+      <Field label="Type"><select value={r.type} onChange={e => set(i, { type: e.target.value })}><option value="in">Money in (income)</option><option value="out">Money out (expense)</option></select></Field>
+      <Field label="Date"><input type="date" value={r.date} onChange={e => set(i, { date: e.target.value })} /></Field>
+      <Field label="Amount (BDT)"><input type="number" min="1" step="0.01" value={r.amount} onChange={e => set(i, { amount: e.target.value })} /></Field>
+      <Field label={r.type === "in" ? "Received by" : "Paid by"}><PaidBy value={r.method} onChange={v => set(i, { method: v })} /></Field>
+      <Field label="Reference no."><input type="text" value={r.ref} onChange={e => set(i, { ref: e.target.value })} maxLength={80} placeholder="Optional" /></Field>
+      <Field label="Details" full><input type="text" value={r.desc} onChange={e => set(i, { desc: e.target.value })} maxLength={200} placeholder={r.type === "in" ? "e.g. Service charge, Fiji visa (5 workers)" : "e.g. Office rent, November"} /></Field>
+    </div>)}
+    <div className="row6 mt8"><button type="button" className="btn sm" onClick={() => { const l = rows[rows.length - 1]; setRows([...rows, blank(l.type, l.date)]); }}><LuPlus /> Add another entry</button>
+      {rows.length > 1 && <span className="muted small">{`${rows.length} entries · balance change ${sum >= 0 ? "+" : "−"}${tk(Math.abs(sum))} BDT`}</span>}</div>
+    <div className="mt14"><button className="btn pri" type="submit" disabled={busy}>{rows.length > 1 ? `Add ${rows.length} entries` : "Add"}</button></div>
+  </form>;
+}
+
+/* ---------------- Salary accounts ---------------- */
+const SAL = () => store.S.salary || { profiles: {}, pays: [] };
+const team = () => store.S.users.filter(u => (u.role === "admin" || u.role === "staff") && u.status !== "deleted");
+const titleOf = u => { const m = u.memberId && (store.S.team || []).find(t => t.id === u.memberId); return m?.title || (u.role === "admin" ? "Admin" : "Staff"); };
+const live = l => l.filter(p => !p.void);
+export function SalaryAdmin() {
+  const ui = store.ui; const [sel, setSel] = React.useState(ui.salaryUid || null);
+  const pick = id => { ui.salaryUid = id; setSel(id); setTimeout(() => document.getElementById("salary-person")?.scrollIntoView({ behavior: "smooth" }), 60); };
+  const people = team(); const me = user(store.S.session);
+  const month = today().slice(0, 7);
+  const x = sel && people.find(p => p.id === sel);
+  return <>
+    <div className="ec-head"><div><h2>Salary accounts</h2><p className="muted small">Choose a person to pay a salary. The salary receipt has a QR code and is emailed to the person.</p></div></div>
+    {people.length ? <div className="tbl ec-tbl grid"><table><thead><tr><th>Name</th><th>Designation</th><th className="r">Monthly salary</th><th>{`Paid for ${monthName(month)}`}</th><th className="r">Total paid</th><th>Actions</th></tr></thead><tbody>
+      {people.map(p => { const pays = live(SAL().pays.filter(y => y.uid === p.id)), cur = pays.filter(y => y.month === month).reduce((t, y) => t + y.paid, 0), prof = SAL().profiles[p.id];
+        return <tr key={p.id} className={sel === p.id ? "sel" : ""}>
+          <td><b data-notr>{p.name}</b><RoleBadges role={p.role} size={14} /><div className="muted small" data-notr>{p.email}</div></td>
+          <td data-notr>{titleOf(p)}</td>
+          <td className="num r"><MonthlyCell uid={p.id} value={prof?.monthly} /></td>
+          <td>{cur ? <span className="mr-ok"><LuCheck /> {tk(cur)}</span> : <span className="muted">Not paid</span>}</td>
+          <td className="num r b">{tk(pays.reduce((t, y) => t + y.paid, 0))}</td>
+          <td><div className="row6 nowrap">{(p.id !== me?.id || me?.role === "admin") && <button className="btn sm pri" onClick={() => { pick(p.id); openModal("salaryPay", { uid: p.id }); }}><LuBanknote /> Pay salary</button>}
+            <button className="btn sm" onClick={() => pick(p.id)}><LuHistory /> History</button></div></td>
+        </tr>; })}
+    </tbody></table></div> : <Empty>No admin or staff IDs yet.</Empty>}
+    {x && <div className="card stack mt14" id="salary-person">
+      <div className="row between"><h3>{`Salary history: ${x.name}`}<RoleBadges role={x.role} size={15} /></h3><button className="btn sm" onClick={() => pick(null)}><LuX /> Close</button></div>
+      <Statement key={x.id} title={x.name} sub={[titleOf(x), x.email].filter(Boolean).join(" · ")} kind="SALARY ACCOUNT" heads={["Salary (net)", "Paid"]} balText={b => (b > 0 ? "Still to pay" : b < 0 ? "Paid in advance" : "All paid")}
+        rows={live(SAL().pays.filter(p => p.uid === x.id)).map(p => ({ id: p.id, date: p.date, details: `Salary ${monthName(p.month)} (${p.no})`, ref: p.ref, rate: way(p.method, p.channel), debit: p.net, credit: p.paid, pay: p }))}
+        empty="No salary paid yet."
+        actions={r => <button className="ec-ico view" aria-label="View salary receipt" title="View salary receipt" onClick={() => openModal("salaryView", { id: r.id })}><LuEye /></button>} />
+      {SAL().pays.some(p => p.uid === x.id && p.void) && <p className="muted small">{`Cancelled receipts are not in the history: ${SAL().pays.filter(p => p.uid === x.id && p.void).map(p => p.no).join(", ")}.`}</p>}
+    </div>}
+  </>;
+}
+function MonthlyCell({ uid, value }) {
+  const [ed, setEd] = React.useState(null);
+  if (ed === null) return <button className="st-rate-btn" title="Set monthly salary" onClick={() => setEd(value != null ? String(value) : "")}>{value != null ? tk(value) : <span className="muted">Set</span>}</button>;
+  const save = async e => { e.preventDefault(); if (await act("admin.salary", { op: "monthly", uid, monthly: ed })) setEd(null); };
+  return <form className="st-rq" onSubmit={save}><input type="number" min="0" value={ed} onChange={e => setEd(e.target.value)} autoFocus aria-label="Monthly salary" />
+    <button className="btn sm pri" aria-label="Save"><LuCheck /></button><button type="button" className="btn sm" aria-label="Cancel" onClick={() => setEd(null)}><LuX /></button></form>;
+}
+
+/* pay a salary: month, salary, bonus, deduction, paid now, method */
+export function SalaryPay({ uid }) {
+  const x = team().find(p => p.id === uid); const prof = SAL().profiles[uid];
+  const [f, setF] = React.useState({ month: today().slice(0, 7), basic: prof?.monthly != null ? String(prof.monthly) : "", bonus: "", deduct: "", paid: "", date: today(), method: "Cash", channel: "", chOther: false, ref: "", note: "" });
+  const [busy, setBusy] = React.useState(false);
+  if (!x) return <p>Person not found.</p>;
+  const set = v => setF({ ...f, ...v });
+  const net = (Number(f.basic) || 0) + (Number(f.bonus) || 0) - (Number(f.deduct) || 0), paid = f.paid === "" ? net : Number(f.paid) || 0;
+  const already = live(SAL().pays.filter(p => p.uid === uid && p.month === f.month));
+  const ch = channelsFor(f.method);
+  const submit = async e => {
+    e.preventDefault();
+    if (!(net > 0)) { toast("The net salary must be more than 0."); return; }
+    if (ch && f.method !== "Cheque" && !f.channel.trim()) { toast(f.method === "Mobile banking" ? "Choose the mobile banking service." : "Choose the bank."); return; }
+    setBusy(true);
+    const r = await act("admin.salary", { op: "pay", uid, month: f.month, basic: f.basic, bonus: f.bonus, deduct: f.deduct, paid: f.paid, date: f.date, method: f.method, channel: ch ? f.channel : "", ref: f.ref, note: f.note });
+    setBusy(false);
+    if (r?.payId) { openModal("salaryView", { id: r.payId, fresh: true }); if (r.email) mailSalary(r.payId); }
+  };
+  return <form onSubmit={submit} noValidate>
+    <h2 className="row6"><LuBanknote /> Pay salary</h2>
+    <div className="mr-acc"><span><b data-notr>{x.name}</b><RoleBadges role={x.role} size={14} /> · <span data-notr>{titleOf(x)}</span>{x.email ? <span className="muted">{` · receipt goes to ${x.email}`}</span> : <span className="muted"> · no email: download the receipt</span>}</span></div>
+    {already.length > 0 && <p className="notice small">{`Already paid for ${monthName(f.month)}: ${already.map(p => `${p.no} (${tk(p.paid)})`).join(", ")}.`}</p>}
+    <div className="card mr-box"><div className="fgrid">
+      <Field label="Salary month"><input type="month" value={f.month} onChange={e => set({ month: e.target.value })} required /></Field>
+      <Field label="Payment date"><input type="date" value={f.date} onChange={e => set({ date: e.target.value })} /></Field>
+      <Field label="Salary (BDT)" hint={prof?.monthly != null ? `Monthly salary: ${tk(prof.monthly)}` : "Tip: set the monthly salary in the list"}><input type="number" min="0" step="0.01" value={f.basic} onChange={e => set({ basic: e.target.value })} /></Field>
+      <Field label="Bonus / allowance (BDT)"><input type="number" min="0" step="0.01" value={f.bonus} onChange={e => set({ bonus: e.target.value })} placeholder="0" /></Field>
+      <Field label="Deduction (BDT)" hint="Advance taken, leave without pay…"><input type="number" min="0" step="0.01" value={f.deduct} onChange={e => set({ deduct: e.target.value })} placeholder="0" /></Field>
+      <Field label="Paid now (BDT)" hint={`Net salary: ${tk(net)}${f.paid !== "" && paid !== net ? ` · ${paid < net ? "still to pay" : "advance"} ${tk(Math.abs(net - paid))}` : ""}`}><input type="number" min="0" step="0.01" value={f.paid} onChange={e => set({ paid: e.target.value })} placeholder={tk(net)} /></Field>
+      <Field label="Payment method"><select value={f.method} onChange={e => set({ method: e.target.value, channel: "", chOther: false })}>{METHODS.map(m => <option key={m}>{m}</option>)}</select></Field>
+      {ch && <Field label={f.method === "Mobile banking" ? "Mobile banking service" : "Bank"}><select value={f.chOther ? "__other" : f.channel} onChange={e => set(e.target.value === "__other" ? { chOther: true, channel: "" } : { chOther: false, channel: e.target.value })}>
+        <option value="">{f.method === "Mobile banking" ? "— Choose the service —" : "— Choose the bank —"}</option>{ch.map(c => <option key={c} value={c} data-notr>{c}</option>)}<option value="__other">Other (type the name)</option></select></Field>}
+      {ch && f.chOther && <Field label={f.method === "Mobile banking" ? "Service name" : "Bank name"}><input type="text" value={f.channel} onChange={e => set({ channel: e.target.value })} maxLength={80} /></Field>}
+      <Field label={f.method === "Mobile banking" ? "Transaction ID" : f.method === "Cheque" ? "Cheque No." : "Transaction / Ref No."}><input type="text" value={f.ref} onChange={e => set({ ref: e.target.value })} maxLength={80} placeholder="Optional" /></Field>
+      <Field label="Note" full><input type="text" value={f.note} onChange={e => set({ note: e.target.value })} maxLength={300} placeholder="Optional" /></Field>
+    </div></div>
+    <div className="row between mt14"><button type="button" className="btn" onClick={closeModal}>Cancel</button><button className="btn pri" disabled={busy}><LuBanknote /> {`Pay ${tk(paid)} BDT & make receipt`}</button></div>
+  </form>;
+}
+
+/** the payer's browser makes the PDF; the server emails it */
+export async function mailSalary(id) {
+  const p = SAL().pays.find(x => x.id === id); if (!p) return;
+  try {
+    const blob = await salaryPdfBlob(p, store.S.settings);
+    const pdf = await new Promise((res, rej) => { const fr = new FileReader(); fr.onload = () => res(fr.result); fr.onerror = rej; fr.readAsDataURL(blob); });
+    await act("admin.salary", { op: "mail", id, pdf });
+  } catch { toast("The salary receipt PDF could not be made for the email. Try Send by email again."); }
+}
+export function SalaryView({ id, fresh }) {
+  const p = SAL().pays.find(x => x.id === id); const [src, setSrc] = React.useState(null); const S = store.S.settings; const me = user(store.S.session);
+  React.useEffect(() => { let on = true; if (p) drawSalary(p, S).then(c => on && setSrc(c.toDataURL("image/png"))); return () => { on = false; }; }, [p?.id, p?.void]);
+  if (!p) return <p>Salary receipt not found.</p>;
+  const run = f => Promise.resolve(f(p, S)).catch(e => toast(e.message));
+  const print = () => { const w = window.open("", "_blank"); if (!w) { toast("Allow pop-ups to print."); return; } w.document.write(`<title>${p.no}</title><style>@page{size:A5 landscape;margin:0}body{margin:0}img{width:100%;display:block}</style><img src="${src}" onload="setTimeout(()=>print(),200)">`); w.document.close(); };
+  return <>
+    <div className="row between"><h2 className="row6"><LuBanknote /> <span data-notr>{p.no}</span></h2>{p.void && <span className="ec-badge s-rejected">Cancelled</span>}</div>
+    {fresh && <p className="ok-note small">{p.email ? `Salary saved. The receipt is being emailed to ${p.email}.` : "Salary saved. This person has no email: download the receipt."}</p>}
+    <div className="mr-preview">{src ? <img src={src} alt={`Salary receipt ${p.no}`} /> : <div className="mr-ph">Making the receipt…</div>}</div>
+    <p className="muted small mt8">{`${p.name} · ${monthName(p.month)} · paid ${tk(p.paid)} BDT · ${takaWords(p.paid)}`}</p>
+    {p.email && <p className={`small mt8 ${p.mailed?.ok ? "mr-ok" : "muted"}`}>{p.mailed ? (p.mailed.ok ? `Emailed to ${p.mailed.to} · ${fdt(p.mailed.at)}` : `Not emailed to ${p.mailed.to} (${fdt(p.mailed.at)})`) : `Not emailed yet to ${p.email}`}</p>}
+    <div className="mr-actions">
+      <button className="btn pri" onClick={() => run(salaryPng)}><LuImage /> PNG</button>
+      <button className="btn pri" onClick={() => run(salaryPdf)}><LuFileText /> PDF</button>
+      <button className="btn" disabled={!src} onClick={print}><LuPrinter /> Print</button>
+      {!p.void && p.email && <button className="btn" onClick={() => mailSalary(p.id)}><LuMail /> Send by email</button>}
+      <a className="btn" href={salaryUrl(p)} target="_blank" rel="noopener"><LuQrCode /> Verify page</a>
+      <span className="grow" />
+      {me?.role === "admin" && !p.void && <button className="btn danger" onClick={() => confirmBox(`Cancel salary receipt ${p.no}? It is taken out of the salary history and the main account.`, () => act("admin.salary", { op: "void", id: p.id }), "Cancel receipt")}><LuBan /> Cancel receipt</button>}
+    </div>
+  </>;
+}
+
+/* public page: the QR code on a salary receipt opens /s/<code> */
+export function VerifySalary({ token }) {
+  const [st, setSt] = React.useState({ loading: true }); const [src, setSrc] = React.useState(null);
+  React.useEffect(() => {
+    let on = true;
+    fetch(`/api/salary/${encodeURIComponent(token)}`).then(x => (x.ok ? x.json() : null)).then(async j => {
+      if (!on) return; setSt({ p: j?.pay || null });
+      if (j?.pay) { const c = await drawSalary(j.pay, store.S.settings || {}); if (on) setSrc(c.toDataURL("image/png")); }
+    }).catch(() => on && setSt({ error: true }));
+    return () => { on = false; };
+  }, [token]);
+  const p = st.p;
+  return <div className="verify-page mr-vpage">
+    <div className="verify-top"><a className="verify-brand" href="/#home"><img src="/brand/logo-w160.webp?v=2" width="64" height="40" alt="" /> <span className="vb-name">MAM &amp; MAM OVERSEAS LTD.</span></a></div>
+    <div className="card mr-vcard">
+      {st.loading ? <p className="muted">Checking the receipt…</p> : st.error ? <p>No connection to the server. Check your internet and try again.</p>
+        : !p ? <><div className="verify-bad"><LuBan /> <span>Receipt not found</span></div><p className="verify-note">{`This QR code does not match a salary receipt of Mam & Mam Overseas Ltd.`}</p></>
+        : <>
+          {p.void ? <div className="verify-bad"><LuBan /> <span>{`Salary receipt ${p.no} was cancelled`}</span></div> : <div className="mr-valid"><LuCheck /> <span>{`Valid salary receipt ${p.no}`}</span></div>}
+          <dl className="mr-vlist">
+            <dt>Paid to</dt><dd data-notr>{p.name}{p.title ? `, ${p.title}` : ""}</dd>
+            <dt>Salary month</dt><dd>{monthName(p.month)}</dd>
+            <dt>Amount paid</dt><dd><b>{`BDT ${tk(p.paid)}`}</b></dd>
+            <dt>Paid on</dt><dd>{rDate(p.date)}</dd>
+            <dt>Paid by</dt><dd data-notr>{p.by?.name}{p.by?.title ? `, ${p.by.title}` : ""}</dd>
+          </dl>
+          <div className="mr-preview">{src ? <img src={src} alt={`Salary receipt ${p.no}`} /> : <div className="mr-ph">Making the receipt…</div>}</div>
+          <div className="mr-actions"><span className="grow" /><a className="btn" href="/#home"><LuExternalLink /> Visit Website</a></div>
+        </>}
+    </div>
+    <p className="verify-foot">Recruiting Licence RL 1217 · {location.host}</p>
+  </div>;
+}

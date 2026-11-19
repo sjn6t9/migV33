@@ -237,6 +237,8 @@ function viewFor(u) {
       clearances: db.clearances.map(cleanCl), ledger: db.ledger, tickets: db.tickets, users: db.users.map(x => cleanUser(x, true))
     });
     if (can(u, "jobs")) pub.jobTemplates = db.jobTemplates;
+    if (can(u, "office")) pub.office = { entries: db.office.entries, auto: officeAuto() };
+    if (can(u, "salary")) pub.salary = { profiles: db.salary.profiles, pays: db.salary.pays.map(p => salaryOut(p)) };
     if (can(u, "receipts")) pub.mr = { accounts: db.mr.accounts, receipts: db.mr.receipts.map(r => mrOut(r)), charges: db.mr.charges };
     if (u.role === "admin") { const c = smtpConf(); pub.smtp = { host: c.host || "", port: c.port || 465, user: c.user || "", from: c.from || "", hasPass: !!c.pass, local: !!c.local }; }
   }
@@ -955,6 +957,14 @@ async function handleApi(req, res, url) {
   if (u && isStaffRole(u)) seen.set(u.id, Date.now()); // online / offline in the team chat
   if (u && !zoneAllows(zone, u)) { token = null; u = null; } // a session from the other site does not count here
   if (req.method === "GET" && url.pathname === "/api/state") return send(res, 200, viewFor(u));
+  const sm = req.method === "GET" && /^\/api\/salary\/([a-f0-9]{24})(\/sig)?$/.exec(url.pathname);
+  if (sm) { // salary receipt opened from its QR code
+    const p = db.salary.pays.find(x => x.token === sm[1]); if (!p) return send(res, 404, { error: "Receipt not found." });
+    if (!sm[2]) return send(res, 200, { pay: salaryOut(p, true) });
+    const f = db.files[p.by?.sig]; if (!f) return send(res, 404, { error: "File not found." });
+    res.writeHead(200, { ...baseHeaders, "Content-Type": f.mime, "Content-Length": f.size, "Cache-Control": "private, max-age=3600", "Content-Security-Policy": "default-src 'none'; sandbox" });
+    return fs.createReadStream(path.join(DATA_DIR, "files", f.id)).pipe(res);
+  }
   const rm = req.method === "GET" && /^\/api\/receipt\/([a-f0-9]{24})(?:\/sig\/([ra]))?$/.exec(url.pathname);
   if (rm) { // money receipt opened from its QR code: anyone with the link may see it
     const r = db.mr.receipts.find(x => x.token === rm[1] && x.status === "approved");
@@ -1480,6 +1490,92 @@ A["staff.signature"] = async (d, u) => {
   x.signature = storeFile(d.file, x.id, { pdf: false }); return { msg: "Signature saved. It appears on money receipts you sign." };
 };
 
+
+/* ======================= office main account & staff salaries ======================= */
+// Main account: the office cash book. Money in (debit) and money out (credit), entered by hand; approved money receipts,
+// agent payments and salary payments are added automatically. Salary accounts: pay admin / staff, receipt with a QR code.
+if (!db.office) db.office = { entries: [] };
+if (!db.salary) db.salary = { profiles: {}, pays: [], seq: {} };
+const bdDay = () => new Date(Date.now() + 6 * 3600e3).toISOString().slice(0, 10);
+const okDate = v => (/^\d{4}-\d{2}-\d{2}$/.test(v || "") ? v : bdDay());
+function officeAuto() {
+  const out = [];
+  for (const r of db.mr.receipts) if (r.status === "approved" && !r.void)
+    out.push({ id: "a-" + r.id, auto: "receipt", date: r.date, type: "in", desc: `Money receipt ${r.no}${r.payer.name ? " · " + r.payer.name : r.payer.passport ? " · " + r.payer.passport : ""}${r.purpose ? " · " + r.purpose : ""}`, amount: r.amount, method: [r.method, r.channel].filter(Boolean).join(" · "), ref: r.ref });
+  for (const l of db.ledger) if (l.type === "payment" && l.status === "confirmed" && !l.mr) {
+    const ag = user(l.agentId);
+    out.push({ id: "a-" + l.id, auto: "agent", date: l.date, type: "in", desc: `Agent payment · ${agentName(ag) || "Agent"}${l.desc ? " · " + l.desc : ""}`, amount: Number(l.amount), method: l.method, ref: l.ref });
+  }
+  for (const p of db.salary.pays) if (!p.void && p.paid > 0)
+    out.push({ id: "a-" + p.id, auto: "salary", date: p.date, type: "out", desc: `Salary ${p.no} · ${p.name} · ${monthName(p.month)}`, amount: p.paid, method: [p.method, p.channel].filter(Boolean).join(" · "), ref: p.ref });
+  return out;
+}
+const monthName = m => { const [y, mo] = String(m).split("-"); return new Date(Date.UTC(+y, +mo - 1, 1)).toLocaleString("en-GB", { month: "long", year: "numeric", timeZone: "UTC" }); };
+A["admin.office"] = async (d, u) => {
+  needPerm(u, "office");
+  if (d.op === "add") {
+    const list = (Array.isArray(d.rows) ? d.rows : [d]).slice(0, 50); must(list.length, "Add at least one entry.");
+    const made = list.map((x, i) => {
+      const at = list.length > 1 ? ` (row ${i + 1})` : "", amount = r2(Number(x.amount));
+      must(amount > 0 && amount < 1e10 && str(x.desc), `Enter the amount and details${at}.`);
+      return { id: id("of"), date: okDate(x.date), type: x.type === "out" ? "out" : "in", desc: str(x.desc, 200), amount, method: str(x.method, 80), ref: str(x.ref, 80), by: u.name, at: now() };
+    });
+    db.office.entries.push(...made); return { msg: made.length > 1 ? `${made.length} entries added.` : "Entry added." };
+  }
+  if (d.op === "delete") { const e = db.office.entries.find(x => x.id === d.id); must(e, "Entry not found."); db.office.entries = db.office.entries.filter(x => x !== e); return { msg: "Entry deleted." }; }
+  must(false, "Unknown request.");
+};
+const salaryOut = (p, pub) => {
+  const sig = p.by?.sig && db.files[p.by.sig] ? (pub ? `/api/salary/${p.token}/sig` : `/api/files/${p.by.sig}`) : "";
+  const x = { ...p, by: p.by ? { name: p.by.name, title: p.by.title, at: p.by.at, sigUrl: sig } : null };
+  if (pub) { delete x.uid; delete x.id; delete x.mailed; delete x.email; delete x.note; }
+  return x;
+};
+A["admin.salary"] = async (d, u) => {
+  needPerm(u, "salary"); const S = db.salary;
+  if (d.op === "monthly") { // the usual monthly salary of a person
+    const x = user(d.uid); must(isStaffRole(x), "Choose an admin or staff ID.");
+    const m = d.monthly === "" || d.monthly == null ? null : r2(Number(d.monthly)); must(m === null || (m >= 0 && m < 1e8), "Check the salary.");
+    S.profiles[x.id] = { ...(S.profiles[x.id] || {}), monthly: m }; return { msg: "Monthly salary saved." };
+  }
+  if (d.op === "pay") {
+    const x = user(d.uid); must(isStaffRole(x), "Choose an admin or staff ID.");
+    must(x.id !== u.id || u.role === "admin", "You cannot pay your own salary. Ask the admin.");
+    must(/^\d{4}-\d{2}$/.test(d.month || ""), "Choose the salary month.");
+    const num = (v, lab) => { const n = v === "" || v == null ? 0 : r2(Number(v)); must(n >= 0 && n < 1e8, `Check the ${lab}.`); return n; };
+    const basic = num(d.basic, "salary"), bonus = num(d.bonus, "bonus"), deduct = num(d.deduct, "deduction"), net = r2(basic + bonus - deduct);
+    must(net > 0, "The net salary must be more than 0.");
+    const paid = d.paid === "" || d.paid == null ? net : num(d.paid, "amount paid"); must(paid > 0, "Enter the amount paid.");
+    const method = MR_METHODS.includes(d.method) ? d.method : "Cash", channel = MR_CHANNEL.includes(method) ? str(d.channel, 80) : "";
+    must(channel || method === "Cheque" || !MR_CHANNEL.includes(method), method === "Mobile banking" ? "Choose the mobile banking service." : "Choose the bank.");
+    const date = okDate(d.date), yr = date.slice(0, 4); S.seq[yr] = (S.seq[yr] || 0) + 1;
+    const m = x.memberId && db.team.find(t => t.id === x.memberId);
+    const p = { id: id("sp"), no: `SP-${yr}-${String(S.seq[yr]).padStart(4, "0")}`, uid: x.id, name: x.name, title: m?.title || "", email: x.email, role: x.role,
+      month: d.month, basic, bonus, deduct, net, paid, date, method, channel, ref: str(d.ref, 80), note: str(d.note, 300),
+      by: mrSigner(u), token: crypto.randomBytes(12).toString("hex"), created: now() };
+    S.pays.unshift(p); notify(x.id, `Salary paid: ${monthName(p.month)}, BDT ${paid.toLocaleString("en-US")} (receipt ${p.no}).`);
+    return { msg: `Salary ${p.no} saved.`, payId: p.id, email: x.email || "" };
+  }
+  if (d.op === "mail") { // the payer's browser makes the PDF; the server emails it to the staff member
+    const p = S.pays.find(x => x.id === d.id); must(p && !p.void, "Salary receipt not found."); must(p.email, "This person has no email address.");
+    const pdf = Buffer.from(String(d.pdf || "").replace(/^data:application\/pdf;base64,/, ""), "base64");
+    must(pdf.length > 100 && pdf.length < 4e6 && pdf.subarray(0, 5).toString() === "%PDF-", "The receipt PDF is missing.");
+    const mailer = await getMailer(); const fail = msg => { p.mailed = { to: p.email, at: now(), ok: false }; return { msg }; };
+    if (!mailer) return fail("Email is not set up on this server, so the salary receipt was not emailed. Download it and send it yourself.");
+    const link = ADMIN_HOST || AGENT_HOST || process.env.CANONICAL_HOST ? `${mainUrl()}/s/${p.token}` : "", money = n => `BDT ${Number(n).toLocaleString("en-US", { minimumFractionDigits: 2 })}`;
+    try {
+      await mailer.sendMail({ from: `"Mam & Mam Overseas Ltd." <${mailFrom()}>`, to: p.email, subject: `Salary receipt ${p.no} · ${monthName(p.month)}`,
+        text: `Assalamu Alaikum ${p.name},\n\nYour salary for ${monthName(p.month)} has been paid. The salary receipt is attached.\n\nReceipt No.: ${p.no}\nSalary: ${money(p.basic)}${p.bonus ? `\nBonus / allowance: ${money(p.bonus)}` : ""}${p.deduct ? `\nDeduction: ${money(p.deduct)}` : ""}\nNet salary: ${money(p.net)}\nPaid: ${money(p.paid)} (${[p.method, p.channel].filter(Boolean).join(" · ")}${p.ref ? " · " + p.ref : ""})\n${link ? `\nCheck this receipt online: ${link}\n` : ""}\nMam & Mam Overseas Ltd. · Government Licensed Recruiting Agency · RL1217`,
+        attachments: [{ filename: `${p.no}.pdf`, content: pdf, contentType: "application/pdf" }] });
+    } catch (e) { console.error("Salary email failed:", e.message); return fail(`The salary receipt could not be emailed to ${p.email}.`); }
+    p.mailed = { to: p.email, at: now(), ok: true }; return { msg: `Salary receipt ${p.no} emailed to ${p.email}.` };
+  }
+  if (d.op === "void") {
+    must(u.role === "admin", "Only the admin can cancel a salary receipt.", 403);
+    const p = S.pays.find(x => x.id === d.id); must(p && !p.void, "Salary receipt not found."); p.void = { by: u.name, at: now() }; return { msg: `Salary receipt ${p.no} cancelled.` };
+  }
+  must(false, "Unknown request.");
+};
 A["admin.about"] = async (d, u) => {
   needPerm(u, "content"); const a = db.about;
   const L = (v, n) => String(v ?? "").slice(0, n).trim();

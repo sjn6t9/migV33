@@ -1099,3 +1099,4 @@ body.tc-full-on .team-fab{display:none}
   .tbl table:has(th:nth-child(8)){min-width:820px}
   .st-tbl table{min-width:640px}
 }
+.ec-tbl tr.sel td{background:color-mix(in srgb,var(--brand) 8%,transparent)}

@@ -12,6 +12,7 @@ import { Home, Jobs, JobDetail, Services, About, Blog, Post, Contact, Track, Set
 import { Dashboard } from "./dash/Dashboard.jsx";
 import { ClPayForm } from "./dash/Agent.jsx";
 import { MrEntry, MrView, MrAccount, VerifyReceipt } from "./dash/Receipts.jsx";
+import { SalaryPay, SalaryView, VerifySalary } from "./dash/Accounts.jsx";
 import { StatusCell, ClPayCell } from "./dash/Admin.jsx";
 import { LANGS, getLang, setLang, t, onLang } from "./i18n.js";
 import { VisitingCard, VerifyMember, VerifyBody } from "./VCard.jsx";
@@ -38,10 +39,11 @@ export default function App() {
   else if (h === "setup" || h.startsWith("setup-")) { page = "setup"; arg = h.slice(6); }
   else if (h.startsWith("verify-")) { page = "verify"; arg = h.slice(7); }
   else if (h.startsWith("receipt-")) { page = "receipt"; arg = h.slice(8); }
+  else if (h.startsWith("salary-")) { page = "salary"; arg = h.slice(7); }
   else if (!PAGES.includes(h) && h !== "dashboard") page = "home";
   const panelSite = SITE.admin ? "admin" : SITE.agent ? "agent" : null; // admin.<domain> or agent.<domain>
   if (panelSite && h.startsWith("handoff-")) { page = "handoff"; arg = h.slice(8); }
-  else if (panelSite && !["dashboard", "setup", "job", "post", "verify", "receipt"].includes(page)) page = "dashboard"; // the panel opens straight to the dashboard
+  else if (panelSite && !["dashboard", "setup", "job", "post", "verify", "receipt", "salary"].includes(page)) page = "dashboard"; // the panel opens straight to the dashboard
   useEffect(() => {
     if (page !== "handoff") return;
     history.replaceState(null, "", "#dashboard"); // the one-time pass leaves the address bar at once
@@ -58,12 +60,14 @@ export default function App() {
     if (page === "dashboard") title = "Dashboard | Mam & Mam Overseas Ltd.";
     if (page === "verify") title = "Verify team member | Mam & Mam Overseas Ltd.";
     if (page === "receipt") title = "Verify money receipt | Mam & Mam Overseas Ltd.";
+    if (page === "salary") title = "Verify salary receipt | Mam & Mam Overseas Ltd.";
     document.title = t(title);
     document.querySelector('meta[name="description"]')?.setAttribute("content", seo.desc);
   });
 
   if (page === "verify") return <><VerifyMember id={arg} /><Toast /></>;
   if (page === "receipt") return <><VerifyReceipt token={arg} /><Toast /></>;
+  if (page === "salary") return <><VerifySalary token={arg} /><Toast /></>;
   if (panelSite) return (
     <>
       <PanelHeader kind={panelSite} dash={!!me() && !["handoff", "setup", "job", "post"].includes(page)} />
@@ -249,7 +253,7 @@ function ModalHost() {
   const m = store.ui.modal; if (!m) return null;
   const close = closeModal;
   return (
-    <ModalFrame onClose={close} wide={m.type === "share" || m.type === "vcard" || m.type === "mrEntry" || m.type === "mrView" || m.type === "mrAccount"} className={m.type === "memberCheck" ? "modal-verify" : ""}>
+    <ModalFrame onClose={close} wide={m.type === "share" || m.type === "vcard" || m.type === "mrEntry" || m.type === "mrView" || m.type === "mrAccount" || m.type === "salaryPay" || m.type === "salaryView"} className={m.type === "memberCheck" ? "modal-verify" : ""}>
       {m.type === "confirm" && <>
         <h3>Please confirm</h3><p className="confirm-msg">{m.msg}</p>
         <div className="row"><button className="btn pri" autoFocus onClick={() => { closeModal(); m.onYes(); }}>{m.yes}</button><button className="btn" onClick={close}>Cancel</button></div>
@@ -268,6 +272,8 @@ function ModalHost() {
       {m.type === "mrEntry" && <MrEntry key={m.aid || "new"} aid={m.aid} />}
       {m.type === "mrView" && <MrView rid={m.rid} fresh={m.fresh} />}
       {m.type === "mrAccount" && <MrAccount key={m.aid} aid={m.aid} />}
+      {m.type === "salaryPay" && <SalaryPay key={m.uid} uid={m.uid} />}
+      {m.type === "salaryView" && <SalaryView id={m.id} fresh={m.fresh} />}
     </ModalFrame>
   );
 }

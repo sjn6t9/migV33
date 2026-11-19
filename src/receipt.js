@@ -242,3 +242,65 @@ export function receiptsXlsx(list, title = "Money receipts") {
     [], ["", "", "", "", "", "", "", "", "", "", { v: "Total approved", s: 1 }, { v: live.reduce((s, r) => s + r.amount, 0), s: 4 }]
   ], [15, 12, 24, 15, 15, 24, 20, 24, 14, 22, 16, 15, 15, 22, 22, 18], `money-receipts-${new Date().toISOString().slice(0, 10)}.xlsx`);
 }
+
+/* ---------------- salary payment receipt (A5 landscape, like the money receipt) ---------------- */
+export const salaryUrl = p => (p.token ? `${(window.__SITE__?.main || location.origin).replace(/\/$/, "")}/s/${p.token}` : "");
+export const monthName = m => { const [y, mo] = String(m || "").split("-"); return y && mo ? new Date(Date.UTC(+y, +mo - 1, 1)).toLocaleString("en-GB", { month: "long", year: "numeric", timeZone: "UTC" }) : ""; };
+export async function drawSalary(p, settings = {}) {
+  await fontsReady();
+  const c = document.createElement("canvas"); c.width = W; c.height = H; const g = c.getContext("2d");
+  const [logo, sig] = await Promise.all([loadImg("/brand/logo-w320.webp?v=2"), p.by?.sigUrl ? loadImg(p.by.sigUrl) : null]);
+  g.fillStyle = "#fff"; g.fillRect(0, 0, W, H);
+  if (logo) { g.globalAlpha = .05; const lw = 640, lh = lw * logo.height / logo.width; g.drawImage(logo, (W - lw) / 2, 330 + (560 - lh) / 2, lw, lh); g.globalAlpha = 1; }
+  const hb = g.createLinearGradient(0, 0, W, 230); hb.addColorStop(0, GREEN); hb.addColorStop(1, DEEP); g.fillStyle = hb; g.fillRect(0, 0, W, 230);
+  g.fillStyle = RED; g.fillRect(0, 230, W, 8);
+  rr(g, 56, 40, 236, 150, 22); g.fillStyle = "#fff"; g.fill();
+  if (logo) { const lh = 136, lw = Math.min(222, lh * logo.width / logo.height); g.drawImage(logo, 56 + (236 - lw) / 2, 47, lw, lh); }
+  g.fillStyle = "#fff"; g.textAlign = "left"; fitFont(g, OFFICE.name, 760, 52, 800); g.fillText(OFFICE.name, 326, 98);
+  fitFont(g, TAGLINE, 800, 25, 500); g.globalAlpha = .93; g.fillText(TAGLINE, 326, 138);
+  g.font = `500 21px ${F}`; g.globalAlpha = .85; const contact = [settings.address, settings.phone].filter(Boolean).join("  ·  "); if (contact) g.fillText(clip(g, contact, 800), 326, 174);
+  g.fillText(`${OFFICE.site}  ·  ${settings.email || OFFICE.email}`, 326, 204); g.globalAlpha = 1;
+  rr(g, W - 420, 78, 364, 74, 37); g.fillStyle = "#fff"; g.fill(); g.fillStyle = RED; g.textAlign = "center"; g.font = `800 28px ${F}`; g.fillText("SALARY RECEIPT", W - 238, 126);
+  // number, month, date
+  g.textAlign = "left"; g.fillStyle = MUTED; g.font = `600 22px ${F}`; g.fillText("Receipt No.", 70, 300); g.fillStyle = INK; g.font = `800 34px ${F}`; g.fillText(p.no, 70, 342);
+  g.textAlign = "center"; g.fillStyle = MUTED; g.font = `600 22px ${F}`; g.fillText("Salary month", W / 2, 300); g.fillStyle = GREEN; g.font = `800 34px ${F}`; g.fillText(monthName(p.month), W / 2, 342);
+  g.textAlign = "right"; g.fillStyle = MUTED; g.font = `600 22px ${F}`; g.fillText("Paid on", W - 70, 300); g.fillStyle = INK; g.font = `800 34px ${F}`; g.fillText(rDate(p.date), W - 70, 342);
+  g.fillStyle = LINE; g.fillRect(70, 368, W - 140, 2);
+  const field = (label, value, x, y, w) => {
+    g.textAlign = "left"; g.fillStyle = MUTED; g.font = `600 21px ${F}`; g.fillText(label, x, y);
+    g.fillStyle = INK; fitFont(g, value || "—", w, 30, 600); g.fillText(clip(g, value || "—", w), x, y + 40);
+    g.strokeStyle = LINE; g.setLineDash([3, 5]); g.lineWidth = 2; g.beginPath(); g.moveTo(x, y + 56); g.lineTo(x + w, y + 56); g.stroke(); g.setLineDash([]);
+  };
+  const L = 70, CW = 600, R2 = L + CW + 50;
+  field("Paid to", p.name, L, 420, CW); field("Designation", p.title || (p.role === "admin" ? "Admin" : "Staff"), L, 520, CW);
+  field("Payment method", [p.method, p.channel, p.ref].filter(Boolean).join(" · "), L, 620, CW);
+  // salary breakdown box
+  const bx = R2, bw = W - 70 - bx; rr(g, bx, 400, bw, 290, 16); g.strokeStyle = LINE; g.lineWidth = 2; g.stroke();
+  const rows = [["Salary", tk(p.basic)], ...(p.bonus ? [["Bonus / allowance", "+ " + tk(p.bonus)]] : []), ...(p.deduct ? [["Deduction", "− " + tk(p.deduct)]] : []), ["Net salary", tk(p.net), 1], ...(p.paid !== p.net ? [["Paid now", tk(p.paid), 1]] : [])];
+  const due = Math.round((p.net - p.paid) * 100) / 100; if (due) rows.push([due > 0 ? "Still to pay" : "Paid in advance", tk(Math.abs(due)), 2]);
+  rows.forEach(([l, v, k], i) => { const y = 448 + i * 48; g.textAlign = "left"; g.fillStyle = k === 2 ? RED : k ? INK : MUTED; g.font = `${k ? 800 : 600} 24px ${F}`; g.fillText(l, bx + 24, y); g.textAlign = "right"; g.fillText(v, bx + bw - 24, y);
+    if (k === 1 && i && !rows[i - 1][2]) { g.fillStyle = LINE; g.fillRect(bx + 20, y - 34, bw - 40, 2); } });
+  // amount paid + words
+  rr(g, L, 712, W - 140, 96, 14); g.fillStyle = TINT; g.fill();
+  g.textAlign = "left"; g.fillStyle = MUTED; g.font = `600 20px ${F}`; g.fillText("Amount paid in words", L + 24, 746);
+  g.fillStyle = GREEN; g.font = `700 24px ${F}`; g.fillText(clip(g, takaWords(p.paid), 900), L + 24, 784);
+  g.textAlign = "right"; g.fillStyle = GREEN; fitFont(g, `BDT ${tk(p.paid)}`, 400, 40, 800); g.fillText(`BDT ${tk(p.paid)}`, W - 70 - 24, 786);
+  if (p.note) { g.textAlign = "left"; g.fillStyle = MUTED; g.font = `500 20px ${F}`; g.fillText(clip(g, "Note: " + p.note, 1000), L, 846); }
+  // QR + signatures
+  const url = salaryUrl(p);
+  if (url) { drawQR(g, url, W / 2 - 62, 900, 124, INK); g.textAlign = "center"; g.fillStyle = MUTED; g.font = `600 15px ${F}`; g.fillText("Scan to verify", W / 2, 1042 + 24); }
+  const sigLine = (x, label, name, img) => {
+    if (img) { const mh = 84, mw = 300, k = Math.min(mw / img.width, mh / img.height); const w = img.width * k, h = img.height * k; g.drawImage(img, x + 190 - w / 2, 1018 - h, w, h); }
+    g.fillStyle = INK; g.fillRect(x, 1022, 380, 2); g.textAlign = "center";
+    if (name) { g.font = `700 21px ${F}`; g.fillText(clip(g, name, 380), x + 190, 1047); }
+    g.fillStyle = MUTED; g.font = `600 17px ${F}`; g.fillText(label, x + 190, 1071);
+  };
+  sigLine(L, "Received by", p.name, null); sigLine(W - 70 - 380, "Authorized signature", p.by ? p.by.name + (p.by.title ? ", " + p.by.title : "") : "", sig);
+  g.fillStyle = GREEN; g.fillRect(0, H - 44, W, 44); g.fillStyle = "#fff"; g.textAlign = "center"; g.font = `500 19px ${F}`;
+  g.fillText(`Computer generated salary receipt · ${OFFICE.name} · ${OFFICE.site}`, W / 2, H - 15);
+  if (p.void) { g.save(); g.translate(W / 2, 600); g.rotate(-0.22); g.globalAlpha = .85; g.strokeStyle = RED; g.lineWidth = 10; rr(g, -330, -80, 660, 160, 24); g.stroke(); g.fillStyle = RED; g.textAlign = "center"; g.font = `800 96px ${F}`; g.fillText("CANCELLED", 0, 34); g.restore(); }
+  return c;
+}
+export async function salaryPng(p, s) { const c = await drawSalary(p, s); save(await new Promise(res => c.toBlob(res, "image/png")), `${p.no}.png`); }
+export async function salaryPdfBlob(p, s) { return pdfFromCanvases([await drawSalary(p, s)], 595.28, 419.53, `Salary receipt ${p.no}`); }
+export async function salaryPdf(p, s) { save(await salaryPdfBlob(p, s), `${p.no}.pdf`); }
