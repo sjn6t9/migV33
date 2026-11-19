@@ -50,7 +50,9 @@ try { db = JSON.parse(fs.readFileSync(DB_FILE, "utf8")); } catch (e) {
 for (const [k, v] of Object.entries(freshDb())) if (db[k] === undefined) db[k] = v;
 for (const [k, v] of Object.entries(INITIAL.seo)) if (!db.seo[k]) db.seo[k] = structuredClone(v); // pages added in later versions
 
+let REV = Date.now(); // goes up on every change; browsers check it each second and reload their data when it moves
 function save() {
+  REV++;
   const tmp = DB_FILE + ".tmp";
   fs.writeFileSync(tmp, JSON.stringify(db));
   fs.renameSync(tmp, DB_FILE);
@@ -957,7 +959,8 @@ async function handleApi(req, res, url) {
   let { token, u } = sessionUser(req);
   if (u && isStaffRole(u)) seen.set(u.id, Date.now()); // online / offline in the team chat
   if (u && !zoneAllows(zone, u)) { token = null; u = null; } // a session from the other site does not count here
-  if (req.method === "GET" && url.pathname === "/api/state") return send(res, 200, viewFor(u));
+  if (req.method === "GET" && url.pathname === "/api/state") return send(res, 200, { ...viewFor(u), rev: REV });
+  if (req.method === "GET" && url.pathname === "/api/rev") return send(res, 200, { rev: REV, me: u?.id || null });
   const stm = req.method === "GET" && /^\/api\/statement\/([a-f0-9]{24})$/.exec(url.pathname);
   if (stm) { const x = db.statements.list.find(y => y.token === stm[1]); return x ? send(res, 200, { statement: stmtOut(x, true) }) : send(res, 404, { error: "Statement not found." }); }
   const sm = req.method === "GET" && /^\/api\/salary\/([a-f0-9]{24})(\/r?sig)?$/.exec(url.pathname);
@@ -1013,10 +1016,10 @@ async function handleApi(req, res, url) {
       for (const [t, s] of Object.entries(db.sessions)) if (Date.parse(s.exp) < Date.now()) delete db.sessions[t];
       save();
       if (ctx.redirect) out.redirect = ctx.redirect;
-      return send(res, out.error ? 400 : 200, { ...out, state: viewFor(ctx.user) }, setCookie.length ? { "Set-Cookie": setCookie } : {});
+      return send(res, out.error ? 400 : 200, { ...out, state: { ...viewFor(ctx.user), rev: REV } }, setCookie.length ? { "Set-Cookie": setCookie } : {});
     } catch (e) {
       if (!(e instanceof Fail)) { console.error(body.type, e); try { save(); } catch { /* ignore */ } }
-      return send(res, e.code || 500, { error: e instanceof Fail ? e.message : "Something went wrong. Please try again.", state: viewFor(ctx.user) }, setCookie.length ? { "Set-Cookie": setCookie } : {});
+      return send(res, e.code || 500, { error: e instanceof Fail ? e.message : "Something went wrong. Please try again.", state: { ...viewFor(ctx.user), rev: REV } }, setCookie.length ? { "Set-Cookie": setCookie } : {});
     }
   }
   if (url.pathname.startsWith("/api/chat")) return chatApi(req, res, url, u, zone);

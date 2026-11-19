@@ -24,4 +24,18 @@ loadState();
 initLang().finally(() => createRoot(document.getElementById("root")).render(<App />));
 // keep the page up to date: refresh when the tab comes back and every minute while it is open (unless a form is busy)
 document.addEventListener("visibilitychange", () => { if (!document.hidden && !store.ui.busy) loadState(); });
-setInterval(() => { if (!document.hidden && !store.ui.busy && !store.ui.modal) loadState(); }, 60000);
+// live updates: each second ask the server whether anything changed (a tiny request); if it did, reload the data.
+// While someone is typing in a form the reload waits until they leave the field, so nothing they type is disturbed.
+let checking = false, waiting = false;
+const typing = () => { const a = document.activeElement; return !!a && (a.tagName === "TEXTAREA" || a.tagName === "SELECT" || (a.tagName === "INPUT" && !["button", "submit", "checkbox", "radio"].includes(a.type))); };
+setInterval(async () => {
+  if (document.hidden || checking || store.ui.busy) return;
+  checking = true;
+  try {
+    const r = await fetch("/api/rev", { credentials: "same-origin", cache: "no-store" }); const j = await r.json();
+    const meNow = store.S.session || null;
+    if (j.rev !== store.S.rev || (j.me || null) !== meNow) waiting = true;
+    if (waiting && !typing()) { waiting = false; await loadState(); }
+  } catch { /* offline: try again next second */ }
+  checking = false;
+}, 1000);
