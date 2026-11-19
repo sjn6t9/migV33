@@ -3,7 +3,7 @@
 // The agency always appears as "Mam & Mam Overseas Ltd." with the M&M logo.
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { LuX, LuSendHorizontal, LuImage, LuMic, LuSquare, LuReply, LuTrash2, LuCornerUpLeft, LuLoader, LuSearch, LuArrowLeft } from "react-icons/lu";
-import { Logo } from "./ui.jsx";
+import { Logo, RoleBadges } from "./ui.jsx";
 import { store, me } from "./store.js";
 import { toast, readUpload, confirmBox } from "./actions.js";
 import { t } from "./i18n.js";
@@ -12,12 +12,12 @@ const KEY = "mam_chat_k";
 const getKey = () => { try { return localStorage.getItem(KEY) || ""; } catch { return ""; } };
 const setKey = k => { try { k ? localStorage.setItem(KEY, k) : localStorage.removeItem(KEY); } catch { /* private mode */ } };
 
-async function chatGet(path) {
+export async function chatGet(path) {
   const r = await fetch(path, { credentials: "same-origin" }); const j = await r.json().catch(() => ({}));
   if (!r.ok) throw new Error(j.error || "The chat could not be loaded.");
   return j;
 }
-async function chatPost(body) {
+export async function chatPost(body) {
   const r = await fetch("/api/chat", { method: "POST", credentials: "same-origin", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
   const j = await r.json().catch(() => ({ error: "The server did not answer correctly. Try again." }));
   if (!r.ok || j.error) throw new Error(j.error || "Something went wrong.");
@@ -82,7 +82,7 @@ function JoinForm({ onJoined }) {
 }
 
 /* ---------- conversation (shared by visitor and agency) ---------- */
-function Thread({ chat, side, onSend, onDelete, empty, canDelete = m => m.from === side }) {
+export function Thread({ chat, side, onSend, onDelete, empty, canDelete = m => m.from === side }) {
   const [reply, setReply] = useState(null);
   const end = useRef(null); const box = useRef(null); const count = useRef(0);
   useEffect(() => { // stay at the bottom when new messages arrive (unless the reader scrolled up)
@@ -92,7 +92,7 @@ function Thread({ chat, side, onSend, onDelete, empty, canDelete = m => m.from =
     count.current = chat.msgs.length;
   }, [chat.msgs.length]);
   const byId = id => chat.msgs.find(m => m.id === id);
-  const label = m => (m.from === "agency" ? "Mam & Mam Overseas Ltd." : side === "agency" ? chat.name || "Visitor" : "You");
+  const label = m => (m.from === "agency" ? m.staffName || "Mam & Mam Overseas Ltd." : side === "agency" ? chat.name || "Visitor" : "You");
   const preview = m => (m.deleted ? t("This message was deleted") : m.kind === "image" ? `📷 ${t("Photo")}` : m.kind === "voice" ? `🎤 ${t("Voice message")}` : m.text);
   return (
     <>
@@ -104,7 +104,8 @@ function Thread({ chat, side, onSend, onDelete, empty, canDelete = m => m.from =
             <div key={m.id} className={`msg ${mine ? "me" : "them"}${m.from === "agency" ? " agency" : ""}`} id={`cm-${m.id}`}>
               {m.from === "agency" && !mine && <Logo size={26} square className="msg-av" />}
               <div className="msg-col">
-                {!mine && <span className="msg-name">{label(m)}</span>}
+                {!mine && <span className="msg-name">{label(m)}{m.from === "agency" && <RoleBadges role={m.staffRole} size={13} />}{m.from === "agency" && m.staffName && <span className="msg-org"> · Mam &amp; Mam Overseas Ltd.</span>}</span>}
+                {mine && side === "agency" && m.staffName && <span className="msg-name">{m.staffName}<RoleBadges role={m.staffRole} size={13} /></span>}
                 <div className={`bubble${m.deleted ? " deleted" : ""}`}>
                   {m.reply && <button type="button" className="msg-quote" onClick={() => document.getElementById(`cm-${m.reply.id}`)?.scrollIntoView({ block: "center", behavior: "smooth" })}>
                     <b>{label(m.reply)}</b><span>{m.reply.deleted ? t("This message was deleted") : m.reply.kind === "image" ? `📷 ${t("Photo")}` : m.reply.kind === "voice" ? `🎤 ${t("Voice message")}` : m.reply.text}</span></button>}
@@ -115,7 +116,7 @@ function Thread({ chat, side, onSend, onDelete, empty, canDelete = m => m.from =
                   </>}
                 </div>
                 <div className="msg-meta">
-                  <span>{hhmm(m.at)}{m.by ? ` · ${m.by}` : ""}</span>
+                  <span>{hhmm(m.at)}{m.by && !m.staffName ? ` · ${m.by}` : ""}</span>
                   {!m.deleted && <button type="button" onClick={() => setReply(m)} aria-label="Reply" title="Reply"><LuReply /></button>}
                   {!m.deleted && canDelete(m) && <button type="button" onClick={() => onDelete(m.id)} aria-label="Delete" title="Delete"><LuTrash2 /></button>}
                 </div>
@@ -210,7 +211,7 @@ export function ChatInbox() {
   const L = (list || []).filter(c => { const k = q.trim().toLowerCase(); return !k || [c.name, c.sub, c.contact].some(v => String(v || "").toLowerCase().includes(k)); });
   return <>
     <h2>Live chat</h2>
-    <p className="muted small">Job seekers, employers, agents and website visitors write here. Your replies appear as “Mam & Mam Overseas Ltd.” with the M&amp;M logo.</p>
+    <p className="muted small">Job seekers, employers, agents and website visitors write here. Your replies show your name and badge, with the M&amp;M logo.</p>
     <div className={`inbox card${sel ? " has-sel" : ""}`}>
       <div className="inbox-list">
         <label className="ec-search"><input type="text" value={q} onChange={e => setQ(e.target.value)} placeholder="Search name or mobile" /><LuSearch /></label>

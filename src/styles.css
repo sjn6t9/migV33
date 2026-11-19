@@ -1054,3 +1054,40 @@ body.drawer-on .floaters,body.drawer-on .ai-cap,body.drawer-on #aipraktor-chat{v
 .tc-pick{display:flex;flex-direction:column;gap:2px;border:1px solid var(--line);border-radius:10px;padding:4px;max-height:280px;overflow-y:auto}
 .tc-check input{width:18px;height:18px;flex:none}
 .chat-h .badges .badge-ic{filter:drop-shadow(0 0 1px rgba(0,0,0,.25))}
+.msg-name{display:inline-flex;align-items:center;flex-wrap:wrap}.msg-name .badges{margin-inline-start:4px}.msg-org{font-weight:500;opacity:.85}
+/* Messages (admin panel): small window or full view */
+.team-fab{background:#25d366;color:#fff;width:58px;height:58px}
+.team-fab svg{width:28px;height:28px}
+.team-chat{display:flex;flex-direction:column}
+.tc-top{display:flex;align-items:center;gap:6px;padding:10px 10px 10px 14px;background:var(--brand);color:var(--brand-ink);flex:none}
+.tc-top .chat-ht{margin-inline-end:auto}
+.tc-top .chat-x{margin-inline-start:0}
+.tc-body{flex:1;min-height:0;display:flex}
+.tc-left,.tc-right{display:flex;flex-direction:column;min-width:0;min-height:0}
+.tc-left{flex:1}
+.tc-right{display:none;flex:1}
+.team-chat.has-right .tc-left{display:none}
+.team-chat.has-right .tc-right{display:flex}
+.tc-right .chat-h{background:var(--surface);color:var(--ink);border-bottom:1px solid var(--line)}
+.tc-right .chat-h .chat-x{color:var(--ink)}
+.tc-right .chat-h .chat-x:hover{background:var(--soft)}
+.tc-right .chat-h .tc-dot{border-color:var(--surface)}
+.tc-right .chat-h .chat-ht .small{color:var(--muted);opacity:1}
+.tc-right .chat-h .chat-x:last-child{margin-inline-start:auto}
+.tc-tabs{display:flex;gap:4px;padding:8px 10px 0;border-bottom:1px solid var(--line)}
+.tc-tabs button{flex:1;display:inline-flex;align-items:center;justify-content:center;gap:6px;border:0;background:none;padding:9px 6px;font:inherit;font-weight:700;font-size:14px;color:var(--muted);border-bottom:3px solid transparent;cursor:pointer}
+.tc-tabs button.on{color:var(--brand);border-bottom-color:var(--brand)}
+.tc-row.on{background:color-mix(in srgb,var(--brand) 12%,transparent)}
+.tc-row .inbox-av{width:38px;height:38px}
+.tc-empty{gap:8px;color:var(--muted)}
+.tc-empty svg{width:46px;height:46px;opacity:.35}
+.team-chat.full{position:fixed;inset:0;width:100%;height:100%;max-height:none;border-radius:0;border:0;z-index:2147482000}
+.team-chat.full .tc-left{flex:0 0 360px;display:flex;border-inline-end:1px solid var(--line)}
+.team-chat.full .tc-right{display:flex}
+body.tc-full-on .team-fab{display:none}
+@media (max-width:760px){
+  .team-chat.full .tc-left{flex:1}
+  .team-chat.full .tc-right{display:none}
+  .team-chat.full.has-right .tc-left{display:none}
+  .team-chat.full.has-right .tc-right{display:flex}
+}

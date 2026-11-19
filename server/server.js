@@ -1105,6 +1105,7 @@ function msgView(c, m, staff, k) {
   if (m.deleted) return base;
   const r = m.replyTo ? c.msgs.find(x => x.id === m.replyTo) : null;
   return { ...base, text: m.text || "", file: m.file ? { url: `/api/files/${m.file.id}${q}`, name: m.file.name } : null, by: staff && m.from === "agency" ? m.byName || "" : undefined,
+    ...(m.from === "agency" && m.by ? (() => { const x = user(m.by); return { staffName: x?.name || m.byName || "", staffRole: x?.role || "" }; })() : {}), // who in the office wrote it (name + badge)
     reply: r ? { id: r.id, from: r.from, kind: r.kind, text: r.deleted ? "" : (r.text || "").slice(0, 120), deleted: !!r.deleted } : null };
 }
 const chatThread = (c, staff, k) => ({ id: c.id, ...(staff ? chatWho(c) : {}), msgs: c.msgs.map(m => msgView(c, m, staff, k)), unread: staff ? c.unreadAgency : c.unreadUser, joined: true, guest: c.guest ? { name: c.guest.name } : null });

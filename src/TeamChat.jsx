@@ -1,7 +1,7 @@
 // Team chat: admin and staff IDs talk one-to-one or in groups (text, photo, voice). Online = active in the last minute.
 import React, { useState, useEffect, useRef, useCallback } from "react";
-import { LuX, LuArrowLeft, LuUsers, LuPlus, LuSearch, LuReply, LuTrash2, LuSettings2, LuLogOut, LuMessagesSquare, LuCheckCheck, LuCheck } from "react-icons/lu";
-import { Composer } from "./LiveChat.jsx";
+import { LuX, LuArrowLeft, LuUsers, LuPlus, LuSearch, LuReply, LuTrash2, LuSettings2, LuLogOut, LuMessagesSquare, LuCheckCheck, LuCheck, LuMessageCircle, LuMaximize2, LuMinimize2 } from "react-icons/lu";
+import { Composer, Thread as LiveThread, chatGet, chatPost } from "./LiveChat.jsx";
 import { RoleBadges } from "./ui.jsx";
 import { toast, confirmBox } from "./actions.js";
 import { t } from "./i18n.js";
@@ -24,46 +24,99 @@ function Av({ p, size = 38, group }) {
   </span>;
 }
 
+const canCustomers = me => me.role === "admin" || me.perms?.includes("chat");
+
+/* Messages: a round button like WhatsApp's; opens a small window, or Full View (list + conversation side by side) */
 export function TeamChatWidget({ me }) {
-  const [open, setOpen] = useState(false); const [d, setD] = useState({ members: [], chats: [], unread: 0 });
+  const [open, setOpen] = useState(false); const [full, setFull] = useState(false);
+  const [tab, setTab] = useState("team"); const [d, setD] = useState({ members: [], chats: [], unread: 0 });
   const [view, setView] = useState("list"); const [cur, setCur] = useState(null); const [q, setQ] = useState("");
+  const [cust, setCust] = useState(null); const [csel, setCsel] = useState(null);
+  const cus = canCustomers(me);
+  const [wide, setWide] = useState(() => window.innerWidth > 760);
+  useEffect(() => { const f = () => setWide(window.innerWidth > 760); window.addEventListener("resize", f); return () => window.removeEventListener("resize", f); }, []);
+  const two = full && wide; // list and conversation side by side
   const load = useCallback(() => api("/api/team").then(setD).catch(() => {}), []);
-  useEffect(() => { load(); const iv = setInterval(load, open ? 5000 : 10000); return () => clearInterval(iv); }, [open, load]);
+  const loadCust = useCallback(() => cus ? chatGet("/api/chat/inbox").then(j => setCust(j.chats)).catch(() => {}) : null, [cus]);
+  useEffect(() => { load(); loadCust(); const iv = setInterval(() => { load(); loadCust(); }, open ? 5000 : 10000); return () => clearInterval(iv); }, [open, load, loadCust]);
+  useEffect(() => { document.body.classList.toggle("tc-full-on", open && full); return () => document.body.classList.remove("tc-full-on"); }, [open, full]);
+  const custUnread = (cust || []).reduce((t, c) => t + (c.unread || 0), 0), total = d.unread + custUnread;
   const people = d.members.filter(m => m.id !== me.id).sort((a, b) => (b.online - a.online) || a.name.localeCompare(b.name));
   const person = id => d.members.find(m => m.id === id);
   const dmWith = id => d.chats.find(c => c.kind === "dm" && c.other === id);
   const openDm = async id => { try { const r = await api("/api/team", { op: "dm", uid: id }); setCur(r.chat.id); setView("chat"); load(); } catch (e) { toast(e.message); } };
-  const s = q.trim().toLowerCase(); const match = x => !s || x.toLowerCase().includes(s);
+  const s = q.trim().toLowerCase(); const match = x => !s || String(x || "").toLowerCase().includes(s);
   const groups = d.chats.filter(c => c.kind === "group" && match(c.name));
+  const close = () => { setOpen(false); setFull(false); };
+
+  const teamList = <div className="chat-b tc-list">
+    <div className="tc-sec"><span>Groups</span><button className="btn sm" onClick={() => setView("group")}><LuPlus /> New group</button></div>
+    {groups.length ? groups.map(c => <button key={c.id} className={`tc-row${cur === c.id && view === "chat" ? " on" : ""}`} onClick={() => { setCur(c.id); setView("chat"); }}>
+      <Av group /><span className="tc-main"><b>{c.name}</b><small>{c.lastText || `${c.members.length} members`}</small></span>{c.unread > 0 && <span className="count">{c.unread}</span>}</button>)
+      : <p className="muted small tc-none">No groups yet.</p>}
+    <div className="tc-sec"><span>Admin & staff</span></div>
+    {people.filter(p => match(p.name) || match(p.title)).map(p => { const c = dmWith(p.id); return <button key={p.id} className={`tc-row${c && cur === c.id && view === "chat" ? " on" : ""}`} onClick={() => openDm(p.id)}>
+      <Av p={p} /><span className="tc-main"><b>{p.name}<RoleBadges role={p.role} size={15} /></b>
+        <small className={p.online ? "tc-on" : ""}>{c?.lastText ? `${c.lastFrom === me.id ? "You: " : ""}${c.lastText}` : p.online ? "Online" : ago(p.seen)}</small></span>
+      {c?.unread > 0 && <span className="count">{c.unread}</span>}</button>; })}
+    {!people.length && <p className="muted small tc-none">No other admin or staff IDs yet. Create them in Staff &amp; permissions.</p>}
+  </div>;
+  const custList = <div className="chat-b tc-list">
+    {cust === null ? <p className="muted small tc-none">Loading…</p> : cust.filter(c => match(c.name) || match(c.sub) || match(c.contact)).map(c => <button key={c.id} className={`tc-row${csel === c.id ? " on" : ""}`} onClick={() => setCsel(c.id)}>
+      <span className={`inbox-av r-${c.role || "guest"}`}>{(c.name || "?").trim().charAt(0).toUpperCase()}</span>
+      <span className="tc-main"><b>{c.name}</b><small>{c.last ? `${c.last.from === "agency" ? "You: " : ""}${c.last.text}` : c.sub}</small></span>
+      {c.unread > 0 && <span className="count">{c.unread}</span>}</button>)}
+    {cust && !cust.length && <p className="muted small tc-none">No chats yet. Agents, job seekers, employers and visitors write from the website.</p>}
+  </div>;
+  const teamRight = view === "chat" && cur ? <Thread key={cur} id={cur} me={me} person={person} members={d.members} full={two} onBack={() => { setView("list"); load(); }} onGone={() => { setView("list"); setCur(null); load(); }} />
+    : view === "group" ? <GroupForm me={me} people={people} onBack={() => setView("list")} onDone={id => { setCur(id); setView("chat"); load(); }} /> : null;
+  const custRight = csel ? <CustomerThread key={csel} id={csel} full={two} onBack={() => { setCsel(null); loadCust(); }} onGone={() => { setCsel(null); loadCust(); }} /> : null;
+  const right = tab === "team" ? teamRight : custRight;
+
   return <>
-    <button className="fab team-fab" onClick={() => setOpen(!open)} aria-label={open ? "Close team chat" : "Open team chat"} aria-expanded={open} title="Team chat">
-      {open ? <LuX /> : <LuMessagesSquare />}{!open && d.unread > 0 && <span className="fab-badge">{d.unread > 99 ? "99+" : d.unread}</span>}
+    <button className="fab team-fab" onClick={() => (open ? close() : setOpen(true))} aria-label={open ? "Close messages" : "Open messages"} aria-expanded={open} title="Messages">
+      {open ? <LuX /> : <LuMessageCircle />}{!open && total > 0 && <span className="fab-badge">{total > 99 ? "99+" : total}</span>}
     </button>
-    {open && <div className="chat live team-chat" role="dialog" aria-label="Team chat">
-      {view === "chat" && cur ? <Thread id={cur} me={me} person={person} onBack={() => { setView("list"); load(); }} onClose={() => setOpen(false)} onGone={() => { setView("list"); setCur(null); load(); }} members={d.members} />
-        : view === "group" ? <GroupForm me={me} people={people} onBack={() => setView("list")} onDone={id => { setCur(id); setView("chat"); load(); }} />
-        : <>
-          <div className="chat-h"><div className="chat-ht"><b>Team chat</b><span className="small">{`${people.filter(p => p.online).length} online · admin & staff`}</span></div>
-            <button className="chat-x" onClick={() => setOpen(false)} aria-label="Close"><LuX /></button></div>
-          <div className="tc-search"><LuSearch /><input type="text" value={q} onChange={e => setQ(e.target.value)} placeholder="Search people and groups" aria-label="Search people and groups" /></div>
-          <div className="chat-b tc-list">
-            <div className="tc-sec"><span>Groups</span><button className="btn sm" onClick={() => setView("group")}><LuPlus /> New group</button></div>
-            {groups.length ? groups.map(c => <button key={c.id} className="tc-row" onClick={() => { setCur(c.id); setView("chat"); }}>
-              <Av group /><span className="tc-main"><b>{c.name}</b><small>{c.lastText || `${c.members.length} members`}</small></span>{c.unread > 0 && <span className="count">{c.unread}</span>}</button>)
-              : <p className="muted small tc-none">No groups yet.</p>}
-            <div className="tc-sec"><span>Admin & staff</span></div>
-            {people.filter(p => match(p.name) || match(p.title)).map(p => { const c = dmWith(p.id); return <button key={p.id} className="tc-row" onClick={() => openDm(p.id)}>
-              <Av p={p} /><span className="tc-main"><b>{p.name}<RoleBadges role={p.role} size={15} /></b>
-                <small className={p.online ? "tc-on" : ""}>{c?.lastText ? `${c.lastFrom === me.id ? "You: " : ""}${c.lastText}` : p.online ? "Online" : ago(p.seen)}</small></span>
-              {c?.unread > 0 && <span className="count">{c.unread}</span>}</button>; })}
-            {!people.length && <p className="muted small tc-none">No other admin or staff IDs yet. Create them in Staff &amp; permissions.</p>}
+    {open && <div className={`chat live team-chat${full ? " full" : ""}${right ? " has-right" : ""}`} role="dialog" aria-label="Messages">
+      <div className="tc-top">
+        <div className="chat-ht"><b>Messages</b><span className="small">{`${people.filter(p => p.online).length} online`}</span></div>
+        <button className="chat-x" onClick={() => setFull(!full)} aria-label={full ? "Small window" : "Full view"} title={full ? "Small window" : "Full view"}>{full ? <LuMinimize2 /> : <LuMaximize2 />}</button>
+        <button className="chat-x" onClick={close} aria-label="Close"><LuX /></button>
+      </div>
+      <div className="tc-body">
+        <div className="tc-left">
+          <div className="tc-tabs" role="tablist">
+            <button role="tab" aria-selected={tab === "team"} className={tab === "team" ? "on" : ""} onClick={() => setTab("team")}><LuUsers /> Team{d.unread > 0 && <span className="count">{d.unread}</span>}</button>
+            {cus && <button role="tab" aria-selected={tab === "cust"} className={tab === "cust" ? "on" : ""} onClick={() => setTab("cust")}><LuMessagesSquare /> Customers{custUnread > 0 && <span className="count">{custUnread}</span>}</button>}
           </div>
-        </>}
+          <div className="tc-search"><LuSearch /><input type="text" value={q} onChange={e => setQ(e.target.value)} placeholder={tab === "team" ? "Search people and groups" : "Search name or mobile"} aria-label="Search" /></div>
+          {tab === "team" ? teamList : custList}
+        </div>
+        <div className="tc-right">{right || <div className="chat-b center tc-empty"><LuMessageCircle /><p className="muted">{tab === "team" ? "Choose a person or a group." : "Choose a conversation."}</p></div>}</div>
+      </div>
     </div>}
   </>;
 }
 
-function Thread({ id, me, person, members, onBack, onClose, onGone }) {
+/* a conversation with an agent, job seeker, employer or visitor (the website's live chat) */
+function CustomerThread({ id, full, onBack, onGone }) {
+  const [c, setC] = useState(null);
+  const load = useCallback(() => chatGet(`/api/chat/thread?id=${encodeURIComponent(id)}`).then(j => setC(j.chat)).catch(e => { toast(e.message); onGone(); }), [id]);
+  useEffect(() => { load(); const iv = setInterval(load, 4000); return () => clearInterval(iv); }, [load]);
+  if (!c) return <div className="chat-b center"><p className="muted small">Loading…</p></div>;
+  const send = async body => { const j = await chatPost({ op: "send", chatId: id, ...body }); setC(j.chat); };
+  const del = mid => confirmBox("Delete this message for everyone?", async () => { try { const j = await chatPost({ op: "delete", chatId: id, mid }); setC(j.chat); } catch (e) { toast(e.message); } }, "Delete");
+  return <>
+    <div className="chat-h">
+      {!full && <button className="chat-x tc-back" onClick={onBack} aria-label="Back"><LuArrowLeft /></button>}
+      <span className={`inbox-av r-${c.role || "guest"}`}>{(c.name || "?").trim().charAt(0).toUpperCase()}</span>
+      <div className="chat-ht"><b>{c.name}</b><span className="small">{c.sub}{c.contact ? ` · ${c.contact}` : ""}</span></div>
+    </div>
+    <LiveThread chat={c} side="agency" onSend={send} onDelete={del} canDelete={() => true} />
+  </>;
+}
+
+function Thread({ id, me, person, members, full, onBack, onGone }) {
   const [c, setC] = useState(null); const [reply, setReply] = useState(null); const [info, setInfo] = useState(false);
   const box = useRef(null); const end = useRef(null); const count = useRef(0);
   const load = useCallback(() => api(`/api/team/thread?id=${encodeURIComponent(id)}`).then(r => setC(r.chat)).catch(e => { toast(e.message); onGone(); }), [id]);
@@ -79,12 +132,11 @@ function Thread({ id, me, person, members, onBack, onClose, onGone }) {
   if (info) return <GroupInfo c={c} me={me} members={members} onBack={() => { setInfo(false); load(); }} onGone={onGone} />;
   return <>
     <div className="chat-h">
-      <button className="chat-x tc-back" onClick={onBack} aria-label="Back"><LuArrowLeft /></button>
+      {!full && <button className="chat-x tc-back" onClick={onBack} aria-label="Back"><LuArrowLeft /></button>}
       {c.kind === "dm" ? <Av p={other} size={34} /> : <Av group size={34} />}
       <div className="chat-ht"><b>{c.name}{other && <RoleBadges role={other.role} size={15} />}</b>
         <span className="small">{c.kind === "group" ? `${c.members.length} members` : other?.online ? "Online" : ago(other?.seen)}</span></div>
       {c.kind === "group" && <button className="chat-x" onClick={() => setInfo(true)} aria-label="Group settings" title="Group settings"><LuSettings2 /></button>}
-      <button className="chat-x" style={{ marginInlineStart: c.kind === "group" ? 0 : "auto" }} onClick={onClose} aria-label="Close"><LuX /></button>
     </div>
     <div className="chat-b" ref={box}>
       {!c.msgs.length && <p className="muted small center pad">No messages yet. Say hello!</p>}
