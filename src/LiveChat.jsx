@@ -131,7 +131,7 @@ function Thread({ chat, side, onSend, onDelete, empty, canDelete = m => m.from =
   );
 }
 
-function Composer({ onSend, reply, onCancelReply }) {
+export function Composer({ onSend, reply, onCancelReply }) {
   const [text, setText] = useState(""); const [busy, setBusy] = useState(false);
   const [rec, setRec] = useState(null); const [secs, setSecs] = useState(0);
   const fileIn = useRef(null); const taRef = useRef(null);

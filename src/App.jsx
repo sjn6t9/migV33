@@ -2,6 +2,7 @@ import React, { useState, useEffect, useSyncExternalStore } from "react";
 import { LuMenu, LuBell, LuCheck, LuMoon, LuSun, LuLanguages, LuLogOut, LuLayoutDashboard, LuLogIn, LuUserPlus, LuSend, LuMailCheck, LuRefreshCw, LuDownload, LuFileText, LuKeyRound, LuWifiOff, LuPhone, LuMail } from "react-icons/lu";
 import { FaWhatsapp, FaFacebookF, FaYoutube, FaLinkedinIn, FaTiktok } from "react-icons/fa6";
 import { ChatWidget } from "./Chat.jsx";
+import { TeamChatWidget } from "./TeamChat.jsx";
 import { ShareJob } from "./Share.jsx";
 import { store, subscribe, getVersion, touch, me, user, job, unread, PAGES, fdate, kb, candOf, worker, clPerson, LABEL, CL_STAGES, CL_DOCS , findMember } from "./store.js";
 import { openModal, closeModal, signOut, toast, formData, setClStatus, downloadFile, fileExt, act, afterLogin } from "./actions.js";
@@ -70,6 +71,7 @@ export default function App() {
       <main>{page === "handoff" ? <section className="sec"><div className="wrap"><p className="muted">Signing you in…</p></div></section> : page === "setup" && panelSite === "admin" ? <Setup token={arg} /> : page === "job" ? <JobDetail id={arg} /> : page === "post" ? <Post id={arg} /> : me() ? <Dashboard /> : <PanelSignIn kind={panelSite} />}</main>
       <ModalHost />
       {panelSite === "agent" && <ChatWidget assistant={false} />}
+      {me() && (me().role === "admin" || me().role === "staff") && <TeamChatWidget me={me()} />}
       <Toast />
     </>
   );
@@ -88,6 +90,7 @@ export default function App() {
       <Footer />
       <ModalHost />
       <ChatWidget onAgent={() => openModal("auth", { mode: "register", role: "agent" })} />
+      {!SITE.main && me() && (me().role === "admin" || me().role === "staff") && <TeamChatWidget me={me()} />}
       <Toast />
     </>
   );
@@ -187,6 +190,7 @@ function PanelSignIn({ kind }) {
   const login = async e => {
     const [d] = formData(e);
     const r = await act("auth.login", { email: d.email, pass: d.pass });
+    if (r?.otp) { openModal("otp", { otp: r.otp, email: r.email, code: r.code }); return; }
     if (r && !r.verify) afterLogin(r);
   };
   return (
@@ -253,6 +257,7 @@ function ModalHost() {
       {m.type === "auth" && <Auth mode={m.mode} role={m.role || "candidate"} />}
       {m.type === "cand" && <CandidateCard aid={m.aid} />}
       {m.type === "verify" && <VerifyEmail uid={m.uid} email={m.email} sent={m.sent} code={m.code} />}
+      {m.type === "otp" && <LoginCode otp={m.otp} email={m.email} code={m.code} />}
       {m.type === "password" && <ChangePassword />}
       {m.type === "share" && <ShareJob jobId={m.jobId} />}
       {m.type === "vcard" && <VisitingCard teamId={m.teamId} />}
@@ -275,6 +280,7 @@ function Auth({ mode, role: initialRole }) {
     const r = await act("auth.login", { email: d.email, pass: d.pass });
     if (!r) return;
     if (r.verify) { toast(r.msg); openModal("verify", { uid: r.verify, email: r.email }); return; }
+    if (r.otp) { openModal("otp", { otp: r.otp, email: r.email, code: r.code }); return; }
     afterLogin(r);
   };
   const register = async e => {
@@ -316,6 +322,25 @@ function Auth({ mode, role: initialRole }) {
           <button className="btn pri" type="submit" disabled={busy}><LuUserPlus /> Create Account</button>
         </form>
       )}
+    </>
+  );
+}
+
+/* admin / staff sign-in: the 6-digit code sent by email */
+function LoginCode({ otp, email, code }) {
+  const [shown, setShown] = useState(code || "");
+  const submit = async e => { const [d] = formData(e); const r = await act("auth.otp", { otp, code: String(d.code).trim() }); if (r) afterLogin(r); };
+  const resend = async () => { const r = await act("auth.otpResend", { otp }); if (r?.code) setShown(r.code); };
+  return (
+    <>
+      <h3><LuShieldCheck /> Sign-in code</h3>
+      <p className="mt8">For safety, admin and staff sign in with a code as well. We sent a 6-digit code to <b>{email}</b>. It is valid for 10 minutes.</p>
+      {shown && <div className="notice mt12"><b>Test mode:</b> your code is <b className="num code">{shown}</b></div>}
+      <form className="stack12 mt14" onSubmit={submit}>
+        <label className="f">Code from the email<input type="text" name="code" inputMode="numeric" pattern="[0-9]{6}" maxLength={6} required autoFocus autoComplete="one-time-code" placeholder="6 digits" /></label>
+        <div className="row"><button className="btn pri" type="submit" disabled={store.ui.busy}>Sign in</button><button type="button" className="btn" onClick={resend}><LuRefreshCw /> Send a new code</button></div>
+        <p className="muted small">Signing in here signs this account out on any other device.</p>
+      </form>
     </>
   );
 }

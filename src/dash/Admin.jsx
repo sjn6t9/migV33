@@ -7,7 +7,7 @@ import { FaWhatsapp, FaFacebookF, FaYoutube, FaLinkedinIn, FaTiktok } from "reac
 import { clStage, STAFF_PERMS, TEAM_DEPTS, store, commit, user, job, worker, company, live, money, num, fdate, bdtFmt, balanceOf, candOf, clPerson, clOpen, cardPending, now, COUNTRIES, STAGES, CL_STAGES, CL_DOCS, PAY_METHODS, PAGES, LABEL } from "../store.js";
 import { toast, formData, setTab, openModal, confirmBox, deleteUser, act, readUpload, compressImage } from "../actions.js";
 import { downloadFile as dlFile } from "../actions.js";
-import { Rail, Tiles, Pill, Empty, Bars, Stars, Avatar } from "../ui.jsx";
+import { Rail, Tiles, Pill, Empty, Bars, Stars, Avatar, RoleBadges } from "../ui.jsx";
 import { StatusSelect, Field, Options, JobFields, blankJob } from "./shared.jsx";
 import { setClStatus } from "../actions.js";
 import { ReceiptsAdmin, SignatureBox } from "./Receipts.jsx";
@@ -750,7 +750,7 @@ function StaffAdmin({ u }) {
   return <>
     <h2>Staff &amp; permissions</h2>
     <p className="muted">Admin and staff accounts sign in like everyone else. Staff see only the sections you allow; an admin sees everything.</p>
-    <div className="card mr-mysig mb14"><SignatureBox u={u} title={`My signature (${u.name})`} note="Shown on money receipts you enter or approve." /></div>
+    <div className="card mr-mysig mb14"><SignatureBox u={u} title={<>{`My signature (${u.name})`}<RoleBadges role={u.role} size={14} /></>} note="Shown on money receipts you enter or approve." /></div>
     <form className="card fgrid" onSubmit={add} key={mid + role}>
       <h3 className="full">Create admin / staff ID</h3>
       <Field label="From Expert Team" hint="Choose a team member: the name and designation come from the Expert Team." full>
@@ -766,7 +766,7 @@ function StaffAdmin({ u }) {
     </form>
     {ids.length ? ids.map(x => { const tm = member(x); return (
       <div className="card stack8" key={x.id}>
-        <div className="row between"><div className="row">{tm?.photo?.data ? <img className="mr-av" src={tm.photo.data} alt="" /> : <Avatar name={x.name} size={40} />}<div><b data-notr>{x.name}</b> <span className="ec-badge">{x.role === "admin" ? "Admin" : "Staff"}</span><div className="muted small" data-notr>{[tm?.title, x.email].filter(Boolean).join(" · ")}</div></div><Pill s={x.status} /></div>
+        <div className="row between"><div className="row">{tm?.photo?.data ? <img className="mr-av" src={tm.photo.data} alt="" /> : <Avatar name={x.name} size={40} />}<div><b data-notr>{x.name}</b><RoleBadges role={x.role} /> <span className="ec-badge">{x.role === "admin" ? "Admin" : "Staff"}</span><div className="muted small" data-notr>{[tm?.title, x.email].filter(Boolean).join(" · ")}</div></div><Pill s={x.status} /></div>
           <div className="row tight">{x.status === "active" ? <button className="btn sm" onClick={() => act("admin.userState", { id: x.id, status: "suspended" })}><LuBan /> Suspend</button> : <button className="btn sm" onClick={() => act("admin.userState", { id: x.id, status: "active" })}>Reactivate</button>}<button className="btn sm danger" onClick={() => deleteUser(x.id)} aria-label={`Delete ${x.name}`}><LuTrash2 /></button></div></div>
         <label className="f mr-link">Expert Team member<select value={x.memberId || ""} onChange={e => act("admin.staff", { op: "member", id: x.id, memberId: e.target.value })}><option value="">— Not linked —</option>
           {team.map(t => <option key={t.id} value={t.id} disabled={taken.has(t.id) && t.id !== x.memberId} data-notr>{`${t.name} · ${t.title}`}</option>)}</select></label>

@@ -189,3 +189,24 @@ export function CardDownload({ c }) {
     </div>
   );
 }
+
+/* account badges: admin = A + verified, staff = S */
+const Petals = () => { const p = []; for (let i = 0; i < 8; i++) { const a = (i * Math.PI) / 4; p.push(<circle key={i} cx={12 + 6.9 * Math.cos(a)} cy={12 + 6.9 * Math.sin(a)} r="4.6" />); } return p; };
+export function VerifiedBadge({ size = 16, title = "Verified" }) {
+  return <svg className="badge-ic" width={size} height={size} viewBox="0 0 24 24" role="img" aria-label={title}><title>{title}</title>
+    <g fill="#0aa1ff"><circle cx="12" cy="12" r="8.4" /><Petals /></g>
+    <path d="M7.4 12.3l3.1 3.1 6.2-6.2" fill="none" stroke="#fff" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" /></svg>;
+}
+function LetterBadge({ letter, color, size, title }) {
+  return <svg className="badge-ic" width={size} height={size} viewBox="0 0 24 24" role="img" aria-label={title}><title>{title}</title>
+    <circle cx="12" cy="12" r="11.5" fill={color} /><circle cx="12" cy="12" r="9.6" fill="none" stroke="#fff" strokeWidth="0.9" />
+    <text x="12" y="16.3" textAnchor="middle" fontFamily="Inter, Arial, sans-serif" fontWeight="800" fontSize="12.5" fill="#fff">{letter}</text></svg>;
+}
+export const AdminBadge = ({ size = 16 }) => <LetterBadge letter="A" color="#ff6406" size={size} title="Admin" />;
+export const StaffBadge = ({ size = 16 }) => <LetterBadge letter="S" color="#0a9e22" size={size} title="Staff" />;
+/** badges after a name: admin → A + verified, staff → S */
+export function RoleBadges({ role, size = 16 }) {
+  if (role === "admin") return <span className="badges"><AdminBadge size={size} /><VerifiedBadge size={size} /></span>;
+  if (role === "staff") return <span className="badges"><StaffBadge size={size} /></span>;
+  return null;
+}

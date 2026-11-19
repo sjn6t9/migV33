@@ -282,7 +282,44 @@ A["auth.login"] = async ({ email, pass }, u, ctx) => {
   must(zoneAllows(ctx.zone, x) || (ctx.zone === "main" && AGENT_HOST && x.role === "agent"), zoneMsg(ctx.zone), ctx.zone === "main" ? 400 : 403);
   must(x.status !== "suspended", "This account is suspended. Contact the agency.");
   if (x.status === "unverified") return { verify: x.id, email: x.email, msg: "Verify your email address to continue." };
+  if (isStaffRole(x) && LOGIN_OTP && await getMailer()) return startOtp(x); // admin and staff: a one-time code by email as well
   ctx.login(x); return { msg: `Signed in as ${x.name}` };
+};
+/* admin / staff sign-in, step 2: the code from the email (LOGIN_OTP=off in the server settings turns this off) */
+const LOGIN_OTP = !/^(0|off|no|false)$/i.test(process.env.LOGIN_OTP || "on");
+const otps = new Map(); // ticket -> { uid, code, exp, tries, sent }
+const maskMail = e => String(e).replace(/^(.)(.*)(.@.*)$/, (_, a, b, c) => a + "*".repeat(Math.min(6, b.length)) + c);
+async function startOtp(x) {
+  for (const [k, v] of otps) if (v.uid === x.id || v.exp < Date.now()) otps.delete(k);
+  const tk = crypto.randomBytes(18).toString("hex"), code = String(crypto.randomInt(100000, 1000000));
+  otps.set(tk, { uid: x.id, code, exp: Date.now() + 10 * 60e3, tries: 0, sent: Date.now() });
+  const ok = await sendLoginCode(x, code);
+  must(ok, "The sign-in code could not be emailed. Try again in a minute, or contact the admin.");
+  return { otp: tk, email: maskMail(x.email), msg: `A sign-in code was sent to ${maskMail(x.email)}.`, ...(SHOW_CODES ? { code } : {}) };
+}
+async function sendLoginCode(x, code) {
+  const m = await getMailer(); if (!m) return false;
+  try {
+    await m.sendMail({ from: `"Mam & Mam Overseas Ltd." <${mailFrom()}>`, to: x.email, subject: `Sign-in code: ${code}`,
+      text: `Assalamu Alaikum ${x.name},\n\nYour sign-in code for the Mam & Mam Overseas Ltd. ${x.role === "admin" ? "admin" : "staff"} account is ${code}.\nIt expires in 10 minutes.\n\nIf you did not try to sign in, change your password now: someone knows it.\n\nMam & Mam Overseas Ltd. · RL 1217` });
+    return true;
+  } catch (e) { console.error("Sign-in code email failed:", e.message); return false; }
+}
+A["auth.otp"] = async ({ otp, code }, u, ctx) => {
+  limit(ctx.ip, "otp", 20, 15 * 60e3);
+  const o = otps.get(String(otp || "")); must(o && o.exp > Date.now(), "This code has expired. Sign in again.");
+  o.tries++; if (o.tries > 5) { otps.delete(String(otp)); must(false, "Too many wrong codes. Sign in again."); }
+  must(String(code || "").replace(/\D/g, "") === o.code, "The code is not correct. Check the email and try again.");
+  otps.delete(String(otp)); const x = user(o.uid); must(x && x.status !== "suspended", "This account is suspended. Contact the agency.");
+  ctx.login(x); return { msg: `Signed in as ${x.name}` };
+};
+A["auth.otpResend"] = async ({ otp }, u, ctx) => {
+  limit(ctx.ip, "otpresend", 5, 15 * 60e3);
+  const o = otps.get(String(otp || "")); must(o && o.exp > Date.now(), "This code has expired. Sign in again.");
+  must(Date.now() - o.sent > 45e3, "Wait a minute before asking for a new code.");
+  o.code = String(crypto.randomInt(100000, 1000000)); o.exp = Date.now() + 10 * 60e3; o.tries = 0; o.sent = Date.now();
+  const x = user(o.uid); must(x && await sendLoginCode(x, o.code), "The sign-in code could not be emailed. Try again in a minute.");
+  return { msg: `A new code was sent to ${maskMail(x.email)}.`, ...(SHOW_CODES ? { code: o.code } : {}) };
 };
 A["auth.handoff"] = async ({ token: t }, u, ctx) => {
   limit(ctx.ip, "handoff", 30, 15 * 60e3);
@@ -915,6 +952,7 @@ const secure = req => req.headers["x-forwarded-proto"] === "https";
 async function handleApi(req, res, url) {
   const zone = hostZone(req);
   let { token, u } = sessionUser(req);
+  if (u && isStaffRole(u)) seen.set(u.id, Date.now()); // online / offline in the team chat
   if (u && !zoneAllows(zone, u)) { token = null; u = null; } // a session from the other site does not count here
   if (req.method === "GET" && url.pathname === "/api/state") return send(res, 200, viewFor(u));
   const rm = req.method === "GET" && /^\/api\/receipt\/([a-f0-9]{24})(?:\/sig\/([ra]))?$/.exec(url.pathname);
@@ -952,6 +990,7 @@ async function handleApi(req, res, url) {
       login: x => {
         if (zone === "main" && AGENT_HOST && x.role === "agent") { ctx.redirect = agentHandoff(x, req); return; } // sign in on the agent panel instead
         must(zoneAllows(zone, x), zoneMsg(zone), 403); const t = crypto.randomBytes(32).toString("hex"); db.sessions[t] = { uid: x.id, exp: new Date(Date.now() + SESSION_DAYS * 864e5).toISOString() }; if (token) delete db.sessions[token]; ctx.token = t; ctx.user = x;
+        if (isStaffRole(x)) for (const [k, v] of Object.entries(db.sessions)) if (v.uid === x.id && k !== t) delete db.sessions[k]; // admin and staff: one sign-in at a time
         setCookie.push(`mam_s=${t}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${SESSION_DAYS * 86400}${secure(req) ? "; Secure" : ""}`); },
       logout: () => { if (token) delete db.sessions[token]; ctx.user = null; setCookie.push(`mam_s=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0${secure(req) ? "; Secure" : ""}`); },
       user: u
@@ -968,6 +1007,7 @@ async function handleApi(req, res, url) {
     }
   }
   if (url.pathname.startsWith("/api/chat")) return chatApi(req, res, url, u, zone);
+  if (url.pathname.startsWith("/api/team")) return teamApi(req, res, url, u);
   if (url.pathname === "/api/health") return send(res, 200, { ok: true });
   return send(res, 404, { error: "Not found." });
 }
@@ -1143,6 +1183,108 @@ async function chatApi(req, res, url, u, zone) {
     return send(res, 400, { error: "Unknown action." });
   } catch (e) {
     if (!(e instanceof Fail)) console.error("chat", e);
+    return send(res, e.code || 500, { error: e instanceof Fail ? e.message : "Something went wrong. Please try again." });
+  }
+}
+
+/* ======================= team chat (admin & staff only) ======================= */
+// one-to-one chats and groups between admin and staff IDs; text, photo and voice messages; online = active in the last 70 s
+if (!db.tchats) db.tchats = [];
+const seen = new Map();
+const isOnline = uid => Date.now() - (seen.get(uid) || 0) < 70e3;
+const teamMembers = () => db.users.filter(x => isStaffRole(x) && x.status !== "suspended");
+function teamPerson(x) {
+  const m = x.memberId && db.team.find(t => t.id === x.memberId);
+  return { id: x.id, name: x.name, role: x.role, title: m?.title || "", photo: m?.photo?.data || "", online: isOnline(x.id), seen: seen.has(x.id) ? new Date(seen.get(x.id)).toISOString() : x.lastSeen || "" };
+}
+const tUnread = (c, uid) => c.msgs.filter(m => m.from !== uid && m.at > (c.reads?.[uid] || "")).length;
+function tSummary(c, uid) {
+  const last = c.msgs[c.msgs.length - 1];
+  const other = c.kind === "dm" ? c.members.find(m => m !== uid) : null;
+  return { id: c.id, kind: c.kind, name: c.kind === "group" ? c.name : user(other)?.name || "Removed account", other, members: c.members, by: c.by, last: c.last,
+    lastText: !last ? "" : last.deleted ? "Message deleted" : last.kind === "image" ? "📷 Photo" : last.kind === "voice" ? "🎤 Voice message" : last.text.slice(0, 80), lastFrom: last?.from || "", unread: tUnread(c, uid) };
+}
+function tThread(c, uid) {
+  const byId = new Map(c.msgs.map(m => [m.id, m]));
+  const out = m => ({ id: m.id, from: m.from, name: user(m.from)?.name || "Removed account", kind: m.kind, text: m.deleted ? "" : m.text, deleted: !!m.deleted, at: m.at,
+    file: m.deleted || !m.file ? null : { url: `/api/files/${m.file.id}`, name: m.file.name } });
+  return { ...tSummary(c, uid), msgs: c.msgs.slice(-400).map(m => ({ ...out(m), reply: m.replyTo && byId.get(m.replyTo) ? out(byId.get(m.replyTo)) : null })),
+    reads: Object.fromEntries(c.members.map(m => [m, c.reads?.[m] || ""])) };
+}
+async function teamApi(req, res, url, u) {
+  if (!isStaffRole(u)) return send(res, 403, { error: "Only admin and staff can use the team chat." });
+  const mine = c => c.members.includes(u.id);
+  if (req.method === "GET") {
+    if (url.pathname === "/api/team") {
+      const chats = db.tchats.filter(mine).sort((a, b) => String(b.last).localeCompare(String(a.last))).map(c => tSummary(c, u.id));
+      return send(res, 200, { me: u.id, members: teamMembers().map(teamPerson), chats, unread: chats.reduce((t, c) => t + c.unread, 0) });
+    }
+    if (url.pathname === "/api/team/thread") {
+      const c = db.tchats.find(x => x.id === url.searchParams.get("id") && mine(x)); if (!c) return send(res, 404, { error: "Chat not found." });
+      const last = c.msgs[c.msgs.length - 1]; if (last && (c.reads ||= {})[u.id] !== last.at) { c.reads[u.id] = last.at; save(); }
+      return send(res, 200, { chat: tThread(c, u.id) });
+    }
+    return send(res, 404, { error: "Not found." });
+  }
+  if (req.method !== "POST" || url.pathname !== "/api/team") return send(res, 405, { error: "Method not allowed." });
+  const origin = req.headers.origin; if (origin && new URL(origin).host !== req.headers.host) return send(res, 403, { error: "Cross-site request refused." });
+  let d; try { d = JSON.parse(await readBody(req)); } catch (e) { return send(res, e.code || 400, { error: e.code ? e.message : "Bad request." }); }
+  try {
+    const ok = (c, msg) => { save(); return send(res, 200, { chat: c ? tThread(c, u.id) : null, ...(msg ? { msg } : {}) }); };
+    const get = () => { const c = db.tchats.find(x => x.id === d.chatId && mine(x)); must(c, "Chat not found."); return c; };
+    const staffIds = arr => [...new Set((Array.isArray(arr) ? arr : []).map(String))].filter(i => isStaffRole(user(i)));
+    const boss = c => c.by === u.id || u.role === "admin";
+    if (d.op === "dm") {
+      const x = user(d.uid); must(isStaffRole(x) && x.id !== u.id, "Choose a team member.");
+      let c = db.tchats.find(y => y.kind === "dm" && y.members.includes(u.id) && y.members.includes(x.id));
+      if (!c) { c = { id: id("tc"), kind: "dm", members: [u.id, x.id], by: u.id, msgs: [], reads: {}, created: now(), last: now() }; db.tchats.push(c); }
+      return ok(c);
+    }
+    if (d.op === "group") {
+      const name = str(d.name, 60); must(name.length >= 2, "Enter a group name.");
+      const members = [u.id, ...staffIds(d.members).filter(i => i !== u.id)]; must(members.length >= 2, "Add at least one member.");
+      const c = { id: id("tc"), kind: "group", name, members, by: u.id, msgs: [], reads: {}, created: now(), last: now() }; db.tchats.push(c);
+      c.msgs.push({ id: id("tm"), from: u.id, kind: "event", text: `${u.name} created the group "${name}".`, at: now() });
+      return ok(c, `Group "${name}" created.`);
+    }
+    if (d.op === "send") {
+      const c = get(); limit(u.id, "teamsend", 120, 60e3);
+      const text = String(d.text ?? "").slice(0, CHAT_MAX).trim();
+      let file = null, kind = "text";
+      if (d.file) { kind = d.kind === "voice" ? "voice" : "image"; file = storeFile(d.file, u.id, kind === "voice" ? { images: false, pdf: false, audio: true } : { images: true, pdf: false }); }
+      must(text || file, "Write a message.");
+      const m = { id: id("tm"), from: u.id, kind, text, file, replyTo: d.replyTo && c.msgs.some(x => x.id === d.replyTo) ? d.replyTo : null, at: now() };
+      c.msgs.push(m); c.last = m.at; (c.reads ||= {})[u.id] = m.at;
+      if (c.msgs.length > 3000) c.msgs.splice(0, c.msgs.length - 3000);
+      return ok(c);
+    }
+    if (d.op === "delete") {
+      const c = get(); const m = c.msgs.find(x => x.id === d.mid); must(m && m.kind !== "event" && (m.from === u.id || u.role === "admin"), "You can delete only your own messages.");
+      if (m.file) dropFile(m.file); Object.assign(m, { deleted: true, text: "", file: null }); return ok(c);
+    }
+    if (d.op === "rename") { const c = get(); must(c.kind === "group" && boss(c), "Only the person who made the group, or the admin, can change it."); const name = str(d.name, 60); must(name.length >= 2, "Enter a group name."); c.name = name; c.msgs.push({ id: id("tm"), from: u.id, kind: "event", text: `${u.name} renamed the group to "${name}".`, at: now() }); return ok(c); }
+    if (d.op === "members") {
+      const c = get(); must(c.kind === "group" && boss(c), "Only the person who made the group, or the admin, can change it.");
+      const next = [...new Set([c.by, ...staffIds(d.members)])].filter(i => user(i)); must(next.length >= 2, "Add at least one member.");
+      const added = next.filter(i => !c.members.includes(i)), gone = c.members.filter(i => !next.includes(i)); c.members = next;
+      if (added.length) c.msgs.push({ id: id("tm"), from: u.id, kind: "event", text: `${u.name} added ${added.map(i => user(i)?.name).join(", ")}.`, at: now() });
+      if (gone.length) c.msgs.push({ id: id("tm"), from: u.id, kind: "event", text: `${u.name} removed ${gone.map(i => user(i)?.name).join(", ")}.`, at: now() });
+      return ok(c);
+    }
+    if (d.op === "leave") {
+      const c = get(); must(c.kind === "group", "You can leave only a group.");
+      c.members = c.members.filter(i => i !== u.id); c.msgs.push({ id: id("tm"), from: u.id, kind: "event", text: `${u.name} left the group.`, at: now() });
+      if (c.by === u.id && c.members.length) c.by = c.members[0];
+      if (!c.members.length) { c.msgs.forEach(m => m.file && dropFile(m.file)); db.tchats = db.tchats.filter(x => x !== c); }
+      save(); return send(res, 200, { chat: null, msg: "You left the group." });
+    }
+    if (d.op === "deleteGroup") {
+      const c = get(); must(c.kind === "group" && boss(c), "Only the person who made the group, or the admin, can delete it.");
+      c.msgs.forEach(m => m.file && dropFile(m.file)); db.tchats = db.tchats.filter(x => x !== c); save(); return send(res, 200, { chat: null, msg: "Group deleted." });
+    }
+    return send(res, 400, { error: "Unknown action." });
+  } catch (e) {
+    if (!(e instanceof Fail)) console.error("team", e);
     return send(res, e.code || 500, { error: e instanceof Fail ? e.message : "Something went wrong. Please try again." });
   }
 }
