@@ -378,7 +378,7 @@ export function Admin({ u }) {
 
   return (
     <div className="wrap dash">
-      <Rail role={R} items={TABS.filter(([k]) => can(k)).map(([k, l, I]) => [k, l, I, { users: pendU, jobs: pendJ, clearance: pendC, tickets: pendT, mysalary: (S.mySalary?.pays || []).filter(p => !p.void && p.status === "pending").length, mymoney: (S.myMoney?.entries || []).filter(e => e.status === "pending" && !e.accepted?.includes(u.id)).length, pay: (can("ledger") ? pendP : 0) + (can("packages") ? pendO : 0) + (can("receipts") ? pendR : 0), messages: newMsg, chat: chatUnread }[k]])} />
+      <Rail role={R} items={TABS.filter(([k]) => can(k)).map(([k, l, I]) => [k, l, I, { users: pendU, jobs: pendJ, clearance: pendC, tickets: pendT, mysalary: (S.mySalary?.pays || []).filter(p => !p.void && p.status === "pending").length, mymoney: (S.myMoney?.entries || []).filter(e => e.status === "pending" && !e.accepted?.includes(S.myMoney.me?.k)).length, pay: (can("ledger") ? pendP : 0) + (can("packages") ? pendO : 0) + (can("receipts") ? pendR : 0), messages: newMsg, chat: chatUnread }[k]])} />
       <div className="panel">{top === "pay" && <nav className="pay-tabs" aria-label="Payments & receipts">
         {paySubs.map(([k, l, I]) => { const n = { ledger: pendP, packages: pendO, receipts: pendR }[k]; return <button key={k} className={t === k ? "on" : ""} aria-current={t === k ? "page" : undefined} onClick={() => { ui.paySub = k; commit(); }}><I /> {l}{n > 0 && <span className="count">{n}</span>}</button>; })}
       </nav>}{body}</div>

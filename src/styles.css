@@ -1146,3 +1146,7 @@ button.hold-tile{cursor:pointer}
 .hold-tbl td.num,.hold-tbl th.r{text-align:right;white-space:nowrap}
 .hold-row{cursor:pointer}.hold-row:hover td{background:var(--soft,#f3f6fb)}
 .hold-tbl td.neg{color:#b42318}
+.hold-sub td{font-size:.86em;color:var(--muted,#667085);padding-top:4px;padding-bottom:4px}
+.hold-sub td:first-child{padding-left:22px}
+.pb-via{display:flex;flex-direction:column;gap:4px}
+.stack6{display:flex;flex-direction:column;gap:6px}

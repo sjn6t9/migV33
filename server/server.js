@@ -241,7 +241,7 @@ function viewFor(u) {
     });
     if (can(u, "jobs")) pub.jobTemplates = db.jobTemplates;
     if (can(u, "office")) pub.office = { entries: db.office.entries, auto: officeAuto(), leaders: leaders() };
-    if (leaders().some(x => x.uid === u.id)) pub.myMoney = { entries: db.office.entries.filter(e => e.people?.includes(u.id)), me: leaders().find(x => x.uid === u.id) };
+    { const me = leaders().find(x => x.uid === u.id); if (me) pub.myMoney = { entries: db.office.entries.filter(e => e.people?.includes(me.k)), me }; }
     if (PP_PERMS.some(k => can(u, k))) pub.passports = db.passports;
     if (isStaffRole(u)) pub.mySalary = { monthly: db.salary.profiles[u.id]?.monthly ?? null, pays: db.salary.pays.filter(p => p.uid === u.id).map(p => salaryOut(p)) };
     if (can(u, "salary")) pub.salary = { profiles: db.salary.profiles, pays: db.salary.pays.map(p => salaryOut(p)) };
@@ -1525,13 +1525,22 @@ function officeAuto() {
 const monthName = m => { const [y, mo] = String(m).split("-"); return new Date(Date.UTC(+y, +mo - 1, 1)).toLocaleString("en-GB", { month: "long", year: "numeric", timeZone: "UTC" }); };
 // where money is: office cash, a bank, a mobile wallet, or with the Managing Director / a Director / the Chairman.
 // Money with one of them counts only after that person accepts it in their own ID.
-const leaders = () => db.users.filter(x => isStaffRole(x) && x.status !== "suspended").map(x => { const m = x.memberId && db.team.find(t => t.id === x.memberId); return m && /chairman|director/i.test(m.title || "") ? { uid: x.id, name: x.name, title: m.title } : null; }).filter(Boolean);
-const personOf = method => { const m = /^Person · (\S+)$/.exec(String(method || "")); return m ? m[1] : null; };
+// the company's three leaders. Each is found in the Expert Team by name (or title); an admin/staff ID linked to that member confirms money entered as being with them.
+const LEADERS = [{ k: "md", name: "Sujon Islam", title: "Managing Director" }, { k: "director", name: "Masud Rana", title: "Director" }, { k: "chairman", name: "Md. Al Mamun Khan", title: "Chairman" }];
+const leaders = () => LEADERS.map(L => {
+  const norm = x => String(x || "").toLowerCase().replace(/[^a-z]/g, "");
+  const m = db.team.find(t => norm(t.name) === norm(L.name)) || db.team.find(t => norm(t.title) === norm(L.title));
+  const x = m && db.users.find(y => y.memberId === m.id && isStaffRole(y) && y.status !== "suspended" && y.status !== "deleted");
+  return { k: L.k, name: m?.name || L.name, title: m?.title || L.title, uid: x?.id || null };
+});
+// "Person · md" or "Person · md | Bank transfer · Sonali Bank PLC"
+const personOf = method => { const m = /^Person · ([a-z]+)(?: \| (.+))?$/.exec(String(method || "")); return m ? m[1] : null; };
+const personVia = method => { const m = /^Person · [a-z]+ \| (.+)$/.exec(String(method || "")); return m ? m[1] : "Cash"; };
 A["admin.office"] = async (d, u) => {
   needPerm(u, "office");
   if (d.op === "add") {
     const list = (Array.isArray(d.rows) ? d.rows : [d]).slice(0, 50); must(list.length, "Add at least one entry.");
-    const L = leaders(), lead = uid => L.find(x => x.uid === uid);
+    const L = leaders(), lead = k => L.find(x => x.k === k), mine = L.find(x => x.uid === u.id)?.k;
     const made = list.map((x, i) => {
       const at = list.length > 1 ? ` (row ${i + 1})` : "", amount = r2(Number(x.amount));
       must(amount > 0 && amount < 1e10 && str(x.desc), `Enter the amount and details${at}.`);
@@ -1541,11 +1550,11 @@ A["admin.office"] = async (d, u) => {
       else e.method = str(x.method, 80) || "Cash";
       const people = [...new Set([e.method, e.from, e.to].map(personOf).filter(Boolean))];
       for (const p of people) must(lead(p), `Choose a Managing Director, Director or Chairman${at}.`);
-      e.people = people; e.accepted = people.filter(p => p === u.id); e.status = e.accepted.length === people.length ? "accepted" : "pending";
+      e.people = people; e.accepted = people.filter(p => p === mine); e.status = e.accepted.length === people.length ? "accepted" : "pending";
       return e;
     });
     db.office.entries.push(...made);
-    for (const e of made) for (const p of e.people.filter(p => !e.accepted.includes(p)))
+    for (const e of made) for (const p of e.people.filter(p => !e.accepted.includes(p)).map(lead).filter(x => x.uid).map(x => x.uid))
       notify(p, `${u.name} asks you to confirm BDT ${e.amount.toLocaleString("en-US")} ${e.type === "transfer" ? "moved" : e.type === "out" ? "paid out" : "received"} by you: ${e.desc.slice(0, 80)}. Open Money with me.`);
     const wait = made.filter(e => e.status === "pending").length;
     return { msg: `${made.length > 1 ? `${made.length} entries added.` : "Entry added."}${wait ? ` ${wait} waiting for the director's confirmation.` : ""}` };
@@ -1556,9 +1565,10 @@ A["admin.office"] = async (d, u) => {
 /* the Managing Director, a Director or the Chairman confirms (or refuses) money entered as being with them */
 A["office.accept"] = async (d, u) => {
   must(isStaffRole(u), "Not allowed.", 403);
-  const e = db.office.entries.find(x => x.id === d.id); must(e && e.people?.includes(u.id), "Request not found."); must(e.status === "pending", "This request is already answered.");
+  const k = leaders().find(x => x.uid === u.id)?.k;
+  const e = db.office.entries.find(x => x.id === d.id); must(k && e && e.people?.includes(k), "Request not found."); must(e.status === "pending", "This request is already answered.");
   if (d.ok) {
-    e.accepted = [...new Set([...(e.accepted || []), u.id])]; if (e.accepted.length === e.people.length) e.status = "accepted";
+    e.accepted = [...new Set([...(e.accepted || []), k])]; if (e.accepted.length === e.people.length) e.status = "accepted";
     notifyAdmins(`${u.name} confirmed BDT ${e.amount.toLocaleString("en-US")}: ${e.desc.slice(0, 80)}.`, "office");
     return { msg: e.status === "accepted" ? "Confirmed. It is now in the main account." : "Confirmed. Waiting for the other person." };
   }
@@ -1672,7 +1682,7 @@ function stmtSource(kind, ref) {
   }
   if (kind === "office") {
     return { title: "Mam & Mam Overseas Ltd. · Main account", sub: "Office cash book", email: "", label: "MAIN ACCOUNT", cash: true, heads: ["Money in", "Money out"],
-      rows: [...db.office.entries.filter(e => (e.status || "accepted") === "accepted" && e.type !== "transfer"), ...officeAuto()].map(e => ({ date: e.date, details: e.desc, rate: personOf(e.method) ? (db.users.find(x => x.id === personOf(e.method))?.name || "DIRECTOR").toUpperCase() : short(e.method), debit: e.type === "in" ? e.amount : 0, credit: e.type === "out" ? e.amount : 0 })) };
+      rows: [...db.office.entries.filter(e => (e.status || "accepted") === "accepted" && e.type !== "transfer"), ...officeAuto()].map(e => ({ date: e.date, details: e.desc, rate: personOf(e.method) ? short(personVia(e.method)) : short(e.method), debit: e.type === "in" ? e.amount : 0, credit: e.type === "out" ? e.amount : 0 })) };
   }
   must(false, "Choose an account.");
 }

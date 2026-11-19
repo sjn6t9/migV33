@@ -16,35 +16,50 @@ const way = (m, c) => { const x = String(c || "").replace(/\s*\(.*\)\s*$/, "") |
 const fdt = iso => new Date(iso).toLocaleString("en-GB", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" });
 
 /* method select used by both forms: Cash, mobile banking services, banks, cheque, and (main account only) the MD / Directors / Chairman */
-const leadersList = () => store.S.office?.leaders || [];
+const LEAD0 = [{ k: "md", name: "Sujon Islam", title: "Managing Director" }, { k: "director", name: "Masud Rana", title: "Director" }, { k: "chairman", name: "Md. Al Mamun Khan", title: "Chairman" }];
+const leadersList = () => store.S.office?.leaders || (store.S.myMoney?.me ? [store.S.myMoney.me] : LEAD0);
+function Ways() { return <><option>Cash</option>
+  <optgroup label="Mobile banking">{MFS.map(x => <option key={x} value={`Mobile banking · ${x}`}>{x}</option>)}</optgroup>
+  <optgroup label="Bank">{BANKS.map(x => <option key={x} value={`Bank transfer · ${x}`}>{x}</option>)}</optgroup><option value="Cheque">Cheque</option></>; }
+/* "Person · md | Bank transfer · Sonali Bank PLC" ⇄ { k, via } */
+const splitP = v => { const m = /^Person · ([a-z]+)(?: \| (.+))?$/.exec(String(v || "")); return m ? { k: m[1], via: m[2] || "Cash" } : null; };
+/* method select used by both forms: Cash, mobile banking services, banks, cheque, and (main account only) the MD / Director / Chairman with the bank the money went to */
 function PaidBy({ value, onChange, people }) {
-  const L = people ? leadersList() : [];
-  return <select value={value} onChange={e => onChange(e.target.value)}><option>Cash</option>
-    {L.length > 0 && <optgroup label="Managing Director / Director / Chairman">{L.map(x => <option key={x.uid} value={`Person · ${x.uid}`}>{`${x.name} (${x.title})`}</option>)}</optgroup>}
-    <optgroup label="Mobile banking">{MFS.map(x => <option key={x} value={`Mobile banking · ${x}`}>{x}</option>)}</optgroup>
-    <optgroup label="Bank">{BANKS.map(x => <option key={x} value={`Bank transfer · ${x}`}>{x}</option>)}</optgroup><option value="Cheque">Cheque</option></select>;
+  const L = people ? leadersList() : [], P = splitP(value);
+  const main = <select value={P ? `Person · ${P.k}` : value} onChange={e => { const v = e.target.value; onChange(v.startsWith("Person · ") ? `${v} | ${P?.via && P.via !== "Cash" ? P.via : "Bank transfer · " + BANKS[0]}` : v); }}>
+    {L.length > 0 && <optgroup label="Managing Director / Director / Chairman">{L.map(x => <option key={x.k} value={`Person · ${x.k}`}>{`${x.name} · ${x.title}`}</option>)}</optgroup>}
+    <Ways /></select>;
+  if (!P) return main;
+  return <div className="stack6">{main}
+    <label className="pb-via"><span className="muted small">{`Which account of ${(L.find(x => x.k === P.k) || {}).name || "theirs"}?`}</span>
+      <select value={P.via} onChange={e => onChange(`Person · ${P.k} | ${e.target.value}`)} aria-label="Their bank or wallet"><option value="Cash">Cash in hand</option>
+        <optgroup label="Bank">{BANKS.map(x => <option key={x} value={`Bank transfer · ${x}`}>{x}</option>)}</optgroup>
+        <optgroup label="Mobile banking">{MFS.map(x => <option key={x} value={`Mobile banking · ${x}`}>{x}</option>)}</optgroup><option value="Cheque">Cheque</option></select></label></div>;
 }
 
-/* where a sum of money is held: office cash, a bank, a mobile wallet or a person (MD / Director / Chairman) */
+/* where a sum of money is held: office cash, a bank, a mobile wallet or a person (MD / Director / Chairman, and which of their accounts) */
 export function holderOf(method) {
-  const m = String(method || "Cash").trim();
-  if (m.startsWith("Person · ")) return { key: `p:${m.slice(9)}`, kind: "person", uid: m.slice(9) };
+  const m = String(method || "Cash").trim(), P = splitP(m);
+  if (P) { const via = holderOf(P.via); return { key: `p:${P.k}`, kind: "person", k: P.k, via: via.kind === "cash" ? "Cash in hand" : via.name }; }
   const name = m.split("·").slice(1).join("·").replace(/\s*\(.*\)\s*$/, "").trim();
   if (m.startsWith("Mobile banking")) return { key: `w:${name || "Mobile banking"}`, kind: "wallet", name: name || "Mobile banking" };
   if (m.startsWith("Bank transfer")) return { key: `b:${name || "Bank"}`, kind: "bank", name: name || "Bank (not named)" };
   if (m.startsWith("Cheque")) return { key: "b:Cheque", kind: "bank", name: "Cheques (not yet deposited)" };
   return { key: "cash", kind: "cash", name: "Cash in office" };
 }
-const personName = uid => { const l = leadersList().find(x => x.uid === uid) || store.S.myMoney?.me; const u = store.S.users.find(x => x.id === uid); return l?.uid === uid ? `${l.name} · ${l.title}` : u?.name || "Director"; };
-const holderName = h => (h.kind === "person" ? personName(h.uid) : h.name);
-const methodText = m => (String(m || "").startsWith("Person · ") ? personName(String(m).slice(9)) : m || "Cash");
+const personName = k => { const l = leadersList().find(x => x.k === k) || LEAD0.find(x => x.k === k); return l ? `${l.name} · ${l.title}` : "Director"; };
+const holderName = h => (h.kind === "person" ? personName(h.k) : h.name);
+const methodText = m => { const P = splitP(m); return P ? `${personName(P.k)} (${holderOf(m).via})` : m || "Cash"; };
 const okEntry = e => (e.status || "accepted") === "accepted";
-/* the money movements each entry makes: [{key, amount}] (+ in, − out) */
+/* the money movements each entry makes (+ in, − out) */
 const moves = e => e.type === "transfer" ? [{ h: holderOf(e.from), amount: -e.amount }, { h: holderOf(e.to), amount: e.amount }] : [{ h: holderOf(e.method), amount: e.type === "out" ? -e.amount : e.amount }];
 function holdings(list) {
   const map = new Map();
   for (const e of list) for (const m of moves(e)) {
-    const x = map.get(m.h.key) || { ...m.h, in: 0, out: 0, n: 0 }; if (m.amount > 0) x.in += m.amount; else x.out -= m.amount; x.n++; map.set(m.h.key, x);
+    const x = map.get(m.h.key) || { ...m.h, in: 0, out: 0, n: 0, vias: {} }; delete x.via;
+    if (m.amount > 0) x.in += m.amount; else x.out -= m.amount; x.n++;
+    if (m.h.via) { const v = x.vias[m.h.via] || (x.vias[m.h.via] = { in: 0, out: 0 }); if (m.amount > 0) v.in += m.amount; else v.out -= m.amount; }
+    map.set(m.h.key, x);
   }
   return [...map.values()].map(x => ({ ...x, bal: x.in - x.out }));
 }
@@ -57,11 +72,12 @@ function officeRows(list, key, pendingToo) {
     if (e.type === "transfer") {
       if (!key) continue;
       const m = moves(e).find(x => x.h.key === key); if (!m) continue;
-      out.push({ id: e.id, date: e.date, details: `${e.desc} — moved ${m.amount > 0 ? `from ${holderName(holderOf(e.from))}` : `to ${holderName(holderOf(e.to))}`}`, ref: e.ref, rate: "TRANSFER", debit: m.amount > 0 ? e.amount : 0, credit: m.amount < 0 ? e.amount : 0, manual: !e.auto, pending: pend || e.status === "rejected", sub, e });
+      out.push({ id: e.id, date: e.date, details: `${e.desc} — moved ${m.amount > 0 ? `from ${methodText(e.from)}` : `to ${methodText(e.to)}`}`, ref: e.ref, rate: m.h.via ? m.h.via.toUpperCase() : "TRANSFER", debit: m.amount > 0 ? e.amount : 0, credit: m.amount < 0 ? e.amount : 0, manual: !e.auto, pending: pend || e.status === "rejected", sub, e });
       continue;
     }
-    if (key && holderOf(e.method).key !== key) continue;
-    out.push({ id: e.id, date: e.date, details: e.desc, ref: e.ref, rate: String(e.method || "").startsWith("Person · ") ? (leadersList().find(x => `Person · ${x.uid}` === e.method)?.name || store.S.myMoney?.me?.name || "DIRECTOR").toUpperCase() : way(e.method), debit: e.type === "in" ? e.amount : 0, credit: e.type === "out" ? e.amount : 0, manual: !e.auto, auto: e.auto, pending: pend || e.status === "rejected", sub, e });
+    const h = holderOf(e.method); if (key && h.key !== key) continue;
+    out.push({ id: e.id, date: e.date, details: e.desc, ref: e.ref, rate: h.kind === "person" ? h.via.toUpperCase() : way(e.method), debit: e.type === "in" ? e.amount : 0, credit: e.type === "out" ? e.amount : 0, manual: !e.auto, auto: e.auto, pending: pend || e.status === "rejected",
+      sub: [h.kind === "person" && !key && `With ${personName(h.k)}`, sub].filter(Boolean).join(" · "), e });
   }
   return out;
 }
@@ -73,7 +89,7 @@ export function OfficeAccount() {
   const [key, setKey] = React.useState("");
   const all = [...O.entries, ...O.auto], ok = all.filter(okEntry), H = holdings(ok);
   const waiting = O.entries.filter(e => e.status === "pending");
-  const sel = key && (H.find(h => h.key === key) || { key, ...(key.startsWith("p:") ? { kind: "person", uid: key.slice(2) } : { name: key.slice(2) }) });
+  const sel = key && (H.find(h => h.key === key) || { key, ...(key.startsWith("p:") ? { kind: "person", k: key.slice(2) } : { name: key.slice(2) }) });
   const rows = officeRows(key ? all : all.filter(e => okEntry(e) || e.status === "pending"), key, false);
   return <>
     <div className="ec-head"><div><h2>Main account</h2><p className="muted small">The office cash book. Money in and money out, with the running balance. Approved money receipts, agent payments and salaries are added automatically. Money with the Managing Director, a Director or the Chairman counts only after they confirm it.</p></div></div>
@@ -91,12 +107,13 @@ export function OfficeAccount() {
 function Holdings({ H, waiting, sel, onPick }) {
   const L = leadersList(), cash = H.find(h => h.kind === "cash") || { key: "cash", kind: "cash", name: "Cash in office", in: 0, out: 0, bal: 0 };
   const banks = H.filter(h => h.kind === "bank").sort((a, b) => b.bal - a.bal), wallets = H.filter(h => h.kind === "wallet").sort((a, b) => b.bal - a.bal);
-  const people = [...L.map(l => H.find(h => h.key === `p:${l.uid}`) || { key: `p:${l.uid}`, kind: "person", uid: l.uid, in: 0, out: 0, bal: 0 }), ...H.filter(h => h.kind === "person" && !L.some(l => `p:${l.uid}` === h.key))];
-  const wait = uid => waiting.filter(e => e.people?.includes(uid) && !e.accepted?.includes(uid));
+  const people = [...L.map(l => H.find(h => h.key === `p:${l.k}`) || { key: `p:${l.k}`, kind: "person", k: l.k, in: 0, out: 0, bal: 0, vias: {} }), ...H.filter(h => h.kind === "person" && !L.some(l => `p:${l.k}` === h.key))];
+  const wait = k => waiting.filter(e => e.people?.includes(k) && !e.accepted?.includes(k));
   const total = H.reduce((t, h) => t + h.bal, 0), sum = l => l.reduce((t, h) => t + h.bal, 0);
-  const Row = ({ h, extra }) => <tr className={`hold-row${sel === h.key ? " on" : ""}`} onClick={() => onPick(h.key)} title="Show these entries"><td className="b">{holderName(h)}{extra}</td><td className="num">{tk(h.in)}</td><td className="num">{tk(h.out)}</td><td className={`num b${h.bal < 0 ? " neg" : ""}`}>{tk(h.bal)}</td></tr>;
+  const Row = ({ h, extra }) => <><tr className={`hold-row${sel === h.key ? " on" : ""}`} onClick={() => onPick(h.key)} title="Show these entries"><td className="b">{holderName(h)}{extra}</td><td className="num">{tk(h.in)}</td><td className="num">{tk(h.out)}</td><td className={`num b${h.bal < 0 ? " neg" : ""}`}>{tk(h.bal)}</td></tr>
+    {Object.entries(h.vias || {}).sort((a, b) => (b[1].in - b[1].out) - (a[1].in - a[1].out)).map(([n, v]) => <tr key={n} className="hold-sub"><td>{`↳ ${n}`}</td><td className="num">{tk(v.in)}</td><td className="num">{tk(v.out)}</td><td className="num">{tk(v.in - v.out)}</td></tr>)}</>;
   const Group = ({ title, list, none }) => <div className="hold-group"><h4>{title}<span className="muted small ms6">{`${tk(sum(list))} BDT`}</span></h4>
-    {list.length ? <div className="tbl-wrap"><table className="tbl hold-tbl"><thead><tr><th>Name</th><th className="r">Money in</th><th className="r">Money out</th><th className="r">Balance</th></tr></thead><tbody>{list.map(h => <Row key={h.key} h={h} extra={h.kind === "person" && wait(h.uid).length > 0 && <span className="ec-badge mr-wait ms6">{`${wait(h.uid).length} waiting`}</span>} />)}</tbody></table></div> : <p className="muted small">{none}</p>}</div>;
+    {list.length ? <div className="tbl-wrap"><table className="tbl hold-tbl"><thead><tr><th>Name</th><th className="r">Money in</th><th className="r">Money out</th><th className="r">Balance</th></tr></thead><tbody>{list.map(h => <Row key={h.key} h={h} extra={h.kind === "person" && <>{wait(h.k).length > 0 && <span className="ec-badge mr-wait ms6">{`${wait(h.k).length} waiting`}</span>}{L.find(l => l.k === h.k && !l.uid) && <span className="muted small ms6">No login ID yet</span>}</>} />)}</tbody></table></div> : <p className="muted small">{none}</p>}</div>;
   return <div className="card hold">
     <div className="hold-top">
       <button type="button" className={`hold-tile${sel === "cash" ? " on" : ""}`} onClick={() => onPick("cash")}><span className="muted small">Cash in office (with me)</span><b>{`${tk(cash.bal)} BDT`}</b></button>
@@ -107,29 +124,33 @@ function Holdings({ H, waiting, sel, onPick }) {
     </div>
     <Group title="Banks" list={banks} none="No money in any bank yet." />
     <Group title="Mobile wallets" list={wallets} none="No money in any mobile wallet yet." />
-    <Group title="Managing Director, Directors and Chairman" list={people} none="Link an admin or staff ID to an Expert Team member titled Managing Director, Director or Chairman to show them here." />
+    <Group title="Managing Director, Directors and Chairman" list={people} none="" />
+    {L.some(l => !l.uid) && <p className="muted small">{`To confirm money, ${L.filter(l => !l.uid).map(l => l.name).join(", ")} need an admin or staff ID linked to their Expert Team profile (Staff & permissions). Until then their entries wait as Pending.`}</p>}
     {waiting.length > 0 && <p className="muted small mt8">{`${waiting.length} ${waiting.length > 1 ? "entries are" : "entry is"} waiting for confirmation. They are shown dimmed and are not counted until confirmed.`}</p>}
     <p className="muted small mt8">Click a row to see only its entries.</p>
   </div>;
 }
 /* in the ID of the MD / a Director / the Chairman: money the office says is with them */
 export function MoneyWithMe() {
-  const M = store.S.myMoney || { entries: [] }, me = user(store.S.session) || {}, key = `p:${me.id}`;
-  const pend = M.entries.filter(e => e.status === "pending" && !e.accepted?.includes(me.id));
+  const M = store.S.myMoney || { entries: [] }, me = user(store.S.session) || {}, mk = M.me?.k, key = `p:${mk}`;
+  const pend = M.entries.filter(e => e.status === "pending" && !e.accepted?.includes(mk));
+  const mine = holdings(M.entries.filter(okEntry)).find(h => h.key === key);
   const ok = M.entries.filter(okEntry), bal = ok.reduce((t, e) => t + moves(e).filter(m => m.h.key === key).reduce((s, m) => s + m.amount, 0), 0);
   return <>
     <div className="ec-head"><div><h2>Money with me</h2><p className="muted small">The Account Manager enters money that came to you or that you paid. Confirm each one. Only confirmed entries go into the main account.</p></div></div>
-    <div className="card hold"><div className="hold-top"><div className="hold-tile tot"><span className="muted small">{`With ${me.name}${M.me?.title ? ` · ${M.me.title}` : ""}`}</span><b>{`${tk(bal)} BDT`}</b></div><div className="hold-tile"><span className="muted small">Waiting for you</span><b>{pend.length}</b></div></div></div>
+    <div className="card hold"><div className="hold-top"><div className="hold-tile tot"><span className="muted small">{`With ${me.name}${M.me?.title ? ` · ${M.me.title}` : ""}`}</span><b>{`${tk(bal)} BDT`}</b></div><div className="hold-tile"><span className="muted small">Waiting for you</span><b>{pend.length}</b></div></div>
+      {mine && Object.keys(mine.vias).length > 0 && <div className="tbl-wrap"><table className="tbl hold-tbl"><thead><tr><th>Account</th><th className="r">Money in</th><th className="r">Money out</th><th className="r">Balance</th></tr></thead><tbody>
+        {Object.entries(mine.vias).map(([n, v]) => <tr key={n}><td className="b">{n}</td><td className="num">{tk(v.in)}</td><td className="num">{tk(v.out)}</td><td className="num b">{tk(v.in - v.out)}</td></tr>)}</tbody></table></div>}</div>
     {pend.length > 0 && <div className="card"><h3>Please confirm</h3>
-      {pend.map(e => <MoneyReq key={e.id} e={e} me={me} />)}</div>}
+      {pend.map(e => <MoneyReq key={e.id} e={e} mk={mk} />)}</div>}
     <div className="card"><Statement title={`Mam & Mam Overseas Ltd. · Money with ${me.name}`} kind="MONEY WITH ME" cash heads={["Money in", "Money out"]} rows={officeRows(M.entries, key, true)} empty="Nothing yet." /></div>
   </>;
 }
-function MoneyReq({ e, me }) {
-  const [no, setNo] = React.useState(false), [txt, setTxt] = React.useState(""), m = moves(e).find(x => x.h.key === `p:${me.id}`);
+function MoneyReq({ e, mk }) {
+  const [no, setNo] = React.useState(false), [txt, setTxt] = React.useState(""), m = moves(e).find(x => x.h.key === `p:${mk}`);
   return <div className="sal-req">
     <div><b>{`${tk(e.amount)} BDT`}</b><span className="ec-badge ms6">{e.type === "transfer" ? (m?.amount > 0 ? "Given to you" : "Paid by you") : e.type === "in" ? "Received by you" : "Paid out by you"}</span>
-      <div>{e.desc}</div><div className="muted small">{[rDate(e.date), e.ref && `Ref ${e.ref}`, e.type === "transfer" && `${methodText(e.from)} → ${methodText(e.to)}`, `Entered by ${e.by}`].filter(Boolean).join(" · ")}</div></div>
+      <div>{e.desc}</div><div className="muted small">{[rDate(e.date), m?.h.via && `Into: ${m.h.via}`, e.ref && `Ref ${e.ref}`, e.type === "transfer" && `${methodText(e.from)} → ${methodText(e.to)}`, `Entered by ${e.by}`].filter(Boolean).join(" · ")}</div></div>
     {no ? <div className="row6"><input type="text" value={txt} onChange={x => setTxt(x.target.value)} maxLength={200} placeholder="What is wrong? e.g. amount is less" aria-label="What is wrong" />
       <button className="btn sm danger" onClick={() => act("office.accept", { id: e.id, ok: false, text: txt })}>Send</button><button className="btn sm" onClick={() => setNo(false)}>Back</button></div>
       : <div className="row6"><button className="btn sm pri" onClick={() => act("office.accept", { id: e.id, ok: true })}><LuCheck /> Yes, confirm</button><button className="btn sm" onClick={() => setNo(true)}><LuX /> Not received</button></div>}
@@ -140,7 +161,7 @@ function OfficeForm() {
   const [rows, setRows] = React.useState(() => [blank()]); const [busy, setBusy] = React.useState(false);
   const set = (i, v) => setRows(rows.map((r, j) => (j === i ? { ...r, ...v } : r)));
   const sum = rows.reduce((t, r) => t + (r.type === "in" ? 1 : r.type === "out" ? -1 : 0) * (Number(r.amount) || 0), 0);
-  const hasPerson = rows.some(r => (r.type === "transfer" ? [r.from, r.to] : [r.method]).some(m => m.startsWith("Person · ") && m !== `Person · ${store.S.session}`));
+  const hasPerson = rows.some(r => (r.type === "transfer" ? [r.from, r.to] : [r.method]).some(m => m.startsWith("Person · ")));
   const add = async e => {
     e.preventDefault();
     for (const [i, r] of rows.entries()) {
