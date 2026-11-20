@@ -7,7 +7,7 @@ import { store, commit } from "../store.js";
 import { act, openModal, closeModal, confirmBox, toast } from "../actions.js";
 import { Field } from "./shared.jsx";
 import { Empty } from "../ui.jsx";
-import { PassportPick } from "./Passports.jsx";
+import { PassportPick, passports } from "./Passports.jsx";
 import { xlsx } from "../receipt.js";
 
 export const MOFA_ST = ["Not applied", "Applied", "Issued", "Rejected", "Cancelled"];
@@ -22,11 +22,74 @@ const tone = s => (/issued|stamped/i.test(s) ? "ok" : /rejected|cancelled/i.test
 const Pill = ({ s }) => <span className={`vf-pill ${tone(s)}`}>{s}</span>;
 
 export function VisaAdmin() {
-  const ui = store.ui, sub = ui.visaSub || "ksa";
+  const ui = store.ui, sub = ui.visaSub || "ksa", go = k => { ui.visaSub = k; commit(); };
   return <>
-    <nav className="pay-tabs" aria-label="Visa applications"><button className={sub === "ksa" ? "on" : ""} aria-current={sub === "ksa" ? "page" : undefined} onClick={() => { ui.visaSub = "ksa"; commit(); }}>KSA Visa</button></nav>
-    <nav className="pay-tabs vf-sub" aria-label="KSA Visa"><button className="on" aria-current="page">HR Files<span className="count soft">{files().length}</span></button></nav>
-    <HrFiles />
+    <nav className="pay-tabs" aria-label="Visa applications">
+      <button className={sub === "ksa" ? "on" : ""} aria-current={sub === "ksa" ? "page" : undefined} onClick={() => go("ksa")}>KSA Visa</button>
+      <button className={sub === "pp" ? "on" : ""} aria-current={sub === "pp" ? "page" : undefined} onClick={() => go("pp")}>Passport Entry<span className="count soft">{passports().filter(p => p.info).length}</span></button>
+    </nav>
+    {sub === "pp" ? <VisaPassportEntry /> : <>
+      <nav className="pay-tabs vf-sub" aria-label="KSA Visa"><button className="on" aria-current="page">HR Files<span className="count soft">{files().length}</span></button></nav>
+      <HrFiles /></>}
+  </>;
+}
+
+/* Visa applications › Passport Entry: the Personal and Passport Information of the client file, entered once; Fetch in Quick Import fills them in */
+const PP_BLANK = { name: "", passport: "", gender: "", agentId: "", info: { prevNationality: "BANGLADESH", nationality: "BANGLADESH", religion: "Muslim", issuePlace: "DHAKA" } };
+function VisaPassportEntry() {
+  const [f, setF] = React.useState(PP_BLANK), [edit, setEdit] = React.useState(null), [busy, setBusy] = React.useState(false), [q, setQ] = React.useState("");
+  const set = v => setF(o => ({ ...o, ...v })), setI = v => setF(o => ({ ...o, info: { ...o.info, ...v } }));
+  const I = (k, p = {}) => <input type={VISA_DATES.includes(k) ? "date" : "text"} value={f.info[k] || ""} onChange={e => setI({ [k]: e.target.value })} maxLength={160} {...p} />;
+  const SI = (k, opts) => <select value={f.info[k] || ""} onChange={e => setI({ [k]: e.target.value })}><option value="">Select</option>{opts.map(x => <option key={x}>{x}</option>)}</select>;
+  const save = async e => {
+    e.preventDefault(); setBusy(true);
+    const row = { name: f.name, passport: f.passport, gender: f.gender, agentId: f.agentId, country: f.country || "Saudi Arabia", info: f.info };
+    const r = await act("admin.passport", edit ? { op: "update", id: edit, ...row } : { op: "add", rows: [row] }); setBusy(false);
+    if (r) { setF(PP_BLANK); setEdit(null); }
+  };
+  const start = p => { setEdit(p.id); setF({ name: p.name, passport: p.passport, gender: p.gender, agentId: p.agentId || "", country: p.country, info: { ...(p.info || {}) } }); window.scrollTo?.({ top: 0, behavior: "smooth" }); };
+  const s0 = q.trim().toLowerCase(), list = passports().filter(p => !s0 || [p.name, p.passport, p.info?.fatherName, p.ref, p.info?.mofaId].some(v => (v || "").toLowerCase().includes(s0)));
+  return <>
+    <div className="ec-head"><div><h2>Passport Entry</h2><p className="muted small">Enter the passport once. In Create Client File, Fetch with the passport number fills in the Personal and Passport Information.</p></div></div>
+    <form className="vf-form" onSubmit={save} noValidate>
+      {edit && <p className="small"><span className="ec-badge">{`Editing ${f.passport}`}</span><button type="button" className="btn sm link" onClick={() => { setEdit(null); setF(PP_BLANK); }}><LuX /> Cancel</button></p>}
+      <Sec n="1" title="Personal Information" sub="Basic identity of the applicant">
+        <div className="fgrid">
+          <Field label={<span>Full name<span className="req"> *</span></span>}><input type="text" value={f.name} onChange={e => set({ name: e.target.value })} maxLength={120} /></Field>
+          <Field label="Father's name">{I("fatherName")}</Field>
+          <Field label="Mother's name">{I("motherName")}</Field>
+          <Field label="Date of birth">{I("dob")}</Field>
+          <Field label="Birth place">{I("birthPlace")}</Field>
+          <Field label="Previous nationality">{I("prevNationality")}</Field>
+          <Field label="Present nationality">{I("nationality")}</Field>
+          <Field label={<span>Sex<span className="req"> *</span></span>}><select value={f.gender} onChange={e => set({ gender: e.target.value })}><option value="">Select</option><option>Male</option><option>Female</option></select></Field>
+          <Field label="Marital status">{SI("marital", MARITAL)}</Field>
+          <Field label="Sect">{I("sect")}</Field>
+          <Field label="Religion">{SI("religion", RELIGION)}</Field>
+          <Field label="Home address" full>{I("address", { maxLength: 1000 })}</Field>
+          <Field label="MOFA application ID">{I("mofaId", { placeholder: "New MOFA" })}</Field>
+          <Field label="Old MOFA application ID">{I("oldMofaId", { placeholder: "Old MOFA" })}</Field>
+          <Field label="Agent"><select value={f.agentId || ""} onChange={e => set({ agentId: e.target.value })}><option value="">No agent (office client)</option>{agentsList().map(a => <option key={a.id} value={a.id}>{a.name}</option>)}</select></Field>
+        </div>
+      </Sec>
+      <Sec n="2" title="Passport Information" sub="Travel document details">
+        <div className="fgrid">
+          <Field label={<span>Passport no.<span className="req"> *</span></span>}><input type="text" value={f.passport} onChange={e => set({ passport: e.target.value })} maxLength={20} autoComplete="off" /></Field>
+          <Field label="Issue place">{I("issuePlace")}</Field>
+          <Field label="Issue date"><input type="date" value={f.info.issueDate || ""} onChange={e => setI({ issueDate: e.target.value, ...(f.info.validity && e.target.value ? { expiryDate: addYears(e.target.value, parseInt(f.info.validity, 10)) } : {}) })} /></Field>
+          <Field label="Expiry date">{I("expiryDate")}</Field>
+          <Field label="Passport validity (years)"><select value={f.info.validity || ""} onChange={e => setI({ validity: e.target.value, ...(e.target.value && f.info.issueDate ? { expiryDate: addYears(f.info.issueDate, parseInt(e.target.value, 10)) } : {}) })}><option value="">Select</option>{VALIDITY.map(x => <option key={x}>{x}</option>)}</select></Field>
+        </div>
+      </Sec>
+      <div className="row6 mt14"><button className="btn pri" type="submit" disabled={busy}><LuCheck /> {edit ? "Save changes" : "Save passport"}</button></div>
+    </form>
+    <div className="card mt14">
+      <div className="vf-tools"><label className="ec-search mr-search"><input type="text" value={q} onChange={e => setQ(e.target.value)} placeholder="Search name, passport, father's name, MOFA ID" aria-label="Search passports" /><LuSearch /></label></div>
+      {list.length ? <div className="tbl vf-tbl"><table><thead><tr><th>SL</th><th>Name</th><th>Passport</th><th>Father's name</th><th>Date of birth</th><th>Sex</th><th>Expiry date</th><th>MOFA ID</th><th>Agent</th><th>Actions</th></tr></thead><tbody>
+        {list.map((p, i) => <tr key={p.id}><td className="num">{list.length - i}</td><td className="b">{p.name}</td><td className="num">{p.passport}</td><td>{p.info?.fatherName || "—"}</td><td className="nowrap">{day(p.info?.dob)}</td><td>{p.gender}</td><td className="nowrap">{day(p.info?.expiryDate)}</td><td className="num">{p.info?.mofaId || "—"}</td><td>{p.ref || <span className="muted">Office</span>}</td>
+          <td className="nowrap"><button className="btn sm" onClick={() => start(p)}><LuPencil /> Edit</button><button className="btn sm link danger" aria-label={`Delete ${p.passport}`} onClick={() => confirmBox(`Delete passport ${p.passport}?`, () => act("admin.passport", { op: "delete", id: p.id }), "Delete")}><LuTrash2 /></button></td></tr>)}
+      </tbody></table></div> : <Empty>{q ? "No passports match." : "No passports yet."}</Empty>}
+    </div>
   </>;
 }
 

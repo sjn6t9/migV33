@@ -1833,13 +1833,14 @@ A["admin.visa"] = async (d, u) => {
   if (d.op === "fetch") {
     const pp = ppNorm(d.passport); must(/^[A-Z0-9]{6,15}$/.test(pp), "Enter the passport number.");
     const out = {}, put = o => { for (const [k, w] of Object.entries(o)) if (w && !out[k]) out[k] = w; };
+    const p = db.passports.find(x => x.passport === pp);
+    if (p) put({ name: p.name, sex: p.gender, agentId: p.agentId, ...(p.info || {}) }); // the Passport Entry first: it is the office's checked copy
     const old = db.visa.files.filter(f => f.passport === pp && f.id !== d.id).sort((a, b) => b.created.localeCompare(a.created))[0];
     if (old) { const { id: _i, sl, created, by, updated, updatedBy, ...rest } = old; put(rest); }
-    const p = db.passports.find(x => x.passport === pp); if (p) put({ name: p.name, sex: p.gender, agentId: p.agentId });
     const w = (db.workers || []).find(x => ppNorm(x.passport) === pp); if (w) put({ name: w.name, agentId: w.agentId, address: w.district, mofaProfession: w.trade });
     const c = db.users.find(x => x.role === "candidate" && ppNorm(x.profile?.passport) === pp); if (c) put({ name: c.name, dob: c.profile?.dob, sex: c.profile?.gender, address: c.profile?.address, mofaProfession: c.profile?.trade });
     must(Object.keys(out).length, `Nothing found for passport ${pp}. Fill in the form.`);
-    return { msg: `Found passport ${pp}${old ? " (from an earlier file)" : ""}.`, found: out };
+    return { msg: `Found passport ${pp}${p ? " (Passport Entry)" : old ? " (from an earlier file)" : ""}.`, found: out };
   }
   /* Search by visa number / sponsor ID: copy the visa and sponsor details from another file with the same visa */
   if (d.op === "visaSearch") {
@@ -1858,14 +1859,16 @@ A["admin.visa"] = async (d, u) => {
 };
 const ppNorm = v => String(v || "").replace(/\s+/g, "").toUpperCase();
 const PP_PERMS = ["clearance", "receipts", "ledger", "office", "visa"];
+const PP_INFO = ["fatherName", "motherName", "dob", "birthPlace", "prevNationality", "nationality", "marital", "sect", "religion", "address", "mofaId", "oldMofaId", "issuePlace", "issueDate", "expiryDate", "validity"];
 A["admin.passport"] = async (d, u) => {
-  needPerm(u, "clearance");
+  must(can(u, "clearance") || can(u, "visa"), "You do not have permission for this.", 403);
   const read = x => {
     const name = str(x.name, 120), passport = ppNorm(x.passport).slice(0, 20), country = str(x.country, 60), gender = x.gender === "Female" ? "Female" : x.gender === "Male" ? "Male" : "";
     must(name.length >= 2, "Enter the full name."); must(/^[A-Z0-9]{6,15}$/.test(passport), "Check the passport number (letters and numbers, 6 to 15).");
     must(country, "Choose the country."); must(gender, "Choose Male or Female.");
     const ag = x.agentId ? user(x.agentId) : null; must(!x.agentId || ag?.role === "agent", "Agent not found.");
-    return { name, passport, country, gender, ref: ag ? agentName(ag) : str(x.ref, 120), agentId: ag ? ag.id : null };
+    const info = x.info && typeof x.info === "object" ? Object.fromEntries(PP_INFO.map(k => [k, VISA_DATES.includes(k) ? okDay(x.info[k]) : str(x.info[k], k === "address" ? 1000 : 160)]).filter(([, v]) => v)) : undefined;
+    return { name, passport, country, gender, ref: ag ? agentName(ag) : str(x.ref, 120), agentId: ag ? ag.id : null, ...(info ? { info } : {}) };
   };
   if (d.op === "add") {
     const list = (Array.isArray(d.rows) ? d.rows : [d]).slice(0, 100); must(list.length, "Add at least one passport.");
