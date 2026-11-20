@@ -1,8 +1,8 @@
 // Visa applications › KSA visa › HR files: a dashboard of client files (MOFA, visa, sponsor, medical) and the Create Client File form.
 import React from "react";
-import { LuFilePlus2, LuSearch, LuPencil, LuTrash2, LuFileSpreadsheet, LuX, LuExternalLink, LuCheck, LuArrowLeft, LuDownload, LuFileText, LuRefreshCw } from "react-icons/lu";
+import { LuFilePlus2, LuSearch, LuPencil, LuTrash2, LuFileSpreadsheet, LuX, LuExternalLink, LuCheck, LuArrowLeft, LuDownload, LuFileText, LuRefreshCw, LuClipboardPaste } from "react-icons/lu";
 import { VISA_FIELDS, VISA_DATES, VISA_LINKS } from "../constants.js";
-import { occEn, cityOf, mofaLabel, STAY_AR } from "../ksaDict.js";
+import { occEn, cityOf, mofaLabel, STAY_AR, parseWafid } from "../ksaDict.js";
 import { store, commit } from "../store.js";
 import { act, openModal, closeModal, confirmBox, toast } from "../actions.js";
 import { Field } from "./shared.jsx";
@@ -165,6 +165,26 @@ function Saved({ id, onEdit }) {
 export async function embassyPdf(f, setBusy = () => {}) {
   setBusy(true); try { const { ksaPdf } = await import("../ksaPdf.js"); await ksaPdf(f, store.S.settings || {}); } catch (e) { toast(e.message || "The PDF could not be made."); } finally { setBusy(false); }
 }
+/* Medical Check (Wafid) cannot be asked from the server: the office copies the result page and pastes it here */
+function WafidPaste({ passport, onFill }) {
+  const [open, setOpen] = React.useState(false), [txt, setTxt] = React.useState(""), [res, setRes] = React.useState(null);
+  const read = () => {
+    const r = parseWafid(txt); const pp = String(passport || "").replace(/\s+/g, "").toUpperCase();
+    if (!r.medicalResult && !r.medicalCenter) { setRes({ error: "This does not look like the Wafid result page. Copy the whole page and paste it again." }); return; }
+    if (r.passport && pp && r.passport !== pp) { setRes({ error: `This result is for passport ${r.passport}, not ${pp}.` }); return; }
+    onFill(Object.fromEntries(["medicalResult", "medicalCenter", "medicalSlipDate", "gccSlipNo"].filter(k => r[k]).map(k => [k, r[k]])));
+    setRes(r); setTxt(""); setOpen(false); toast("Medical details filled in.");
+  };
+  return <div className="vf-med">
+    <div className="row6"><a className="btn sm" href="https://wafid.com/en/medical-status-search/" target="_blank" rel="noopener noreferrer"><LuExternalLink /> Medical Check</a>
+      <button type="button" className="btn sm" onClick={() => { setOpen(!open); setRes(null); }}><LuClipboardPaste /> Paste the result</button></div>
+    {open && <div className="vf-mofa mt8"><p className="small">In Medical Check, search the passport, select the whole result page (Select All), copy it, and paste it here.</p>
+      <textarea rows={4} value={txt} onChange={e => setTxt(e.target.value)} placeholder="Paste the Medical Check result here" aria-label="Medical Check result" />
+      <div className="row6 mt8"><button type="button" className="btn pri sm" disabled={!txt.trim()} onClick={read}>Fill in</button><button type="button" className="btn sm link" onClick={() => setOpen(false)}><LuX /> Close</button></div></div>}
+    {res?.error && <p className="small vf-err">{res.error}</p>}
+    {res && !res.error && <p className="small muted mt8">{[res.medicalResult, res.medicalCenter, res.medicalSlipDate && day(res.medicalSlipDate)].filter(Boolean).join(" · ")}</p>}
+  </div>;
+}
 const Sec = ({ n, title, sub, children }) => <section className="vf-sec"><div className="vf-sec-h"><span className="vf-num">{n}</span><div><h4>{title}</h4>{sub && <p className="muted small">{sub}</p>}</div></div>{children}</section>;
 /* Create / edit a client file: the same sections as the office's MOFA client file */
 export function VisaFileForm({ id }) {
@@ -245,7 +265,7 @@ export function VisaFileForm({ id }) {
       </div>}
       {mc?.result && <div className="vf-mofa ok"><p className="small"><b>From MOFA (application)</b><button type="button" className="btn sm link ms6" onClick={() => setMc(null)} aria-label="Close"><LuX /></button></p>
         <dl className="vf-dl">{(mc.result.pairs || []).filter(([k]) => !/^عرض|display/i.test(k)).map(([k, v]) => <div key={k} className="vf-dl-row"><dt>{mofaLabel(k)}</dt><dd dir="auto">{v}</dd></div>)}</dl></div>}
-      <p className="small muted vf-med">Medical report, GCC slip and medical center: open <a href="https://wafid.com/en/medical-status-search/" target="_blank" rel="noopener noreferrer">Medical Check</a> and type them here. Wafid uses Google's "I'm not a robot" check, which works only on its own site.</p>
+      <WafidPaste passport={f.passport || qp} onFill={v => set(v)} />
       <div className="fgrid">
         <Field label="Agent"><select value={f.agentId || ""} onChange={e => set({ agentId: e.target.value })}><option value="">No agent (office client)</option>{agentsList().map(a => <option key={a.id} value={a.id}>{a.name}</option>)}</select></Field>
         <Field label="Remark">{T("remark", { placeholder: "Remark" })}</Field>

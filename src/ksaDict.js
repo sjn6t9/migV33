@@ -29,3 +29,20 @@ export function cityOf(addr) {
 const LABELS = { "رقم الصادر": "Visa Issued Number", "تاريخ التاشيره": "Visa Date", "الاسم": "Full Name", "العنوان": "Sponsor Address", "رقم الاقامه": "Residence/National ID Number", "رقم الهويه": "Residence/National ID Number", "رقم الطلب": "Application Number", "حاله الطلب": "Application Status", "رقم التاشيره": "Visa Number", "حاله التاشيره": "Visa Status", "رقم الجواز": "Passport Number", "الجنسيه": "Nationality", "نوع التاشيره": "Visa Type" };
 export const mofaLabel = l => LABELS[norm(l)] || l;
 export const STAY_AR = { "01 year": "سنة", "1 year": "سنة", "02 years": "سنتان", "2 years": "سنتان", "03 years": "ثلاث سنوات", "3 years": "ثلاث سنوات" };
+
+/** reads the text copied from the Wafid "Your Medical Examinations Results" page */
+export function parseWafid(text) {
+  const t = String(text || "").replace(/\r/g, "").replace(/[ \t]+/g, " ");
+  const get = re => { const m = re.exec(t); return m ? m[1].trim() : ""; };
+  const after = label => get(new RegExp(`(?:${label})\\s*:?\\s*\\n?\\s*([^\\n]+)`, "i"));
+  const status = /\bUNFIT\b/i.test(t) ? "UNFIT" : /\bFIT\b/i.test(t) ? "FIT" : "";
+  const dmy = after("Medical Exam[a-z]*tation Date|Medical Examination Date|Examination Date");
+  const m = /(\d{1,2})[/.-](\d{1,2})[/.-](\d{4})/.exec(dmy);
+  return {
+    medicalResult: status,
+    medicalCenter: after("Medical Cent(?:er|re)").replace(/\s*(Weight|Height|BMI)\s*:.*$/i, ""),
+    medicalSlipDate: m ? `${m[3]}-${m[2].padStart(2, "0")}-${m[1].padStart(2, "0")}` : "",
+    gccSlipNo: get(/(?:GCC|Wafid) slip (?:no|number)\.?\s*:?\s*([A-Z0-9-]{4,})/i),
+    passport: get(/Passport NO\.?\s*:?\s*([A-Z]{1,3}\d{6,9})/i).toUpperCase(),
+  };
+}
