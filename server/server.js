@@ -244,6 +244,7 @@ function viewFor(u) {
     { const me = leaders().find(x => x.uid === u.id); if (me) pub.myMoney = { entries: db.office.entries.filter(e => e.people?.includes(me.k)), me }; }
     if (PP_PERMS.some(k => can(u, k))) pub.passports = db.passports;
     if (can(u, "visa")) pub.visa = db.visa;
+    if (isStaffRole(u)) pub.attendance = attView(u, u.role === "admin");
     if (isStaffRole(u)) pub.mySalary = { monthly: db.salary.profiles[u.id]?.monthly ?? null, pays: db.salary.pays.filter(p => p.uid === u.id).map(p => salaryOut(p)) };
     if (can(u, "salary")) pub.salary = { profiles: db.salary.profiles, pays: db.salary.pays.map(p => salaryOut(p)) };
     if (can(u, "receipts")) pub.mr = { accounts: db.mr.accounts, receipts: db.mr.receipts.map(r => mrOut(r)), charges: db.mr.charges };
@@ -961,7 +962,7 @@ const secure = req => req.headers["x-forwarded-proto"] === "https";
 async function handleApi(req, res, url) {
   const zone = hostZone(req);
   let { token, u } = sessionUser(req);
-  if (u && isStaffRole(u)) seen.set(u.id, Date.now()); // online / offline in the team chat
+  if (u && isStaffRole(u)) { seen.set(u.id, Date.now()); attTouch(u, clientIp(req)); } // online / offline in the team chat; office attendance
   if (u && !zoneAllows(zone, u)) { token = null; u = null; } // a session from the other site does not count here
   if (req.method === "GET" && url.pathname === "/api/state") return send(res, 200, { ...viewFor(u), rev: REV });
   if (req.method === "GET" && url.pathname === "/api/rev") return send(res, 200, { rev: REV, me: u?.id || null });
@@ -1510,6 +1511,60 @@ for (const p of db.salary.pays) if (!p.status) p.status = "received"; // paid be
 // a salary counts (statement, main account) once the person confirms they received it
 const salaryDone = p => !p.void && p.status === "received";
 const bdDay = () => new Date(Date.now() + 6 * 3600e3).toISOString().slice(0, 10);
+/* ---------- office attendance: a tick per working day; signing in from the office IP ticks it by itself ---------- */
+if (!db.attendance) db.attendance = { marks: {}, ipLog: {}, holidays: [{ date: "2026-12-16", name: "Victory Day" }, { date: "2026-12-25", name: "Christmas" }], office: { mode: "auto", ip: "", autoIp: "" } };
+const ATT = db.attendance;
+const attDay = () => process.env.ATT_DAY || bdDay(); // ATT_DAY: tests only
+if (!ATT.since) ATT.since = attDay(); // days before this are not counted
+// the office network: an IPv4 address as it is; an IPv6 address by its /64 network (every device has its own IPv6 address)
+const netOf = ip => { ip = String(ip || "").replace(/^::ffff:/, ""); if (/^\d+\.\d+\.\d+\.\d+$/.test(ip)) return ip; const g = ip.split(":"); return g.length > 2 ? g.slice(0, 4).join(":") + "::/64" : ip; };
+const attHoliday = d => { const dow = new Date(d + "T00:00:00Z").getUTCDay(); if (dow === 5) return "Weekly holiday (Friday)"; return ATT.holidays.find(h => h.date === d)?.name || ""; };
+const officeIp = () => (ATT.office.mode === "manual" && ATT.office.ip) || ATT.office.autoIp || "";
+const attMark = (uid, day, m) => { (ATT.marks[uid] ||= {})[day] = m; };
+function attTouch(u, ip0) {
+  const ip = netOf(ip0); if (!ip) return;
+  const day = attDay(), log = (ATT.ipLog[day] ||= {}), list = (log[ip] ||= []);
+  let changed = false;
+  if (!list.includes(u.id)) { list.push(u.id); changed = true; }
+  // automatic office IP: the network most admin/staff use today (at least two people); when it moves, people already seen there are ticked
+  if (ATT.office.mode !== "manual" && list.length >= 2 && ip !== ATT.office.autoIp && list.length > (log[ATT.office.autoIp] || []).length) {
+    ATT.office.autoIp = ip; ATT.office.autoAt = now(); changed = true;
+    if (!attHoliday(day)) for (const uid of list) if (!ATT.marks[uid]?.[day]) attMark(uid, day, { at: now(), by: "auto", ip });
+  }
+  if (ip === officeIp() && !attHoliday(day) && !ATT.marks[u.id]?.[day]) { attMark(u.id, day, { at: now(), by: "auto", ip }); changed = true; }
+  // keep 60 days of the IP log
+  for (const d of Object.keys(ATT.ipLog)) if (d < new Date(Date.now() - 60 * 864e5).toISOString().slice(0, 10)) { delete ATT.ipLog[d]; changed = true; }
+  if (changed) save();
+}
+A["attendance.tick"] = async (d, u, ctx) => {
+  must(isStaffRole(u), "Not allowed.", 403);
+  const day = attDay(), target = d.uid && d.uid !== u.id ? d.uid : u.id, date = okDate(d.date);
+  if (target !== u.id || date !== day) {
+    must(u.role === "admin", date < day ? "A past day cannot be changed." : "Only today can be ticked.", 403); // admins can correct a day for anyone
+    must(date <= day, "A future day cannot be ticked.");
+  }
+  must(!attHoliday(date) || d.off === true, "This day is a holiday.");
+  const was = ATT.marks[target]?.[date];
+  if (d.off) { must(u.role === "admin", "Only an admin can remove a tick.", 403); if (ATT.marks[target]) delete ATT.marks[target][date]; return { msg: "Tick removed." }; }
+  if (was) return { msg: "Already ticked." };
+  const ip = netOf(ctx.ip);
+  attMark(target, date, { at: now(), by: target === u.id ? "self" : `admin:${u.name}`, ip, office: ip === officeIp() });
+  return { msg: "Present." };
+};
+A["admin.attendance"] = async (d, u) => {
+  must(u.role === "admin", "Only an admin can change this.", 403);
+  if (d.op === "officeIp") {
+    if (d.mode === "auto") { ATT.office.mode = "auto"; return { msg: "The office IP is found automatically." }; }
+    const ip = str(d.ip, 60); must(ip, "Choose an IP."); ATT.office = { ...ATT.office, mode: "manual", ip, setBy: u.name, setAt: now() };
+    const day = attDay(); if (!attHoliday(day)) for (const uid of ATT.ipLog[day]?.[ip] || []) if (!ATT.marks[uid]?.[day]) attMark(uid, day, { at: now(), by: "auto", ip });
+    return { msg: `Office IP set to ${ip}.` };
+  }
+  if (d.op === "holidayAdd") { const date = /^\d{4}-\d{2}-\d{2}$/.test(d.date || "") ? d.date : ""; must(date && str(d.name), "Enter the date and the name."); ATT.holidays = [...ATT.holidays.filter(h => h.date !== date), { date, name: str(d.name, 80) }].sort((a, b) => a.date.localeCompare(b.date)); return { msg: "Holiday added." }; }
+  if (d.op === "holidayDelete") { ATT.holidays = ATT.holidays.filter(h => h.date !== d.date); return { msg: "Holiday removed." }; }
+  must(false, "Unknown request.");
+};
+const attView = (u, all) => ({ today: attDay(), since: ATT.since, holidays: ATT.holidays, officeIp: officeIp(), marks: all ? ATT.marks : { [u.id]: ATT.marks[u.id] || {} },
+  ...(all ? { office: ATT.office, ipLog: Object.fromEntries(Object.entries(ATT.ipLog).sort((a, b) => b[0].localeCompare(a[0])).slice(0, 14)) } : {}) });
 const okDate = v => (/^\d{4}-\d{2}-\d{2}$/.test(v || "") ? v : bdDay());
 function officeAuto() {
   const out = [];

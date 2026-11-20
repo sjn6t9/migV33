@@ -139,20 +139,19 @@ export function Drawer({ open, onClose, title, children, label = "Menu" }) {
   </div>;
 }
 
-export function Rail({ role, items }) {
+export function Rail({ role, items, foot = [] }) {
   const cur = store.ui.tab[role]; const [open0, setOpen0] = React.useState(false);
   const inPanel = !!(SITE.admin || SITE.agent); // the panels open this drawer from the ☰ button in their header
   const open = inPanel ? !!store.ui.railOpen : open0;
   const setOpen = v => { if (inPanel) { store.ui.railOpen = v; touch(); } else setOpen0(v); };
   const pick = k => { store.ui.tab[role] = k; if (k !== "post") store.ui.editJob = null; setOpen(false); touch(); window.scrollTo({ top: 0, behavior: "smooth" }); };
-  const now = items.find(x => x[0] === cur) || items[0]; const total = items.reduce((s, x) => s + (Number(x[3]) || 0), 0);
-  const list = cls => <nav className={cls} aria-label="Dashboard sections">
-    {items.map(([k, label, Icon, c]) => (
-      <button key={k} className={cur === k ? "on" : ""} aria-current={cur === k ? "page" : undefined} onClick={() => pick(k)}>
-        <span className="rail-l">{Icon && <Icon />}{label}</span><Count n={c} />
-      </button>
-    ))}
-  </nav>;
+  const now = [...items, ...foot].find(x => x[0] === cur) || items[0]; const total = items.reduce((s, x) => s + (Number(x[3]) || 0), 0);
+  const btn = ([k, label, Icon, c, onClick]) => (
+    <button key={k} className={cur === k && !onClick ? "on" : ""} aria-current={cur === k && !onClick ? "page" : undefined} onClick={() => (onClick ? (setOpen(false), onClick()) : pick(k))}>
+      <span className="rail-l">{Icon && <Icon />}{label}</span><Count n={c} />
+    </button>);
+  // foot: Settings and Log out sit at the bottom of the menu
+  const list = cls => <nav className={cls} aria-label="Dashboard sections">{items.map(btn)}{foot.length > 0 && <><hr className="rail-sep" />{foot.map(btn)}</>}</nav>;
   return <>
     {list("rail rail-desk")}
     {!inPanel && <button type="button" className="rail-mob" onClick={() => setOpen(true)} aria-label="Open dashboard menu" aria-expanded={open}>

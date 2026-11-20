@@ -3,7 +3,7 @@
 import React from "react";
 import { LuPlus, LuSearch, LuEye, LuDownload, LuFileSpreadsheet, LuFileText, LuImage, LuPrinter, LuPencil, LuX, LuReceipt, LuUserRound, LuBan, LuCheck, LuSignature, LuUpload, LuTrash2, LuClock, LuQrCode, LuExternalLink, LuMail, LuBookUser } from "react-icons/lu";
 import { store, user, balanceOf } from "../store.js";
-import { act, openModal, closeModal, toast, confirmBox } from "../actions.js";
+import { act, openModal, closeModal, toast, confirmBox, setTab } from "../actions.js";
 import { Field } from "./shared.jsx";
 import { Tiles, Empty } from "../ui.jsx";
 import { Statement } from "./Statement.jsx";
@@ -31,7 +31,7 @@ const ok = r => r.status === "approved" && !r.void;
 const canApprove = r => { const u = me(); return r.status === "pending" && !r.void && (u?.role === "admin" || r.received?.uid !== u?.id); };
 const canDiscard = r => { const u = me(); return r.status === "pending" && (u?.role === "admin" || r.received?.uid === u?.id); };
 export function approve(r) {
-  if (!me()?.signature) { toast("Upload your signature first (My signature, at the top of Money receipts)."); return; }
+  if (!me()?.signature) { toast("Upload your signature first: Settings › My signature."); return; }
   confirmBox(`Approve payment ${r.no} of BDT ${tk(r.amount)} from ${r.payer.name || r.payer.passport || r.payer.mobile || "the payer"}? Your name and signature go on the receipt as Authorized signature.`, async () => { const res = await act("admin.mr", { op: "approve", id: r.id }); if (res) { openModal("mrView", { rid: r.id }); if (res.email) mailReceipt(r.id); } }, "Approve");
 }
 /** make the PDF here and have the server email it to the payer */
@@ -93,7 +93,7 @@ export function ReceiptsAdmin() {
   return <>
     <div className="ec-head"><div><h2>Money receipts</h2><p className="muted small">Payment entry and money receipts. Search by anything to find a payer's account.</p></div>
       <button className="btn pri" onClick={() => openModal("mrEntry", {})}><LuPlus /> New payment entry</button></div>
-    {u && <div className="card mr-mysig"><SignatureBox u={u} note={u.signature ? "Shown on receipts as Received by (payments you enter) or Authorized signature (payments you approve)." : "Upload it before you approve payments. It is shown on receipts you sign."} /></div>}
+    {u && !u.signature && <div className="notice">Upload your signature before you approve payments: Settings (bottom of the menu) › My signature. <button className="btn link sm" onClick={() => setTab(u.role, "mysettings")}>Open Settings</button></div>}
     <Tiles items={[[sum(live.filter(r => r.date === d)), "Received today"], [sum(live.filter(r => r.date.startsWith(mo))), "This month"], [String(waiting), "Waiting for approval", waiting > 0], [String(live.length), "Approved receipts"]]} />
     <div className="ec-tools mt14">
       <div className="mr-seg" role="tablist">{[["receipts", "Receipts", Rall.length], ["pending", "Waiting for approval", pend.length], ["accounts", "Accounts", Acc.length]].map(([k, l, c]) => <button key={k} role="tab" aria-selected={view === k} className={view === k ? "on" : ""} onClick={() => setView(k)}>{l} <span>{c}</span></button>)}</div>

@@ -20,3 +20,9 @@ export function toggleTheme() {
 }
 
 if (mq && mq.addEventListener) mq.addEventListener("change", applyTheme);
+
+/** "light", "dark" or "" (follow the phone or computer) */
+export function setTheme(mode) {
+  try { if (mode) localStorage.setItem(KEY, mode); else localStorage.removeItem(KEY); } catch (e) {}
+  applyTheme();
+}

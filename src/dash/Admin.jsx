@@ -9,16 +9,17 @@ import { toast, formData, setTab, openModal, confirmBox, deleteUser, act, readUp
 import { downloadFile as dlFile } from "../actions.js";
 import { Rail, Tiles, Pill, Empty, Bars, Stars, Avatar, RoleBadges } from "../ui.jsx";
 import { StatusSelect, Field, Options, JobFields, blankJob } from "./shared.jsx";
-import { setClStatus } from "../actions.js";
+import { setClStatus, signOut } from "../actions.js";
 import { ReceiptsAdmin, SignatureBox } from "./Receipts.jsx";
 import { VisaAdmin } from "./Visa.jsx";
+import { MySettings, Attendance, AttendanceSettings } from "./MySettings.jsx";
 import { OfficeAccount, SalaryAdmin, MySalary, MoneyWithMe } from "./Accounts.jsx";
 import { StatementsAdmin } from "./Statements.jsx";
 import { PassportEntry, PassportPick, ppLine } from "./Passports.jsx";
 import { Statement } from "./Statement.jsx";
 import { agentRows } from "../statement.js";
 import { MFS, BANKS } from "../banks.js";
-import { LuReceipt, LuLandmark, LuBanknote, LuScrollText, LuBookUser, LuFileCheck2, LuHandCoins, LuPlaneTakeoff } from "react-icons/lu";
+import { LuReceipt, LuLandmark, LuBanknote, LuScrollText, LuBookUser, LuFileCheck2, LuHandCoins, LuPlaneTakeoff, LuCalendarCheck, LuSettings2, LuLogOut } from "react-icons/lu";
 import { ShareButton, storeCard } from "../Share.jsx";
 import { ChatInbox, useInboxUnread } from "../LiveChat.jsx";
 
@@ -33,7 +34,7 @@ function FilterButtons({ items, cur, onPick }) {
 const PAY_SUB = [["receipts", "Money receipts", LuReceipt], ["ledger", "Agent accounts", LuWallet], ["office", "Main account", LuLandmark], ["salary", "Salary accounts", LuBanknote], ["statements", "Statements", LuScrollText], ["packages", "Employer packages", LuPackage]];
 const TABS = [
   ["overview", "Overview", LuLayoutDashboard], ["users", "Accounts", LuUsers], ["jobs", "Job moderation", LuBriefcase], ["apps", "Applications", LuFileText],
-  ["clearance", "BMET clearance", LuStamp], ["visa", "Visa applications", LuPlaneTakeoff], ["tickets", "Air tickets", LuTicket], ["pay", "Payments & receipts", LuReceipt], ["mysalary", "My salary", LuWallet], ["mymoney", "Money with me", LuHandCoins],
+  ["clearance", "BMET clearance", LuStamp], ["visa", "Visa applications", LuPlaneTakeoff], ["tickets", "Air tickets", LuTicket], ["pay", "Payments & receipts", LuReceipt], ["mysalary", "My salary", LuWallet], ["mymoney", "Money with me", LuHandCoins], ["attendance", "Office attendance", LuCalendarCheck],
   ["content", "Website content", LuImage], ["about", "About page", LuInfo], ["slides", "Home slideshow", LuGalleryHorizontal], ["blog", "Blog", LuNewspaper], ["seo", "SEO", LuSearch], ["settings", "Site settings", LuSettings],
   ["chat", "Live chat", LuMessagesSquare], ["messages", "Messages", LuMessageSquare], ["staff", "Staff & permissions", LuUserCog]
 ];
@@ -41,7 +42,7 @@ const TABS = [
 export function Admin({ u }) {
   const S = store.S; const R = u.role; const isAdmin = R === "admin";
   const chatUnread = useInboxUnread(isAdmin || !!u.perms?.includes("chat"));
-  const can0 = k => k === "mymoney" ? !!S.myMoney : k === "overview" || k === "mysalary" || isAdmin || (k !== "staff" && u.perms?.includes(k === "slides" || k === "about" ? "content" : k));
+  const can0 = k => k === "mymoney" ? !!S.myMoney : k === "overview" || k === "mysalary" || k === "attendance" || k === "mysettings" || isAdmin || (k !== "staff" && u.perms?.includes(k === "slides" || k === "about" ? "content" : k));
   // employer packages only matter when paid job posting is on (or orders are still open)
   const paySubs = PAY_SUB.filter(([k]) => (k === "statements" ? ["ledger", "receipts", "salary", "office"].some(can0) : can0(k)) && (k !== "packages" || S.settings.paidPosting || S.orders.some(o => o.status === "pending")));
   const can = k => k === "pay" ? paySubs.length > 0 : PAY_SUB.some(x => x[0] === k) ? paySubs.some(x => x[0] === k) : can0(k);
@@ -356,6 +357,7 @@ export function Admin({ u }) {
         <div className="full"><button className="btn pri" type="submit">Save settings</button></div>
       </form>
       {isAdmin && <EmailSettings />}
+      {isAdmin && <AttendanceSettings />}
     </>;
   }
 
@@ -366,6 +368,8 @@ export function Admin({ u }) {
   if (t === "salary") body = <SalaryAdmin />;
   if (t === "mysalary") body = <MySalary />;
   if (t === "mymoney") body = <MoneyWithMe />;
+  if (t === "mysettings") body = <MySettings />;
+  if (t === "attendance") body = <Attendance />;
   if (t === "statements") body = <StatementsAdmin can={can0} />;
   if (t === "messages") body = <>
     <h2>Contact messages</h2>
@@ -380,7 +384,8 @@ export function Admin({ u }) {
 
   return (
     <div className="wrap dash">
-      <Rail role={R} items={TABS.filter(([k]) => can(k)).map(([k, l, I]) => [k, l, I, { users: pendU, jobs: pendJ, clearance: pendC, tickets: pendT, mysalary: (S.mySalary?.pays || []).filter(p => !p.void && p.status === "pending").length, mymoney: (S.myMoney?.entries || []).filter(e => e.status === "pending" && !e.accepted?.includes(S.myMoney.me?.k)).length, pay: (can("ledger") ? pendP : 0) + (can("packages") ? pendO : 0) + (can("receipts") ? pendR : 0), messages: newMsg, chat: chatUnread }[k]])} />
+      <Rail role={R} items={TABS.filter(([k]) => can(k)).map(([k, l, I]) => [k, l, I, { users: pendU, jobs: pendJ, clearance: pendC, tickets: pendT, mysalary: (S.mySalary?.pays || []).filter(p => !p.void && p.status === "pending").length, mymoney: (S.myMoney?.entries || []).filter(e => e.status === "pending" && !e.accepted?.includes(S.myMoney.me?.k)).length, attendance: S.attendance && !S.attendance.marks?.[u.id]?.[S.attendance.today] && new Date(S.attendance.today + "T00:00:00Z").getUTCDay() !== 5 && !(S.attendance.holidays || []).some(h => h.date === S.attendance.today) ? 1 : 0, pay: (can("ledger") ? pendP : 0) + (can("packages") ? pendO : 0) + (can("receipts") ? pendR : 0), messages: newMsg, chat: chatUnread }[k]])}
+        foot={[["mysettings", "Settings", LuSettings2], ["logout", "Log out", LuLogOut, 0, signOut]]} />
       <div className="panel">{top === "pay" && <nav className="pay-tabs" aria-label="Payments & receipts">
         {paySubs.map(([k, l, I]) => { const n = { ledger: pendP, packages: pendO, receipts: pendR }[k]; return <button key={k} className={t === k ? "on" : ""} aria-current={t === k ? "page" : undefined} onClick={() => { ui.paySub = k; commit(); }}><I /> {l}{n > 0 && <span className="count">{n}</span>}</button>; })}
       </nav>}{body}</div>
@@ -762,7 +767,7 @@ function StaffAdmin({ u }) {
   return <>
     <h2>Staff &amp; permissions</h2>
     <p className="muted">Admin and staff accounts sign in like everyone else. Staff see only the sections you allow; an admin sees everything.</p>
-    <div className="card mr-mysig mb14"><SignatureBox u={u} title={<>{`My signature (${u.name})`}<RoleBadges role={u.role} size={14} /></>} note="Shown on money receipts you enter or approve." /></div>
+    {!u.signature && <div className="notice mb14">Upload your signature in Settings (bottom of the menu). It is shown on money receipts you enter or approve. <button className="btn link sm" onClick={() => setTab(u.role, "mysettings")}>Open Settings</button></div>}
     <form className="card fgrid" onSubmit={add} key={mid + role}>
       <h3 className="full">Create admin / staff ID</h3>
       <Field label="From Expert Team" hint="Choose a team member: the name and designation come from the Expert Team." full>

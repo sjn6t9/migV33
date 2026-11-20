@@ -1216,3 +1216,31 @@ button.hold-tile{cursor:pointer}
 .vf-pend-h{display:flex;align-items:center;gap:10px;width:100%;background:none;border:0;padding:0;font:inherit;color:inherit;cursor:pointer;text-align:left;flex-wrap:wrap}
 .vf-pend .grow{flex:1}
 .vf-last td{background:#fef9c3}
+.rail-sep{border:0;border-top:1px solid var(--line,#e3e6ec);margin:8px 0}
+.set-sec{margin-bottom:14px}
+.set-sec h3{display:flex;align-items:center;gap:8px;margin:0 0 10px;font-size:1.05rem}
+.seg3{display:inline-flex;border:1px solid var(--line,#d0d5dd);border-radius:12px;overflow:hidden;flex-wrap:wrap}
+.seg3 button{display:inline-flex;align-items:center;gap:6px;padding:9px 16px;background:none;border:0;font:inherit;color:inherit;cursor:pointer}
+.seg3 button+button{border-left:1px solid var(--line,#d0d5dd)}
+.seg3 button.on{background:var(--pri,#006a4e);color:#fff}
+.att-top{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px}
+.att-top h3{margin:0;min-width:150px;text-align:center}
+.att-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column}
+.att-row{display:flex;align-items:center;gap:14px;padding:8px 6px;border-bottom:1px solid var(--line,#eef0f3)}
+.att-row.off{background:var(--soft,#f6f7f9);opacity:.8}
+.att-row.today{background:#fefce8}
+.att-day{display:flex;flex-direction:column;min-width:110px}
+.att-box{width:30px;height:30px;border-radius:8px;border:2px solid #94a3b8;background:#fff;display:grid;place-items:center;cursor:pointer;color:#fff;font-size:18px;padding:0}
+.att-box.on{background:#16a34a;border-color:#16a34a}
+.att-box:disabled{cursor:default}
+.att-box:not(.on):disabled{background:var(--soft,#f1f5f9)}
+.att-abs{color:#b42318;font-weight:600}
+.att-note{flex:1}
+.att-grid th,.att-grid td{text-align:center;padding:4px 6px;font-size:.8rem}
+.att-grid td:first-child,.att-grid th:first-child{text-align:left}
+.att-grid .off{background:var(--soft,#f1f5f9)}
+.att-ok{color:#16a34a}.att-x{color:#dc2626}
+.att-hol{list-style:none;padding:0;margin:0}.att-hol li{display:flex;gap:10px;align-items:center;padding:4px 0}
+.att-add input{max-width:220px}
+[data-theme="dark"] .att-row.today{background:#3a3410}
+[data-theme="dark"] .att-box{background:transparent}
