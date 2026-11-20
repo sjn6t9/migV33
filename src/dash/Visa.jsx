@@ -234,6 +234,9 @@ function WafidPaste({ passport, onFill }) {
     {res && !res.error && <p className="small muted mt8">{[res.medicalResult, res.medicalCenter, res.medicalSlipDate && day(res.medicalSlipDate)].filter(Boolean).join(" · ")}</p>}
   </div>;
 }
+/* the plain work visa, not the seasonal Hajj/Umrah work visa */
+const workType = list => { const ok = o => /عمل|work/i.test(o.text) && !/مؤقت|موسم|حج|عمر|temporary|seasonal|hajj|umrah/i.test(o.text);
+  return ((list.find(o => /^(تأشيرة |تاشيرة )?(عمل|work)$/i.test(o.text.trim())) || list.find(ok) || list.find(o => /عمل|work/i.test(o.text)) || list[0] || {}).value) || ""; };
 const Sec = ({ n, title, sub, children }) => <section className="vf-sec"><div className="vf-sec-h"><span className="vf-num">{n}</span><div><h4>{title}</h4>{sub && <p className="muted small">{sub}</p>}</div></div>{children}</section>;
 /* Create / edit a client file: the same sections as the office's MOFA client file */
 export function VisaFileForm({ id }) {
@@ -253,15 +256,15 @@ export function VisaFileForm({ id }) {
     const r = await act("admin.visa", { op: "fetch", passport: qp, id }, { quiet: false });
     if (r?.found) set({ ...Object.fromEntries(Object.entries(r.found).filter(([k]) => VISA_FIELDS.includes(k) || k === "name")), passport: pp }); else set({ passport: pp });
     const m = await act("admin.visa", { op: "mofaStart" }, { quiet: true }); setBusy("");
-    if (m?.sid) setMc({ sid: m.sid, img: m.img, code: "", visaTypes: m.visaTypes || [], visaType: ((m.visaTypes || []).find(o => /عمل|work/i.test(o.text)) || (m.visaTypes || [])[0] || {}).value || "", nationality: m.nationality || "", natOpts: m.natOpts || [] });
+    if (m?.sid) setMc({ sid: m.sid, img: m.img, code: "", visaTypes: m.visaTypes || [], visaType: workType(m.visaTypes || []), nationality: m.nationality || "", natOpts: m.natOpts || [] });
   };
   const mcNew = async () => { const r = await act("admin.visa", { op: "enjazCaptcha", sid: mc.sid }, { quiet: true }); if (r?.img) setMc({ ...mc, img: r.img, code: "", error: "" }); };
   const mcGo = async () => {
     setBusy("mc"); const r = await act("admin.visa", { op: "mofaSubmit", sid: mc.sid, code: mc.code, passport: qp, visaType: mc.visaType, nationality: mc.nationality }, { quiet: true }); setBusy("");
     if (!r) return;
-    if (!r.ok) { setMc({ ...mc, code: "", error: r.problem || "Nothing found.", img: r.img || mc.img }); return; }
-    const x = r.found || {};
-    set({ ...(x.mofaStatus ? { mofaStatus: x.mofaStatus } : {}), ...(x.visaStatus ? { visaStatus: x.visaStatus } : {}), ...(x.mofaId && !f.mofaId ? { mofaId: x.mofaId } : {}), ...(x.visaNo && !f.visaNo ? { visaNo: x.visaNo } : {}) });
+    if (!r.ok) { setMc({ ...mc, code: "", error: r.problem || "Nothing found.", img: r.img || mc.img, lines: r.lines }); return; }
+    const x = r.found || {}, keep = k => (x[k] && !f[k] ? { [k]: x[k] } : {});
+    set({ ...(x.mofaStatus ? { mofaStatus: x.mofaStatus } : {}), ...(x.visaStatus ? { visaStatus: x.visaStatus } : {}), ...(x.mofaId ? { mofaId: x.mofaId } : {}), ...keep("visaNo"), ...keep("mofaProfession"), ...keep("dob"), ...keep("expiryDate"), ...keep("birthPlace") });
     if (x.visaNo && !qv.visaNo) setQv(v => ({ ...v, visaNo: x.visaNo }));
     setMc({ result: r }); toast("MOFA and visa status filled in.");
   };
@@ -311,6 +314,7 @@ export function VisaFileForm({ id }) {
           <button type="button" className="btn pri" disabled={busy === "mc" || !mc.code.trim()} onClick={mcGo}>{busy === "mc" ? "Searching…" : "Get status"}</button>
           <button type="button" className="btn sm link" onClick={() => setMc(null)} aria-label="Close"><LuX /></button></div>
         {mc.error && <p className="small vf-err">{mc.error}</p>}
+        {mc.lines?.length > 0 && <details className="vf-det small"><summary>What MOFA answered</summary><p className="muted">{mc.lines.join(" · ")}</p></details>}
       </div>}
       {mc?.result && <div className="vf-mofa ok"><p className="small"><b>From MOFA (application)</b><button type="button" className="btn sm link ms6" onClick={() => setMc(null)} aria-label="Close"><LuX /></button></p>
         <dl className="vf-dl">{(mc.result.pairs || []).filter(([k]) => !/^عرض|display/i.test(k)).map(([k, v]) => <div key={k} className="vf-dl-row"><dt>{mofaLabel(k)}</dt><dd dir="auto">{v}</dd></div>)}</dl></div>}

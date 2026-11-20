@@ -1786,23 +1786,48 @@ async function mofaSubmit(d) {
   must(/^[A-Z0-9]{6,15}$/.test(pp), "Enter the passport number."); must(code, "Type the image code."); must(nat, "Choose the nationality.");
   const form = new URLSearchParams({ PassportNumber: pp, Nationality: nat, VisaType: vt, Embassy: sess.embassy, Captcha: code });
   if (sess.token) form.set("__RequestVerificationToken", sess.token);
-  const r = await enjazFetch(sess, MOFA_APPLICANT, { method: "POST", body: form.toString() }), html = await r.text(), out = enjazParse(html);
-  const pick = re => out.pairs.find(([l]) => re.test(l))?.[1] || "";
-  const appStatus = pick(/application status|حالة الطلب|حالة الطلب|الحالة/i), visaNo = pick(/visa (no|number)|رقم التأشيرة|رقم التاشيرة/i), visaStatus = pick(/visa status|حالة التأشيرة|حالة التاشيرة/i), appNo = pick(/application (no|number)|رقم الطلب/i);
-  if (!out.pairs.length || (!appStatus && !visaNo && !appNo)) {
+  const r = await enjazFetch(sess, MOFA_APPLICANT, { method: "POST", body: form.toString() }), html = await r.text();
+  const L = pageLines(html), get = re => valueAfter(L, re);
+  // the result is the printed application (Application Number, Name, Passport Number, Occupation…); a visa number or status shows once the visa is issued
+  const appNo = (/\b(E\d{8,10})\b/.exec(get(/^(application number|رقم الطلب|رقم الإنجاز|رقم انجاز)$/i) || L.join(" ")) || [])[1] || "";
+  const passOn = ppNorm(get(/^(passport number|رقم الجواز)$/i));
+  const found = appNo && (!passOn || passOn === pp);
+  if (!found) {
     const err = (/class="[^"]*(?:validation-summary-errors|alert-danger|field-validation-error|error)[^"]*"[^>]*>([\s\S]*?)<\/(?:div|span|ul)>/i.exec(html) || [])[1];
     const img = (/id=['"]imgCaptcha['"][^>]*src=['"]([^'"]+)['"]/i.exec(html) || [])[1];
     const tok = (/name="__RequestVerificationToken"[^>]*value="([^"]+)"/.exec(html) || [])[1]; if (tok) sess.token = tok; sess.t = Date.now();
-    return { ok: false, problem: htmlText(err || "") || (img ? "Nothing found. Check the image code, passport and visa type." : "The MOFA page answered in a way this form does not know yet."), img: img ? await enjazCaptcha(sess, img).catch(() => null) : null, pairs: out.pairs.slice(0, 20) };
+    return { ok: false, problem: htmlText(err || "") || (img ? "Nothing found. Check the image code and the visa type (Work)." : "The MOFA page answered in a way this form does not know yet."), img: img ? await enjazCaptcha(sess, img).catch(() => null) : null, lines: img ? undefined : L.slice(0, 80) };
   }
   enjazSessions.delete(d.sid);
-  const vs = visaStatus || (visaNo ? "Issued" : "");
-  return { ok: true, pairs: out.pairs, found: { mofaStatus: mofaStatusOf(appStatus), mofaStatusText: appStatus, visaStatus: /stamp|مختوم|طبع/i.test(vs) ? "Stamped" : /reject|رفض/i.test(vs) ? "Rejected" : /cancel|ملغ/i.test(vs) ? "Cancelled" : vs ? "Issued" : "", visaStatusText: vs, visaNo, mofaId: appNo } };
+  const K = [["Application Number", /^(application number|رقم الطلب|رقم الإنجاز)$/i], ["Application Date", /^(application date|تاريخ الطلب)$/i], ["Saudi Mission in", /^(saudi mission in|الممثلية|البعثة)/i], ["Visa Type", /^(visa type|نوع التأشيرة|نوع التاشيرة)$/i],
+    ["Number of Entries", /^(number of entries|عدد مرات الدخول)$/i], ["Sponsor Name", /^(sponsor name|اسم الكفيل|اسم صاحب العمل)$/i], ["Name", /^(name|الاسم)$/i], ["Passport Number", /^(passport number|رقم الجواز)$/i],
+    ["Date of Expiry", /^(date of expiry|تاريخ الانتهاء|تاريخ انتهاء)/i], ["Date of Birth", /^(date of birth|تاريخ الميلاد)$/i], ["Place of Birth", /^(place of birth|مكان الميلاد|محل الميلاد)$/i], ["Gender", /^(gender|الجنس)$/i],
+    ["Occupation", /^(occupation|المهنة)$/i], ["Purpose", /^(purpose|الغرض|الغاية)/i], ["Visa Number", /^(visa (no|number)|رقم التأشيرة|رقم التاشيرة)$/i], ["Visa Status", /^(visa status|حالة التأشيرة|حالة الطلب|status|الحالة)$/i]];
+  const pairs = K.map(([k, re]) => [k, k === "Application Number" ? appNo : get(re)]).filter(([, v]) => v && v !== "0");
+  const v = Object.fromEntries(pairs), vs = v["Visa Status"] || "";
+  const visaNo = (/^\d{8,12}$/.test(v["Visa Number"] || "") ? v["Visa Number"] : "");
+  const dmy = x => { const m = /(\d{1,2})\/(\d{1,2})\/(\d{4})/.exec(x || ""); return m ? `${m[3]}-${m[2].padStart(2, "0")}-${m[1].padStart(2, "0")}` : ""; };
+  return { ok: true, pairs, found: {
+    mofaStatus: /reject|رفض/i.test(vs) ? "Rejected" : /cancel|ملغ/i.test(vs) ? "Cancelled" : visaNo || /issued|صدر|إصدار/i.test(vs) ? "Issued" : "Applied",
+    visaStatus: /stamp|مختوم/i.test(vs) ? "Stamped" : /reject|رفض/i.test(vs) ? "Rejected" : /cancel|ملغ/i.test(vs) ? "Cancelled" : visaNo || /issued|صدر|إصدار/i.test(vs) ? "Issued" : "Applied",
+    mofaId: appNo, visaNo, mofaProfession: v.Occupation || "", dob: dmy(v["Date of Birth"]), expiryDate: dmy(v["Date of Expiry"]), birthPlace: v["Place of Birth"] || "" } };
 }
 async function enjazCaptcha(sess, img) {
   const r = await enjazFetch(sess, img.startsWith("/") ? img : "/Base/GetRandomCaptchaImage/" + Math.floor(Math.random() * 1e9));
   must(r.ok, "The image code did not load. Try again.");
   return `data:${r.headers.get("content-type") || "image/jpeg"};base64,${Buffer.from(await r.arrayBuffer()).toString("base64")}`;
+}
+/* the page as lines of text, input values included, in reading order */
+const pageLines = html => String(html || "").replace(/<script[\s\S]*?<\/script>|<style[\s\S]*?<\/style>|<option[\s\S]*?<\/option>/gi, " ")
+  .replace(/<input\b[^>]*\bvalue="([^"]*)"[^>]*>/gi, (m, v) => /type="hidden"/i.test(m) ? "\n" : `\n${v}\n`).replace(/<[^>]+>/g, "\n")
+  .split("\n").map(x => htmlText(x)).filter(Boolean);
+/* a value printed after its label (label on one line or cell, value on the next) */
+function valueAfter(lines, re) {
+  for (let i = 0; i < lines.length - 1; i++) {
+    const l = lines[i].replace(/\s*[:：]\s*$/, "");
+    if (l.length < 50 && re.test(l)) { const m = /[:：]\s*(.+)$/.exec(lines[i]); if (m && m[1].trim()) return m[1].trim(); const v = lines[i + 1]; if (v && !/[:：]\s*$/.test(v) && v.length < 200) return v; }
+  }
+  return "";
 }
 /* reads label → value pairs and the jobs table from the MOFA result page */
 function enjazParse(html) {
