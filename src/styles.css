@@ -1244,3 +1244,4 @@ button.hold-tile{cursor:pointer}
 .att-add input{max-width:220px}
 [data-theme="dark"] .att-row.today{background:#3a3410}
 [data-theme="dark"] .att-box{background:transparent}
+.admin-top .acct{padding-right:8px}

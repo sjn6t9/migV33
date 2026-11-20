@@ -202,8 +202,9 @@ function PanelHeader({ kind, dash }) {
           {SITE.main && <a className="btn sm" href={SITE.main} target="_blank" rel="noopener noreferrer"><LuExternalLink /> <span className="hide-sm">View website</span></a>}
           {u && <>
             <NotifBell key={u.id} u={u} />
-            <button className="btn sm" onClick={() => openModal("password")} aria-label="Change password" title="Change password"><LuKeyRound /></button>
-            <button className="btn sm" onClick={kind === "agent" && SITE.main ? agentSignOut : signOut} aria-label="Sign out" title="Sign out"><LuLogOut /><span className="hide-lg">Sign out</span></button>
+            {kind === "agent" && <>{/* admin and staff change the password and log out from Settings, at the bottom of the menu */}
+              <button className="btn sm" onClick={() => openModal("password")} aria-label="Change password" title="Change password"><LuKeyRound /></button>
+              <button className="btn sm" onClick={SITE.main ? agentSignOut : signOut} aria-label="Sign out" title="Sign out"><LuLogOut /><span className="hide-lg">Sign out</span></button></>}
           </>}
         </div>
       </div>
