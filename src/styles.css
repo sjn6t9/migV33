@@ -1206,3 +1206,4 @@ button.hold-tile{cursor:pointer}
 .vf-dl dd{overflow-wrap:anywhere;text-align:start}
 @media(max-width:560px){.vf-dl-row{grid-template-columns:1fr;gap:0}.vf-dl dt{font-size:.85em}}
 .vf-dl dt{color:var(--muted,#667085)}.vf-dl dd{margin:0;font-weight:600}
+.vf-med{margin:4px 0 10px}

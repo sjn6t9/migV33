@@ -26,6 +26,6 @@ export function cityOf(addr) {
   return { ar: String(addr).trim().split(/\s+/)[0], en: "" };
 }
 /* English labels for the MOFA result (the site answers in Arabic) */
-const LABELS = { "رقم الصادر": "Visa Issued Number", "تاريخ التاشيره": "Visa Date", "الاسم": "Full Name", "العنوان": "Sponsor Address", "رقم الاقامه": "Residence/National ID Number", "رقم الهويه": "Residence/National ID Number" };
+const LABELS = { "رقم الصادر": "Visa Issued Number", "تاريخ التاشيره": "Visa Date", "الاسم": "Full Name", "العنوان": "Sponsor Address", "رقم الاقامه": "Residence/National ID Number", "رقم الهويه": "Residence/National ID Number", "رقم الطلب": "Application Number", "حاله الطلب": "Application Status", "رقم التاشيره": "Visa Number", "حاله التاشيره": "Visa Status", "رقم الجواز": "Passport Number", "الجنسيه": "Nationality", "نوع التاشيره": "Visa Type" };
 export const mofaLabel = l => LABELS[norm(l)] || l;
 export const STAY_AR = { "01 year": "سنة", "1 year": "سنة", "02 years": "سنتان", "2 years": "سنتان", "03 years": "ثلاث سنوات", "3 years": "ثلاث سنوات" };

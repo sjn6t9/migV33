@@ -59,7 +59,7 @@ export const INITIAL = {
 };
 
 /* KSA visa › HR files: every field of a client file (Create Client File), in form order */
-export const VISA_FIELDS = ["agentId", "remark", "gccSlipNo", "medicalSlipDate", "medicalResult", "mofaStatus", "visaStatus",
+export const VISA_FIELDS = ["agentId", "remark", "gccSlipNo", "medicalCenter", "medicalSlipDate", "medicalResult", "mofaStatus", "visaStatus",
   "name", "fatherName", "motherName", "dob", "birthPlace", "prevNationality", "nationality", "sex", "marital", "sect", "religion", "address", "mofaId", "oldMofaId",
   "passport", "issuePlace", "issueDate", "expiryDate", "validity",
   "visaNo", "visaDate", "sponsorName", "sponsorId", "issuePlaceEn", "issuePlaceAr", "qualificationEn", "qualificationAr", "professionEn", "professionAr", "travelPurpose", "musaned", "wakala", "mofaProfession", "enjazProfessionAr", "enjazProfessionEn",

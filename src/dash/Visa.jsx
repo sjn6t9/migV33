@@ -178,7 +178,24 @@ export function VisaFileForm({ id }) {
   const S = (k, opts, ph = "Select") => <select value={f[k] || ""} onChange={e => set({ [k]: e.target.value })}><option value="">{ph}</option>{opts.map(x => <option key={x}>{x}</option>)}</select>;
   const L = (k, label) => <span>{label}{REQUIRED[k] && <span className="req"> *</span>}</span>;
   const pm = profMatch(f), missing = Object.entries(REQUIRED).filter(([k]) => !String(f[k] || "").trim()).map(([, l]) => l);
-  const fetchPp = async () => { setBusy("pp"); const r = await act("admin.visa", { op: "fetch", passport: qp, id }); setBusy(""); if (r?.found) set({ ...Object.fromEntries(Object.entries(r.found).filter(([k]) => VISA_FIELDS.includes(k) || k === "name")), passport: qp.replace(/\s+/g, "").toUpperCase() }); else set({ passport: qp.replace(/\s+/g, "").toUpperCase() }); };
+  const [mc, setMc] = React.useState(null); // MOFA application check: { sid, img, code, visaTypes, visaType, nationality, natOpts, error, result }
+  const fetchPp = async () => {
+    setBusy("pp"); const pp = qp.replace(/\s+/g, "").toUpperCase();
+    const r = await act("admin.visa", { op: "fetch", passport: qp, id }, { quiet: false });
+    if (r?.found) set({ ...Object.fromEntries(Object.entries(r.found).filter(([k]) => VISA_FIELDS.includes(k) || k === "name")), passport: pp }); else set({ passport: pp });
+    const m = await act("admin.visa", { op: "mofaStart" }, { quiet: true }); setBusy("");
+    if (m?.sid) setMc({ sid: m.sid, img: m.img, code: "", visaTypes: m.visaTypes || [], visaType: ((m.visaTypes || []).find(o => /عمل|work/i.test(o.text)) || (m.visaTypes || [])[0] || {}).value || "", nationality: m.nationality || "", natOpts: m.natOpts || [] });
+  };
+  const mcNew = async () => { const r = await act("admin.visa", { op: "enjazCaptcha", sid: mc.sid }, { quiet: true }); if (r?.img) setMc({ ...mc, img: r.img, code: "", error: "" }); };
+  const mcGo = async () => {
+    setBusy("mc"); const r = await act("admin.visa", { op: "mofaSubmit", sid: mc.sid, code: mc.code, passport: qp, visaType: mc.visaType, nationality: mc.nationality }, { quiet: true }); setBusy("");
+    if (!r) return;
+    if (!r.ok) { setMc({ ...mc, code: "", error: r.problem || "Nothing found.", img: r.img || mc.img }); return; }
+    const x = r.found || {};
+    set({ ...(x.mofaStatus ? { mofaStatus: x.mofaStatus } : {}), ...(x.visaStatus ? { visaStatus: x.visaStatus } : {}), ...(x.mofaId && !f.mofaId ? { mofaId: x.mofaId } : {}), ...(x.visaNo && !f.visaNo ? { visaNo: x.visaNo } : {}) });
+    if (x.visaNo && !qv.visaNo) setQv(v => ({ ...v, visaNo: x.visaNo }));
+    setMc({ result: r }); toast("MOFA and visa status filled in.");
+  };
   /* Search: copy what an earlier file with this visa has, then ask MOFA (the office types the image code) for the visa date, sponsor and occupation */
   const [mofa, setMofa] = React.useState(null); // { sid, img, code, error, result }
   const searchVisa = async () => {
@@ -213,6 +230,22 @@ export function VisaFileForm({ id }) {
     <Sec n={<LuSearch />} title="Quick Import" sub="Enter a passport number to fill in what the office already has">
       <div className="vf-quick"><Field label="Passport number"><input type="text" value={qp} onChange={e => setQp(e.target.value)} placeholder="Enter passport number" maxLength={20} autoComplete="off" onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); fetchPp(); } }} /></Field>
         <button type="button" className="btn pri" disabled={busy === "pp" || qp.trim().length < 6} onClick={fetchPp}><LuSearch /> Fetch</button><PassportPick onPick={p => { setQp(p.passport); set({ name: p.name, passport: p.passport, sex: p.gender || f.sex, agentId: p.agentId || f.agentId }); }} /></div>
+      {mc && !mc.result && <div className="vf-mofa">
+        <p className="small"><b>MOFA application check</b> · Type the image code to get the MOFA status and visa status.</p>
+        <div className="vf-cap">
+          {mc.visaTypes.length > 0 && <select value={mc.visaType} onChange={e => setMc({ ...mc, visaType: e.target.value })} aria-label="Visa type">{mc.visaTypes.map(o => <option key={o.value} value={o.value}>{o.text}</option>)}</select>}
+          {!mc.nationality && mc.natOpts?.length > 0 && <select value={mc.nationality} onChange={e => setMc({ ...mc, nationality: e.target.value })} aria-label="Nationality"><option value="">Nationality</option>{mc.natOpts.map(o => <option key={o.value} value={o.value}>{o.text}</option>)}</select>}
+        </div>
+        <div className="vf-cap mt8">{mc.img ? <img src={mc.img} alt="Image code from MOFA" /> : <span className="muted small">No image</span>}
+          <button type="button" className="btn sm" onClick={mcNew} aria-label="New image code"><LuRefreshCw /></button>
+          <input type="text" inputMode="numeric" maxLength={6} value={mc.code} onChange={e => setMc({ ...mc, code: e.target.value })} placeholder="Image code" aria-label="Image code" autoComplete="off" onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); mcGo(); } }} />
+          <button type="button" className="btn pri" disabled={busy === "mc" || !mc.code.trim()} onClick={mcGo}>{busy === "mc" ? "Searching…" : "Get status"}</button>
+          <button type="button" className="btn sm link" onClick={() => setMc(null)} aria-label="Close"><LuX /></button></div>
+        {mc.error && <p className="small vf-err">{mc.error}</p>}
+      </div>}
+      {mc?.result && <div className="vf-mofa ok"><p className="small"><b>From MOFA (application)</b><button type="button" className="btn sm link ms6" onClick={() => setMc(null)} aria-label="Close"><LuX /></button></p>
+        <dl className="vf-dl">{(mc.result.pairs || []).filter(([k]) => !/^عرض|display/i.test(k)).map(([k, v]) => <div key={k} className="vf-dl-row"><dt>{mofaLabel(k)}</dt><dd dir="auto">{v}</dd></div>)}</dl></div>}
+      <p className="small muted vf-med">Medical report, GCC slip and medical center: open <a href="https://wafid.com/en/medical-status-search/" target="_blank" rel="noopener noreferrer">Medical Check</a> and type them here. Wafid uses Google's "I'm not a robot" check, which works only on its own site.</p>
       <div className="fgrid">
         <Field label="Agent"><select value={f.agentId || ""} onChange={e => set({ agentId: e.target.value })}><option value="">No agent (office client)</option>{agentsList().map(a => <option key={a.id} value={a.id}>{a.name}</option>)}</select></Field>
         <Field label="Remark">{T("remark", { placeholder: "Remark" })}</Field>
@@ -220,7 +253,8 @@ export function VisaFileForm({ id }) {
         <Field label="Visa status">{S("visaStatus", VISA_ST, "Pending")}</Field>
         <Field label="Profession match"><div className={`vf-box ${pm == null ? "" : pm ? "ok" : "bad"}`}>{pm == null ? "Not checked" : pm ? "Match" : "Not match"}</div></Field>
         <Field label="Medical report">{S("medicalResult", ["FIT", "UNFIT", "Pending"])}</Field>
-        <Field label="GCC slip info"><div className="vf-two">{T("gccSlipNo", { placeholder: "Slip no." })}{T("medicalSlipDate", { "aria-label": "Medical slip date" })}</div></Field>
+        <Field label="GCC slip info"><div className="vf-two">{T("gccSlipNo", { placeholder: "Slip no.", "aria-label": "Slip no." })}{T("medicalCenter", { placeholder: "Medical center", "aria-label": "Medical center" })}</div></Field>
+        <Field label="Medical slip date">{T("medicalSlipDate")}</Field>
       </div>
     </Sec>
     <Sec n="1" title="Personal Information" sub="Basic identity of the applicant">
