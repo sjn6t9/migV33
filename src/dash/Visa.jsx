@@ -1,6 +1,6 @@
 // Visa applications › KSA visa › HR files: a dashboard of client files (MOFA, visa, sponsor, medical) and the Create Client File form.
 import React from "react";
-import { LuFilePlus2, LuSearch, LuPencil, LuTrash2, LuFileSpreadsheet, LuX, LuExternalLink, LuCheck, LuArrowLeft, LuDownload, LuFileText, LuRefreshCw, LuClipboardPaste, LuBookmark } from "react-icons/lu";
+import { LuFilePlus2, LuSearch, LuPencil, LuTrash2, LuFileSpreadsheet, LuX, LuExternalLink, LuCheck, LuArrowLeft, LuDownload, LuFileText, LuRefreshCw, LuClipboardPaste, LuBookmark, LuChevronDown, LuChevronUp } from "react-icons/lu";
 import { VISA_FIELDS, VISA_DATES, VISA_LINKS } from "../constants.js";
 import { occEn, cityOf, mofaLabel, STAY_AR, parseWafid } from "../ksaDict.js";
 import { store, commit } from "../store.js";
@@ -111,6 +111,7 @@ function HrFiles() {
       <button className="btn pri" onClick={() => openModal("visaFile", {})}><LuFilePlus2 /> Create Client File</button></div>
     <VisaLinks />
     <div className="vf-bmrow"><button className="btn sm" onClick={() => openModal("wafidHelp", {})}><LuBookmark /> Medical Check bookmark</button><span className="muted small">One click on the Wafid result page saves FIT/UNFIT, medical center and date.</span></div>
+    <MedicalPending />
     <div className="vf-tiles">{tiles.map(([v, l, t]) => <div key={l} className={`vf-tile ${t}`}><b>{v}</b><span>{l}</span></div>)}</div>
     <div className="card">
       <div className="vf-tools">
@@ -211,6 +212,24 @@ export function WafidBookmarkHelp() {
     <ol className="small vf-steps"><li>Copy the code: <button type="button" className="btn sm" onClick={copy}><LuClipboardPaste /> Copy code</button></li><li>Bookmark any page, then edit the bookmark: name it MAM Wafid and paste the code as its address (URL).</li><li>On the Wafid result page, type MAM Wafid in the address bar and tap the bookmark.</li></ol>
     <p className="small muted mt14">You must be signed in to this admin panel in the same browser. Allow pop-ups for wafid.com if the browser asks.</p>
     <div className="row6 mt14"><button className="btn" onClick={closeModal}>Close</button></div>
+  </div>;
+}
+/* clients whose medical result is not in yet: open Wafid with the passport copied, check, press the bookmark */
+function MedicalPending() {
+  const [open, setOpen] = React.useState(false), [last, setLast] = React.useState("");
+  const list = files().filter(f => !f.medicalResult && !["Rejected", "Cancelled"].includes(f.visaStatus)).sort((a, b) => a.sl - b.sl);
+  if (!list.length) return null;
+  const check = async f => {
+    try { await navigator.clipboard.writeText(f.passport); toast(`Passport ${f.passport} copied. Paste it on Wafid.`); } catch { toast(`Passport: ${f.passport}`); }
+    setLast(f.id); window.open("https://wafid.com/en/medical-status-search/", "mamwafidcheck");
+  };
+  return <div className="card vf-pend">
+    <button type="button" className="vf-pend-h" onClick={() => setOpen(!open)} aria-expanded={open}><span className="vf-pill wait">{list.length}</span><b>Medical pending</b><span className="muted small">Clients with no medical result yet</span><span className="grow" />{open ? <LuChevronUp /> : <LuChevronDown />}</button>
+    {open && <><p className="small muted mt8">Press Check: Wafid opens and the passport number is copied. Paste it, press Check on Wafid, then press the MAM Wafid bookmark. The client leaves this list when the result is saved.</p>
+      <div className="tbl vf-tbl"><table><thead><tr><th>SL</th><th>Name</th><th>Passport</th><th>Agent</th><th>Medical slip date</th><th></th></tr></thead><tbody>
+        {list.map(f => <tr key={f.id} className={last === f.id ? "vf-last" : ""}><td className="num">{f.sl}</td><td className="b">{f.name}</td><td className="num">{f.passport}</td><td>{f.agent || <span className="muted">Office</span>}</td><td className="nowrap">{day(f.medicalSlipDate)}</td>
+          <td className="nowrap"><button className="btn sm pri" onClick={() => check(f)}><LuExternalLink /> Check</button></td></tr>)}
+      </tbody></table></div></>}
   </div>;
 }
 /* Medical Check (Wafid) cannot be asked from the server: the office copies the result page and pastes it here */
