@@ -204,6 +204,7 @@ const cleanCl = c => ({ ...c, files: c.files ? { passport: fileRef(c.files.passp
 function viewFor(u) {
   const live = db.jobs.filter(j => j.status === "active");
   const pub = {
+    headlines: (db.headlines || []).filter(h => h.active && (!h.until || h.until >= bdDay())).map(h => ({ id: h.id, text: h.text, link: h.link, hot: !!h.hot })),
     v: db.v, session: u?.id || null, settings: { ...db.settings }, needsSetup: !db.users.some(x => x.role === "admin"), seo: db.seo, packages: db.packages, posts: db.posts,
     testimonials: db.testimonials, team: [...db.team].sort((a, b) => (a.order ?? 99) - (b.order ?? 99)).map(m => ({ ...m, photo: m.photo ? { ...m.photo, data: `/api/files/${m.photo.id}` } : null })), gallery: db.gallery.map(g => ({ ...g, src: `/api/files/${g.fileId}` })), scenery: sceneryView(u), about: aboutView(),
     stats: { employers: db.users.filter(x => x.role === "employer" && x.status === "active").length, hired: db.applications.filter(a => a.status === "hired").length },
@@ -245,6 +246,7 @@ function viewFor(u) {
     if (PP_PERMS.some(k => can(u, k))) pub.passports = db.passports;
     if (can(u, "visa")) pub.visa = db.visa;
     if (isStaffRole(u)) pub.attendance = attView(u, u.role === "admin");
+    if (can(u, "headlines")) pub.headlinesAll = db.headlines || [];
     if (isStaffRole(u)) pub.mySalary = { monthly: db.salary.profiles[u.id]?.monthly ?? null, pays: db.salary.pays.filter(p => p.uid === u.id).map(p => salaryOut(p)) };
     if (can(u, "salary")) pub.salary = { profiles: db.salary.profiles, pays: db.salary.pays.map(p => salaryOut(p)) };
     if (can(u, "receipts")) pub.mr = { accounts: db.mr.accounts, receipts: db.mr.receipts.map(r => mrOut(r)), charges: db.mr.charges };
@@ -1565,6 +1567,24 @@ A["attendance.tick"] = async (d, u, ctx) => {
   const ip = netOf(ctx.ip);
   attMark(target, date, { at: now(), by: target === u.id ? "self" : `admin:${u.name}`, ip, office: ip === officeIp() });
   return { msg: "Present." };
+};
+/* ---------- HEADLINES on the website: a scrolling news line under the header ---------- */
+if (!db.headlines) db.headlines = [];
+A["admin.headlines"] = async (d, u) => {
+  needPerm(u, "headlines"); const L = db.headlines, x = d.id ? L.find(h => h.id === d.id) : null;
+  if (d.op === "save") {
+    const text = str(d.text, 300); must(text.length >= 3, "Write the headline."); const link = str(d.link, 300);
+    must(!link || /^(https?:\/\/|#)/.test(link), "The link must start with https:// or #.");
+    const until = /^\d{4}-\d{2}-\d{2}$/.test(d.until || "") ? d.until : "";
+    if (x) { Object.assign(x, { text, link, until, hot: !!d.hot, updated: now(), updatedBy: u.name }); return { msg: "Headline saved." }; }
+    must(L.length < 50, "Up to 50 headlines.");
+    L.unshift({ id: id("hl"), text, link, until, hot: !!d.hot, active: true, by: u.name, at: now() }); return { msg: "Headline added. It shows on the website now." };
+  }
+  must(x, "Headline not found.");
+  if (d.op === "toggle") { x.active = !x.active; return { msg: x.active ? "Shown on the website." : "Hidden from the website." }; }
+  if (d.op === "move") { const i = L.indexOf(x), j = i + (d.dir < 0 ? -1 : 1); if (j >= 0 && j < L.length) [L[i], L[j]] = [L[j], L[i]]; return {}; }
+  if (d.op === "delete") { db.headlines = L.filter(h => h !== x); return { msg: "Headline deleted." }; }
+  must(false, "Unknown request.");
 };
 A["admin.attendance"] = async (d, u) => {
   must(u.role === "admin", "Only an admin can change this.", 403);

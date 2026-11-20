@@ -1,6 +1,7 @@
 import { VisaFileForm, WafidImport, WafidBookmarkHelp } from "./dash/Visa.jsx";
+import { Headlines } from "./Headlines.jsx";
 import React, { useState, useEffect, useSyncExternalStore } from "react";
-import { LuMenu, LuBell, LuCheck, LuMoon, LuSun, LuLanguages, LuLogOut, LuLayoutDashboard, LuLogIn, LuUserPlus, LuSend, LuMailCheck, LuRefreshCw, LuDownload, LuFileText, LuKeyRound, LuWifiOff, LuPhone, LuMail } from "react-icons/lu";
+import { LuMenu, LuBell, LuCheck, LuMoon, LuSun, LuLanguages, LuLogOut, LuLayoutDashboard, LuLogIn, LuUserPlus, LuSend, LuMailCheck, LuRefreshCw, LuDownload, LuFileText, LuKeyRound, LuWifiOff, LuPhone, LuMail, LuMegaphone } from "react-icons/lu";
 import { FaWhatsapp, FaFacebookF, FaYoutube, FaLinkedinIn, FaTiktok } from "react-icons/fa6";
 import { ChatWidget } from "./Chat.jsx";
 import { TeamChatWidget } from "./TeamChat.jsx";
@@ -95,6 +96,7 @@ export default function App() {
   return (
     <>
       <Header navOn={navOn} />
+      <Headlines />
       {store.offline && <div className="demo-strip"><div className="wrap"><span><LuWifiOff /> Cannot reach the server. Check your internet connection; the page will work again when it is back.</span></div></div>}
       <main>{body}</main>
       <Footer />
@@ -194,11 +196,15 @@ function PanelHeader({ kind, dash }) {
   const u = me(); const label = kind === "agent" ? "Agent panel" : "Admin panel";
   return (
     <header className="top admin-top">
-      <div className="utilbar"><div className="wrap"><div className="util-l"><span className="util-lic"><LuShieldCheck /> {kind === "agent" ? "Agent panel · Mam & Mam Overseas Ltd." : "Admin panel · Mam & Mam Overseas Ltd."}</span></div><Prefs /></div></div>
+      <div className="utilbar"><div className="wrap"><div className="util-l"><span className="util-lic"><LuShieldCheck /> {kind === "agent" ? "Agent panel · Mam & Mam Overseas Ltd." : "Admin panel · Mam & Mam Overseas Ltd."}</span></div>
+        {kind === "agent" ? <Prefs /> : <div className="prefs panel-tools">{/* admin / staff: language is in Settings */}
+          {SITE.main && <a className="btn sm icon" href={SITE.main} target="_blank" rel="noopener noreferrer" aria-label="View website" title="View website"><LuExternalLink /></a>}
+          {u && <NotifBell key={u.id} u={u} />}
+          <ThemeBtn /></div>}</div></div>
       <div className="wrap topbar">
         {dash && <button className="btn menu-btn panel-menu" onClick={() => { store.ui.railOpen = true; touch(); }} aria-label="Open menu" aria-expanded={!!store.ui.railOpen}><LuMenu /></button>}
         <a className="logo" href="#dashboard" aria-label={`${label} home`}><Logo /><div><b>MAM &amp; MAM OVERSEAS LTD.</b><span>{label}</span></div></a>
-        <div className="acct">
+        {kind === "agent" && <div className="acct">
           {SITE.main && <a className="btn sm" href={SITE.main} target="_blank" rel="noopener noreferrer"><LuExternalLink /> <span className="hide-sm">View website</span></a>}
           {u && <>
             <NotifBell key={u.id} u={u} />
@@ -206,7 +212,7 @@ function PanelHeader({ kind, dash }) {
               <button className="btn sm" onClick={() => openModal("password")} aria-label="Change password" title="Change password"><LuKeyRound /></button>
               <button className="btn sm" onClick={SITE.main ? agentSignOut : signOut} aria-label="Sign out" title="Sign out"><LuLogOut /><span className="hide-lg">Sign out</span></button></>}
           </>}
-        </div>
+        </div>}
       </div>
     </header>
   );
@@ -243,6 +249,10 @@ function PanelSignIn({ kind }) {
   );
 }
 
+function ThemeBtn() {
+  const [, setN] = useState(0); const dark = currentTheme() === "dark";
+  return <button className="btn sm icon" onClick={() => { toggleTheme(); setN(n => n + 1); }} aria-label={dark ? "Day mode" : "Night mode"} title={dark ? "Day mode" : "Night mode"}>{dark ? <LuSun /> : <LuMoon />}</button>;
+}
 function Prefs() {
   const [, setN] = useState(0); const dark = currentTheme() === "dark"; const l = getLang();
   return (

@@ -12,6 +12,7 @@ import { StatusSelect, Field, Options, JobFields, blankJob } from "./shared.jsx"
 import { setClStatus, signOut } from "../actions.js";
 import { ReceiptsAdmin, SignatureBox } from "./Receipts.jsx";
 import { VisaAdmin } from "./Visa.jsx";
+import { HeadlinesAdmin } from "./Headlines.jsx";
 import { MySettings, Attendance, AttendanceSettings } from "./MySettings.jsx";
 import { OfficeAccount, SalaryAdmin, MySalary, MoneyWithMe } from "./Accounts.jsx";
 import { StatementsAdmin } from "./Statements.jsx";
@@ -19,7 +20,7 @@ import { PassportEntry, PassportPick, ppLine } from "./Passports.jsx";
 import { Statement } from "./Statement.jsx";
 import { agentRows } from "../statement.js";
 import { MFS, BANKS } from "../banks.js";
-import { LuReceipt, LuLandmark, LuBanknote, LuScrollText, LuBookUser, LuFileCheck2, LuHandCoins, LuPlaneTakeoff, LuCalendarCheck, LuSettings2, LuLogOut } from "react-icons/lu";
+import { LuReceipt, LuLandmark, LuBanknote, LuScrollText, LuBookUser, LuFileCheck2, LuHandCoins, LuPlaneTakeoff, LuCalendarCheck, LuSettings2, LuLogOut, LuMegaphone } from "react-icons/lu";
 import { ShareButton, storeCard } from "../Share.jsx";
 import { ChatInbox, useInboxUnread } from "../LiveChat.jsx";
 
@@ -35,7 +36,7 @@ const PAY_SUB = [["receipts", "Money receipts", LuReceipt], ["ledger", "Agent ac
 const TABS = [
   ["overview", "Overview", LuLayoutDashboard], ["users", "Accounts", LuUsers], ["jobs", "Job moderation", LuBriefcase], ["apps", "Applications", LuFileText],
   ["clearance", "BMET clearance", LuStamp], ["visa", "Visa applications", LuPlaneTakeoff], ["tickets", "Air tickets", LuTicket], ["pay", "Payments & receipts", LuReceipt], ["mysalary", "My salary", LuWallet], ["mymoney", "Money with me", LuHandCoins], ["attendance", "Office attendance", LuCalendarCheck],
-  ["content", "Website content", LuImage], ["about", "About page", LuInfo], ["slides", "Home slideshow", LuGalleryHorizontal], ["blog", "Blog", LuNewspaper], ["seo", "SEO", LuSearch], ["settings", "Site settings", LuSettings],
+  ["content", "Website content", LuImage], ["headlines", "Headlines", LuMegaphone], ["about", "About page", LuInfo], ["slides", "Home slideshow", LuGalleryHorizontal], ["blog", "Blog", LuNewspaper], ["seo", "SEO", LuSearch], ["settings", "Site settings", LuSettings],
   ["chat", "Live chat", LuMessagesSquare], ["messages", "Messages", LuMessageSquare], ["staff", "Staff & permissions", LuUserCog]
 ];
 
@@ -369,6 +370,7 @@ export function Admin({ u }) {
   if (t === "mysalary") body = <MySalary />;
   if (t === "mymoney") body = <MoneyWithMe />;
   if (t === "mysettings") body = <MySettings />;
+  if (t === "headlines") body = <HeadlinesAdmin />;
   if (t === "attendance") body = <Attendance />;
   if (t === "statements") body = <StatementsAdmin can={can0} />;
   if (t === "messages") body = <>
