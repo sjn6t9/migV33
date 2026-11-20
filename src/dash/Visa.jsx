@@ -1,6 +1,6 @@
 // Visa applications › KSA visa › HR files: a dashboard of client files (MOFA, visa, sponsor, medical) and the Create Client File form.
 import React from "react";
-import { LuFilePlus2, LuSearch, LuPencil, LuTrash2, LuFileSpreadsheet, LuX, LuExternalLink, LuCheck, LuArrowLeft, LuDownload, LuFileText } from "react-icons/lu";
+import { LuFilePlus2, LuSearch, LuPencil, LuTrash2, LuFileSpreadsheet, LuX, LuExternalLink, LuCheck, LuArrowLeft, LuDownload, LuFileText, LuRefreshCw } from "react-icons/lu";
 import { VISA_FIELDS, VISA_DATES, VISA_LINKS } from "../constants.js";
 import { store, commit } from "../store.js";
 import { act, openModal, closeModal, confirmBox, toast } from "../actions.js";
@@ -115,7 +115,24 @@ export function VisaFileForm({ id }) {
   const L = (k, label) => <span>{label}{REQUIRED[k] && <span className="req"> *</span>}</span>;
   const pm = profMatch(f), missing = Object.entries(REQUIRED).filter(([k]) => !String(f[k] || "").trim()).map(([, l]) => l);
   const fetchPp = async () => { setBusy("pp"); const r = await act("admin.visa", { op: "fetch", passport: qp, id }); setBusy(""); if (r?.found) set({ ...Object.fromEntries(Object.entries(r.found).filter(([k]) => VISA_FIELDS.includes(k) || k === "name")), passport: qp.replace(/\s+/g, "").toUpperCase() }); else set({ passport: qp.replace(/\s+/g, "").toUpperCase() }); };
-  const searchVisa = async () => { setBusy("visa"); const r = await act("admin.visa", { op: "visaSearch", ...qv, id }); setBusy(""); set({ ...(qv.visaNo ? { visaNo: qv.visaNo } : {}), ...(qv.sponsorId ? { sponsorId: qv.sponsorId } : {}), ...(r?.found || {}) }); };
+  /* Search: copy what an earlier file with this visa has, then ask MOFA (the office types the image code) for the visa date, sponsor and occupation */
+  const [mofa, setMofa] = React.useState(null); // { sid, img, code, error, result }
+  const searchVisa = async () => {
+    setBusy("visa"); set({ ...(qv.visaNo ? { visaNo: qv.visaNo.trim() } : {}), ...(qv.sponsorId ? { sponsorId: qv.sponsorId.trim() } : {}) });
+    const r = await act("admin.visa", { op: "visaSearch", ...qv, id, soft: true }, { quiet: true }); if (r?.found && Object.keys(r.found).length) set(r.found);
+    if (qv.visaNo.trim() && qv.sponsorId.trim()) { const s0 = await act("admin.visa", { op: "enjazStart" }, { quiet: true }); if (s0?.sid) setMofa({ sid: s0.sid, img: s0.img, code: "" }); }
+    else toast("Enter both the visa number and the sponsor ID to get the details from MOFA.");
+    setBusy("");
+  };
+  const mofaNewImg = async () => { const r = await act("admin.visa", { op: "enjazCaptcha", sid: mofa.sid }, { quiet: true }); if (r?.img) setMofa({ ...mofa, img: r.img, code: "", error: "" }); };
+  const mofaGo = async () => {
+    setBusy("mofa"); const r = await act("admin.visa", { op: "enjazSubmit", sid: mofa.sid, code: mofa.code, ...qv }, { quiet: true }); setBusy("");
+    if (!r) return;
+    if (!r.ok) { setMofa({ ...mofa, code: "", error: r.problem || "Nothing found.", img: r.img || mofa.img }); return; }
+    const x = r.found || {};
+    set({ ...(x.visaDate ? { visaDate: x.visaDate } : {}), ...(x.sponsorName ? { sponsorName: x.sponsorName } : {}), ...(x.occupation ? { enjazProfessionAr: x.occupation, ...(f.professionAr ? {} : { professionAr: x.occupation }) } : {}) });
+    setMofa({ result: r }); toast("Visa details filled in from MOFA.");
+  };
   const pcUrl = v => { const ref = pcRefFrom(v); set({ pcUrl: v, ...(ref ? { pcRef: ref } : {}) }); };
   const validity = v => set({ validity: v, ...(v && f.issueDate ? { expiryDate: addYears(f.issueDate, parseInt(v, 10)) } : {}) });
   const [done, setDone] = React.useState(null);
@@ -170,6 +187,17 @@ export function VisaFileForm({ id }) {
         <Field label="Sponsor ID (search)"><input type="text" value={qv.sponsorId} onChange={e => setQv({ ...qv, sponsorId: e.target.value })} placeholder="Enter sponsor ID" maxLength={40} /></Field>
         <button type="button" className="btn pri" disabled={busy === "visa" || !(qv.visaNo.trim() || qv.sponsorId.trim())} onClick={searchVisa}><LuSearch /> Search</button>
       </div>
+      {mofa && !mofa.result && <div className="vf-mofa">
+        <p className="small"><b>MOFA visa information</b> · Type the image code to get the visa date and sponsor name.</p>
+        <div className="vf-cap">{mofa.img ? <img src={mofa.img} alt="Image code from MOFA" /> : <span className="muted small">No image</span>}
+          <button type="button" className="btn sm" onClick={mofaNewImg} aria-label="New image code"><LuRefreshCw /></button>
+          <input type="text" inputMode="numeric" maxLength={6} value={mofa.code} onChange={e => setMofa({ ...mofa, code: e.target.value })} placeholder="Image code" aria-label="Image code" autoComplete="off" onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); mofaGo(); } }} />
+          <button type="button" className="btn pri" disabled={busy === "mofa" || !mofa.code.trim()} onClick={mofaGo}>{busy === "mofa" ? "Searching…" : "Get details"}</button>
+          <button type="button" className="btn sm link" onClick={() => setMofa(null)}><LuX /></button></div>
+        {mofa.error && <p className="small vf-err">{mofa.error}</p>}
+      </div>}
+      {mofa?.result && <div className="vf-mofa ok"><p className="small"><b>From MOFA</b><button type="button" className="btn sm link ms6" onClick={() => setMofa(null)}><LuX /></button></p>
+        <dl className="vf-dl">{[...(mofa.result.pairs || []), ...(mofa.result.found?.occupation ? [["Occupation", mofa.result.found.occupation]] : [])].map(([k, v]) => <React.Fragment key={k}><dt>{k}</dt><dd dir="auto">{v}</dd></React.Fragment>)}</dl></div>}
       <div className="fgrid">
         <Field label={L("visaNo", "Visa no.")}>{T("visaNo", { maxLength: 40 })}</Field>
         <Field label={L("visaDate", "Visa date")}>{T("visaDate", { placeholder: "e.g. 1446/06/30", maxLength: 20 })}</Field>

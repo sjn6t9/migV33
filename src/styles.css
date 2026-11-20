@@ -1194,3 +1194,12 @@ button.hold-tile{cursor:pointer}
 .vf-saved{text-align:center;padding:20px 6px}
 .vf-saved-i{width:56px;height:56px;border-radius:50%;margin:0 auto 10px;display:grid;place-items:center;background:#dcfce7;color:#166534;font-size:28px}
 .vf-saved .center{justify-content:center;flex-wrap:wrap}
+.vf-mofa{border:1px solid #c7d2fe;background:#eef2ff;border-radius:12px;padding:10px 12px;margin:0 0 12px}
+.vf-mofa.ok{border-color:#86efac;background:#f0fdf4}
+.vf-mofa p{margin:0 0 8px;display:flex;align-items:center;flex-wrap:wrap;gap:4px}
+.vf-cap{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.vf-cap img{height:44px;border-radius:6px;border:1px solid var(--line,#d0d5dd);background:#fff}
+.vf-cap input{width:130px;font-size:1.1rem;letter-spacing:2px}
+.vf-err{color:#b42318;margin:8px 0 0}
+.vf-dl{display:grid;grid-template-columns:max-content 1fr;gap:4px 14px;margin:0}
+.vf-dl dt{color:var(--muted,#667085)}.vf-dl dd{margin:0;font-weight:600}

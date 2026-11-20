@@ -964,21 +964,6 @@ async function handleApi(req, res, url) {
   if (u && isStaffRole(u)) seen.set(u.id, Date.now()); // online / offline in the team chat
   if (u && !zoneAllows(zone, u)) { token = null; u = null; } // a session from the other site does not count here
   if (req.method === "GET" && url.pathname === "/api/state") return send(res, 200, { ...viewFor(u), rev: REV });
-  // temporary: shows the structure of the public Enjaz visa form (no personal data) so the Visa Search can be wired to it
-  if (req.method === "GET" && url.pathname === "/api/enjaz-probe") {
-    try {
-      if (typeof fetch !== "function") return send(res, 200, { error: "no fetch", node: process.version });
-      const r = await fetch("https://visa.mofa.gov.sa/Enjaz/GetVisaInformation/Person", { headers: { "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/131 Safari/537.36", "Accept-Language": "en-US,en;q=0.9,ar;q=0.8" }, signal: AbortSignal.timeout(15000) });
-      const html = await r.text();
-      const forms = [...html.matchAll(/<form\b([^>]*)>([\s\S]*?)<\/form>/gi)].map(m => ({ attrs: m[1].trim().slice(0, 300),
-        inputs: [...m[2].matchAll(/<(input|select|textarea|button)\b([^>]*)>/gi)].map(x => x[1] + " " + x[2].replace(/\s+/g, " ").trim().slice(0, 250)),
-        selects: [...m[2].matchAll(/<select\b([^>]*)>([\s\S]*?)<\/select>/gi)].map(x => ({ attrs: x[1].trim().slice(0, 200), n: (x[2].match(/<option/gi) || []).length, dhaka: [...x[2].matchAll(/<option\b([^>]*)>([^<]*)/gi)].filter(o => /dhaka|دكا|داكا|bangla|بنغلاد/i.test(o[2])).map(o => o[1].trim() + " => " + o[2].trim()), first: [...x[2].matchAll(/<option\b([^>]*)>([^<]*)/gi)].slice(0, 4).map(o => o[1].trim() + " => " + o[2].trim()) })) }));
-      const imgs = [...html.matchAll(/<img\b[^>]*>/gi)].map(m => m[0]).filter(x => /captcha/i.test(x)).slice(0, 5);
-      const scripts = [...html.matchAll(/<script\b[^>]*>([\s\S]*?)<\/script>/gi)].map(m => m[1]).filter(x => /captcha|GetVisaInformation|ajax|\$\.post|url\s*:/i.test(x)).map(x => x.replace(/\s+/g, " ").slice(0, 1500)).slice(0, 6);
-      const labels = [...html.matchAll(/<label\b([^>]*)>([\s\S]*?)<\/label>/gi)].map(m => m[1].trim() + " | " + m[2].replace(/<[^>]+>/g, "").trim()).slice(0, 20);
-      return send(res, 200, { status: r.status, cookies: (r.headers.getSetCookie?.() || []).map(c => c.split("=")[0]), forms, imgs, labels, scripts, len: html.length });
-    } catch (e) { return send(res, 200, { error: String(e.message || e) }); }
-  }
   if (req.method === "GET" && url.pathname === "/api/rev") return send(res, 200, { rev: REV, me: u?.id || null });
   const stm = req.method === "GET" && /^\/api\/statement\/([a-f0-9]{24})$/.exec(url.pathname);
   if (stm) { const x = db.statements.list.find(y => y.token === stm[1]); return x ? send(res, 200, { statement: stmtOut(x, true) }) : send(res, 404, { error: "Statement not found." }); }
@@ -1759,6 +1744,76 @@ if (!db.passports) db.passports = [];
 if (!db.visa) db.visa = { files: [], seq: 0 };
 const MOFA_ST = ["Not applied", "Applied", "Issued", "Rejected", "Cancelled"], VISA_ST = ["Pending", "Applied", "Issued", "Stamped", "Rejected", "Cancelled"];
 const okDay = v => (/^\d{4}-\d{2}-\d{2}$/.test(v || "") ? v : "");
+/* ---------- MOFA visa information (Enjaz): the office types the captcha, the server fetches visa date, sponsor and occupation ---------- */
+const ENJAZ = process.env.ENJAZ_BASE || "https://visa.mofa.gov.sa", ENJAZ_PAGE = "/Enjaz/GetVisaInformation/Person", enjazSessions = new Map();
+const UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0 Safari/537.36";
+const htmlText = h => String(h || "").replace(/<script[\s\S]*?<\/script>|<style[\s\S]*?<\/style>/gi, " ").replace(/<br\s*\/?>/gi, " ").replace(/<[^>]+>/g, " ").replace(/&nbsp;/g, " ").replace(/&amp;/g, "&").replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&#x([0-9a-f]+);/gi, (_, x) => String.fromCodePoint(parseInt(x, 16))).replace(/&#(\d+);/g, (_, x) => String.fromCodePoint(+x)).replace(/\s+/g, " ").trim();
+async function enjazFetch(sess, path, opt = {}) {
+  let url = ENJAZ + path, method = opt.method || "GET", body = opt.body;
+  for (let hop = 0; hop < 4; hop++) {
+    const r = await fetch(url, { method, body, redirect: "manual", signal: AbortSignal.timeout(20000), headers: { "User-Agent": UA, "Accept-Language": "ar,en;q=0.8", Referer: ENJAZ + ENJAZ_PAGE, Cookie: [...sess.jar].map(([k, v]) => `${k}=${v}`).join("; "), ...(body ? { "Content-Type": "application/x-www-form-urlencoded", Origin: ENJAZ } : {}) } });
+    for (const c of r.headers.getSetCookie?.() || []) { const [kv] = c.split(";"); const i = kv.indexOf("="); if (i > 0) sess.jar.set(kv.slice(0, i).trim(), kv.slice(i + 1).trim()); }
+    if (r.status >= 300 && r.status < 400 && r.headers.get("location")) { url = new URL(r.headers.get("location"), url).href; method = "GET"; body = undefined; continue; }
+    return r;
+  }
+  throw new Error("Too many redirects.");
+}
+async function enjazStart() {
+  must(typeof fetch === "function", "The server's Node.js is too old for this.");
+  for (const [k, v] of enjazSessions) if (v.t < Date.now() - 10 * 60e3) enjazSessions.delete(k);
+  const sess = { jar: new Map(), t: Date.now() }, r = await enjazFetch(sess, ENJAZ_PAGE), html = await r.text();
+  must(r.ok, `The MOFA site did not open (${r.status}). Try again.`);
+  sess.token = (/name="__RequestVerificationToken"[^>]*value="([^"]+)"/.exec(html) || /value="([^"]+)"[^>]*name="__RequestVerificationToken"/.exec(html) || [])[1] || "";
+  const sel = /<select\b[^>]*name="Embassy"[^>]*>([\s\S]*?)<\/select>/i.exec(html);
+  sess.embassy = (sel && [...sel[1].matchAll(/<option\b[^>]*value="(\d+)"[^>]*>\s*(دكا|Dhaka)\s*</gi)][0]?.[1]) || "218";
+  const img = (/id=['"]imgCaptcha['"][^>]*src=['"]([^'"]+)['"]/i.exec(html) || /src=['"](\/Base\/GetRandomCaptchaImage\/[^'"]+)['"]/i.exec(html) || [])[1];
+  must(img, "The MOFA page has changed (no image code found).");
+  const sid = crypto.randomBytes(12).toString("hex"); enjazSessions.set(sid, sess);
+  return { sid, img: await enjazCaptcha(sess, img) };
+}
+async function enjazCaptcha(sess, img) {
+  const r = await enjazFetch(sess, img.startsWith("/") ? img : "/Base/GetRandomCaptchaImage/" + Math.floor(Math.random() * 1e9));
+  must(r.ok, "The image code did not load. Try again.");
+  return `data:${r.headers.get("content-type") || "image/jpeg"};base64,${Buffer.from(await r.arrayBuffer()).toString("base64")}`;
+}
+/* reads label → value pairs and the jobs table from the MOFA result page */
+function enjazParse(html) {
+  const pairs = [], seen = new Set();
+  for (const m of html.matchAll(/<label\b[^>]*>([\s\S]*?)<\/label>/gi)) {
+    const label = htmlText(m[1]).replace(/[:：]\s*$/, ""); if (!label || label.length > 60 || seen.has(label)) continue;
+    const after = html.slice(m.index + m[0].length, m.index + m[0].length + 900).split(/<label\b|<h\d\b|<table\b/i)[0];
+    const v = (/<input\b[^>]*\bvalue="([^"]*)"/i.exec(after) || [])[1] ?? htmlText((/<(?:div|span|p|td)\b[^>]*>([\s\S]*?)<\/(?:div|span|p|td)>/i.exec(after) || [])[1]);
+    const val = htmlText(v || ""); if (val && val.length < 200) { seen.add(label); pairs.push([label, val]); }
+  }
+  const jobs = [];
+  for (const t of html.matchAll(/<table\b[\s\S]*?<\/table>/gi)) {
+    const rows = [...t[0].matchAll(/<tr\b[\s\S]*?<\/tr>/gi)].map(r => [...r[0].matchAll(/<t[hd]\b[^>]*>([\s\S]*?)<\/t[hd]>/gi)].map(c => htmlText(c[1])));
+    if (rows.length > 1) jobs.push({ head: rows[0], rows: rows.slice(1).filter(r => r.some(Boolean)) });
+  }
+  const pick = re => pairs.find(([l]) => re.test(l))?.[1] || "";
+  const jt = jobs.find(j => j.head.some(h => /occupation|المهنة/i.test(h))), oc = jt ? jt.head.findIndex(h => /occupation|المهنة/i.test(h)) : -1;
+  const found = { visaDate: pick(/visa date|تاريخ (ال)?تأشيرة|تاريخ الصادر|تاريخ التاشيرة/i), sponsorName: pick(/full name|الاسم|اسم صاحب|اسم الكفيل/i), sponsorAddress: pick(/address|العنوان/i), sponsorIdNo: pick(/residence|national id|رقم الهوية|السجل المدني|رقم الإقامة/i), occupation: oc >= 0 ? jt.rows.map(r => r[oc]).filter(Boolean).join(" / ") : "" };
+  if (!found.visaDate && found.sponsorName) found.visaDate = (/\b1[45]\d\d\/\d{1,2}\/\d{1,2}\b/.exec(htmlText(html)) || [])[0] || "";
+  return { found, pairs, jobs };
+}
+async function enjazSubmit(d) {
+  const sess = enjazSessions.get(d.sid); must(sess, "The image code has expired. Press Search again.");
+  const code = str(d.code, 10), visaNo = str(d.visaNo, 20).replace(/\D/g, ""), sponsor = str(d.sponsorId, 20).replace(/\D/g, "");
+  must(visaNo && sponsor, "Enter the visa number and the sponsor ID."); must(code, "Type the image code.");
+  const form = new URLSearchParams({ VisaNumber: visaNo, Embassy: sess.embassy, SponserID: sponsor, Captcha: code, VisaInformation: "" });
+  if (sess.token) form.set("__RequestVerificationToken", sess.token);
+  const r = await enjazFetch(sess, ENJAZ_PAGE, { method: "POST", body: form.toString() }), html = await r.text();
+  const out = enjazParse(html), text = htmlText(html);
+  if (!out.found.visaDate && !out.found.sponsorName) {
+    // still on the search page: wrong image code or no visa found; give a fresh image code
+    const err = (/class="[^"]*(?:validation-summary-errors|alert-danger|field-validation-error|error)[^"]*"[^>]*>([\s\S]*?)<\/(?:div|span|ul)>/i.exec(html) || [])[1];
+    const img = (/id=['"]imgCaptcha['"][^>]*src=['"]([^'"]+)['"]/i.exec(html) || [])[1];
+    const tok = (/name="__RequestVerificationToken"[^>]*value="([^"]+)"/.exec(html) || [])[1]; if (tok) sess.token = tok; sess.t = Date.now();
+    return { ok: false, problem: htmlText(err || "") || (img ? "Nothing found. Check the image code, visa number and sponsor ID." : "The MOFA page answered in a way this form does not know yet."), img: img ? await enjazCaptcha(sess, img).catch(() => null) : null, sample: img ? undefined : text.slice(0, 600) };
+  }
+  enjazSessions.delete(d.sid);
+  return { ok: true, ...out };
+}
 A["admin.visa"] = async (d, u) => {
   needPerm(u, "visa");
   if (d.op === "save") {
@@ -1790,10 +1845,14 @@ A["admin.visa"] = async (d, u) => {
   if (d.op === "visaSearch") {
     const vn = str(d.visaNo, 40), si = str(d.sponsorId, 40); must(vn || si, "Enter the visa number or the sponsor ID.");
     const hit = db.visa.files.filter(f => f.id !== d.id && ((vn && f.visaNo === vn) || (!vn && si && f.sponsorId === si))).sort((a, b) => b.created.localeCompare(a.created))[0];
+    if (!hit && d.soft) return { found: {} };
     must(hit, `No earlier file with this ${vn ? "visa number" : "sponsor ID"}. Fill in the visa details (Visa Check opens Enjaz).`);
     const K = ["visaNo", "visaDate", "sponsorName", "sponsorId", "issuePlaceEn", "issuePlaceAr", "qualificationEn", "qualificationAr", "professionEn", "professionAr", "travelPurpose", "musaned", "wakala", "enjazProfessionAr", "enjazProfessionEn", "stayEn", "stayAr", "salary", "food"];
     return { msg: `Visa details copied from ${hit.name}'s file (SL ${hit.sl}).`, found: Object.fromEntries(K.filter(k => hit[k]).map(k => [k, hit[k]])) };
   }
+  if (d.op === "enjazStart") { try { return await enjazStart(); } catch (e) { if (e instanceof Fail) throw e; must(false, `Could not reach the MOFA site: ${e.message}`); } }
+  if (d.op === "enjazCaptcha") { const sess = enjazSessions.get(d.sid); must(sess, "Press Search again."); try { return { img: await enjazCaptcha(sess, "/Base/GetRandomCaptchaImage/" + Math.floor(Math.random() * 1e9)) }; } catch (e) { must(false, e.message); } }
+  if (d.op === "enjazSubmit") { try { return await enjazSubmit(d); } catch (e) { if (e instanceof Fail) throw e; must(false, `Could not reach the MOFA site: ${e.message}`); } }
   if (d.op === "delete") { must(db.visa.files.some(f => f.id === d.id), "File not found."); db.visa.files = db.visa.files.filter(f => f.id !== d.id); return { msg: "Client file deleted." }; }
   must(false, "Unknown request.");
 };
