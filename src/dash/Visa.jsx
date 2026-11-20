@@ -1,6 +1,6 @@
 // Visa applications › KSA visa › HR files: a dashboard of client files (MOFA, visa, sponsor, medical) and the Create Client File form.
 import React from "react";
-import { LuFilePlus2, LuSearch, LuPencil, LuTrash2, LuFileSpreadsheet, LuX, LuExternalLink, LuCheck, LuArrowLeft, LuDownload, LuFileText, LuRefreshCw, LuClipboardPaste } from "react-icons/lu";
+import { LuFilePlus2, LuSearch, LuPencil, LuTrash2, LuFileSpreadsheet, LuX, LuExternalLink, LuCheck, LuArrowLeft, LuDownload, LuFileText, LuRefreshCw, LuClipboardPaste, LuBookmark } from "react-icons/lu";
 import { VISA_FIELDS, VISA_DATES, VISA_LINKS } from "../constants.js";
 import { occEn, cityOf, mofaLabel, STAY_AR, parseWafid } from "../ksaDict.js";
 import { store, commit } from "../store.js";
@@ -110,6 +110,7 @@ function HrFiles() {
     <div className="ec-head"><div><h2>KSA Visa · HR Files</h2><p className="muted small">Client files for Saudi visas: MOFA, visa, sponsor and medical, with the agent who sent each client.</p></div>
       <button className="btn pri" onClick={() => openModal("visaFile", {})}><LuFilePlus2 /> Create Client File</button></div>
     <VisaLinks />
+    <div className="vf-bmrow"><button className="btn sm" onClick={() => openModal("wafidHelp", {})}><LuBookmark /> Medical Check bookmark</button><span className="muted small">One click on the Wafid result page saves FIT/UNFIT, medical center and date.</span></div>
     <div className="vf-tiles">{tiles.map(([v, l, t]) => <div key={l} className={`vf-tile ${t}`}><b>{v}</b><span>{l}</span></div>)}</div>
     <div className="card">
       <div className="vf-tools">
@@ -165,6 +166,53 @@ function Saved({ id, onEdit }) {
 export async function embassyPdf(f, setBusy = () => {}) {
   setBusy(true); try { const { ksaPdf } = await import("../ksaPdf.js"); await ksaPdf(f, store.S.settings || {}); } catch (e) { toast(e.message || "The PDF could not be made."); } finally { setBusy(false); }
 }
+/* ---------- Wafid bookmark: the office checks the passport on wafid.com, then one click brings the result here ---------- */
+const WAFID_ORIGIN = /^https:\/\/(www\.)?wafid\.com$/;
+export function wafidBookmarklet() {
+  const a = window.__SITE__ && window.__SITE__.admin, target = typeof a === "string" && /^https?:\/\//.test(a) ? new URL(a).origin : location.origin;
+  return `javascript:(function(){var t=document.body.innerText.slice(0,20000),o=${JSON.stringify(target)},w=window.open(o+'/#wafid-import','mamwafid');if(!w){alert('Allow pop-ups for wafid.com');return}var n=0,i=setInterval(function(){try{w.postMessage({mamWafid:1,text:t},o)}catch(e){}if(++n>240)clearInterval(i)},500);window.addEventListener('message',function(e){if(e.origin===o&&e.data&&e.data.mamWafidOk)clearInterval(i)})})();`;
+}
+/* the page the bookmark opens (#wafid-import): shows what came from Wafid and saves it after the office checks it */
+export function WafidImport() {
+  const [got, setGot] = React.useState(null), [busy, setBusy] = React.useState(false), [done, setDone] = React.useState("");
+  React.useEffect(() => {
+    const on = e => {
+      if (!WAFID_ORIGIN.test(e.origin) || !e.data || !e.data.mamWafid) return;
+      try { e.source && e.source.postMessage({ mamWafidOk: 1 }, e.origin); } catch {}
+      setGot(g => g || { ...parseWafid(String(e.data.text || "")), name: (/Name\s*:?\s*\n?\s*([^\n]+)/i.exec(String(e.data.text || "")) || [])[1] || "" });
+    };
+    window.addEventListener("message", on); return () => window.removeEventListener("message", on);
+  }, []);
+  const hits = got?.passport ? files().filter(f => f.passport === got.passport) : [];
+  const save = async () => { setBusy(true); const r = await act("admin.visa", { op: "medical", ...got }); setBusy(false); if (r) setDone(r.msg); };
+  return <section className="sec"><div className="wrap vf-wimp">
+    <h2>Medical result from Wafid</h2>
+    {!got ? <p className="muted">Waiting for the result… Keep the Wafid tab open. If nothing comes, press the MAM Wafid bookmark again on the Wafid result page.</p>
+      : !(got.medicalResult || got.medicalCenter) || !got.passport ? <p className="vf-err">This does not look like a Wafid result page. Search the passport on Wafid first, then press the bookmark on the result page.</p>
+      : <div className="card">
+        <dl className="vf-dl">{[["Passport", got.passport], ["Name", got.name], ["Medical report", got.medicalResult], ["Medical center", got.medicalCenter], ["Examination date", day(got.medicalSlipDate)]].filter(([, v]) => v).map(([k, v]) => <div key={k} className="vf-dl-row"><dt>{k}</dt><dd>{v}</dd></div>)}</dl>
+        <p className="small mt14">{hits.length ? `It will be saved on ${hits.map(f => `${f.name} (SL ${f.sl})`).join(", ")}.` : "There is no client file for this passport yet. It is kept, and Fetch will fill it in when the file is made."}</p>
+        {done ? <><p className="vf-ok mt8"><LuCheck /> {done}</p><div className="row6 mt8"><button className="btn" onClick={() => window.close()}>Close this window</button><a className="btn" href="#dashboard" onClick={() => { store.ui.visaSub = "ksa"; }}>Open HR Files</a></div></>
+          : <div className="row6 mt14"><button className="btn pri" disabled={busy} onClick={save}><LuCheck /> Save medical result</button></div>}
+      </div>}
+  </div></section>;
+}
+/* how to add the bookmark */
+export function WafidBookmarkHelp() {
+  const ref = React.useRef(null), code = wafidBookmarklet();
+  React.useEffect(() => { if (ref.current) ref.current.setAttribute("href", code); }, [code]); // React does not allow javascript: links, so it is set directly
+  const copy = async () => { try { await navigator.clipboard.writeText(code); toast("Copied."); } catch { toast("Could not copy. Select the code and copy it."); } };
+  return <div>
+    <h2>Medical Check bookmark</h2>
+    <p className="muted small">After you check a passport on Wafid, one click sends the result (FIT/UNFIT, medical center, date) to the client file.</p>
+    <h4 className="mt14">On a computer (Chrome, Edge)</h4>
+    <ol className="small vf-steps"><li>Show the bookmarks bar: press Ctrl+Shift+B.</li><li>Drag this button to the bookmarks bar: <a ref={ref} className="btn sm pri vf-bm" onClick={e => { e.preventDefault(); toast("Drag it to the bookmarks bar."); }}>MAM Wafid</a></li><li>On wafid.com, search the passport. When the result shows, click MAM Wafid in the bookmarks bar.</li><li>A window of this site opens with the result. Check it and press Save medical result.</li></ol>
+    <h4 className="mt14">On a phone</h4>
+    <ol className="small vf-steps"><li>Copy the code: <button type="button" className="btn sm" onClick={copy}><LuClipboardPaste /> Copy code</button></li><li>Bookmark any page, then edit the bookmark: name it MAM Wafid and paste the code as its address (URL).</li><li>On the Wafid result page, type MAM Wafid in the address bar and tap the bookmark.</li></ol>
+    <p className="small muted mt14">You must be signed in to this admin panel in the same browser. Allow pop-ups for wafid.com if the browser asks.</p>
+    <div className="row6 mt14"><button className="btn" onClick={closeModal}>Close</button></div>
+  </div>;
+}
 /* Medical Check (Wafid) cannot be asked from the server: the office copies the result page and pastes it here */
 function WafidPaste({ passport, onFill }) {
   const [open, setOpen] = React.useState(false), [txt, setTxt] = React.useState(""), [res, setRes] = React.useState(null);
@@ -177,7 +225,8 @@ function WafidPaste({ passport, onFill }) {
   };
   return <div className="vf-med">
     <div className="row6"><a className="btn sm" href="https://wafid.com/en/medical-status-search/" target="_blank" rel="noopener noreferrer"><LuExternalLink /> Medical Check</a>
-      <button type="button" className="btn sm" onClick={() => { setOpen(!open); setRes(null); }}><LuClipboardPaste /> Paste the result</button></div>
+      <button type="button" className="btn sm" onClick={() => { setOpen(!open); setRes(null); }}><LuClipboardPaste /> Paste the result</button>
+      <button type="button" className="btn sm link" onClick={() => openModal("wafidHelp", {})}><LuBookmark /> Bookmark</button></div>
     {open && <div className="vf-mofa mt8"><p className="small">In Medical Check, search the passport, select the whole result page (Select All), copy it, and paste it here.</p>
       <textarea rows={4} value={txt} onChange={e => setTxt(e.target.value)} placeholder="Paste the Medical Check result here" aria-label="Medical Check result" />
       <div className="row6 mt8"><button type="button" className="btn pri sm" disabled={!txt.trim()} onClick={read}>Fill in</button><button type="button" className="btn sm link" onClick={() => setOpen(false)}><LuX /> Close</button></div></div>}

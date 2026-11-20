@@ -1861,6 +1861,7 @@ A["admin.visa"] = async (d, u) => {
   if (d.op === "fetch") {
     const pp = ppNorm(d.passport); must(/^[A-Z0-9]{6,15}$/.test(pp), "Enter the passport number.");
     const out = {}, put = o => { for (const [k, w] of Object.entries(o)) if (w && !out[k]) out[k] = w; };
+    const med = db.visa.medical?.[pp]; if (med) put({ medicalResult: med.medicalResult, medicalCenter: med.medicalCenter, medicalSlipDate: med.medicalSlipDate });
     const p = db.passports.find(x => x.passport === pp);
     if (p) put({ name: p.name, sex: p.gender, agentId: p.agentId, ...(p.info || {}) }); // the Passport Entry first: it is the office's checked copy
     const old = db.visa.files.filter(f => f.passport === pp && f.id !== d.id).sort((a, b) => b.created.localeCompare(a.created))[0];
@@ -1881,6 +1882,17 @@ A["admin.visa"] = async (d, u) => {
   }
   if (d.op === "mofaStart") { try { return await enjazStart(MOFA_APPLICANT); } catch (e) { if (e instanceof Fail) throw e; must(false, `Could not reach the MOFA site: ${e.message}`); } }
   if (d.op === "mofaSubmit") { try { return await mofaSubmit(d); } catch (e) { if (e instanceof Fail) throw e; must(false, `Could not reach the MOFA site: ${e.message}`); } }
+  /* Medical result brought from Wafid by the office's bookmark: saved on every file of the passport, and kept for files made later */
+  if (d.op === "medical") {
+    const pp = ppNorm(d.passport); must(/^[A-Z0-9]{6,15}$/.test(pp), "No passport number in the Wafid result.");
+    const m = { medicalResult: ["FIT", "UNFIT"].includes(d.medicalResult) ? d.medicalResult : "", medicalCenter: str(d.medicalCenter, 160), medicalSlipDate: okDay(d.medicalSlipDate) };
+    must(m.medicalResult || m.medicalCenter, "Nothing to save.");
+    if (!db.visa.medical) db.visa.medical = {};
+    db.visa.medical[pp] = { ...m, name: str(d.name, 120), at: now(), by: u.name };
+    const hit = db.visa.files.filter(f => f.passport === pp && f.visaStatus !== "Cancelled");
+    for (const f of hit) Object.assign(f, Object.fromEntries(Object.entries(m).filter(([, v]) => v)), { updated: now(), updatedBy: u.name });
+    return { msg: hit.length ? `Medical result saved on ${hit.length > 1 ? `${hit.length} client files` : `${hit[0].name}'s client file`}.` : `Medical result saved for passport ${pp}. Fetch will fill it in the client file.` };
+  }
   if (d.op === "enjazStart") { try { return await enjazStart(); } catch (e) { if (e instanceof Fail) throw e; must(false, `Could not reach the MOFA site: ${e.message}`); } }
   if (d.op === "enjazCaptcha") { const sess = enjazSessions.get(d.sid); must(sess, "Press Search again."); try { return { img: await enjazCaptcha(sess, "/Base/GetRandomCaptchaImage/" + Math.floor(Math.random() * 1e9)) }; } catch (e) { must(false, e.message); } }
   if (d.op === "enjazSubmit") { try { return await enjazSubmit(d); } catch (e) { if (e instanceof Fail) throw e; must(false, `Could not reach the MOFA site: ${e.message}`); } }

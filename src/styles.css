@@ -1207,3 +1207,8 @@ button.hold-tile{cursor:pointer}
 @media(max-width:560px){.vf-dl-row{grid-template-columns:1fr;gap:0}.vf-dl dt{font-size:.85em}}
 .vf-dl dt{color:var(--muted,#667085)}.vf-dl dd{margin:0;font-weight:600}
 .vf-med{margin:4px 0 10px}
+.vf-bmrow{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:-6px 0 14px}
+.vf-steps{padding-left:20px;display:flex;flex-direction:column;gap:8px}
+.vf-bm{cursor:grab}
+.vf-wimp{max-width:720px}
+.vf-ok{color:#166534;font-weight:600;display:flex;gap:6px;align-items:center}

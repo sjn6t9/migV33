@@ -1,4 +1,4 @@
-import { VisaFileForm } from "./dash/Visa.jsx";
+import { VisaFileForm, WafidImport, WafidBookmarkHelp } from "./dash/Visa.jsx";
 import React, { useState, useEffect, useSyncExternalStore } from "react";
 import { LuMenu, LuBell, LuCheck, LuMoon, LuSun, LuLanguages, LuLogOut, LuLayoutDashboard, LuLogIn, LuUserPlus, LuSend, LuMailCheck, LuRefreshCw, LuDownload, LuFileText, LuKeyRound, LuWifiOff, LuPhone, LuMail } from "react-icons/lu";
 import { FaWhatsapp, FaFacebookF, FaYoutube, FaLinkedinIn, FaTiktok } from "react-icons/fa6";
@@ -43,10 +43,11 @@ export default function App() {
   else if (h.startsWith("receipt-")) { page = "receipt"; arg = h.slice(8); }
   else if (h.startsWith("salary-")) { page = "salary"; arg = h.slice(7); }
   else if (h.startsWith("statement-")) { page = "statement"; arg = h.slice(10); }
+  else if (h === "wafid-import") page = "wafid";
   else if (!PAGES.includes(h) && h !== "dashboard") page = "home";
   const panelSite = SITE.admin ? "admin" : SITE.agent ? "agent" : null; // admin.<domain> or agent.<domain>
   if (panelSite && h.startsWith("handoff-")) { page = "handoff"; arg = h.slice(8); }
-  else if (panelSite && !["dashboard", "setup", "job", "post", "verify", "receipt", "salary", "statement"].includes(page)) page = "dashboard"; // the panel opens straight to the dashboard
+  else if (panelSite && !["dashboard", "setup", "job", "post", "verify", "receipt", "salary", "statement", "wafid"].includes(page)) page = "dashboard"; // the panel opens straight to the dashboard
   useEffect(() => {
     if (page !== "handoff") return;
     history.replaceState(null, "", "#dashboard"); // the one-time pass leaves the address bar at once
@@ -77,7 +78,7 @@ export default function App() {
     <>
       <PanelHeader kind={panelSite} dash={!!me() && !["handoff", "setup", "job", "post"].includes(page)} />
       {store.offline && <div className="demo-strip"><div className="wrap"><span><LuWifiOff /> Cannot reach the server. Check your internet connection; the page will work again when it is back.</span></div></div>}
-      <main>{page === "handoff" ? <section className="sec"><div className="wrap"><p className="muted">Signing you in…</p></div></section> : page === "setup" && panelSite === "admin" ? <Setup token={arg} /> : page === "job" ? <JobDetail id={arg} /> : page === "post" ? <Post id={arg} /> : me() ? <Dashboard /> : <PanelSignIn kind={panelSite} />}</main>
+      <main>{page === "handoff" ? <section className="sec"><div className="wrap"><p className="muted">Signing you in…</p></div></section> : page === "setup" && panelSite === "admin" ? <Setup token={arg} /> : page === "job" ? <JobDetail id={arg} /> : page === "post" ? <Post id={arg} /> : page === "wafid" && me() ? <WafidImport /> : me() ? <Dashboard /> : <PanelSignIn kind={panelSite} />}</main>
       <ModalHost />
       {panelSite === "agent" && <ChatWidget assistant={false} />}
       {me() && (me().role === "admin" || me().role === "staff") && <TeamChatWidget me={me()} />}
@@ -87,7 +88,7 @@ export default function App() {
 
   const body = {
     home: <Home />, jobs: <Jobs />, services: <Services />, track: <Track />, team: <Team />, about: <About />, blog: <Blog />, contact: <Contact />,
-    dashboard: <Dashboard />, job: <JobDetail id={arg} />, post: <Post id={arg} />, setup: <Setup token={arg} />
+    dashboard: <Dashboard />, job: <JobDetail id={arg} />, post: <Post id={arg} />, setup: <Setup token={arg} />, wafid: me() ? <WafidImport /> : <Dashboard />
   }[page];
   const navOn = page === "job" ? "jobs" : page === "post" ? "blog" : page;
 
@@ -296,6 +297,7 @@ function ModalHost() {
       {m.type === "agentdocs" && user(m.uid) && <AgentDocsView u={user(m.uid)} />}
       {m.type === "clearance" && <ClearanceCard cid={m.cid} admin={m.admin} />}
       {m.type === "clPay" && <ClPayForm cid={m.cid} />}
+      {m.type === "wafidHelp" && <WafidBookmarkHelp />}
       {m.type === "visaFile" && <VisaFileForm key={m.id || "new"} id={m.id} />}
       {m.type === "mrEntry" && <MrEntry key={m.aid || m.pp || "new"} aid={m.aid} pp={m.pp} />}
       {m.type === "mrView" && <MrView rid={m.rid} fresh={m.fresh} />}
