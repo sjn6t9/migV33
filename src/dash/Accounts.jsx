@@ -256,7 +256,7 @@ function MonthlyCell({ uid, value }) {
 /* pay a salary: month, salary, bonus, deduction, paid now, method */
 export function SalaryPay({ uid }) {
   const x = team().find(p => p.id === uid); const prof = SAL().profiles[uid];
-  const [f, setF] = React.useState({ month: today().slice(0, 7), basic: prof?.monthly != null ? String(prof.monthly) : "", bonus: "", deduct: "", paid: "", date: today(), method: "Cash", channel: "", chOther: false, ref: "", note: "" });
+  const [f, setF] = React.useState({ period: prof?.period || "monthly", month: today().slice(0, 7), basic: prof?.monthly != null ? String(prof.monthly) : "", bonus: "", deduct: "", paid: "", date: today(), method: "Cash", channel: "", chOther: false, ref: "", note: "" });
   const [busy, setBusy] = React.useState(false);
   if (!x) return <p>Person not found.</p>;
   const set = v => setF({ ...f, ...v });
@@ -268,7 +268,7 @@ export function SalaryPay({ uid }) {
     if (!(net > 0)) { toast("The net salary must be more than 0."); return; }
     if (ch && f.method !== "Cheque" && !f.channel.trim()) { toast(f.method === "Mobile banking" ? "Choose the mobile banking service." : "Choose the bank."); return; }
     setBusy(true);
-    const r = await act("admin.salary", { op: "pay", uid, month: f.month, basic: f.basic, bonus: f.bonus, deduct: f.deduct, paid: f.paid, date: f.date, method: f.method, channel: ch ? f.channel : "", ref: f.ref, note: f.note });
+    const r = await act("admin.salary", { op: "pay", uid, period: f.period, month: f.month, basic: f.basic, bonus: f.bonus, deduct: f.deduct, paid: f.paid, date: f.date, method: f.method, channel: ch ? f.channel : "", ref: f.ref, note: f.note });
     setBusy(false);
     if (r?.payId) openModal("salaryView", { id: r.payId, fresh: true });
   };
@@ -277,6 +277,7 @@ export function SalaryPay({ uid }) {
     <div className="mr-acc"><span><b data-notr>{x.name}</b><RoleBadges role={x.role} size={14} /> · <span data-notr>{titleOf(x)}</span>{x.email ? <span className="muted">{` · receipt goes to ${x.email}`}</span> : <span className="muted"> · no email: download the receipt</span>}</span></div>
     {already.length > 0 && <p className="notice small">{`Already paid for ${monthName(f.month)}: ${already.map(p => `${p.no} (${tk(p.paid)})`).join(", ")}.`}</p>}
     <div className="card mr-box"><div className="fgrid">
+      <Field label="Salary type"><div className="seg3" role="radiogroup" aria-label="Salary type">{[["weekly", "Weekly salary"], ["monthly", "Monthly salary"]].map(([k, l]) => <button key={k} type="button" role="radio" aria-checked={f.period === k} className={f.period === k ? "on" : ""} onClick={() => set({ period: k })}>{l}</button>)}</div></Field>
       <Field label="Salary month"><input type="month" value={f.month} onChange={e => set({ month: e.target.value })} required /></Field>
       <Field label="Payment date"><input type="date" value={f.date} onChange={e => set({ date: e.target.value })} /></Field>
       <Field label="Salary (BDT)" hint={prof?.monthly != null ? `Monthly salary: ${tk(prof.monthly)}` : "Tip: set the monthly salary in the list"}><input type="number" min="0" step="0.01" value={f.basic} onChange={e => set({ basic: e.target.value })} /></Field>

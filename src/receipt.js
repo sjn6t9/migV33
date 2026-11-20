@@ -263,9 +263,29 @@ export async function drawSalary(p, settings = {}) {
   rr(g, W - 420, 78, 364, 74, 37); g.fillStyle = "#fff"; g.fill(); g.fillStyle = RED; g.textAlign = "center"; g.font = `800 28px ${F}`; g.fillText("SALARY RECEIPT", W - 238, 126);
   // number, month, date
   g.textAlign = "left"; g.fillStyle = MUTED; g.font = `600 22px ${F}`; g.fillText("Receipt No.", 70, 300); g.fillStyle = INK; g.font = `800 34px ${F}`; g.fillText(p.no, 70, 342);
-  g.textAlign = "center"; g.fillStyle = MUTED; g.font = `600 22px ${F}`; g.fillText("Salary month", W / 2, 300); g.fillStyle = GREEN; g.font = `800 34px ${F}`; g.fillText(monthName(p.month), W / 2, 342);
+  const att = p.att && p.att.days?.length ? p.att : null, dd = d => new Date(d + "T00:00:00Z"), short = d => dd(d).toLocaleDateString("en-GB", { day: "2-digit", month: "short", timeZone: "UTC" });
+  const work = att ? att.days.filter(x => x.s !== "H") : [], pres = work.filter(x => x.s === "P").length;
+  if (att && p.period === "weekly") {
+    // weekly salary: the days since the last salary, between the receipt number and the date
+    g.textAlign = "center"; g.fillStyle = MUTED; g.font = `600 20px ${F}`; g.fillText(`Attendance ${short(att.from)} – ${short(att.to)} · ${monthName(p.month)} · present ${pres}/${work.length}`, W / 2, 292);
+    const n = att.days.length, cw = Math.min(78, 760 / n), x0 = W / 2 - (cw * n) / 2;
+    att.days.forEach((x, i) => {
+      const cx = x0 + i * cw + cw / 2, col = x.s === "P" ? "#16a34a" : x.s === "A" ? RED : "#94a3b8";
+      rr(g, cx - cw / 2 + 4, 304, cw - 8, 56, 10); g.fillStyle = x.s === "H" ? "#f1f5f9" : x.s === "P" ? "#dcfce7" : "#fee2e2"; g.fill();
+      g.fillStyle = INK; g.font = `700 15px ${F}`; g.fillText(dd(x.d).toLocaleDateString("en-GB", { weekday: "short", timeZone: "UTC" }) + " " + x.d.slice(8), cx, 324);
+      g.fillStyle = col; g.font = `800 20px ${F}`; g.fillText(x.s === "P" ? "✓" : x.s === "A" ? "✕" : "Off", cx, 350);
+    });
+  } else {
+    g.textAlign = "center"; g.fillStyle = MUTED; g.font = `600 22px ${F}`; g.fillText("Salary month", W / 2, 300); g.fillStyle = GREEN; g.font = `800 34px ${F}`; g.fillText(monthName(p.month), W / 2, 342);
+  }
   g.textAlign = "right"; g.fillStyle = MUTED; g.font = `600 22px ${F}`; g.fillText("Paid on", W - 70, 300); g.fillStyle = INK; g.font = `800 34px ${F}`; g.fillText(rDate(p.date), W - 70, 342);
-  g.fillStyle = LINE; g.fillRect(70, 368, W - 140, 2);
+  if (att && p.period !== "weekly") {
+    // monthly salary: under the date on the right
+    const abs = work.filter(x => x.s === "A").map(x => x.d.slice(8));
+    g.font = `700 18px ${F}`; g.fillStyle = GREEN; g.fillText(`Present ${pres}/${work.length} days (${short(att.from)} – ${short(att.to)})`, W - 70, 370);
+    g.font = `600 16px ${F}`; g.fillStyle = abs.length ? RED : MUTED; g.fillText(clip(g, abs.length ? `Absent: ${abs.join(", ")}` : "No absence", 560), W - 70, 392);
+  }
+  g.fillStyle = LINE; g.fillRect(70, att ? 400 : 368, W - 140, 2);
   const field = (label, value, x, y, w) => {
     g.textAlign = "left"; g.fillStyle = MUTED; g.font = `600 21px ${F}`; g.fillText(label, x, y);
     g.fillStyle = INK; fitFont(g, value || "—", w, 30, 600); g.fillText(clip(g, value || "—", w), x, y + 40);

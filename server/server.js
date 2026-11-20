@@ -1511,6 +1511,17 @@ for (const p of db.salary.pays) if (!p.status) p.status = "received"; // paid be
 // a salary counts (statement, main account) once the person confirms they received it
 const salaryDone = p => !p.void && p.status === "received";
 const bdDay = () => new Date(Date.now() + 6 * 3600e3).toISOString().slice(0, 10);
+/* attendance from the day after the last salary up to this payment date: P present, A absent, H holiday */
+function salaryAtt(uid, date, period) {
+  const prev = db.salary.pays.filter(p => p.uid === uid && !p.void && p.date < date).sort((a, b) => b.date.localeCompare(a.date))[0];
+  const addDay = (d, k) => new Date(Date.parse(d + "T00:00:00Z") + k * 864e5).toISOString().slice(0, 10);
+  let from = prev ? addDay(prev.date, 1) : addDay(date, period === "weekly" ? -6 : -29);
+  if (ATT.since && from < ATT.since) from = ATT.since;
+  const to = date < attDay() ? date : attDay(); // days still to come are not counted
+  if (from > to) return null;
+  const days = []; for (let d = from; d <= to && days.length < 62; d = addDay(d, 1)) days.push({ d, s: attHoliday(d) ? "H" : ATT.marks[uid]?.[d] ? "P" : "A" });
+  return { from, to, days };
+}
 /* ---------- office attendance: a tick per working day; signing in from the office IP ticks it by itself ---------- */
 if (!db.attendance) db.attendance = { marks: {}, ipLog: {}, holidays: [{ date: "2026-12-16", name: "Victory Day" }, { date: "2026-12-25", name: "Christmas" }], office: { mode: "auto", ip: "", autoIp: "" } };
 const ATT = db.attendance;
@@ -1527,9 +1538,13 @@ function attTouch(u, ip0) {
   let changed = false;
   if (!list.includes(u.id)) { list.push(u.id); changed = true; }
   // automatic office IP: the network most admin/staff use today (at least two people); when it moves, people already seen there are ticked
-  if (ATT.office.mode !== "manual" && list.length >= 2 && ip !== ATT.office.autoIp && list.length > (log[ATT.office.autoIp] || []).length) {
+  // the first office IP: two people on one network; afterwards a new network needs three or more people today, and an admin confirms it
+  if (ATT.office.mode !== "manual" && !ATT.office.autoIp && list.length >= 2) {
     ATT.office.autoIp = ip; ATT.office.autoAt = now(); changed = true;
     if (!attHoliday(day)) for (const uid of list) if (!ATT.marks[uid]?.[day]) attMark(uid, day, { at: now(), by: "auto", ip });
+  } else if (ip !== officeIp() && list.length >= 3 && list.length > (log[officeIp()] || []).length && ATT.office.candidate?.ip !== ip && !(ATT.office.dismissed || []).includes(ip)) {
+    ATT.office.candidate = { ip, at: now(), day }; changed = true;
+    notifyAdmins(`${list.length} admin/staff are using a new network (${ip}) today. If the office internet changed, confirm it as the office IP in Site settings › Office attendance.`, "settings");
   }
   if (ip === officeIp() && !attHoliday(day) && !ATT.marks[u.id]?.[day]) { attMark(u.id, day, { at: now(), by: "auto", ip }); changed = true; }
   // keep 60 days of the IP log
@@ -1553,9 +1568,11 @@ A["attendance.tick"] = async (d, u, ctx) => {
 };
 A["admin.attendance"] = async (d, u) => {
   must(u.role === "admin", "Only an admin can change this.", 403);
+  if (d.op === "dismiss") { ATT.office.dismissed = [...(ATT.office.dismissed || []), ATT.office.candidate?.ip].filter(Boolean).slice(-20); ATT.office.candidate = null; return { msg: "Kept the current office IP." }; }
   if (d.op === "officeIp") {
     if (d.mode === "auto") { ATT.office.mode = "auto"; return { msg: "The office IP is found automatically." }; }
-    const ip = str(d.ip, 60); must(ip, "Choose an IP."); ATT.office = { ...ATT.office, mode: "manual", ip, setBy: u.name, setAt: now() };
+    ATT.office.candidate = null;
+    const ip = str(d.ip, 60); must(ip, "Choose an IP."); ATT.office = { ...ATT.office, mode: ATT.office.mode === "manual" ? "manual" : "auto", ip, autoIp: ip, setBy: u.name, setAt: now() };
     const day = attDay(); if (!attHoliday(day)) for (const uid of ATT.ipLog[day]?.[ip] || []) if (!ATT.marks[uid]?.[day]) attMark(uid, day, { at: now(), by: "auto", ip });
     return { msg: `Office IP set to ${ip}.` };
   }
@@ -1692,7 +1709,8 @@ A["admin.salary"] = async (d, u) => {
     const date = okDate(d.date), yr = date.slice(0, 4); S.seq[yr] = (S.seq[yr] || 0) + 1;
     const m = x.memberId && db.team.find(t => t.id === x.memberId);
     const p = { id: id("sp"), no: `SP-${yr}-${String(S.seq[yr]).padStart(4, "0")}`, uid: x.id, name: x.name, title: m?.title || "", email: x.email, role: x.role,
-      month: d.month, basic, bonus, deduct, net, paid, date, method, channel, ref: str(d.ref, 80), note: str(d.note, 300),
+      month: d.month, period: d.period === "weekly" ? "weekly" : "monthly", basic, bonus, deduct, net, paid, date, method, channel, ref: str(d.ref, 80), note: str(d.note, 300),
+      att: salaryAtt(x.id, date, d.period === "weekly" ? "weekly" : "monthly"),
       by: mrSigner(u), token: crypto.randomBytes(12).toString("hex"), created: now() };
     p.status = "pending"; S.pays.unshift(p);
     notify(x.id, `Salary for ${monthName(p.month)}: BDT ${paid.toLocaleString("en-US")} was paid to you (${p.no}). Open My salary and confirm that you received it.`);

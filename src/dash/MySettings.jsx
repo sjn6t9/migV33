@@ -99,7 +99,9 @@ export function AttendanceSettings() {
   const days = Object.entries(A.ipLog || {});
   return <div className="card mt14">
     <h3><LuWifi /> Office attendance</h3>
-    <p className="small"><b>Office IP:</b> <span className="num">{A.officeIp || "not known yet"}</span> · {A.office.mode === "manual" ? `chosen by ${A.office.setBy || "admin"}` : "found automatically (the network most admin/staff use; it follows when the office IP changes)"}</p>
+    <p className="small"><b>Office IP:</b> <span className="num">{A.officeIp || "not known yet"}</span> · {A.office.mode === "manual" ? `chosen by ${A.office.setBy || "admin"}` : "found automatically; when three or more admin/staff move to a new network, you are asked to confirm it"}</p>
+    {A.office.candidate && <div className="notice warn mt8"><b>{`New network: ${A.office.candidate.ip}`}</b> · three or more admin/staff are using it ({A.office.candidate.day}). If the office internet changed, confirm it.
+      <div className="row6 mt8"><button className="btn sm pri" onClick={() => act("admin.attendance", { op: "officeIp", ip: A.office.candidate.ip })}><LuCheck /> Confirm as the new office IP</button><button className="btn sm" onClick={() => act("admin.attendance", { op: "dismiss" })}>Keep {A.officeIp}</button></div></div>}
     {A.office.mode === "manual" && <button className="btn sm" onClick={() => act("admin.attendance", { op: "officeIp", mode: "auto" })}>Find it automatically again</button>}
     <h4 className="mt14">Networks admin/staff used</h4>
     {days.length ? days.map(([day, ips]) => <div key={day} className="mt8"><b className="small">{day}</b>
