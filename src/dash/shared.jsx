@@ -228,6 +228,7 @@ export function JobFields({ j, templates = false }) {
     <Field label="Vacancies"><input type="number" name="vacancies" min="1" defaultValue={j.vacancies} /></Field>
     <Field label="Age limit"><input type="text" name="age" defaultValue={j.age} /></Field>
     <Field label="Application deadline"><input type="date" name="deadline" defaultValue={j.deadline} /></Field>
+    <Field label="Job status" hint="Shown on the job card; the border flashes in its colour"><select name="label" defaultValue={j.label || ""}><option value="">None</option><option value="urgent">Urgent (red)</option><option value="new">New (blue)</option><option value="upcoming">Upcoming (green)</option></select></Field>
     <fieldset className="plain full"><legend className="small b">Benefits</legend><div className="row">{BENEFITS.map(b => <label key={b} className="check"><input type="checkbox" name="benefits" value={b} defaultChecked={j.benefits.includes(b)} /> {b}</label>)}</div></fieldset>
     <Field label="Job description" full><textarea name="description" ref={r.desc} rows={templates ? 12 : undefined} defaultValue={j.description} required /></Field>
     <Field label="Requirements" full><textarea name="requirements" ref={r.req} rows={templates ? 6 : undefined} defaultValue={j.requirements} /></Field>

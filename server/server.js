@@ -470,7 +470,8 @@ const jobData = d => {
   must(min > 0, "Enter the salary.");
   return { title: str(d.title, 120), category: str(d.category, 60), country: d.country, city: str(d.city, 80), salaryMin: Math.round(min * 100) / 100, salaryMax: Math.round(max * 100) / 100, period, currency: COUNTRIES[d.country], type: str(d.type, 30),
     experience: numv(d.experience, 0, 50), contract: numv(d.contract, 1, 10), vacancies: numv(d.vacancies, 1, 10000), age: str(d.age, 20), deadline: str(d.deadline, 10),
-    benefits: (d.benefits || []).map(x => str(x, 40)).slice(0, 10), description: str(d.description, 5000), requirements: str(d.requirements, 3000) };
+    benefits: (d.benefits || []).map(x => str(x, 40)).slice(0, 10), description: str(d.description, 5000), requirements: str(d.requirements, 3000),
+    label: ["urgent", "new", "upcoming"].includes(d.label) ? d.label : "" };
 };
 function publishJob(j) {
   const was = j.status; j.status = "active"; notify(j.employerId, `Your job “${j.title}” is now live.`);

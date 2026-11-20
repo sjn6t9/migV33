@@ -58,12 +58,13 @@ export function SaveButton({ j, full }) {
   );
 }
 
+const JOB_TAG = { urgent: "Urgent", new: "New", upcoming: "Upcoming" };
 export function JobCard({ j }) {
   return (
-    <article className="card job">
+    <article className={`card job${j.label ? ` job-${j.label}` : ""}`}>
       <div className="t">
         <div>
-          {j.featured && <div className="badge-feat">Featured</div>}
+          {(j.featured || j.label) && <div className="row tight">{j.label && <span className={`job-tag ${j.label}`}>{JOB_TAG[j.label]}</span>}{j.featured && <div className="badge-feat">Featured</div>}</div>}
           <h3><a href={`#job-${j.id}`}>{j.title}</a></h3>
           <div className="muted small">{company(j)}</div>
         </div>

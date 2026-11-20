@@ -391,7 +391,7 @@ export function TeamCard({ m, compact }) {
     m.website && { href: m.website, icon: <LuGlobe />, label: `Website of ${m.name}`, ext: true },
   ].filter(Boolean);
   return (
-    <article className={`teamcard${compact ? " compact" : ""}`}>
+    <article className={`teamcard${compact ? " compact" : ""}${/chairman|director/i.test(m.title || "") ? " lead" : ""}`}>
       <div className={`tc-photo${m.photo ? " pic" : ""}`}>
         {m.photo ? <img src={m.photo.data} alt={m.name} loading="lazy" decoding="async" /> : <div className="tc-ph"><Avatar name={m.name} size={compact ? 96 : 120} /></div>}
         {m.dept && <span className="tc-dept">{m.dept}</span>}

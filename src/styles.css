@@ -1270,3 +1270,12 @@ button.hold-tile{cursor:pointer}
 .panel-tools{display:flex;gap:6px;align-items:center}
 .utilbar .panel-tools .bell-btn{height:30px;min-width:30px;padding:0 7px;background:transparent;border-color:rgba(255,255,255,.3);color:#fff}
 .utilbar .panel-tools .bell-btn:hover{border-color:#fff}
+/* job status: Urgent red, New blue, Upcoming green; the border flashes softly */
+.job-tag{display:inline-block;font-size:11px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:#fff;border-radius:999px;padding:2px 9px;margin-right:6px}
+.job-tag.urgent{background:#dc2626}.job-tag.new{background:#2563eb}.job-tag.upcoming{background:#16a34a}
+.card.job-urgent{--flash:#dc2626}.card.job-new{--flash:#2563eb}.card.job-upcoming{--flash:#16a34a}
+.card.job-urgent,.card.job-new,.card.job-upcoming{border:2px solid var(--flash);animation:job-flash 1.4s ease-in-out infinite}
+@keyframes job-flash{0%,100%{border-color:var(--flash);box-shadow:0 0 0 0 color-mix(in srgb,var(--flash) 45%,transparent)}50%{border-color:color-mix(in srgb,var(--flash) 25%,transparent);box-shadow:0 0 0 4px color-mix(in srgb,var(--flash) 18%,transparent)}}
+@media (prefers-reduced-motion:reduce){.card.job-urgent,.card.job-new,.card.job-upcoming{animation:none}}
+/* Expert Team: Managing Director, Director and Chairman get a thin red border */
+.teamcard.lead{border:1.5px solid #dc2626 !important}
