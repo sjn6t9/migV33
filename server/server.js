@@ -964,6 +964,24 @@ async function handleApi(req, res, url) {
   if (u && isStaffRole(u)) seen.set(u.id, Date.now()); // online / offline in the team chat
   if (u && !zoneAllows(zone, u)) { token = null; u = null; } // a session from the other site does not count here
   if (req.method === "GET" && url.pathname === "/api/state") return send(res, 200, { ...viewFor(u), rev: REV });
+  // temporary: the structure of two public check pages (no personal data), to wire Fetch to them
+  if (req.method === "GET" && url.pathname === "/api/probe2") {
+    const out = {};
+    for (const [k, u0] of [["mofa", "https://visa.mofa.gov.sa/VisaPerson/GetApplicantData"], ["wafid", "https://wafid.com/en/medical-status-search/"]]) {
+      try {
+        const r = await fetch(u0, { headers: { "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/131 Safari/537.36", "Accept-Language": "en-US,en;q=0.9" }, signal: AbortSignal.timeout(15000) });
+        const h = await r.text();
+        out[k] = { status: r.status, len: h.length,
+          forms: [...h.matchAll(/<form\b([^>]*)>([\s\S]*?)<\/form>/gi)].map(m => ({ a: m[1].replace(/\s+/g, " ").trim().slice(0, 160), f: [...m[2].matchAll(/<(input|select|textarea)\b[^>]*name=["']([^"']+)["'][^>]*>/gi)].map(x => x[1][0] + ":" + x[2]) })),
+          cap: [...new Set((h.match(/recaptcha|hcaptcha|turnstile|sitekey|GetRandomCaptchaImage|captcha/gi) || []).map(x => x.toLowerCase()))],
+          sitekey: (/sitekey["'\s:=]+["']?([\w-]{20,})/i.exec(h) || [])[1] || "",
+          api: [...new Set((h.match(/["'`](\/?(?:api|backend|services?)\/[\w\/.-]{3,80})["'`]/gi) || []).map(x => x.slice(1, -1)))].slice(0, 15),
+          js: [...h.matchAll(/<script[^>]*src=["']([^"']+)["']/gi)].map(m => m[1]).filter(x => !/google|gtag|facebook|jquery|bootstrap/i.test(x)).slice(0, 8),
+          sel: [...h.matchAll(/<select\b[^>]*name=["']([^"']+)["'][^>]*>([\s\S]*?)<\/select>/gi)].map(m => m[1] + "(" + (m[2].match(/<option/gi) || []).length + "): " + [...m[2].matchAll(/<option[^>]*value=["']([^"']*)["'][^>]*>([^<]*)/gi)].filter(o => /bangla|بنغلاد/i.test(o[2])).map(o => o[1] + "=" + o[2].trim()).join(",")) };
+      } catch (e) { out[k] = { error: String(e.message || e) }; }
+    }
+    return send(res, 200, out);
+  }
   if (req.method === "GET" && url.pathname === "/api/rev") return send(res, 200, { rev: REV, me: u?.id || null });
   const stm = req.method === "GET" && /^\/api\/statement\/([a-f0-9]{24})$/.exec(url.pathname);
   if (stm) { const x = db.statements.list.find(y => y.token === stm[1]); return x ? send(res, 200, { statement: stmtOut(x, true) }) : send(res, 404, { error: "Statement not found." }); }
