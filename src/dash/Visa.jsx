@@ -2,6 +2,7 @@
 import React from "react";
 import { LuFilePlus2, LuSearch, LuPencil, LuTrash2, LuFileSpreadsheet, LuX, LuExternalLink, LuCheck, LuArrowLeft, LuDownload, LuFileText, LuRefreshCw } from "react-icons/lu";
 import { VISA_FIELDS, VISA_DATES, VISA_LINKS } from "../constants.js";
+import { occEn, cityOf, mofaLabel, STAY_AR } from "../ksaDict.js";
 import { store, commit } from "../store.js";
 import { act, openModal, closeModal, confirmBox, toast } from "../actions.js";
 import { Field } from "./shared.jsx";
@@ -130,7 +131,12 @@ export function VisaFileForm({ id }) {
     if (!r) return;
     if (!r.ok) { setMofa({ ...mofa, code: "", error: r.problem || "Nothing found.", img: r.img || mofa.img }); return; }
     const x = r.found || {};
-    set({ ...(x.visaDate ? { visaDate: x.visaDate } : {}), ...(x.sponsorName ? { sponsorName: x.sponsorName } : {}), ...(x.occupation ? { enjazProfessionAr: x.occupation, ...(f.professionAr ? {} : { professionAr: x.occupation }) } : {}) });
+    // MOFA answers in Arabic: Arabic goes to the Arabic fields, the English fields get the English (occupation and city from a word list)
+    const oc = (x.occupation || "").split(" / ")[0], ocEn = occEn(oc), city = cityOf(x.sponsorAddress);
+    set({ ...(x.visaDate ? { visaDate: x.visaDate } : {}), ...(x.sponsorName ? { sponsorName: x.sponsorName } : {}),
+      ...(oc ? { professionAr: oc, enjazProfessionAr: oc } : {}), ...(ocEn ? { professionEn: ocEn, enjazProfessionEn: ocEn } : {}),
+      ...(city.ar ? { issuePlaceAr: city.ar } : {}), ...(city.en ? { issuePlaceEn: city.en } : {}),
+      ...(!f.stayAr && STAY_AR[String(f.stayEn || "").toLowerCase()] ? { stayAr: STAY_AR[String(f.stayEn).toLowerCase()] } : {}) });
     setMofa({ result: r }); toast("Visa details filled in from MOFA.");
   };
   const pcUrl = v => { const ref = pcRefFrom(v); set({ pcUrl: v, ...(ref ? { pcRef: ref } : {}) }); };
@@ -197,7 +203,10 @@ export function VisaFileForm({ id }) {
         {mofa.error && <p className="small vf-err">{mofa.error}</p>}
       </div>}
       {mofa?.result && <div className="vf-mofa ok"><p className="small"><b>From MOFA</b><button type="button" className="btn sm link ms6" onClick={() => setMofa(null)}><LuX /></button></p>
-        <dl className="vf-dl">{[...(mofa.result.pairs || []), ...(mofa.result.found?.occupation ? [["Occupation", mofa.result.found.occupation]] : [])].map(([k, v]) => <React.Fragment key={k}><dt>{k}</dt><dd dir="auto">{v}</dd></React.Fragment>)}</dl></div>}
+        <dl className="vf-dl">{[...(mofa.result.pairs || []).filter(([k]) => !/^عرض|display visas/i.test(k)).map(([k, v]) => [mofaLabel(k), v]),
+          ...(mofa.result.found?.occupation ? [["Occupation", mofa.result.found.occupation.split(" / ").map(o => occEn(o) ? `${o} (${occEn(o)})` : o).join(" / ")]] : []),
+          ...(cityOf(mofa.result.found?.sponsorAddress).en ? [["City", `${cityOf(mofa.result.found.sponsorAddress).ar} (${cityOf(mofa.result.found.sponsorAddress).en})`]] : [])].map(([k, v]) => <div key={k} className="vf-dl-row"><dt>{k}</dt><dd dir="auto">{v}</dd></div>)}</dl>
+        {mofa.result.found?.occupation && !occEn((mofa.result.found.occupation || "").split(" / ")[0]) && <p className="small muted mt8">The English for this occupation is not in the list yet. Type it in Profession (English).</p>}</div>}
       <div className="fgrid">
         <Field label={L("visaNo", "Visa no.")}>{T("visaNo", { maxLength: 40 })}</Field>
         <Field label={L("visaDate", "Visa date")}>{T("visaDate", { placeholder: "e.g. 1446/06/30", maxLength: 20 })}</Field>

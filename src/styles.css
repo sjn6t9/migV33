@@ -1201,5 +1201,8 @@ button.hold-tile{cursor:pointer}
 .vf-cap img{height:44px;border-radius:6px;border:1px solid var(--line,#d0d5dd);background:#fff}
 .vf-cap input{width:130px;font-size:1.1rem;letter-spacing:2px}
 .vf-err{color:#b42318;margin:8px 0 0}
-.vf-dl{display:grid;grid-template-columns:max-content 1fr;gap:4px 14px;margin:0}
+.vf-dl{display:flex;flex-direction:column;gap:6px;margin:0}
+.vf-dl-row{display:grid;grid-template-columns:minmax(120px,190px) minmax(0,1fr);gap:4px 14px;align-items:baseline}
+.vf-dl dd{overflow-wrap:anywhere;text-align:start}
+@media(max-width:560px){.vf-dl-row{grid-template-columns:1fr;gap:0}.vf-dl dt{font-size:.85em}}
 .vf-dl dt{color:var(--muted,#667085)}.vf-dl dd{margin:0;font-weight:600}
