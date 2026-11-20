@@ -964,6 +964,21 @@ async function handleApi(req, res, url) {
   if (u && isStaffRole(u)) seen.set(u.id, Date.now()); // online / offline in the team chat
   if (u && !zoneAllows(zone, u)) { token = null; u = null; } // a session from the other site does not count here
   if (req.method === "GET" && url.pathname === "/api/state") return send(res, 200, { ...viewFor(u), rev: REV });
+  // temporary: shows the structure of the public Enjaz visa form (no personal data) so the Visa Search can be wired to it
+  if (req.method === "GET" && url.pathname === "/api/enjaz-probe") {
+    try {
+      if (typeof fetch !== "function") return send(res, 200, { error: "no fetch", node: process.version });
+      const r = await fetch("https://visa.mofa.gov.sa/Enjaz/GetVisaInformation/Person", { headers: { "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/131 Safari/537.36", "Accept-Language": "en-US,en;q=0.9,ar;q=0.8" }, signal: AbortSignal.timeout(15000) });
+      const html = await r.text();
+      const forms = [...html.matchAll(/<form\b([^>]*)>([\s\S]*?)<\/form>/gi)].map(m => ({ attrs: m[1].trim().slice(0, 300),
+        inputs: [...m[2].matchAll(/<(input|select|textarea|button)\b([^>]*)>/gi)].map(x => x[1] + " " + x[2].replace(/\s+/g, " ").trim().slice(0, 250)),
+        selects: [...m[2].matchAll(/<select\b([^>]*)>([\s\S]*?)<\/select>/gi)].map(x => ({ attrs: x[1].trim().slice(0, 200), n: (x[2].match(/<option/gi) || []).length, dhaka: [...x[2].matchAll(/<option\b([^>]*)>([^<]*)/gi)].filter(o => /dhaka|دكا|داكا|bangla|بنغلاد/i.test(o[2])).map(o => o[1].trim() + " => " + o[2].trim()), first: [...x[2].matchAll(/<option\b([^>]*)>([^<]*)/gi)].slice(0, 4).map(o => o[1].trim() + " => " + o[2].trim()) })) }));
+      const imgs = [...html.matchAll(/<img\b[^>]*>/gi)].map(m => m[0]).filter(x => /captcha/i.test(x)).slice(0, 5);
+      const scripts = [...html.matchAll(/<script\b[^>]*>([\s\S]*?)<\/script>/gi)].map(m => m[1]).filter(x => /captcha|GetVisaInformation|ajax|\$\.post|url\s*:/i.test(x)).map(x => x.replace(/\s+/g, " ").slice(0, 1500)).slice(0, 6);
+      const labels = [...html.matchAll(/<label\b([^>]*)>([\s\S]*?)<\/label>/gi)].map(m => m[1].trim() + " | " + m[2].replace(/<[^>]+>/g, "").trim()).slice(0, 20);
+      return send(res, 200, { status: r.status, cookies: (r.headers.getSetCookie?.() || []).map(c => c.split("=")[0]), forms, imgs, labels, scripts, len: html.length });
+    } catch (e) { return send(res, 200, { error: String(e.message || e) }); }
+  }
   if (req.method === "GET" && url.pathname === "/api/rev") return send(res, 200, { rev: REV, me: u?.id || null });
   const stm = req.method === "GET" && /^\/api\/statement\/([a-f0-9]{24})$/.exec(url.pathname);
   if (stm) { const x = db.statements.list.find(y => y.token === stm[1]); return x ? send(res, 200, { statement: stmtOut(x, true) }) : send(res, 404, { error: "Statement not found." }); }
