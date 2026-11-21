@@ -200,6 +200,7 @@ export function Admin({ u }) {
             <td>{fdate(x.created)}</td>
             <td>{x.id === u.id ? <span className="muted small">You</span> : !isAdmin && ["admin", "staff"].includes(x.role) ? <span className="muted small">Admin only</span> : <div className="row tight nowrap">
               {x.status === "pending" && <button className="btn sm pri" onClick={() => setState(x, "active")}><LuCheck /> Approve</button>}
+              {x.role === "agent" && S.bookMatch?.[x.id]?.length > 0 && <div className="small mt4 ag-match" data-notr>{`Matches the Agents list: ${S.bookMatch[x.id].join(", ")}. Approving joins their earlier records to this account.`}</div>}
               {x.status === "unverified" && <button className="btn sm" onClick={() => act("admin.markVerified", { id: x.id })}><LuCheck /> Mark email verified</button>}
               {x.status === "active" && <button className="btn sm" onClick={() => setState(x, "suspended")}><LuBan /> Suspend</button>}
               {x.status === "suspended" && <button className="btn sm" onClick={() => setState(x, "active")}>Reactivate</button>}

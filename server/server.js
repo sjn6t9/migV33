@@ -243,7 +243,7 @@ function viewFor(u) {
     if (can(u, "jobs")) pub.jobTemplates = db.jobTemplates;
     if (can(u, "office")) pub.office = { entries: db.office.entries, auto: officeAuto(), leaders: leaders() };
     { const me = leaders().find(x => x.uid === u.id); if (me) pub.myMoney = { entries: db.office.entries.filter(e => e.people?.includes(me.k)), me }; }
-    if (PP_PERMS.some(k => can(u, k))) { pub.passports = db.passports; pub.agentBook = db.agentBook; }
+    if (PP_PERMS.some(k => can(u, k))) { pub.passports = db.passports; pub.agentBook = db.agentBook; pub.bookMatch = Object.fromEntries(db.users.filter(x => x.role === "agent" && x.status !== "active").map(x => [x.id, bookMatches(x).map(b => b.name)]).filter(([, v]) => v.length)); }
     if (can(u, "visa")) pub.visa = db.visa;
     if (isStaffRole(u)) pub.attendance = attView(u, u.role === "admin");
     if (can(u, "headlines")) pub.headlinesAll = db.headlines || [];
@@ -359,7 +359,7 @@ A["auth.register"] = async (d, u, ctx) => {
     return { verify: nu.id, email, sent, ...(SHOW_CODES ? { code: nu.verify.code } : {}) };
   }
   if (role === "employer") { must(str(d.company).length >= 2, "Enter your company name."); nu.company = { name: str(d.company, 150), country: "Saudi Arabia", city: "", industry: "Construction", website: "", licenseNo: "", about: "", verify: "none" }; nu.credits = 1; nu.featuredCredits = 0; }
-  if (role === "agent") { must(str(d.business).length >= 2, "Enter your business name."); nu.agent = { business: str(d.business, 150), phone: str(d.aphone, 30), district: "", address: "", docs: {} }; notifyAdmins(`New agent registration: ${nu.agent.business}.`, "users"); }
+  if (role === "agent") { must(str(d.business).length >= 2, "Enter your business name."); nu.agent = { business: str(d.business, 150), phone: str(d.aphone, 30), district: "", address: "", docs: {} }; notifyAdmins(`New agent registration: ${nu.agent.business}.${(m => m.length ? ` Matches the Agents list: ${m.map(b => b.name).join(", ")} (joined on approval).` : "")(bookMatches(nu))}`, "users"); }
   if (role === "employer") notifyAdmins(`New employer registration: ${nu.company.name}.`, "users");
   db.users.push(nu); notify(nu.id, "Welcome! Your account will be activated after the agency approves it.");
   ctx.login(nu); return { msg: "Account created." };
@@ -759,7 +759,9 @@ A["admin.userState"] = async ({ id: xid, status }, u) => {
   must(u.role === "admin" || !["admin", "staff"].includes(x.role), "Only the admin can change admin or staff accounts.", 403);
   x.status = status; if (status === "active") notify(x.id, "Your account has been approved.");
   if (status === "suspended") for (const [t, s] of Object.entries(db.sessions)) if (s.uid === x.id) delete db.sessions[t];
-  return { msg: `Account ${status === "active" ? "activated" : "suspended"}.` };
+  // an approved agent who was already in the Agents list (same name, mobile or email): the earlier records join the account
+  const linked = status === "active" && x.role === "agent" ? linkAgentAccount(x) : [];
+  return { msg: `Account ${status === "active" ? "activated" : "suspended"}.${linked.length ? ` Linked with ${linked.map(l => `${l.name} (${l.passports} passports, ${l.files} clearance files, ${l.receipts} receipts)`).join(", ")}.` : ""}` };
 };
 A["admin.markVerified"] = async ({ id: xid }, u) => { needPerm(u, "users"); const x = user(xid); must(x && x.status === "unverified", "Not needed."); x.status = "active"; x.emailVerified = now(); delete x.verify; return { msg: "Email marked as verified." }; };
 A["admin.verifyCompany"] = async ({ id: xid }, u) => { needPerm(u, "users"); const x = user(xid); must(x?.company, "Not an employer."); x.company.verify = "verified"; if (x.status === "pending") x.status = "active"; notify(x.id, "Your company has been verified."); return { msg: "Company verified." }; };
@@ -2251,6 +2253,45 @@ const agentMatch = n => { const k = bookKey(n); if (!k) return null; const r = d
   wrap("admin.clearance", d => { if (d.agentId || !d.agentName) return; const m = agentMatch(d.agentName); if (m) { if (m.id) d.agentId = m.id; else d.agentName = m.name; } }, d => d.agentId ? [] : [d.agentName]);
   wrap("admin.mr", d => { if (d.op !== "entry" || d.agentId || !d.payer?.agent) return; const m = agentMatch(d.payer.agent); if (m) { d.payer.agent = m.name; if (m.id) d.agentId = m.id; } },
     d => d.op === "entry" && !d.agentId ? [d.payer?.agent] : []); }
+/* an agent from the Agents list who opens their own agent account: same name, mobile or email joins them.
+   Everything written under the name (passports, workers, clearance files, money receipts, balance updates) moves to the account. */
+const dig10 = v => String(v || "").replace(/\D/g, "").slice(-10);
+function bookMatches(x) {
+  if (x?.role !== "agent") return [];
+  const names = [agentName(x), x.name].map(bookKey).filter(Boolean), ph = [x.agent?.phone, x.phone].map(dig10).filter(v => v.length >= 10), em = String(x.email || "").trim().toLowerCase();
+  return db.agentBook.filter(a => names.includes(bookKey(a.name)) || (a.fullName && names.includes(bookKey(a.fullName))) || (a.agency && names.includes(bookKey(a.agency))) || (dig10(a.mobile).length >= 10 && ph.includes(dig10(a.mobile))) || (a.email && em && a.email.toLowerCase() === em));
+}
+function linkBookAgent(b, x) {
+  const k = bookKey(b.name), n = { passports: 0, workers: 0, files: 0, receipts: 0, entries: 0 }, today = now().slice(0, 10);
+  for (const p of db.passports) if (!p.agentId && bookKey(p.ref) === k) {
+    p.agentId = x.id; p.ref = agentName(x); n.passports++;
+    // the agent sees the person in My workers
+    const pp = String(p.passport || "").replace(/\s+/g, "").toUpperCase();
+    if (pp && !db.workers.some(w => String(w.passport).replace(/\s+/g, "").toUpperCase() === pp)) db.workers.push({ id: id("w"), agentId: x.id, name: p.name, father: "", passport: pp, passportExpiry: p.info?.expiryDate || "", dob: p.info?.dob || "", phone: "", district: "", trade: p.fiji?.profession || p.info?.profession || "", experience: Number(p.fiji?.experience) || 0, created: p.at || now(), by: "agency" });
+  }
+  for (const w of db.workers) if (!w.agentId && bookKey(w.agentName) === k) { w.agentId = x.id; delete w.agentName; n.workers++; }
+  for (const c of db.clearances) if (!c.agentId && !c.candidateId && bookKey(c.agentName) === k) {
+    c.agentId = x.id; delete c.agentName; n.files++; const w = worker(c.workerId), nm = w?.name || "";
+    if (c.fee > 0) db.ledger.push({ id: id("l"), agentId: x.id, type: "charge", desc: `BMET clearance processing: ${nm} (${c.ref})`, amount: c.fee, date: (c.created || today).slice(0, 10), method: "", ref: "", status: "confirmed" });
+    if (c.due > 0) db.ledger.push({ id: id("l"), agentId: x.id, type: "charge", desc: `Previous due: ${nm} (${c.ref})`, amount: c.due, date: (c.created || today).slice(0, 10), method: "", ref: "", status: "confirmed" });
+  }
+  for (const r of db.mr.receipts) if (!r.agentId && bookKey(r.payer?.agent) === k) {
+    r.agentId = x.id; r.payer.agent = agentName(x); n.receipts++;
+    if (r.status === "approved" && !r.void && !r.ledgerId) { const l = { id: id("l"), agentId: x.id, type: "payment", desc: `Money receipt ${r.no}${r.payer.name ? ": " + r.payer.name : ""}`, amount: r.amount, date: r.date, method: [r.method, r.channel].filter(Boolean).join(" · "), ref: r.ref || "", status: "confirmed", mr: r.id }; db.ledger.push(l); r.ledgerId = l.id; }
+  }
+  for (const a of db.mr.accounts || []) if (!a.agentId && bookKey(a.agent) === k) { a.agentId = x.id; a.agent = agentName(x); }
+  for (const e of b.entries || []) { db.ledger.push({ id: id("l"), at: e.at, agentId: x.id, type: e.type, desc: e.desc, amount: e.amount, ...(e.type === "charge" ? { qty: e.qty, rate: e.rate } : {}), date: e.date, method: e.method || "", ref: e.ref || "", status: "confirmed" }); n.entries++; }
+  // keep the details the office wrote, where the account has none
+  x.agent = x.agent || {}; if (!x.agent.phone && b.mobile) x.agent.phone = b.mobile; if (!x.agent.address && b.address) x.agent.address = b.address;
+  x.linkedBook = [...(x.linkedBook || []), { name: b.name, at: now(), ...n }];
+  db.agentBook = db.agentBook.filter(a => a !== b);
+  return n;
+}
+function linkAgentAccount(x) {
+  const done = bookMatches(x).map(b => ({ name: b.name, ...linkBookAgent(b, x) }));
+  if (done.length) notify(x.id, `Your earlier records with the agency (${done.map(d => d.name).join(", ")}) are now in your account: passports, workers, clearance files and payments.`);
+  return done;
+}
 A["admin.agentBook"] = async (d, u) => {
   must(PP_PERMS.some(k => can(u, k)), "You do not have permission for this.", 403);
   const F = x => ({ fullName: str(x.fullName, 120), mobile: str(x.mobile, 30), email: str(x.email, 120).toLowerCase(), agency: str(x.agency, 150), address: str(x.address, 500) });

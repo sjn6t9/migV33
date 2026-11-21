@@ -1338,3 +1338,5 @@ button.hold-tile{cursor:pointer}
 .vf-gcc.bad{background:#fdecec;color:#b42318}
 /* phones: iPhone zooms into any field under 16px when it is tapped and stays zoomed (e.g. after signing in); 16px stops that */
 @media (max-width:900px){input,select,textarea,.tc-search input,.bulk-tbl input,.ec-refedit input{font-size:16px!important}}
+.ag-match{color:#9a5b00;background:#fff4e5;padding:4px 8px;border-radius:6px;max-width:320px}
+:root[data-theme="dark"] .ag-match{background:var(--surface);color:#f0b45a}
