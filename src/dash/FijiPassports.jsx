@@ -5,7 +5,7 @@ import { store } from "../store.js";
 import { act, confirmBox } from "../actions.js";
 import { Field } from "./shared.jsx";
 import { Empty } from "../ui.jsx";
-import { passports } from "./Passports.jsx";
+import { passports, inList } from "./Passports.jsx";
 import { xlsx } from "../receipt.js";
 
 const agentsList = () => store.S.users.filter(u => u.role === "agent").map(u => ({ id: u.id, name: u.agent?.business || u.name })).sort((a, b) => a.name.localeCompare(b.name));
@@ -17,7 +17,7 @@ export function FijiPassportEntry() {
   const [f, setF] = React.useState(blank), [edit, setEdit] = React.useState(null), [busy, setBusy] = React.useState(false), [q, setQ] = React.useState("");
   const set = v => setF(o => ({ ...o, ...v })), setJ = v => setF(o => ({ ...o, fiji: { ...o.fiji, ...v } })), J = f.fiji;
   const ags = agentsList(), refAgent = f.agentId && ags.find(a => a.id === f.agentId);
-  const all = passports().filter(p => p.fiji), s0 = q.trim().toLowerCase();
+  const all = passports().filter(p => p.fiji && inList("fiji")(p)), s0 = q.trim().toLowerCase();
   const list = all.filter(p => !s0 || [p.name, p.passport, p.ref, p.fiji.profession, p.fiji.prevCountry].some(v => (v || "").toLowerCase().includes(s0)));
   // a passport already entered (e.g. in BMET) fills the name and reference
   const known = !edit && f.passport.length >= 6 && passports().find(p => p.passport === f.passport.replace(/\s+/g, "").toUpperCase());
@@ -68,7 +68,7 @@ export function FijiPassportEntry() {
           <td>{docsText(p).length ? docsText(p).join(", ") : <span className="muted">—</span>}</td>
           <td className="fj-note">{p.fiji.note || <span className="muted">—</span>}</td>
           <td className="nowrap"><button className="btn sm" onClick={() => start(p)}><LuPencil /> Edit</button>
-            <button className="btn sm link danger" aria-label={`Delete ${p.passport}`} onClick={() => confirmBox(`Delete passport ${p.passport} (${p.name})?`, () => act("admin.passport", { op: "delete", id: p.id }), "Delete")}><LuTrash2 /></button></td>
+            <button className="btn sm link danger" aria-label={`Delete ${p.passport}`} onClick={() => confirmBox(`Delete passport ${p.passport} (${p.name})?`, () => act("admin.passport", { op: "delete", id: p.id, list: "fiji" }), "Delete")}><LuTrash2 /></button></td>
         </tr>)}
       </tbody></table></div> : <Empty>{q ? "No passports match." : "No Fiji passports yet. Add the first one above."}</Empty>}
     </div>

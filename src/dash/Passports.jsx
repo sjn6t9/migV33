@@ -10,6 +10,8 @@ import { COUNTRIES } from "../constants.js";
 import { xlsx } from "../receipt.js";
 
 export const passports = () => store.S.passports || [];
+/* the passports of one entry list: "bmet", "ksa" or "fiji" */
+export const inList = k => p => (p.lists || [p.fiji && "fiji", p.info && "ksa", !p.fiji && !p.info && "bmet"].filter(Boolean)).includes(k);
 const agentsList = () => store.S.users.filter(u => u.role === "agent").map(u => ({ id: u.id, name: u.agent?.business || u.name })).sort((a, b) => a.name.localeCompare(b.name));
 const countries = () => [...new Set([...Object.keys(COUNTRIES), ...passports().map(p => p.country)])];
 export const ppMatch = q => { const s = q.trim().toLowerCase(), n = s.replace(/\s+/g, ""); return p => !s || p.passport.toLowerCase().includes(n) || p.name.toLowerCase().includes(s) || (p.ref || "").toLowerCase().includes(s) || p.country.toLowerCase().includes(s); };
@@ -19,13 +21,13 @@ const fdate = iso => new Date(iso).toLocaleDateString("en-GB", { day: "2-digit",
 
 export function PassportEntry({ title } = {}) {
   const [q, setQ] = React.useState(""); const [edit, setEdit] = React.useState(null); const [n, setN] = React.useState(50);
-  const list = passports().filter(ppMatch(q));
+  const mine = passports().filter(inList("bmet")), list = mine.filter(ppMatch(q));
   const exportXlsx = () => xlsx("Passports", [["Full name", "Passport No.", "Country", "Gender", "Ref.", "Added"].map(v => ({ v, s: 1 })), ...list.map(p => [p.name, p.passport, p.country, p.gender, p.ref, p.at.slice(0, 10)])], [28, 15, 16, 10, 26, 12], `passports-${new Date().toISOString().slice(0, 10)}.xlsx`);
   return <>
     <div className="ec-head"><div><h2>{title || "Passport entry"}</h2><p className="muted small">Enter passports once; use them in BMET clearance applications, money receipts and account entries. A Ref. that is one of our agents lets that agent use the passport too.</p></div></div>
     <PassportForm />
     <div className="ec-tools mt14">
-      <b>{`Passports (${passports().length})`}</b><span className="grow" />
+      <b>{`Passports (${mine.length})`}</b><span className="grow" />
       <label className="ec-search mr-search"><input type="text" value={q} onChange={e => { setQ(e.target.value); setN(50); }} placeholder="Search name, passport number, country or Ref." aria-label="Search passports" /><LuSearch /></label>
       <button className="btn" disabled={!list.length} onClick={exportXlsx}><LuFileSpreadsheet /> Excel</button>
     </div>
@@ -36,7 +38,7 @@ export function PassportEntry({ title } = {}) {
         <td><div className="row6 nowrap">
           <button className="btn sm" title="Money receipt for this passport" onClick={() => openModal("mrEntry", { pp: p.id })}><LuReceipt /> Receipt</button>
           <button className="ec-ico view" aria-label="Edit" title="Edit" onClick={() => setEdit(p.id)}><LuPencil /></button>
-          <button className="ec-ico pdf" aria-label="Delete" title="Delete" onClick={() => confirmBox(`Delete passport ${p.passport} (${p.name}) from the list?`, () => act("admin.passport", { op: "delete", id: p.id }), "Delete")}><LuTrash2 /></button>
+          <button className="ec-ico pdf" aria-label="Delete" title="Delete" onClick={() => confirmBox(`Delete passport ${p.passport} (${p.name}) from the list?`, () => act("admin.passport", { op: "delete", id: p.id, list: "bmet" }), "Delete")}><LuTrash2 /></button>
         </div></td>
       </tr>)}
     </tbody></table></div> : <Empty>{q ? "No passport matches your search." : "No passports yet. Add the first one above."}</Empty>}

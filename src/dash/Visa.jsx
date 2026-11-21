@@ -7,7 +7,7 @@ import { store, commit } from "../store.js";
 import { act, openModal, closeModal, confirmBox, toast } from "../actions.js";
 import { Field } from "./shared.jsx";
 import { Empty } from "../ui.jsx";
-import { PassportPick, passports } from "./Passports.jsx";
+import { PassportPick, passports, inList } from "./Passports.jsx";
 import { xlsx } from "../receipt.js";
 
 export const MOFA_ST = ["Not applied", "Applied", "Issued", "Rejected", "Cancelled"];
@@ -39,11 +39,11 @@ export function VisaPassportEntry() {
   const save = async e => {
     e.preventDefault(); setBusy(true);
     const row = { name: f.name, passport: f.passport, gender: f.gender, agentId: f.agentId, country: f.country || "Saudi Arabia", info: f.info };
-    const r = await act("admin.passport", edit ? { op: "update", id: edit, ...row } : { op: "add", rows: [row] }); setBusy(false);
+    const r = await act("admin.passport", edit ? { op: "update", id: edit, ...row } : { op: "add", list: "ksa", rows: [row] }); setBusy(false);
     if (r) { setF(PP_BLANK); setEdit(null); }
   };
   const start = p => { setEdit(p.id); setF({ name: p.name, passport: p.passport, gender: p.gender, agentId: p.agentId || "", country: p.country, info: { ...(p.info || {}) } }); window.scrollTo?.({ top: 0, behavior: "smooth" }); };
-  const s0 = q.trim().toLowerCase(), list = passports().filter(p => !s0 || [p.name, p.passport, p.info?.fatherName, p.ref, p.info?.mofaId].some(v => (v || "").toLowerCase().includes(s0)));
+  const s0 = q.trim().toLowerCase(), list = passports().filter(inList("ksa")).filter(p => !s0 || [p.name, p.passport, p.info?.fatherName, p.ref, p.info?.mofaId].some(v => (v || "").toLowerCase().includes(s0)));
   return <>
     <div className="ec-head"><div><h2>KSA Passport Entry</h2><p className="muted small">Enter the passport once. In Create Client File, Fetch with the passport number fills in the Personal and Passport Information.</p></div></div>
     <form className="vf-form" onSubmit={save} noValidate>
@@ -82,7 +82,7 @@ export function VisaPassportEntry() {
       <div className="vf-tools"><label className="ec-search mr-search"><input type="text" value={q} onChange={e => setQ(e.target.value)} placeholder="Search name, passport, father's name, MOFA ID" aria-label="Search passports" /><LuSearch /></label></div>
       {list.length ? <div className="tbl vf-tbl"><table><thead><tr><th>SL</th><th>Name</th><th>Passport</th><th>Father's name</th><th>Date of birth</th><th>Sex</th><th>Expiry date</th><th>MOFA ID</th><th>Agent</th><th>Actions</th></tr></thead><tbody>
         {list.map((p, i) => <tr key={p.id}><td className="num">{list.length - i}</td><td className="b">{p.name}</td><td className="num">{p.passport}</td><td>{p.info?.fatherName || "—"}</td><td className="nowrap">{day(p.info?.dob)}</td><td>{p.gender}</td><td className="nowrap">{day(p.info?.expiryDate)}</td><td className="num">{p.info?.mofaId || "—"}</td><td>{p.ref || <span className="muted">Office</span>}</td>
-          <td className="nowrap"><button className="btn sm" onClick={() => start(p)}><LuPencil /> Edit</button><button className="btn sm link danger" aria-label={`Delete ${p.passport}`} onClick={() => confirmBox(`Delete passport ${p.passport}?`, () => act("admin.passport", { op: "delete", id: p.id }), "Delete")}><LuTrash2 /></button></td></tr>)}
+          <td className="nowrap"><button className="btn sm" onClick={() => start(p)}><LuPencil /> Edit</button><button className="btn sm link danger" aria-label={`Delete ${p.passport}`} onClick={() => confirmBox(`Delete passport ${p.passport}?`, () => act("admin.passport", { op: "delete", id: p.id, list: "ksa" }), "Delete")}><LuTrash2 /></button></td></tr>)}
       </tbody></table></div> : <Empty>{q ? "No passports match." : "No passports yet."}</Empty>}
     </div>
   </>;

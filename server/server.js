@@ -2020,6 +2020,9 @@ A["admin.visa"] = async (d, u) => {
 };
 const ppNorm = v => String(v || "").replace(/\s+/g, "").toUpperCase();
 const PP_PERMS = ["clearance", "receipts", "ledger", "office", "visa"];
+// which entry lists a passport belongs to: BMET, KSA, Fiji (one passport can be in several)
+const ppLists = p => p.lists || (p.lists = [p.fiji && "fiji", p.info && "ksa", !p.fiji && !p.info && "bmet"].filter(Boolean));
+for (const p of db.passports || []) ppLists(p);
 const PP_INFO = ["fatherName", "motherName", "dob", "birthPlace", "prevNationality", "nationality", "marital", "sect", "religion", "address", "mofaId", "oldMofaId", "issuePlace", "issueDate", "expiryDate", "validity"];
 A["admin.passport"] = async (d, u) => {
   must(can(u, "clearance") || can(u, "visa"), "You do not have permission for this.", 403);
@@ -2034,17 +2037,30 @@ A["admin.passport"] = async (d, u) => {
   if (d.op === "add") {
     const list = (Array.isArray(d.rows) ? d.rows : [d]).slice(0, 100); must(list.length, "Add at least one passport.");
     const made = list.map((x, i) => { let v; try { v = read(x); } catch (e) { if (list.length > 1 && e instanceof Fail) e.message += ` (row ${i + 1})`; throw e; } return v; });
-    const dup = made.find((v, i) => made.findIndex(w => w.passport === v.passport) !== i || db.passports.some(p => p.passport === v.passport));
+    const tag = d.list === "ksa" ? "ksa" : "bmet";
+    must(!made.find((v, i) => made.findIndex(w => w.passport === v.passport) !== i), "The same passport is twice in the list.");
+    // a passport already in another list is added to this one (its details updated), not entered twice
+    const dup = made.find(v => db.passports.some(p => p.passport === v.passport && ppLists(p).includes(tag)));
     must(!dup, `Passport ${dup?.passport} is already in the list.`);
-    db.passports.unshift(...made.map(v => ({ id: id("pp"), ...v, by: u.name, at: now() })));
-    return { msg: made.length > 1 ? `${made.length} passports added.` : `Passport ${made[0].passport} added.` };
+    let merged = 0;
+    for (const v of made) {
+      const old = db.passports.find(p => p.passport === v.passport);
+      if (old) { Object.assign(old, v, { info: { ...(old.info || {}), ...(v.info || {}) }, lists: [...new Set([...ppLists(old), tag])], updated: now() }); merged++; }
+      else db.passports.unshift({ id: id("pp"), ...v, lists: [tag], by: u.name, at: now() });
+    }
+    return { msg: made.length > 1 ? `${made.length} passports added.` : merged ? `Passport ${made[0].passport} was already entered elsewhere; it is now in this list too.` : `Passport ${made[0].passport} added.` };
   }
   if (d.op === "update") {
     const p = db.passports.find(x => x.id === d.id); must(p, "Passport not found."); const v = read(d);
     must(!db.passports.some(x => x !== p && x.passport === v.passport), `Passport ${v.passport} is already in the list.`);
-    Object.assign(p, v, { updated: now() }); return { msg: "Passport updated." };
+    Object.assign(p, v, { updated: now() }); if (v.info) p.lists = [...new Set([...ppLists(p), "ksa"])]; return { msg: "Passport updated." };
   }
-  if (d.op === "delete") { const p = db.passports.find(x => x.id === d.id); must(p, "Passport not found."); db.passports = db.passports.filter(x => x !== p); return { msg: `Passport ${p.passport} deleted.` }; }
+  if (d.op === "delete") { // from one list; the passport is removed when it is in no list any more
+    const p = db.passports.find(x => x.id === d.id); must(p, "Passport not found.");
+    const left = d.list ? ppLists(p).filter(k => k !== d.list) : [];
+    if (left.length) { p.lists = left; if (d.list === "fiji") delete p.fiji; return { msg: `Passport ${p.passport} removed from this list.` }; }
+    db.passports = db.passports.filter(x => x !== p); return { msg: `Passport ${p.passport} deleted.` };
+  }
   /* Fiji Passport Entry: work details and what was handed in with the passport; an existing passport gets these added */
   if (d.op === "fiji") {
     const name = str(d.name, 120), passport = ppNorm(d.passport).slice(0, 20), x = d.fiji || {};
@@ -2059,10 +2075,10 @@ A["admin.passport"] = async (d, u) => {
     must(!d.id || old, "Passport not found.");
     if (old) {
       must(!db.passports.some(p => p !== old && p.passport === passport), `Passport ${passport} is already in the list.`);
-      Object.assign(old, { name, passport, ref, agentId: ag ? ag.id : null, fiji, updated: now() }); if (!old.country) old.country = "Fiji";
+      Object.assign(old, { name, passport, ref, agentId: ag ? ag.id : null, fiji, lists: [...new Set([...ppLists(old), "fiji"])], updated: now() }); if (!old.country) old.country = "Fiji";
       return { msg: d.id ? "Passport updated." : `Fiji details added to passport ${passport}.` };
     }
-    db.passports.unshift({ id: id("pp"), name, passport, country: "Fiji", gender: "", ref, agentId: ag ? ag.id : null, fiji, by: u.name, at: now() });
+    db.passports.unshift({ id: id("pp"), name, passport, country: "Fiji", gender: "", ref, agentId: ag ? ag.id : null, fiji, lists: ["fiji"], by: u.name, at: now() });
     return { msg: `Passport ${passport} added.` };
   }
   must(false, "Unknown request.");
