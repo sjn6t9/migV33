@@ -1,5 +1,6 @@
 import React from "react";
-import { LuPlus, LuTrash2, LuSend, LuX, LuUsers, LuGlobe } from "react-icons/lu";
+import { LuPlus, LuTrash2, LuSend, LuX, LuUsers, LuGlobe, LuSearch } from "react-icons/lu";
+import { CL_REGIONS } from "../constants.js";
 import { store, balanceOf, bdtFmt, COUNTRIES } from "../store.js";
 import { toast, act } from "../actions.js";
 import { Field, Options, ClCountryOptions } from "./shared.jsx";
@@ -48,6 +49,24 @@ export function BulkEcForm({ onDone }) {
     else if (d.length < 10 && fromPhone) { agent = ""; auto.agent = false; }
     set(r.k, { phone: v, agent, auto });
   };
+  /* RAIMS search: an IC number or application ID → one row for each worker under it */
+  const [ric, setRic] = React.useState(""), [rbusy, setRbusy] = React.useState(false);
+  const allCountries = [...Object.keys(COUNTRIES), ...CL_REGIONS.flatMap(([, L]) => L)];
+  const findCountry = v => { const k = String(v || "").trim().toLowerCase(); return allCountries.find(c => c.toLowerCase() === k) || allCountries.find(c => k && (k.includes(c.toLowerCase()) || c.toLowerCase().includes(k))) || ""; };
+  const raimsSearch = async () => {
+    if (ric.trim().length < 3) return toast("Enter the IC number or application ID.");
+    setRbusy(true); const r = await act("admin.raims", { op: "lookup", q: ric.trim() }); setRbusy(false);
+    if (!r?.people?.length) return;
+    const have = new Set(rows.map(x => x.passport.replace(/\s+/g, "").toUpperCase()).filter(Boolean));
+    const fresh = r.people.filter(x => !have.has(String(x.passport || "").toUpperCase()));
+    const made = fresh.map(x => { const b = blank(); const pp = pps.find(y => y.passport === x.passport), w = (S.workers || []).find(y => String(y.passport).toUpperCase() === x.passport);
+      const wAg = w?.agentId ? agents.find(a => a.id === w.agentId) : null;
+      return { ...b, passport: x.passport || "", name: x.name || pp?.name || w?.name || "", icNo: x.ic || "", phone: w?.phone || "", agent: wAg ? agName(wAg) : w?.agentName || pp?.ref || "", auto: { name: !x.name, agent: true, phone: true } }; });
+    setRows(L => { const keep = L.filter(filled); const out = [...keep, ...made]; while (out.length < 5) out.push(blank()); return out; });
+    const c = [...new Set(r.people.map(x => findCountry(x.country)).filter(Boolean))];
+    if (c.length === 1) setCommon(v => ({ ...v, country: c[0] }));
+    toast(`${made.length} row${made.length === 1 ? "" : "s"} added from RAIMS${fresh.length < r.people.length ? ` (${r.people.length - fresh.length} already in the list)` : ""}.${c.length > 1 ? " The workers go to different countries: check the destination." : ""}`);
+  };
   const used = rows.filter(filled);
   const submit = async () => {
     if (!used.length) return toast("Fill in at least one row.");
@@ -64,6 +83,12 @@ export function BulkEcForm({ onDone }) {
   };
   return (
     <div className="bulk-ec">
+      <div className="card">
+        <h3 className="bulk-h"><LuSearch /> Search RAIMS</h3>
+        <div className="bulk-raims"><input type="text" value={ric} onChange={e => setRic(e.target.value)} onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); raimsSearch(); } }} placeholder="IC number or application ID" aria-label="IC number or application ID" style={{ textTransform: "uppercase" }} maxLength={60} />
+          <button type="button" className="btn pri" disabled={rbusy} onClick={raimsSearch}><LuSearch /> {rbusy ? "Searching RAIMS…" : "Search"}</button></div>
+        <p className="muted small mt8">{store.S.raims?.saved ? "Every worker under this number is added as a row with the name, passport number and IC number, and the country is set." : "Set the RAIMS sign-in first (RAIMS button above)."}</p>
+      </div>
       <div className="card">
         <h3 className="bulk-h"><LuGlobe /> Same for all rows</h3>
         <div className="fgrid">

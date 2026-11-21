@@ -700,7 +700,9 @@ A["admin.clearance"] = async (d, u) => {
   const fee = amt(d.fee) ?? Number(db.settings.clearanceFee || 0), due = amt(d.due) || 0;
   must(fee >= 0 && fee < 1e8 && due >= 0 && due < 1e8, "Check the processing fee and due amount.");
   const c = { id: id("c"), agentId: ag ? ag.id : null, ...(ag ? {} : { agentName }), workerId: w.id, candidateId: null, country: d.country, employer: str(d.employer, 150), visaNo: str(d.visaNo, 40), visaType: str(d.visaType, 40), flightDate: str(d.flightDate, 10), icNo: str(d.icNo, 40), fee, due, docs, files, notes: str(d.notes, 2000), status: "pending", history: [{ s: "pending", at: now() }], created: now(), by: u.id };
-  db.clearances.push(c); c.ref = ecRef(c);
+  // a RAIMS IC number given with the file becomes its reference number (when no other file has it)
+  const icRef = c.icNo.replace(/\s+/g, "").toUpperCase();
+  db.clearances.push(c); c.ref = /^IC[-A-Z0-9/]{3,39}$/.test(icRef) && !db.clearances.some(x => x !== c && String(x.ref || "").toUpperCase() === icRef) ? icRef : ecRef(c);
   if (ag && fee > 0) db.ledger.push({ id: id("l"), agentId: ag.id, type: "charge", desc: `BMET clearance processing: ${w.name} (${c.ref})`, amount: fee, date: now().slice(0, 10), method: "", ref: "", status: "confirmed" });
   if (ag && due > 0) db.ledger.push({ id: id("l"), agentId: ag.id, type: "charge", desc: `Previous due: ${w.name} (${c.ref})`, amount: due, date: now().slice(0, 10), method: "", ref: "", status: "confirmed" });
   if (ag) notify(ag.id, `The agency created a BMET clearance file for ${w.name} (${d.country})${due > 0 ? `; previous due ${bdt(due)} added to your account` : ""}.`);
@@ -855,12 +857,14 @@ function raimsRows(html, json) {
   if (json) { const data = Array.isArray(json) ? json : json.data || json.rows || json.items || []; for (const x of data) rows.push(Array.isArray(x) ? x.map(v => htmlText(String(v ?? "")).trim()) : Object.entries(x).map(([k, v]) => `${k}: ${htmlText(String(v ?? "")).trim()}`)); return { head: [], rows }; }
   const t = /<table[\s\S]*?<\/table>/i.exec(html || ""); if (!t) return { head: [], rows };
   const trs = [...t[0].matchAll(/<tr[\s\S]*?<\/tr>/gi)].map(m => m[0]); const head = trs.length ? cells(trs[0]) : [];
-  for (const tr of trs.slice(1)) { const c = cells(tr); if (c.length > 1) rows.push(c); }
-  return { head, rows };
+  const links = [];
+  for (const tr of trs.slice(1)) { const c = cells(tr); if (c.length > 1) { rows.push(c); links.push([...tr.matchAll(/href="([^"#]+)"/gi)].map(m => m[1].replace(/&amp;/g, "&")).filter(h => !/^(javascript|mailto|tel):/i.test(h))); } }
+  return { head, rows, links };
 }
-async function raimsSync(by = "auto") {
-  const R = db.raims; must(R?.email && R?.pass, "Save the RAIMS email and password first.");
-  const J = jar(), out = { at: now(), by, rows: 0, matched: 0, updated: [], statuses: {} };
+/* signs in and reads the EC application list; throws a Fail with a plain message when something is wrong */
+async function raimsOpen() {
+  const R = db.raims; must(R?.email && R?.pass, "Save the RAIMS email and password first (BMET clearance › RAIMS).");
+  const J = jar();
   try {
     const lp = await rq(J, "/agency/login");
     const tok = (/name="_token"[^>]*value="([^"]+)"/.exec(lp.text) || /name="csrf-token"[^>]*content="([^"]+)"/.exec(lp.text) || [])[1];
@@ -871,11 +875,18 @@ async function raimsSync(by = "auto") {
     if (/otp|verification code/i.test(li.text) && /name="(otp|code)"/i.test(li.text)) must(false, "RAIMS asks for a one-time code at sign-in, so it cannot be read automatically.");
     const lst = await rq(J, "/agency/ec/application/list");
     must(!/name="password"/i.test(lst.text), "RAIMS signed out before the list opened. Try again.");
-    let parsed = raimsRows(lst.text);
+    let parsed = raimsRows(lst.text), ajax = "";
     if (!parsed.rows.length) { // a list filled by the page's script: ask the same address the script asks
       const aj = (/ajax\s*:\s*\{?\s*(?:url\s*:\s*)?["'`]([^"'`]+)["'`]/i.exec(lst.text) || /url\s*:\s*["'`]([^"'`]*(?:ec|application)[^"'`]*)["'`]/i.exec(lst.text) || [])[1];
-      if (aj) { const q = new URLSearchParams({ draw: "1", start: "0", length: "1000" }); const j = await rq(J, aj.replace(/&amp;/g, "&") + (aj.includes("?") ? "&" : "?") + q, { headers: { "X-Requested-With": "XMLHttpRequest", Accept: "application/json", "X-CSRF-TOKEN": (/name="csrf-token"[^>]*content="([^"]+)"/.exec(lst.text) || [])[1] || "" } }); try { parsed = raimsRows("", JSON.parse(j.text)); out.ajax = aj; } catch {} }
+      if (aj) { const q = new URLSearchParams({ draw: "1", start: "0", length: "1000" }); const j = await rq(J, aj.replace(/&amp;/g, "&") + (aj.includes("?") ? "&" : "?") + q, { headers: { "X-Requested-With": "XMLHttpRequest", Accept: "application/json", "X-CSRF-TOKEN": (/name="csrf-token"[^>]*content="([^"]+)"/.exec(lst.text) || [])[1] || "" } }); try { parsed = raimsRows("", JSON.parse(j.text)); ajax = aj; } catch {} }
     }
+    return { J, lst, parsed, ajax };
+  } catch (e) { if (e instanceof Fail) throw e; must(false, `Could not reach RAIMS: ${e.message}`); }
+}
+async function raimsSync(by = "auto") {
+  const R = db.raims, out = { at: now(), by, rows: 0, matched: 0, updated: [], statuses: {} };
+  try {
+    const { parsed, ajax } = await raimsOpen(); if (ajax) out.ajax = ajax;
     out.head = parsed.head; out.rows = parsed.rows.length; out.sample = parsed.rows.slice(0, 3);
     const si = parsed.head.findIndex(h => /status/i.test(h));
     for (const row of parsed.rows) {
@@ -883,7 +894,7 @@ async function raimsSync(by = "auto") {
       const pp = (/\b([A-Z]{1,2}\d{7,8})\b/.exec(line) || [])[1];
       const st = si >= 0 ? row[si] : (row.find(v => raimsStage(v.replace(/^status:\s*/i, ""))) || "").replace(/^status:\s*/i, "");
       if (st) out.statuses[st] = (out.statuses[st] || 0) + 1;
-      const c = db.clearances.find(x => ic && String(x.ref || "").toUpperCase() === ic) || db.clearances.find(x => pp && ppNorm(worker(x.workerId)?.passport || user(x.candidateId)?.profile?.passportNo || x.passport || "") === pp);
+      const c = db.clearances.find(x => ic && (String(x.ref || "").toUpperCase() === ic || String(x.icNo || "").replace(/\s+/g, "").toUpperCase() === ic)) || db.clearances.find(x => pp && ppNorm(worker(x.workerId)?.passport || user(x.candidateId)?.profile?.passportNo || x.passport || "") === pp);
       if (!c) continue; out.matched++;
       const stage = raimsStage(st); if (!stage) continue;
       const cur = c.status === "custom" ? c.baseStage : c.status, ci = CL_STAGES.indexOf(cur), ni = CL_STAGES.indexOf(stage);
@@ -895,7 +906,7 @@ async function raimsSync(by = "auto") {
     }
     out.ok = true;
   } catch (e) { out.ok = false; out.error = e instanceof Fail ? e.message : `Could not reach RAIMS: ${e.message}`; }
-  R.last = out; save(); return out;
+  if (db.raims) db.raims.last = out; save(); return out;
 }
 setInterval(() => { if (db.raims?.auto && db.raims.pass) raimsSync("auto").catch(() => {}); }, 30 * 60e3).unref();
 A["admin.raims"] = async (d, u) => {
@@ -908,6 +919,28 @@ A["admin.raims"] = async (d, u) => {
     return { msg: "RAIMS sign-in saved." };
   }
   if (d.op === "remove") { must(u.role === "admin", "Only the admin can change the RAIMS sign-in.", 403); delete db.raims; return { msg: "RAIMS sign-in removed." }; }
+  /* Add bulk: an IC number or application ID → every worker under it (name, passport, country, IC number) */
+  if (d.op === "lookup") {
+    const q = str(d.q, 60).replace(/\s+/g, "").toUpperCase(); must(q.length >= 3, "Enter the IC number or application ID.");
+    const { J, parsed } = await raimsOpen(), H = parsed.head.map(h => h.toLowerCase());
+    const col = re => H.findIndex(h => re.test(h));
+    const ci = { ic: col(/\bic\b|ic no|clearance no|ref/), name: col(/name/), pp: col(/passport/), country: col(/country|destination/), app: col(/app|application|id/) };
+    const norm = v => String(v || "").replace(/\s+/g, "").toUpperCase();
+    const pick = (row, k, re) => ci[k] >= 0 ? row[ci[k]] : ((row.find(v => re.test(v)) || "").replace(/^[a-z_ ]+:\s*/i, ""));
+    const person = row => ({ ic: norm((/\bIC[-\s]?[A-Z0-9][A-Z0-9-]{3,}/i.exec(row.join(" | ")) || [])[0]) || norm(pick(row, "ic", /^ic/i)), name: pick(row, "name", /^name/i), passport: norm((/\b([A-Z]{1,2}\d{7,8})\b/.exec(row.join(" ")) || [])[1] || pick(row, "pp", /passport/i)), country: pick(row, "country", /country/i) });
+    const hit = parsed.rows.map((r, i) => [r, i]).filter(([r]) => r.some(v => norm(v).includes(q)));
+    let people = hit.map(([r]) => person(r)).filter(x => x.passport || x.name);
+    // one row for a group application: open its page and read the workers listed there
+    if (hit.length === 1 && people.length <= 1) {
+      const link = (parsed.links?.[hit[0][1]] || []).find(h => /ec|application|view|show|detail/i.test(h));
+      if (link) { const pg = await rq(J, link); const t = [...pg.text.matchAll(/<table[\s\S]*?<\/table>/gi)].map(m => raimsRows(m[0])).find(x => x.rows.some(r => /\b[A-Z]{1,2}\d{7,8}\b/.test(r.join(" "))));
+        if (t) { const H2 = t.head.map(h => h.toLowerCase()), c2 = re => H2.findIndex(h => re.test(h)), cc = { name: c2(/name/), country: c2(/country|destination/) };
+          const top = people[0] || {};
+          people = t.rows.filter(r => /\b[A-Z]{1,2}\d{7,8}\b/.test(r.join(" "))).map(r => ({ ic: norm((/\bIC[-\s]?[A-Z0-9][A-Z0-9-]{3,}/i.exec(r.join(" | ")) || [])[0]) || top.ic || "", name: cc.name >= 0 ? r[cc.name] : "", passport: (/\b([A-Z]{1,2}\d{7,8})\b/.exec(r.join(" ")) || [])[1], country: cc.country >= 0 ? r[cc.country] : top.country || "" })); } }
+    }
+    must(people.length, `Nothing on RAIMS matches ${q}.`);
+    return { people: people.slice(0, 100) };
+  }
   if (d.op === "sync") { const r = await raimsSync(u.name); return r.ok ? { msg: `RAIMS: ${r.rows} files read, ${r.matched} matched, ${r.updated.length} updated.` } : { problem: r.error }; }
   must(false, "Unknown request.");
 };

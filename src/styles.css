@@ -1340,3 +1340,4 @@ button.hold-tile{cursor:pointer}
 @media (max-width:900px){input,select,textarea,.tc-search input,.bulk-tbl input,.ec-refedit input{font-size:16px!important}}
 .ag-match{color:#9a5b00;background:#fff4e5;padding:4px 8px;border-radius:6px;max-width:320px}
 :root[data-theme="dark"] .ag-match{background:var(--surface);color:#f0b45a}
+.bulk-raims{display:flex;gap:8px;flex-wrap:wrap}.bulk-raims input{flex:1 1 220px;min-width:0}
