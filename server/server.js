@@ -619,18 +619,40 @@ A["agent.clearance"] = async (d, u) => {
   return { msg: "Clearance application submitted." };
 };
 /* the agency creates a clearance file itself: for a registered agent (the agent sees it in their portal) or for a custom agent / reference name typed in */
+/* bulk entry: many rows, one destination; documents are not needed here (they can be added later in Details) */
+A["admin.clearanceBulk"] = async (d, u) => {
+  needPerm(u, "clearance");
+  const rows = Array.isArray(d.rows) ? d.rows.slice(0, 200) : []; must(rows.length, "Add at least one row.");
+  must(COUNTRIES[d.country], "Select a country.");
+  const seen = new Set();
+  rows.forEach((r, i) => { // check every row first, so nothing is saved when one row is wrong
+    const pass = str(r.passport, 30).replace(/\s+/g, "").toUpperCase(), n = `Row ${i + 1}: `;
+    must(pass, n + "enter the passport number."); must(str(r.name).length >= 2, n + "enter the candidate name.");
+    must(r.agentId ? db.users.some(x => x.id === r.agentId && x.role === "agent") : str(r.agentName), n + "select the agent or write a name.");
+    must(!seen.has(pass), n + `passport ${pass} is entered twice.`); seen.add(pass);
+    must(r.fee === "" || r.fee == null || (Number(r.fee) >= 0 && Number(r.fee) < 1e8), n + "check the processing fee."); must(r.due === "" || r.due == null || (Number(r.due) >= 0 && Number(r.due) < 1e8), n + "check the due amount.");
+    const old = db.workers.find(x => x.passport.replace(/\s+/g, "").toUpperCase() === pass);
+    if (old) {
+      must(r.agentId ? old.agentId === r.agentId : !old.agentId, n + `passport ${pass} is registered with ${user(old.agentId)?.agent?.business || old.agentName || "another agent"}.`);
+      must(!db.clearances.some(c => c.workerId === old.id && c.status !== "rejected"), n + `${old.name} already has an open clearance file.`);
+    }
+  });
+  for (const r of rows) await A["admin.clearance"]({ bulk: true, agentId: r.agentId || "", agentName: r.agentName, newWorker: { name: r.name, passport: r.passport, phone: r.phone }, icNo: r.icNo, fee: r.fee, due: r.due, country: d.country, employer: d.employer, visaType: d.visaType, flightDate: d.flightDate, notes: d.notes }, u);
+  notifyAdmins(`${rows.length} BMET clearance file(s) added in bulk (${d.country}) by ${u.name}.`, "clearance");
+  return { msg: `${rows.length} clearance application(s) created.` };
+};
 A["admin.clearance"] = async (d, u) => {
   needPerm(u, "clearance");
   const ag = d.agentId ? db.users.find(x => x.id === d.agentId && x.role === "agent") : null;
   must(!d.agentId || ag, "Agent not found.");
   const agentName = ag ? "" : str(d.agentName, 120);
-  must(COUNTRIES[d.country], "Select a country."); must(d.files?.passport && d.files?.visa, "Upload the passport copy and visa copy."); must(str(d.employer), "Enter the employer / sponsor name.");
+  must(COUNTRIES[d.country], "Select a country."); if (!d.bulk) { must(d.files?.passport && d.files?.visa, "Upload the passport copy and visa copy."); must(str(d.employer), "Enter the employer / sponsor name."); }
   const mine = w => ag ? w.agentId === ag.id : !w.agentId;
   if (!d.workerId && d.newWorker) {
     const nw = d.newWorker, pass = str(nw.passport, 30).replace(/\s+/g, "").toUpperCase();
     must(str(nw.name).length >= 2 && pass, "Enter the worker's name and passport number.");
     const old = db.workers.find(x => x.passport.replace(/\s+/g, "").toUpperCase() === pass);
-    if (old) { must(mine(old), `Passport ${pass} is already registered with ${user(old.agentId)?.agent?.business || old.agentName || "another agent"}.`); d.workerId = old.id; }
+    if (old) { must(mine(old), `Passport ${pass} is already registered with ${user(old.agentId)?.agent?.business || old.agentName || "another agent"}.`); d.workerId = old.id; if (str(nw.phone) && !old.phone) old.phone = str(nw.phone, 30); }
     else {
       const nwr = { id: id("w"), agentId: ag ? ag.id : null, ...(ag ? {} : { agentName }), name: str(nw.name, 120), father: "", passport: pass, passportExpiry: "", dob: "", phone: str(nw.phone, 30), district: "", trade: str(nw.trade, 80), experience: 0, created: now(), by: u.id };
       db.workers.push(nwr); d.workerId = nwr.id;
@@ -639,13 +661,18 @@ A["admin.clearance"] = async (d, u) => {
   const w = worker(d.workerId); must(w && mine(w), ag ? "Choose one of this agent's workers." : "Choose a worker.");
   must(!db.clearances.some(c => c.workerId === w.id && c.status !== "rejected"), `${w.name} already has an open clearance file.`);
   const owner = ag ? ag.id : u.id;
-  const files = { passport: storeFile(d.files.passport, owner), visa: storeFile(d.files.visa, owner), contract: d.files.contract ? storeFile(d.files.contract, owner) : null, others: [] };
-  const docs = ["Passport copy", "Visa copy", ...(files.contract ? ["Employment contract"] : [])];
-  const c = { id: id("c"), agentId: ag ? ag.id : null, ...(ag ? {} : { agentName }), workerId: w.id, candidateId: null, country: d.country, employer: str(d.employer, 150), visaNo: str(d.visaNo, 40), visaType: str(d.visaType, 40), flightDate: str(d.flightDate, 10), docs, files, notes: str(d.notes, 2000), status: "pending", history: [{ s: "pending", at: now() }], created: now(), by: u.id };
+  const up = f => f ? storeFile(f, owner) : null;
+  const files = { passport: up(d.files?.passport), visa: up(d.files?.visa), contract: up(d.files?.contract), others: [] };
+  const docs = [...(files.passport ? ["Passport copy"] : []), ...(files.visa ? ["Visa copy"] : []), ...(files.contract ? ["Employment contract"] : [])];
+  // processing fee: the amount typed for this file, or the default fee from Site settings; due: an older amount the agent still owes
+  const amt = v => v === "" || v == null ? null : Math.round(Number(v) * 100) / 100;
+  const fee = amt(d.fee) ?? Number(db.settings.clearanceFee || 0), due = amt(d.due) || 0;
+  must(fee >= 0 && fee < 1e8 && due >= 0 && due < 1e8, "Check the processing fee and due amount.");
+  const c = { id: id("c"), agentId: ag ? ag.id : null, ...(ag ? {} : { agentName }), workerId: w.id, candidateId: null, country: d.country, employer: str(d.employer, 150), visaNo: str(d.visaNo, 40), visaType: str(d.visaType, 40), flightDate: str(d.flightDate, 10), icNo: str(d.icNo, 40), fee, due, docs, files, notes: str(d.notes, 2000), status: "pending", history: [{ s: "pending", at: now() }], created: now(), by: u.id };
   db.clearances.push(c); c.ref = ecRef(c);
-  const fee = Number(db.settings.clearanceFee || 0);
-  if (ag && fee > 0) db.ledger.push({ id: id("l"), agentId: ag.id, type: "charge", desc: `BMET clearance processing: ${w.name}`, amount: fee, date: now().slice(0, 10), method: "", ref: "", status: "confirmed" });
-  if (ag) notify(ag.id, `The agency created a BMET clearance file for ${w.name} (${d.country}).`);
+  if (ag && fee > 0) db.ledger.push({ id: id("l"), agentId: ag.id, type: "charge", desc: `BMET clearance processing: ${w.name} (${c.ref})`, amount: fee, date: now().slice(0, 10), method: "", ref: "", status: "confirmed" });
+  if (ag && due > 0) db.ledger.push({ id: id("l"), agentId: ag.id, type: "charge", desc: `Previous due: ${w.name} (${c.ref})`, amount: due, date: now().slice(0, 10), method: "", ref: "", status: "confirmed" });
+  if (ag) notify(ag.id, `The agency created a BMET clearance file for ${w.name} (${d.country})${due > 0 ? `; previous due ${bdt(due)} added to your account` : ""}.`);
   return { msg: "Clearance application created." };
 };
 A["agent.applyJob"] = async ({ jobId, workerIds }, u) => {
@@ -727,6 +754,16 @@ A["admin.job"] = async ({ id: jid, op, v }, u) => {
   if (op === "feature") { j.featured = !!v; return { msg: j.featured ? "Marked as featured." : "Removed from featured." }; }
   if (op === "delete") { db.jobs = db.jobs.filter(x => x.id !== jid); db.applications = db.applications.filter(a => a.jobId !== jid); return { msg: "Job deleted." }; }
   throw new Fail("Unknown operation.");
+};
+/* the agency adds or replaces a document of a clearance file (e.g. a file made in bulk without documents) */
+A["admin.clDoc"] = async ({ id: cid, kind, file }, u) => {
+  needPerm(u, "clearance"); const c = db.clearances.find(x => x.id === cid); must(c, "File not found.");
+  const L = { passport: "Passport copy", visa: "Visa copy", contract: "Employment contract" }; must(L[kind], "Unknown document."); must(file, "Choose the file.");
+  c.files = c.files || { passport: null, visa: null, contract: null, others: [] };
+  const ref = storeFile(file, c.agentId || c.candidateId || u.id);
+  if (c.files[kind]) dropFile(c.files[kind]);
+  c.files[kind] = ref; if (!c.docs.includes(L[kind])) c.docs.push(L[kind]);
+  return { msg: `${L[kind]} saved.` };
 };
 A["admin.clStatus"] = async ({ id: cid, status, text }, u) => {
   needPerm(u, "clearance"); const c = db.clearances.find(x => x.id === cid); must(c, "File not found."); must([...CL_STAGES, "rejected", "custom"].includes(status), "Unknown status.");

@@ -20,9 +20,10 @@ import { StatementsAdmin } from "./Statements.jsx";
 import { PassportEntry, PassportPick, ppLine } from "./Passports.jsx";
 import { Statement } from "./Statement.jsx";
 import { GroupEcForm } from "./Agent.jsx";
+import { BulkEcForm } from "./BulkClearance.jsx";
 import { agentRows } from "../statement.js";
 import { MFS, BANKS } from "../banks.js";
-import { LuReceipt, LuLandmark, LuBanknote, LuScrollText, LuBookUser, LuFileCheck2, LuHandCoins, LuPlaneTakeoff, LuCalendarCheck, LuSettings2, LuLogOut, LuMegaphone, LuCirclePlus } from "react-icons/lu";
+import { LuReceipt, LuLandmark, LuBanknote, LuScrollText, LuBookUser, LuFileCheck2, LuHandCoins, LuPlaneTakeoff, LuCalendarCheck, LuSettings2, LuLogOut, LuMegaphone, LuCirclePlus, LuListPlus } from "react-icons/lu";
 import { ShareButton, storeCard } from "../Share.jsx";
 import { ChatInbox, useInboxUnread } from "../LiveChat.jsx";
 
@@ -553,13 +554,17 @@ function AdminClearanceList() {
     .filter(({ c, p }) => { const k = q.trim().toLowerCase(); return !k || [c.ref, p.name, p.passport, c.country].some(v => String(v || "").toLowerCase().includes(k)); });
   const pages = Math.max(1, Math.ceil(rows.length / per)); const pg = Math.min(page, pages);
   const shown = rows.slice((pg - 1) * per, pg * per);
-  const [form, setForm] = React.useState(false);
+  const [form, setForm] = React.useState("");
   return <>
     <div className="ec-head">
       <h2>BMET clearance applications</h2>
-      <button className="btn dark" onClick={() => setForm(x => !x)}>{form ? <LuX /> : <LuCirclePlus />} {form ? "Close the form" : "Create application"}</button>
+      <div className="ec-head-btns">
+        <button className={`btn ${form === "one" ? "dark" : "soft"}`} onClick={() => setForm(x => x === "one" ? "" : "one")}>{form === "one" ? <LuX /> : <LuCirclePlus />} {form === "one" ? "Close the form" : "Create application"}</button>
+        <button className={`btn ${form === "bulk" ? "dark" : "soft"}`} onClick={() => setForm(x => x === "bulk" ? "" : "bulk")}>{form === "bulk" ? <LuX /> : <LuListPlus />} {form === "bulk" ? "Close bulk entry" : "Add bulk"}</button>
+      </div>
     </div>
-    {form && <GroupEcForm admin onDone={() => setForm(false)} />}
+    {form === "one" && <GroupEcForm admin onDone={() => setForm("")} />}
+    {form === "bulk" && <BulkEcForm onDone={() => setForm("")} />}
     <p className="muted small">{`Status flow: ${CL_STAGES.map(x => LABEL[x]).join(" › ")}. Choose “Custom…” in Status to write your own status. The EC Ref No can be changed until the file is Approved. When a file reaches Final Approval, the agent sends a payment receipt (Payments to check). When a file is Approved, upload the clearance card in Details: the agent then sees Approved and can download it.`}</p>
     <FilterButtons cur={f} onPick={k => { ui.clFilter = k; setPage(1); commit(); }} items={[["all", "All"], ["pending", "New (Pending)"], ["open", "In progress"], ["card", "Card to upload"], ["pay", "Payments to check"], ["sent", "Card sent"], ["rejected", "Rejected"]].map(([k, l]) => [k, l, cnt(k)])} />
     <div className="ec-tools mt8">

@@ -1295,3 +1295,21 @@ button.hold-tile{cursor:pointer}
 @media (min-width:1500px){.tcar-track{grid-auto-columns:calc((100% - 4 * 20px) / 5)}}
 @media (min-width:1850px){.tcar-track{grid-auto-columns:calc((100% - 5 * 20px) / 6)}}
 .tilegrid{grid-template-columns:repeat(auto-fill,minmax(200px,1fr))}
+
+/* BMET clearance: bulk entry */
+.bulk-ec{display:grid;grid-template-columns:minmax(0,1fr);gap:14px;margin-bottom:18px;min-width:0}
+.bulk-h{display:flex;align-items:center;gap:8px;margin:0 0 12px;font-size:17px}
+.bulk-h svg{color:var(--brand)}
+.bulk-count{background:var(--soft);color:var(--brand);border-radius:99px;padding:1px 9px;font-size:13px}
+.bulk-tbl table{min-width:1050px;border-collapse:separate;border-spacing:0 6px}
+.bulk-tbl th{font-size:12px;text-transform:uppercase;letter-spacing:.03em;white-space:nowrap;text-align:left;padding:8px 6px}
+.bulk-tbl td{padding:4px 5px;vertical-align:top;border:0}
+.bulk-tbl input{width:100%;min-width:0;padding:8px 9px;font-size:14px}
+.bulk-tbl td:nth-child(2){min-width:130px}.bulk-tbl td:nth-child(3){min-width:160px}.bulk-tbl td:nth-child(6){min-width:170px}
+.bulk-tbl td:nth-child(7),.bulk-tbl td:nth-child(8){width:110px}
+.bulk-no{display:inline-grid;place-items:center;min-width:26px;height:26px;margin-top:6px;border-radius:7px;background:var(--soft);color:var(--brand);font-weight:700;font-size:13px}
+.bulk-hint{font-size:12px;margin-top:3px}
+.ec-ico.del{background:#fde8e8;color:#c62828;margin-top:3px}
+.bulk-foot{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-top:12px}
+.bulk-btns{display:flex;gap:8px;flex-wrap:wrap}
+.ec-head-btns{display:flex;gap:8px;flex-wrap:wrap}

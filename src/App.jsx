@@ -6,8 +6,8 @@ import { FaWhatsapp, FaFacebookF, FaYoutube, FaLinkedinIn, FaTiktok } from "reac
 import { ChatWidget } from "./Chat.jsx";
 import { TeamChatWidget } from "./TeamChat.jsx";
 import { ShareJob } from "./Share.jsx";
-import { store, subscribe, getVersion, touch, me, user, job, unread, PAGES, fdate, kb, candOf, worker, clPerson, LABEL, CL_STAGES, CL_DOCS , findMember } from "./store.js";
-import { openModal, closeModal, signOut, toast, formData, setClStatus, downloadFile, fileExt, act, afterLogin } from "./actions.js";
+import { store, subscribe, getVersion, touch, me, user, job, unread, PAGES, fdate, kb, candOf, worker, clPerson, LABEL, CL_STAGES, CL_DOCS , findMember, bdtFmt } from "./store.js";
+import { openModal, closeModal, signOut, toast, formData, setClStatus, downloadFile, fileExt, act, afterLogin, readUpload, DOC_TYPES } from "./actions.js";
 import { Logo, Toast, ModalFrame, Pill, ClPipe, CardDownload, Avatar, Drawer } from "./ui.jsx";
 import { CardAdmin, AgentDocsView } from "./dash/shared.jsx";
 import { Home, Jobs, JobDetail, Services, About, Blog, Post, Contact, Track, Setup, Team, waLink } from "./pages/Public.jsx";
@@ -21,7 +21,7 @@ import { LANGS, getLang, setLang, t, onLang } from "./i18n.js";
 import { VisitingCard, VerifyMember, VerifyBody } from "./VCard.jsx";
 import { currentTheme, toggleTheme } from "./theme.js";
 import { SITE } from "./site.js";
-import { LuExternalLink, LuShieldCheck } from "react-icons/lu";
+import { LuExternalLink, LuShieldCheck, LuUpload } from "react-icons/lu";
 
 function useHash() {
   const [h, setH] = useState(location.hash.slice(1) || "home");
@@ -448,19 +448,30 @@ function ClFile({ c, f, label }) {
   return <div className="row between filerow"><span><LuFileText /> <b>{label}</b> <span className="muted small">{f.name} · {kb(f.size)}</span></span><button className="btn sm" onClick={() => downloadFile(f.data, fname)}><LuDownload /> Download</button></div>;
 }
 
+/* admin: add a missing passport / visa / contract copy to a clearance file */
+function ClDocUpload({ c }) {
+  const [kind, setKind] = React.useState(() => ["passport", "visa", "contract"].find(k => !c.files?.[k]) || "passport"); const [busy, setBusy] = React.useState(false);
+  const up = async e => {
+    const f = e.target.files[0]; e.target.value = ""; if (!f) return;
+    setBusy(true); try { const file = await readUpload(f, { imageMax: 1800 }); await act("admin.clDoc", { id: c.id, kind, file }); } catch (err) { toast(err.message); } finally { setBusy(false); }
+  };
+  return <div className="row tight mt8 cl-docup"><select value={kind} onChange={e => setKind(e.target.value)}>{[["passport", "Passport copy"], ["visa", "Visa copy"], ["contract", "Employment contract"]].map(([k, l]) => <option key={k} value={k}>{l}</option>)}</select>
+    <label className={`btn sm${busy ? " disabled" : ""}`}><LuUpload /> {busy ? "Uploading…" : c.files?.[kind] ? "Replace file" : "Upload file"}<input type="file" hidden accept={DOC_TYPES} onChange={up} disabled={busy} /></label></div>;
+}
 function ClearanceCard({ cid, admin }) {
   const c = store.S.clearances.find(x => x.id === cid); if (!c) return null;
   const w = clPerson(c);
-  const rows = [["Applicant", w.name], ["Filed by", w.via], ["Father's name", w.father], ["Passport no.", w.passport], ["Passport expiry", fdate(w.passportExpiry)], ["Date of birth", fdate(w.dob)], ["Mobile", w.phone], ["District", w.district], ["Trade", w.trade], ["Destination", c.country], ["Employer / sponsor", c.employer], ["Visa no.", c.visaNo], ["Visa type", c.visaType], ["Planned flight", c.flightDate ? fdate(c.flightDate) : ""], ["Notes", c.notes]];
+  const rows = [["Applicant", w.name], ["Filed by", w.via], ["Father's name", w.father], ["Passport no.", w.passport], ["Passport expiry", fdate(w.passportExpiry)], ["Date of birth", fdate(w.dob)], ["Mobile", w.phone], ["District", w.district], ["Trade", w.trade], ["Destination", c.country], ["Employer / sponsor", c.employer], ["Visa no.", c.visaNo], ["Visa type", c.visaType], ["Planned flight", c.flightDate ? fdate(c.flightDate) : ""], ...(c.icNo ? [["IC No.", c.icNo]] : []), ...(c.fee ? [["Processing fee", bdtFmt(c.fee)]] : []), ...(c.due ? [["Previous due", bdtFmt(c.due)]] : []), ["Notes", c.notes]];
   return (
     <>
       <h3>BMET clearance: {w.name}</h3>
       <p className="muted small mb14">{c.ref ? <><b data-notr>{c.ref}</b> · </> : null}Submitted {fdate(c.created)} by {w.via} · <Pill s={c.status} label={c.status === "custom" ? c.statusText : undefined} /></p>
       <ClPipe c={c} />
       <table className="mt14"><tbody>{rows.map(([k, v]) => <tr key={k}><th>{k}</th><td>{v || "—"}</td></tr>)}</tbody></table>
-      {c.files && <><h4 className="mt16 mb6">Uploaded documents</h4>
+      {c.files && ["passport", "visa", "contract"].some(k => c.files[k]) || c.files?.others?.length ? <><h4 className="mt16 mb6">Uploaded documents</h4>
         <div className="stack8">{[["passport", "Passport copy"], ["visa", "Visa copy"], ["contract", "Employment contract"]].filter(([k]) => c.files[k]).map(([k, l]) => <ClFile key={k} c={c} f={c.files[k]} label={l} />)}
-          {(c.files.others || []).map((f, i) => <ClFile key={i} c={c} f={f} label={`Other document ${i + 1}`} />)}</div></>}
+          {(c.files.others || []).map((f, i) => <ClFile key={i} c={c} f={f} label={`Other document ${i + 1}`} />)}</div></> : null}
+      {admin && <ClDocUpload c={c} />}
       <h4 className="mt16 mb6">Documents ({c.docs.length}/{CL_DOCS.length})</h4>
       <div className="row tight">{CL_DOCS.map(d => <span key={d} className={`chip${c.docs.includes(d) ? "" : " missing"}`}>{c.docs.includes(d) ? "✓ " : ""}{d}</span>)}</div>
       <h4 className="mt16 mb6">History</h4>{c.history.map((h, i) => <div key={i} className="small">{fdate(h.at)} — {h.s === "custom" ? h.t : LABEL[h.s]}</div>)}
