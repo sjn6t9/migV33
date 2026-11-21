@@ -24,7 +24,7 @@ import { BulkEcForm } from "./BulkClearance.jsx";
 import { AgentsPage } from "./AgentBook.jsx";
 import { agentRows } from "../statement.js";
 import { MFS, BANKS } from "../banks.js";
-import { LuReceipt, LuLandmark, LuBanknote, LuScrollText, LuBookUser, LuFileCheck2, LuHandCoins, LuPlaneTakeoff, LuCalendarCheck, LuSettings2, LuLogOut, LuMegaphone, LuCirclePlus, LuListPlus, LuContact } from "react-icons/lu";
+import { LuReceipt, LuLandmark, LuBanknote, LuScrollText, LuBookUser, LuFileCheck2, LuHandCoins, LuPlaneTakeoff, LuCalendarCheck, LuSettings2, LuLogOut, LuMegaphone, LuCirclePlus, LuListPlus, LuContact, LuGlobe } from "react-icons/lu";
 import { ShareButton, storeCard } from "../Share.jsx";
 import { ChatInbox, useInboxUnread } from "../LiveChat.jsx";
 
@@ -37,11 +37,12 @@ function FilterButtons({ items, cur, onPick }) {
 
 // sections inside "Payments & receipts" (each still needs its own staff permission)
 const PAY_SUB = [["receipts", "Money receipts", LuReceipt], ["ledger", "Agent accounts", LuWallet], ["office", "Main account", LuLandmark], ["salary", "Salary accounts", LuBanknote], ["statements", "Statements", LuScrollText], ["packages", "Employer packages", LuPackage]];
+// sections inside "Website" (each still needs its own staff permission)
+const WEB_SUB = [["content", "Website content", LuImage], ["headlines", "Headlines", LuMegaphone], ["about", "About page", LuInfo], ["slides", "Home slideshow", LuGalleryHorizontal], ["blog", "Blog", LuNewspaper], ["seo", "SEO", LuSearch], ["settings", "Site settings", LuSettings], ["staff", "Staff & permissions", LuUserCog]];
 const TABS = [
   ["overview", "Overview", LuLayoutDashboard], ["users", "Accounts", LuUsers], ["jobs", "Job moderation", LuBriefcase], ["apps", "Applications", LuFileText],
   ["clearance", "BMET clearance", LuStamp], ["passports", "Passport Entry", LuBookUser], ["agents", "Agents", LuContact], ["visa", "Visa applications", LuPlaneTakeoff], ["tickets", "Air tickets", LuTicket], ["pay", "Payments & receipts", LuReceipt], ["mysalary", "My salary", LuWallet], ["mymoney", "Money with me", LuHandCoins], ["attendance", "Office attendance", LuCalendarCheck],
-  ["content", "Website content", LuImage], ["headlines", "Headlines", LuMegaphone], ["about", "About page", LuInfo], ["slides", "Home slideshow", LuGalleryHorizontal], ["blog", "Blog", LuNewspaper], ["seo", "SEO", LuSearch], ["settings", "Site settings", LuSettings],
-  ["chat", "Live chat", LuMessagesSquare], ["messages", "Messages", LuMessageSquare], ["staff", "Staff & permissions", LuUserCog]
+  ["chat", "Live chat", LuMessagesSquare], ["messages", "Messages", LuMessageSquare], ["web", "Website", LuGlobe]
 ];
 
 export function Admin({ u }) {
@@ -50,12 +51,15 @@ export function Admin({ u }) {
   const can0 = k => k === "agents" ? ["clearance", "receipts", "ledger", "office", "visa"].some(can0) : k === "passports" ? can0("clearance") || can0("visa") : k === "mymoney" ? !!S.myMoney : k === "overview" || k === "mysalary" || k === "attendance" || k === "mysettings" || isAdmin || (k !== "staff" && u.perms?.includes(k === "slides" || k === "about" ? "content" : k));
   // employer packages only matter when paid job posting is on (or orders are still open)
   const paySubs = PAY_SUB.filter(([k]) => (k === "statements" ? ["ledger", "receipts", "salary", "office"].some(can0) : can0(k)) && (k !== "packages" || S.settings.paidPosting || S.orders.some(o => o.status === "pending")));
-  const can = k => k === "pay" ? paySubs.length > 0 : PAY_SUB.some(x => x[0] === k) ? paySubs.some(x => x[0] === k) : can0(k);
+  const webSubs = WEB_SUB.filter(([k]) => can0(k));
+  const can = k => k === "pay" ? paySubs.length > 0 : k === "web" ? webSubs.length > 0 : PAY_SUB.some(x => x[0] === k) ? paySubs.some(x => x[0] === k) : can0(k);
   if (PAY_SUB.some(x => x[0] === ui.tab[R])) { ui.paySub = ui.tab[R]; ui.tab[R] = "pay"; } // old links to the separate sections
+  if (WEB_SUB.some(x => x[0] === ui.tab[R])) { ui.webSub = ui.tab[R]; ui.tab[R] = "web"; }
   if (!can(ui.tab[R])) ui.tab[R] = "overview";
   if (ui.tab[R] === "pay" && !paySubs.some(x => x[0] === ui.paySub)) ui.paySub = paySubs[0]?.[0];
-  const top = ui.tab[R], t = top === "pay" ? ui.paySub : top;
-  const go = tab => { if (PAY_SUB.some(x => x[0] === tab)) { ui.paySub = tab; tab = "pay"; } setTab(R, tab); };
+  if (ui.tab[R] === "web" && !webSubs.some(x => x[0] === ui.webSub)) ui.webSub = webSubs[0]?.[0];
+  const top = ui.tab[R], t = top === "pay" ? ui.paySub : top === "web" ? ui.webSub : top;
+  const go = tab => { if (PAY_SUB.some(x => x[0] === tab)) { ui.paySub = tab; tab = "pay"; } if (WEB_SUB.some(x => x[0] === tab)) { ui.webSub = tab; tab = "web"; } setTab(R, tab); };
   const agents = S.users.filter(x => x.role === "agent");
   const pendU = S.users.filter(x => x.status === "pending" || x.company?.verify === "pending").length;
   const pendJ = S.jobs.filter(j => j.status === "pending").length;
@@ -407,6 +411,8 @@ export function Admin({ u }) {
         foot={[["mysettings", "Settings", LuSettings2], ["logout", "Log out", LuLogOut, 0, signOut]]} />
       <div className="panel">{top === "pay" && <nav className="pay-tabs" aria-label="Payments & receipts">
         {paySubs.map(([k, l, I]) => { const n = { ledger: pendP, packages: pendO, receipts: pendR }[k]; return <button key={k} className={t === k ? "on" : ""} aria-current={t === k ? "page" : undefined} onClick={() => { ui.paySub = k; commit(); }}><I /> {l}{n > 0 && <span className="count">{n}</span>}</button>; })}
+      </nav>}{top === "web" && <nav className="pay-tabs" aria-label="Website">
+        {webSubs.map(([k, l, I]) => <button key={k} className={t === k ? "on" : ""} aria-current={t === k ? "page" : undefined} onClick={() => { ui.webSub = k; commit(); }}><I /> {l}</button>)}
       </nav>}{body}</div>
     </div>
   );

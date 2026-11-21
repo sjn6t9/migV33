@@ -8,7 +8,7 @@ export function openModal(type, props = {}) { ui.modal = { type, ...props }; tou
 export function closeModal() { ui.modal = null; touch(); }
 export function confirmBox(msg, onYes, yes = "Confirm") { openModal("confirm", { msg, onYes, yes }); }
 /* each dashboard section has its own address (#dashboard/<section>), so a reload or a shared link opens the same section */
-export const dashHash = () => { const u = me(); if (!u) return "dashboard"; const t0 = ui.tab[u.role], t = t0 === "pay" ? ui.paySub || "pay" : t0; return !t || t === "overview" ? "dashboard" : `dashboard/${t}`; };
+export const dashHash = () => { const u = me(); if (!u) return "dashboard"; const t0 = ui.tab[u.role], t = t0 === "pay" ? ui.paySub || "pay" : t0 === "web" ? ui.webSub || "web" : t0; return !t || t === "overview" ? "dashboard" : `dashboard/${t}`; };
 export const go = hash => { if (hash === "dashboard") hash = dashHash(); if (location.hash === "#" + hash) touch(); else location.hash = hash; };
 export function setTab(role, tab) { ui.tab[role] = tab; if (tab !== "post") ui.editJob = null; go("dashboard"); }
 
