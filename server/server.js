@@ -765,6 +765,18 @@ A["admin.clDoc"] = async ({ id: cid, kind, file }, u) => {
   c.files[kind] = ref; if (!c.docs.includes(L[kind])) c.docs.push(L[kind]);
   return { msg: `${L[kind]} saved.` };
 };
+/* only the admin deletes a BMET clearance file: its documents, the charges it made on the agent account, and the worker if nothing else uses them */
+A["admin.clDelete"] = async ({ id: cid }, u) => {
+  must(u?.role === "admin", "Only the admin can delete a clearance file.", 403);
+  const c = db.clearances.find(x => x.id === cid); must(c, "File not found.");
+  const w = c.workerId ? worker(c.workerId) : null, name = w?.name || c.fullName || "the worker";
+  for (const f of [c.files?.passport, c.files?.visa, c.files?.contract, ...(c.files?.others || []), c.card, c.payment?.file]) if (f) { try { dropFile(f); } catch {} }
+  if (c.ref) db.ledger = db.ledger.filter(l => !(l.type === "charge" && l.agentId === c.agentId && String(l.desc || "").includes(`(${c.ref})`)));
+  db.clearances = db.clearances.filter(x => x !== c);
+  let gone = false;
+  if (w && !db.clearances.some(x => x.workerId === w.id) && !db.applications.some(a => a.workerId === w.id)) { db.workers = db.workers.filter(x => x !== w); gone = true; }
+  return { msg: `Clearance file ${c.ref || ""} for ${name} deleted${gone ? ", with the worker" : ""}.` };
+};
 A["admin.clStatus"] = async ({ id: cid, status, text }, u) => {
   needPerm(u, "clearance"); const c = db.clearances.find(x => x.id === cid); must(c, "File not found."); must([...CL_STAGES, "rejected", "custom"].includes(status), "Unknown status.");
   const name = c.workerId ? worker(c.workerId)?.name : c.fullName || user(c.candidateId)?.name;
@@ -1526,9 +1538,10 @@ A["admin.mr"] = async (d, u) => {
     r.mailed = { to, at: now(), ok: true }; return { msg: `Money receipt ${r.no} emailed to ${to}.` };
   }
   if (d.op === "discard") { // remove an entry that was not approved (wrong entry)
-    const r = M.receipts.find(x => x.id === d.id); must(r, "Receipt not found."); must(r.status === "pending", "An approved receipt cannot be deleted. Cancel it instead.");
+    const r = M.receipts.find(x => x.id === d.id); must(r, "Receipt not found."); must(r.status === "pending" || u.role === "admin", "An approved receipt cannot be deleted. Cancel it instead.");
     must(u.role === "admin" || r.received?.uid === u.id, "Only the admin or the person who entered it can delete this entry.");
-    M.receipts = M.receipts.filter(x => x !== r); return { msg: `Entry ${r.no} deleted.` };
+    if (r.ledgerId) db.ledger = db.ledger.filter(l => l.id !== r.ledgerId); // the admin deletes an approved receipt: its payment leaves the agent account too
+    M.receipts = M.receipts.filter(x => x !== r); return { msg: r.status === "pending" ? `Entry ${r.no} deleted.` : `Money receipt ${r.no} deleted.` };
   }
   if (d.op === "account") { // update a payer's details
     const acc = M.accounts.find(a => a.id === d.id); must(acc, "Account not found.");

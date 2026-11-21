@@ -7,7 +7,7 @@ import { ChatWidget } from "./Chat.jsx";
 import { TeamChatWidget } from "./TeamChat.jsx";
 import { ShareJob } from "./Share.jsx";
 import { store, subscribe, getVersion, touch, me, user, job, unread, PAGES, fdate, kb, candOf, worker, clPerson, LABEL, CL_STAGES, CL_DOCS , findMember, bdtFmt } from "./store.js";
-import { openModal, closeModal, signOut, toast, formData, setClStatus, downloadFile, fileExt, act, afterLogin, readUpload, DOC_TYPES } from "./actions.js";
+import { openModal, closeModal, signOut, toast, formData, setClStatus, downloadFile, fileExt, act, afterLogin, readUpload, DOC_TYPES, confirmBox } from "./actions.js";
 import { Logo, Toast, ModalFrame, Pill, ClPipe, CardDownload, Avatar, Drawer } from "./ui.jsx";
 import { CardAdmin, AgentDocsView } from "./dash/shared.jsx";
 import { Home, Jobs, JobDetail, Services, About, Blog, Post, Contact, Track, Setup, Team, waLink } from "./pages/Public.jsx";
@@ -21,7 +21,7 @@ import { LANGS, getLang, setLang, t, onLang } from "./i18n.js";
 import { VisitingCard, VerifyMember, VerifyBody } from "./VCard.jsx";
 import { currentTheme, toggleTheme } from "./theme.js";
 import { SITE } from "./site.js";
-import { LuExternalLink, LuShieldCheck, LuUpload } from "react-icons/lu";
+import { LuExternalLink, LuShieldCheck, LuUpload, LuTrash2 } from "react-icons/lu";
 import { AgentBookEdit } from "./dash/AgentBook.jsx";
 
 function useHash() {
@@ -481,6 +481,7 @@ function ClearanceCard({ cid, admin }) {
         <label className="f">Update status</label><StatusCell c={c} wide />
         {c.agentId && <><h4 className="mb6">Payment</h4><ClPayCell c={c} /></>}
         <CardAdmin c={c} />
+        {me()?.role === "admin" && <div className="divider"><button className="btn danger" onClick={() => confirmBox(`Delete the clearance file ${c.ref || ""} of ${w.name}? Its documents and the charges it added to the agent account are deleted too. This cannot be undone.`, async () => { if (await act("admin.clDelete", { id: c.id })) closeModal(); }, "Delete")}><LuTrash2 /> Delete this file</button><p className="muted small mt4">Only the admin can delete.</p></div>}
       </div> : <div className="mt16"><CardDownload c={c} /></div>}
     </>
   );

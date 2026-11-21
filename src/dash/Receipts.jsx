@@ -30,7 +30,7 @@ const paid = list => list.filter(r => !r.void).reduce((s, r) => s + r.amount, 0)
 const me = () => user(store.S.session);
 const ok = r => r.status === "approved" && !r.void;
 const canApprove = r => { const u = me(); return r.status === "pending" && !r.void && (u?.role === "admin" || r.received?.uid !== u?.id); };
-const canDiscard = r => { const u = me(); return r.status === "pending" && (u?.role === "admin" || r.received?.uid === u?.id); };
+const canDiscard = r => { const u = me(); return u?.role === "admin" || (r.status === "pending" && r.received?.uid === u?.id); };
 export function approve(r) {
   if (!me()?.signature) { toast("Upload your signature first: Settings › My signature."); return; }
   confirmBox(`Approve payment ${r.no} of BDT ${tk(r.amount)} from ${r.payer.name || r.payer.passport || r.payer.mobile || "the payer"}? Your name and signature go on the receipt as Authorized signature.`, async () => { const res = await act("admin.mr", { op: "approve", id: r.id }); if (res) { openModal("mrView", { rid: r.id }); if (res.email) mailReceipt(r.id); } }, "Approve");
@@ -44,7 +44,7 @@ export async function mailReceipt(rid, to) {
     await act("admin.mr", { op: "mail", id: r.id, pdf, to });
   } catch { toast("The receipt PDF could not be made for the email. Try Send by email again."); }
 }
-const discard = r => confirmBox(`Delete entry ${r.no}? It was not approved, so no receipt was made.`, async () => { if (await act("admin.mr", { op: "discard", id: r.id })) closeModal(); }, "Delete entry");
+const discard = r => confirmBox(r.status === "pending" ? `Delete entry ${r.no}? It was not approved, so no receipt was made.` : `Delete money receipt ${r.no}? The receipt and its payment on the agent account are deleted. This cannot be undone.`, async () => { if (await act("admin.mr", { op: "discard", id: r.id })) closeModal(); }, "Delete entry");
 export function StatusBadge({ r }) {
   return r.void ? <span className="ec-badge s-rejected">Cancelled</span> : r.status === "approved" ? <span className="ec-badge s-approved">Approved</span> : <span className="ec-badge mr-wait"><LuClock /> Waiting for approval</span>;
 }

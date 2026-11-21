@@ -5,7 +5,7 @@ import {
 } from "react-icons/lu";
 import { FaWhatsapp, FaFacebookF, FaYoutube, FaLinkedinIn, FaTiktok } from "react-icons/fa6";
 import { clStage, STAFF_PERMS, TEAM_DEPTS, store, commit, user, job, worker, company, live, money, num, fdate, bdtFmt, balanceOf, candOf, clPerson, clOpen, cardPending, now, COUNTRIES, STAGES, CL_STAGES, CL_DOCS, PAY_METHODS, PAGES, LABEL } from "../store.js";
-import { toast, formData, setTab, openModal, confirmBox, deleteUser, act, readUpload, compressImage } from "../actions.js";
+import { toast, formData, setTab, openModal, closeModal, confirmBox, deleteUser, act, readUpload, compressImage } from "../actions.js";
 import { downloadFile as dlFile } from "../actions.js";
 import { Rail, Tiles, Pill, Empty, Bars, Stars, Avatar, RoleBadges } from "../ui.jsx";
 import { StatusSelect, Field, Options, JobFields, blankJob } from "./shared.jsx";
@@ -546,8 +546,9 @@ const ecDay = iso => { const d = new Date(iso); return isNaN(d) ? "—" : `${Str
 const SENT_IDX = CL_STAGES.indexOf("sent_bmet");
 const pastSent = c => c.status === "rejected" || CL_STAGES.indexOf(clStage(c)) >= SENT_IDX; // from "Send to BMET" on, Details replaces the document downloads
 
+export const clDelete = c => { const p = clPerson(c); confirmBox(`Delete the clearance file ${c.ref || ""} of ${p.name}? Its documents and the charges it added to the agent account are deleted too. This cannot be undone.`, async () => { if (await act("admin.clDelete", { id: c.id })) closeModal(); }, "Delete"); };
 function AdminClearanceList() {
-  const S = store.S; const f = ui.clFilter || "all";
+  const S = store.S; const isAdmin = user(store.S.session)?.role === "admin"; const f = ui.clFilter || "all";
   const [q, setQ] = React.useState(""); const [per, setPer] = React.useState(25); const [page, setPage] = React.useState(1);
   const match = (k, c) => k === "all" || (k === "open" ? clOpen(c) : k === "card" ? cardPending(c) : k === "sent" ? !!c.card : k === "pay" ? c.payment?.status === "submitted" : c.status === k);
   const cnt = k => S.clearances.filter(c => match(k, c)).length;
@@ -589,7 +590,8 @@ function AdminClearanceList() {
                 {c.payment?.status === "submitted" && <span className="ec-badge pay-pending">Payment to check</span>}
                 {cardPending(c) && <span className="ec-badge s-final">Card to upload</span>}
                 {c.card && <span className="ec-badge s-approved">Card sent</span>}</div>
-            : <DocButtons c={c} />}</td>
+            : <DocButtons c={c} />}
+            {isAdmin && <button className="btn sm link danger mt4" aria-label={`Delete file of ${p.name}`} title="Delete (admin only)" onClick={() => clDelete(c)}><LuTrash2 /> Delete</button>}</td>
         </tr>)) : <tr><td colSpan={8}><Empty>No clearance applications in this list.</Empty></td></tr>}
     </tbody></table></div>
     {rows.length > 0 && <div className="row between mt8"><span className="muted small">{`Showing ${(pg - 1) * per + 1} to ${Math.min(pg * per, rows.length)} of ${rows.length} entries`}</span>
