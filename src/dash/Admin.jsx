@@ -11,7 +11,7 @@ import { Rail, Tiles, Pill, Empty, Bars, Stars, Avatar, RoleBadges } from "../ui
 import { StatusSelect, Field, Options, JobFields, blankJob } from "./shared.jsx";
 import { setClStatus, signOut } from "../actions.js";
 import { ReceiptsAdmin, SignatureBox } from "./Receipts.jsx";
-import { VisaAdmin } from "./Visa.jsx";
+import { VisaAdmin, VisaPassportEntry } from "./Visa.jsx";
 import { HeadlinesAdmin } from "./Headlines.jsx";
 import { MySettings, Attendance, AttendanceSettings } from "./MySettings.jsx";
 import { OfficeAccount, SalaryAdmin, MySalary, MoneyWithMe } from "./Accounts.jsx";
@@ -35,7 +35,7 @@ function FilterButtons({ items, cur, onPick }) {
 const PAY_SUB = [["receipts", "Money receipts", LuReceipt], ["ledger", "Agent accounts", LuWallet], ["office", "Main account", LuLandmark], ["salary", "Salary accounts", LuBanknote], ["statements", "Statements", LuScrollText], ["packages", "Employer packages", LuPackage]];
 const TABS = [
   ["overview", "Overview", LuLayoutDashboard], ["users", "Accounts", LuUsers], ["jobs", "Job moderation", LuBriefcase], ["apps", "Applications", LuFileText],
-  ["clearance", "BMET clearance", LuStamp], ["visa", "Visa applications", LuPlaneTakeoff], ["tickets", "Air tickets", LuTicket], ["pay", "Payments & receipts", LuReceipt], ["mysalary", "My salary", LuWallet], ["mymoney", "Money with me", LuHandCoins], ["attendance", "Office attendance", LuCalendarCheck],
+  ["clearance", "BMET clearance", LuStamp], ["passports", "Passport Entry", LuBookUser], ["visa", "Visa applications", LuPlaneTakeoff], ["tickets", "Air tickets", LuTicket], ["pay", "Payments & receipts", LuReceipt], ["mysalary", "My salary", LuWallet], ["mymoney", "Money with me", LuHandCoins], ["attendance", "Office attendance", LuCalendarCheck],
   ["content", "Website content", LuImage], ["headlines", "Headlines", LuMegaphone], ["about", "About page", LuInfo], ["slides", "Home slideshow", LuGalleryHorizontal], ["blog", "Blog", LuNewspaper], ["seo", "SEO", LuSearch], ["settings", "Site settings", LuSettings],
   ["chat", "Live chat", LuMessagesSquare], ["messages", "Messages", LuMessageSquare], ["staff", "Staff & permissions", LuUserCog]
 ];
@@ -43,7 +43,7 @@ const TABS = [
 export function Admin({ u }) {
   const S = store.S; const R = u.role; const isAdmin = R === "admin";
   const chatUnread = useInboxUnread(isAdmin || !!u.perms?.includes("chat"));
-  const can0 = k => k === "mymoney" ? !!S.myMoney : k === "overview" || k === "mysalary" || k === "attendance" || k === "mysettings" || isAdmin || (k !== "staff" && u.perms?.includes(k === "slides" || k === "about" ? "content" : k));
+  const can0 = k => k === "passports" ? can0("clearance") || can0("visa") : k === "mymoney" ? !!S.myMoney : k === "overview" || k === "mysalary" || k === "attendance" || k === "mysettings" || isAdmin || (k !== "staff" && u.perms?.includes(k === "slides" || k === "about" ? "content" : k));
   // employer packages only matter when paid job posting is on (or orders are still open)
   const paySubs = PAY_SUB.filter(([k]) => (k === "statements" ? ["ledger", "receipts", "salary", "office"].some(can0) : can0(k)) && (k !== "packages" || S.settings.paidPosting || S.orders.some(o => o.status === "pending")));
   const can = k => k === "pay" ? paySubs.length > 0 : PAY_SUB.some(x => x[0] === k) ? paySubs.some(x => x[0] === k) : can0(k);
@@ -239,9 +239,13 @@ export function Admin({ u }) {
   </>;
 
   if (t === "visa") body = <VisaAdmin />;
-  if (t === "clearance") body = <>
-    <nav className="pay-tabs" aria-label="BMET clearance">{[["apps", "Applications", LuFileCheck2], ["pp", "Passport entry", LuBookUser]].map(([k, l, I]) => <button key={k} className={(ui.clSub || "apps") === k ? "on" : ""} aria-current={(ui.clSub || "apps") === k ? "page" : undefined} onClick={() => { ui.clSub = k; commit(); }}><I /> {l}{k === "pp" && <span className="count soft">{(S.passports || []).length}</span>}</button>)}</nav>
-    {(ui.clSub || "apps") === "pp" ? <PassportEntry /> : <AdminClearanceList />}</>;
+  if (t === "clearance") body = <AdminClearanceList />;
+  if (t === "passports") { // BMET and KSA passport entries together
+    const pp = can("clearance") && can("visa") ? (ui.ppSub || "bmet") : can("visa") ? "ksa" : "bmet";
+    body = <>
+      {can("clearance") && can("visa") && <nav className="pay-tabs" aria-label="Passport Entry">{[["bmet", "BMET Passport Entry", LuStamp], ["ksa", "KSA Passport Entry", LuPlaneTakeoff]].map(([k, l, I]) => <button key={k} className={pp === k ? "on" : ""} aria-current={pp === k ? "page" : undefined} onClick={() => { ui.ppSub = k; commit(); }}><I /> {l}</button>)}</nav>}
+      {pp === "ksa" ? <VisaPassportEntry /> : <PassportEntry title="BMET Passport Entry" />}</>;
+  }
 
   if (t === "ledger") {
     const sel = ui.ledgerAgent ? user(ui.ledgerAgent) : null;

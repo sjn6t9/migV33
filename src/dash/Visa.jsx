@@ -22,21 +22,16 @@ const tone = s => (/issued|stamped/i.test(s) ? "ok" : /rejected|cancelled/i.test
 const Pill = ({ s }) => <span className={`vf-pill ${tone(s)}`}>{s}</span>;
 
 export function VisaAdmin() {
-  const ui = store.ui, sub = ui.visaSub || "ksa", go = k => { ui.visaSub = k; commit(); };
   return <>
-    <nav className="pay-tabs" aria-label="Visa applications">
-      <button className={sub === "ksa" ? "on" : ""} aria-current={sub === "ksa" ? "page" : undefined} onClick={() => go("ksa")}>KSA Visa</button>
-      <button className={sub === "pp" ? "on" : ""} aria-current={sub === "pp" ? "page" : undefined} onClick={() => go("pp")}>Passport Entry<span className="count soft">{passports().filter(p => p.info).length}</span></button>
-    </nav>
-    {sub === "pp" ? <VisaPassportEntry /> : <>
-      <nav className="pay-tabs vf-sub" aria-label="KSA Visa"><button className="on" aria-current="page">HR Files<span className="count soft">{files().length}</span></button></nav>
-      <HrFiles /></>}
+    <nav className="pay-tabs" aria-label="Visa applications"><button className="on" aria-current="page">KSA Visa</button></nav>
+    <nav className="pay-tabs vf-sub" aria-label="KSA Visa"><button className="on" aria-current="page">HR Files<span className="count soft">{files().length}</span></button></nav>
+    <HrFiles />
   </>;
 }
 
 /* Visa applications › Passport Entry: the Personal and Passport Information of the client file, entered once; Fetch in Quick Import fills them in */
 const PP_BLANK = { name: "", passport: "", gender: "", agentId: "", info: { prevNationality: "BANGLADESH", nationality: "BANGLADESH", religion: "Muslim", issuePlace: "DHAKA" } };
-function VisaPassportEntry() {
+export function VisaPassportEntry() {
   const [f, setF] = React.useState(PP_BLANK), [edit, setEdit] = React.useState(null), [busy, setBusy] = React.useState(false), [q, setQ] = React.useState("");
   const set = v => setF(o => ({ ...o, ...v })), setI = v => setF(o => ({ ...o, info: { ...o.info, ...v } }));
   const I = (k, p = {}) => <input type={VISA_DATES.includes(k) ? "date" : "text"} value={f.info[k] || ""} onChange={e => setI({ [k]: e.target.value })} maxLength={160} {...p} />;
@@ -50,7 +45,7 @@ function VisaPassportEntry() {
   const start = p => { setEdit(p.id); setF({ name: p.name, passport: p.passport, gender: p.gender, agentId: p.agentId || "", country: p.country, info: { ...(p.info || {}) } }); window.scrollTo?.({ top: 0, behavior: "smooth" }); };
   const s0 = q.trim().toLowerCase(), list = passports().filter(p => !s0 || [p.name, p.passport, p.info?.fatherName, p.ref, p.info?.mofaId].some(v => (v || "").toLowerCase().includes(s0)));
   return <>
-    <div className="ec-head"><div><h2>Passport Entry</h2><p className="muted small">Enter the passport once. In Create Client File, Fetch with the passport number fills in the Personal and Passport Information.</p></div></div>
+    <div className="ec-head"><div><h2>KSA Passport Entry</h2><p className="muted small">Enter the passport once. In Create Client File, Fetch with the passport number fills in the Personal and Passport Information.</p></div></div>
     <form className="vf-form" onSubmit={save} noValidate>
       {edit && <p className="small"><span className="ec-badge">{`Editing ${f.passport}`}</span><button type="button" className="btn sm link" onClick={() => { setEdit(null); setF(PP_BLANK); }}><LuX /> Cancel</button></p>}
       <Sec n="1" title="Personal Information" sub="Basic identity of the applicant">
@@ -193,7 +188,7 @@ export function WafidImport() {
       : <div className="card">
         <dl className="vf-dl">{[["Passport", got.passport], ["Name", got.name], ["Medical report", got.medicalResult], ["Medical center", got.medicalCenter], ["Examination date", day(got.medicalSlipDate)]].filter(([, v]) => v).map(([k, v]) => <div key={k} className="vf-dl-row"><dt>{k}</dt><dd>{v}</dd></div>)}</dl>
         <p className="small mt14">{hits.length ? `It will be saved on ${hits.map(f => `${f.name} (SL ${f.sl})`).join(", ")}.` : "There is no client file for this passport yet. It is kept, and Fetch will fill it in when the file is made."}</p>
-        {done ? <><p className="vf-ok mt8"><LuCheck /> {done}</p><div className="row6 mt8"><button className="btn" onClick={() => window.close()}>Close this window</button><a className="btn" href="#dashboard" onClick={() => { store.ui.visaSub = "ksa"; }}>Open HR Files</a></div></>
+        {done ? <><p className="vf-ok mt8"><LuCheck /> {done}</p><div className="row6 mt8"><button className="btn" onClick={() => window.close()}>Close this window</button><a className="btn" href="#dashboard" onClick={() => { store.ui.tab.admin = "visa"; store.ui.tab.staff = "visa"; }}>Open HR Files</a></div></>
           : <div className="row6 mt14"><button className="btn pri" disabled={busy} onClick={save}><LuCheck /> Save medical result</button></div>}
       </div>}
   </div></section>;

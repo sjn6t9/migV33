@@ -17,12 +17,12 @@ export const ppMatch = q => { const s = q.trim().toLowerCase(), n = s.replace(/\
 export const ppLine = p => `1 ${p.country.toUpperCase()} PP (${p.passport}) · ${p.name}`;
 const fdate = iso => new Date(iso).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
 
-export function PassportEntry() {
+export function PassportEntry({ title } = {}) {
   const [q, setQ] = React.useState(""); const [edit, setEdit] = React.useState(null); const [n, setN] = React.useState(50);
   const list = passports().filter(ppMatch(q));
   const exportXlsx = () => xlsx("Passports", [["Full name", "Passport No.", "Country", "Gender", "Ref.", "Added"].map(v => ({ v, s: 1 })), ...list.map(p => [p.name, p.passport, p.country, p.gender, p.ref, p.at.slice(0, 10)])], [28, 15, 16, 10, 26, 12], `passports-${new Date().toISOString().slice(0, 10)}.xlsx`);
   return <>
-    <div className="ec-head"><div><h2>Passport entry</h2><p className="muted small">Enter passports once; use them in BMET clearance applications, money receipts and account entries. A Ref. that is one of our agents lets that agent use the passport too.</p></div></div>
+    <div className="ec-head"><div><h2>{title || "Passport entry"}</h2><p className="muted small">Enter passports once; use them in BMET clearance applications, money receipts and account entries. A Ref. that is one of our agents lets that agent use the passport too.</p></div></div>
     <PassportForm />
     <div className="ec-tools mt14">
       <b>{`Passports (${passports().length})`}</b><span className="grow" />
