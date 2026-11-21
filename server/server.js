@@ -851,6 +851,8 @@ async function rq(J, url, opt = {}) {
 const RAIMS_STAGE = [[/reject|cancel|declin/i, "rejected"], [/^approved$|^approve$|clearance (issued|approved)|^issued/i, "approved"], [/final/i, "final"], [/\badg\b|additional director general/i, "adg"],
   [/director general|\bdg\b/i, "adg"], [/\bdirector\b/i, "director"], [/\bdd\b|deputy director/i, "dd"], [/\bad\b|assistant director/i, "ad"], [/section|desk|officer/i, "section"], [/submit|bmet|forward|pending|process/i, "sent_bmet"]];
 const raimsStage = t => (RAIMS_STAGE.find(([re]) => re.test(String(t).trim())) || [])[1] || "";
+/* addresses a RAIMS page's own script reads its data from (DataTables ajax, axios, fetch, $.get …) */
+const dataHints = h => [...new Set([...String(h || "").matchAll(/(?:ajax|url|axios\.(?:get|post)|fetch|\$\.(?:get|post|ajax)|route)\s*[:(=]\s*\{?\s*(?:url\s*:\s*)?["'`]([^"'`\s]{3,200})["'`]/gi)].map(m => m[1]).filter(u => !/\.(js|css|png|jpe?g|svg|woff2?)(\?|$)/i.test(u)))].slice(0, 10);
 const cells = tr => [...tr.matchAll(/<t[dh][^>]*>([\s\S]*?)<\/t[dh]>/gi)].map(m => htmlText(m[1]).replace(/\s+/g, " ").trim());
 function raimsRows(html, json) {
   const rows = [];
@@ -888,7 +890,7 @@ async function raimsOpen(search = "") {
       const last = Math.min(60, Math.max(1, ...[...lst.text.matchAll(/[?&]page=(\d+)/g)].map(m => +m[1])));
       for (let pg = 2; pg <= last; pg++) { const x = raimsRows((await rq(J, `/agency/ec/application/list?page=${pg}`)).text); if (!x.rows.length) break; parsed.rows.push(...x.rows); parsed.links.push(...x.links); pages = pg; }
     }
-    parsed.page = { url: lst.url, status: lst.r.status, title: htmlText((/<title>([\s\S]*?)<\/title>/i.exec(lst.text) || [])[1] || ""), tables: (lst.text.match(/<table/gi) || []).length, scripts: [...lst.text.matchAll(/<script[^>]*src="([^"]+)"/gi)].map(m => m[1]).filter(x => !/jquery|bootstrap|cdn/i.test(x)).slice(0, 6), text: htmlText(lst.text).slice(0, 1200), login: { url: li.url, status: li.r.status } };
+    parsed.page = { url: lst.url, status: lst.r.status, title: htmlText((/<title>([\s\S]*?)<\/title>/i.exec(lst.text) || [])[1] || ""), tables: (lst.text.match(/<table/gi) || []).length, scripts: [...lst.text.matchAll(/<script[^>]*src="([^"]+)"/gi)].map(m => m[1]).filter(x => !/jquery|bootstrap|cdn/i.test(x)).slice(0, 6), hints: dataHints(lst.text), text: htmlText(lst.text).slice(0, 1200), login: { url: li.url, status: li.r.status } };
     return { J, lst, parsed, ajax, pages };
   } catch (e) { if (e instanceof Fail) throw e; must(false, `Could not reach RAIMS: ${e.message}`); }
 }
@@ -946,18 +948,31 @@ A["admin.raims"] = async (d, u) => {
         for (const r of t.rows) { const pp = (PPR.exec(r.join(" ")) || [])[1]; if (!pp) continue;
           people.push({ ic: (ci.ic >= 0 && norm(r[ci.ic])) || icp, name: ci.name >= 0 ? r[ci.name] : r.find(v => /^[A-Z][A-Z .'-]{4,}$/.test(v) && !PPR.test(v)) || "", passport: pp, country: (ci.country >= 0 && r[ci.country]) || ctry }); }
       }
+      if (!people.length) { // the page fills its list with a script: read the same addresses the script reads
+        const xsrf = (/name="csrf-token"[^>]*content="([^"]+)"/.exec(pg.text) || [])[1] || "";
+        const objs = []; const walk = v => { if (Array.isArray(v)) v.forEach(walk); else if (v && typeof v === "object") { if (Object.values(v).some(x => typeof x === "string" && /^[A-Z]{1,2}\d{7,8}$/.test(x.trim()))) objs.push(v); else Object.values(v).forEach(walk); } };
+        for (const h of dataHints(pg.text).filter(u => /ec|worker|emigrant|applica|passport|individual|candidate/i.test(u)).slice(0, 5)) {
+          try { const x = await rq(J, h, { headers: { "X-Requested-With": "XMLHttpRequest", Accept: "application/json, text/html", "X-CSRF-TOKEN": xsrf } });
+            try { walk(JSON.parse(x.text)); } catch { for (const m of x.text.matchAll(/<table[\s\S]*?<\/table>/gi)) { const t = raimsRows(m[0]), H = t.head.map(z => z.toLowerCase()), ni = H.findIndex(z => /name/.test(z)); for (const r of t.rows) { const pp = (PPR.exec(r.join(" ")) || [])[1]; if (pp) people.push({ ic: icp, name: ni >= 0 ? r[ni] : "", passport: pp, country: ctry }); } } }
+          } catch {}
+        }
+        for (const o of objs) { const e = Object.entries(o), pp = e.find(([, v]) => typeof v === "string" && /^[A-Z]{1,2}\d{7,8}$/.test(v.trim()))[1].trim();
+          const nm = (e.find(([k, v]) => /name/i.test(k) && !/father|mother|spouse|agency|agent|employer|company|file|user/i.test(k) && typeof v === "string") || [])[1] || "";
+          const ct = (e.find(([k, v]) => /country/i.test(k) && typeof v === "string") || [])[1] || ctry;
+          people.push({ ic: icp, name: String(nm).trim(), passport: pp, country: ct }); }
+      }
       if (!people.length) { // one person on the page, written as label: value
         const pp = (/Passport\s*(?:No\.?|Number)?\s*:?\s*([A-Z]{1,2}\d{7,8})/i.exec(txt) || PPR.exec(txt) || [])[1];
         const nm = ((/(?:Worker|Applicant|Emigrant|Full)?\s*Name\s*:?\s*([A-Z][A-Z .'-]{3,60}?)(?=\s{2,}|\s+[A-Z][a-z]+\s*:|$)/.exec(txt) || [])[1] || "").trim();
         if (pp) people.push({ ic: icp, name: nm, passport: pp, country: ctry });
       }
-      return { people, txt, title, url: pg.url, tables };
+      return { people, txt, title, url: pg.url, tables, hints: dataHints(pg.text) };
     };
     // a RAIMS page link pasted as it is (any page on raims.oep.gov.bd), or only the number in such a link
     const link = /^https?:\/\/raims\.oep\.gov\.bd(\/[^\s]*)$/i.exec(raw)?.[1] || (/^(\d{4,10})$/.test(raw) ? `/agency/ec/application/individual/${raw}/show` : "");
     if (link) {
       const { J } = await raimsOpen(); const r = await showPage(J, link);
-      if (!r.people.length) return { problem: "That RAIMS page has no workers that this site can read.", seen: { page: link, title: r.title, url: r.url, text: r.txt.slice(0, 1500), tables: r.tables } };
+      if (!r.people.length) return { problem: "That RAIMS page has no workers that this site can read.", seen: { page: link, title: r.title, url: r.url, text: r.txt.slice(0, 1500), tables: r.tables, hints: r.hints } };
       return { people: r.people.slice(0, 100) };
     }
     const { J, parsed, ajax, pages } = await raimsOpen(q), H = parsed.head.map(h => h.toLowerCase());
