@@ -475,7 +475,7 @@ function ClDocUpload({ c }) {
 function ClearanceCard({ cid, admin }) {
   const c = store.S.clearances.find(x => x.id === cid); if (!c) return null;
   const w = clPerson(c);
-  const rows = [["Applicant", w.name], ["Filed by", w.via], ["Father's name", w.father], ["Passport no.", w.passport], ["Passport expiry", fdate(w.passportExpiry)], ["Date of birth", fdate(w.dob)], ["Mobile", w.phone], ["District", w.district], ["Trade", w.trade], ["Destination", c.country], ["Employer / sponsor", c.employer], ["Visa no.", c.visaNo], ["Visa type", c.visaType], ["Planned flight", c.flightDate ? fdate(c.flightDate) : ""], ...(c.icNo ? [["IC No.", c.icNo]] : []), ...(c.fee ? [["Processing fee", bdtFmt(c.fee)]] : []), ...(c.due ? [["Previous due", bdtFmt(c.due)]] : []), ["Notes", c.notes]];
+  const rows = [["Applicant", w.name], ["Filed by", w.via], ["Father's name", w.father], ["Passport no.", w.passport], ["Passport expiry", fdate(w.passportExpiry)], ["Date of birth", fdate(w.dob)], ["Mobile", w.phone], ["District", w.district], ["Trade", w.trade], ["Destination", c.country], ["Employer / sponsor", c.employer], ["Visa no.", c.visaNo], ["Visa type", c.visaType], ["Planned flight", c.flightDate ? fdate(c.flightDate) : ""], ...(c.icNo ? [["IC No.", c.icNo]] : []), ...(c.raimsId ? [["RAIMS ID No.", c.raimsId]] : []), ...(c.fee ? [["Processing fee", bdtFmt(c.fee)]] : []), ...(c.due ? [["Previous due", bdtFmt(c.due)]] : []), ["Notes", c.notes]];
   return (
     <>
       <h3>BMET clearance: {w.name}</h3>

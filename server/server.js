@@ -668,7 +668,7 @@ A["admin.clearanceBulk"] = async (d, u) => {
       must(!db.clearances.some(c => c.workerId === old.id && c.status !== "rejected"), n + `${old.name} already has an open clearance file.`);
     }
   });
-  for (const r of rows) await A["admin.clearance"]({ bulk: true, agentId: r.agentId || "", agentName: r.agentName, newWorker: { name: r.name, passport: r.passport, phone: r.phone }, icNo: r.icNo, fee: r.fee, due: r.due, country: d.country, employer: d.employer, visaType: d.visaType, flightDate: d.flightDate, notes: d.notes }, u);
+  for (const r of rows) await A["admin.clearance"]({ bulk: true, agentId: r.agentId || "", agentName: r.agentName, newWorker: { name: r.name, passport: r.passport, phone: r.phone }, icNo: r.icNo, raimsId: r.raimsId, fee: r.fee, due: r.due, country: d.country, employer: d.employer, visaType: d.visaType, flightDate: d.flightDate, notes: d.notes }, u);
   notifyAdmins(`${rows.length} BMET clearance file(s) added in bulk (${d.country}) by ${u.name}.`, "clearance");
   return { msg: `${rows.length} clearance application(s) created.` };
 };
@@ -699,7 +699,7 @@ A["admin.clearance"] = async (d, u) => {
   const amt = v => v === "" || v == null ? null : Math.round(Number(v) * 100) / 100;
   const fee = amt(d.fee) ?? Number(db.settings.clearanceFee || 0), due = amt(d.due) || 0;
   must(fee >= 0 && fee < 1e8 && due >= 0 && due < 1e8, "Check the processing fee and due amount.");
-  const c = { id: id("c"), agentId: ag ? ag.id : null, ...(ag ? {} : { agentName }), workerId: w.id, candidateId: null, country: d.country, employer: str(d.employer, 150), visaNo: str(d.visaNo, 40), visaType: str(d.visaType, 40), flightDate: str(d.flightDate, 10), icNo: str(d.icNo, 40), fee, due, docs, files, notes: str(d.notes, 2000), status: "pending", history: [{ s: "pending", at: now() }], created: now(), by: u.id };
+  const c = { id: id("c"), agentId: ag ? ag.id : null, ...(ag ? {} : { agentName }), workerId: w.id, candidateId: null, country: d.country, employer: str(d.employer, 150), visaNo: str(d.visaNo, 40), visaType: str(d.visaType, 40), flightDate: str(d.flightDate, 10), icNo: str(d.icNo, 40), ...(/^\d{4,12}$/.test(String(d.raimsId || "")) ? { raimsId: String(d.raimsId) } : {}), fee, due, docs, files, notes: str(d.notes, 2000), status: "pending", history: [{ s: "pending", at: now() }], created: now(), by: u.id };
   // a RAIMS IC number given with the file becomes its reference number (when no other file has it)
   const icRef = c.icNo.replace(/\s+/g, "").toUpperCase();
   db.clearances.push(c); c.ref = /^IC[-A-Z0-9/]{3,39}$/.test(icRef) && !db.clearances.some(x => x !== c && String(x.ref || "").toUpperCase() === icRef) ? icRef : ecRef(c);
