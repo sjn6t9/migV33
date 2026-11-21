@@ -940,7 +940,13 @@ A["admin.raims"] = async (d, u) => {
     const showPage = async (J, link, ic0, country0) => {
       const pg = await rq(J, link), txt = htmlText(pg.text), title = htmlText((/<title>([\s\S]*?)<\/title>/i.exec(pg.text) || [])[1] || ""), tables = (pg.text.match(/<table/gi) || []).length;
       must(!/name="password"/i.test(pg.text), "RAIMS signed out. Try again.");
-      const icp = norm((/\bIC[-\s]?\d{4}[-\s]?RL\d+[-\s]?\d+/i.exec(txt) || /\bIC[-\s]?[A-Z0-9][A-Z0-9-]{5,}/i.exec(txt) || [])[0]) || ic0 || "";
+      // the application's IC number; an IC-… number written after an employer / company registration label is not it
+      const icp = (() => { const P = pg.text.replace(/<script[\s\S]*?<\/script>|<style[\s\S]*?<\/style>/gi, " ").split(/<[^>]+>/).map(x => htmlText(x)).filter(Boolean);
+        let fallback = ""; for (let i = 0; i < P.length; i++) { const m = /\bIC[-\s]?\d{4}[-\s]?[A-Z0-9]+[-\s]?\d+/i.exec(P[i]); if (!m) continue;
+          const lab = P.slice(Math.max(0, i - 2), i).join(" ") + " " + P[i].slice(0, m.index);
+          if (/registration|employer|company|owner|permission|demand|visa/i.test(lab)) continue;
+          if (/\b(IC|EC|clearance)\b/i.test(lab)) return norm(m[0]); if (!fallback) fallback = norm(m[0]); }
+        return ic0 || fallback; })();
       const ctry = country0 || (() => { const i = txt.search(/country/i); if (i < 0) return ""; const seg = txt.slice(i, i + 80).toLowerCase(); let best = ""; let at = 1e9;
         for (const c of [...Object.keys(COUNTRIES), ...CL_REGIONS.flatMap(([, L]) => L)]) { const j = seg.indexOf(c.toLowerCase()); if (j >= 0 && (j < at || (j === at && c.length > best.length))) { at = j; best = c; } } return best; })();
       const people = [];
