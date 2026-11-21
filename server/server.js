@@ -618,6 +618,36 @@ A["agent.clearance"] = async (d, u) => {
   notifyAdmins(`New BMET clearance file: ${w.name} (${d.country}) from ${u.agent.business}.`, "clearance");
   return { msg: "Clearance application submitted." };
 };
+/* the agency creates a clearance file itself: for a registered agent (the agent sees it in their portal) or for a custom agent / reference name typed in */
+A["admin.clearance"] = async (d, u) => {
+  needPerm(u, "clearance");
+  const ag = d.agentId ? db.users.find(x => x.id === d.agentId && x.role === "agent") : null;
+  must(!d.agentId || ag, "Agent not found.");
+  const agentName = ag ? "" : str(d.agentName, 120);
+  must(COUNTRIES[d.country], "Select a country."); must(d.files?.passport && d.files?.visa, "Upload the passport copy and visa copy."); must(str(d.employer), "Enter the employer / sponsor name.");
+  const mine = w => ag ? w.agentId === ag.id : !w.agentId;
+  if (!d.workerId && d.newWorker) {
+    const nw = d.newWorker, pass = str(nw.passport, 30).replace(/\s+/g, "").toUpperCase();
+    must(str(nw.name).length >= 2 && pass, "Enter the worker's name and passport number.");
+    const old = db.workers.find(x => x.passport.replace(/\s+/g, "").toUpperCase() === pass);
+    if (old) { must(mine(old), `Passport ${pass} is already registered with ${user(old.agentId)?.agent?.business || old.agentName || "another agent"}.`); d.workerId = old.id; }
+    else {
+      const nwr = { id: id("w"), agentId: ag ? ag.id : null, ...(ag ? {} : { agentName }), name: str(nw.name, 120), father: "", passport: pass, passportExpiry: "", dob: "", phone: str(nw.phone, 30), district: "", trade: str(nw.trade, 80), experience: 0, created: now(), by: u.id };
+      db.workers.push(nwr); d.workerId = nwr.id;
+    }
+  }
+  const w = worker(d.workerId); must(w && mine(w), ag ? "Choose one of this agent's workers." : "Choose a worker.");
+  must(!db.clearances.some(c => c.workerId === w.id && c.status !== "rejected"), `${w.name} already has an open clearance file.`);
+  const owner = ag ? ag.id : u.id;
+  const files = { passport: storeFile(d.files.passport, owner), visa: storeFile(d.files.visa, owner), contract: d.files.contract ? storeFile(d.files.contract, owner) : null, others: [] };
+  const docs = ["Passport copy", "Visa copy", ...(files.contract ? ["Employment contract"] : [])];
+  const c = { id: id("c"), agentId: ag ? ag.id : null, ...(ag ? {} : { agentName }), workerId: w.id, candidateId: null, country: d.country, employer: str(d.employer, 150), visaNo: str(d.visaNo, 40), visaType: str(d.visaType, 40), flightDate: str(d.flightDate, 10), docs, files, notes: str(d.notes, 2000), status: "pending", history: [{ s: "pending", at: now() }], created: now(), by: u.id };
+  db.clearances.push(c); c.ref = ecRef(c);
+  const fee = Number(db.settings.clearanceFee || 0);
+  if (ag && fee > 0) db.ledger.push({ id: id("l"), agentId: ag.id, type: "charge", desc: `BMET clearance processing: ${w.name}`, amount: fee, date: now().slice(0, 10), method: "", ref: "", status: "confirmed" });
+  if (ag) notify(ag.id, `The agency created a BMET clearance file for ${w.name} (${d.country}).`);
+  return { msg: "Clearance application created." };
+};
 A["agent.applyJob"] = async ({ jobId, workerIds }, u) => {
   needRole(u, "agent"); const j = job(jobId); must(j && j.status === "active", "This job is no longer open.");
   const ids = (workerIds || []).filter(wid => { const w = worker(wid); return w && w.agentId === u.id && !db.applications.some(a => a.jobId === j.id && a.workerId === wid); });
@@ -707,13 +737,13 @@ A["admin.clStatus"] = async ({ id: cid, status, text }, u) => {
     if (c.status !== "custom") c.baseStage = CL_STAGES.includes(c.status) ? c.status : (c.baseStage || "pending");
     c.status = "custom"; c.statusText = t; c.history.push({ s: "custom", t, at: now() });
     notify(c.agentId || c.candidateId, `BMET clearance for ${name}: ${t}.`);
-    return { msg: `Clearance status: ${t}. ${c.agentId ? "Agent" : "Job seeker"} notified.` };
+    return { msg: `Clearance status: ${t}.${c.agentId ? " Agent notified." : c.candidateId ? " Job seeker notified." : ""}` };
   }
   if (c.status === status) return {};
   c.status = status; delete c.statusText; c.history.push({ s: status, at: now() });
   const payNow = c.agentId && ["final", "approved"].includes(status) && !["submitted", "paid"].includes(c.payment?.status) ? " Send the payment receipt from BMET clearance (Unpaid)." : "";
   notify(c.agentId || c.candidateId, `BMET clearance for ${name}: ${LABEL[status]}.${status === "approved" ? " The clearance card will be sent to your portal." : ""}${payNow}`);
-  return { msg: `Clearance status: ${LABEL[status]}. ${c.agentId ? "Agent" : "Job seeker"} notified.` };
+  return { msg: `Clearance status: ${LABEL[status]}.${c.agentId ? " Agent notified." : c.candidateId ? " Job seeker notified." : ""}` };
 };
 /* the EC reference number can be set or changed by the agency until the file is Approved */
 A["admin.clRef"] = async ({ id: cid, ref }, u) => {
@@ -725,7 +755,7 @@ A["admin.clRef"] = async ({ id: cid, ref }, u) => {
 };
 A["admin.card"] = async ({ id: cid, file, fee }, u) => {
   needPerm(u, "clearance"); const c = db.clearances.find(x => x.id === cid); must(c && c.status === "approved", "Upload the card after the file is Approved.");
-  const owner = c.agentId || c.candidateId; const ref = storeFile(file, owner);
+  const owner = c.agentId || c.candidateId; const ref = storeFile(file, owner || u.id);
   const replacing = !!c.card; const f = replacing ? Number(c.card.fee || 0) : numv(fee, 0, 1e7);
   if (c.card) dropFile(c.card);
   const isCand = !c.agentId;
@@ -733,7 +763,7 @@ A["admin.card"] = async ({ id: cid, file, fee }, u) => {
   const name = c.workerId ? worker(c.workerId)?.name : c.fullName;
   if (!replacing && f > 0 && c.agentId) db.ledger.push({ id: id("l"), agentId: c.agentId, type: "charge", desc: `BMET clearance card fee: ${name}`, amount: f, date: now().slice(0, 10), method: "", ref: "", status: "confirmed" });
   notify(owner, `${replacing ? "Updated clearance card" : "Clearance card"} for ${name} is ready. Download it from your portal${f > 0 && !replacing ? `. Card fee: ${bdt(f)}` : ""}.`);
-  return { msg: `Clearance card sent to the ${c.agentId ? "agent" : "job seeker"}.` };
+  return { msg: c.agentId ? "Clearance card sent to the agent." : c.candidateId ? "Clearance card sent to the job seeker." : "Clearance card saved." };
 };
 /* clearance fee: after Final Approval the agent sends a payment receipt; the agency approves it and the file shows Paid */
 const CL_PAYABLE = ["final", "approved"];

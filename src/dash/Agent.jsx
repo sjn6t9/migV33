@@ -280,18 +280,30 @@ function ClearanceList({ C, W, active }) {
 }
 
 /* one form for one or more workers going to the same country and employer; each worker gets their own EC file */
-function GroupEcForm({ C, W, active, onDone }) {
+export function GroupEcForm({ C, W, active, onDone, admin }) {
   const S = store.S; const fee = Number(S.settings.clearanceFee || 0);
+  // admin/staff: the agent is picked from the registered agents or typed as a custom name
+  const [agText, setAgText] = React.useState("");
+  const agName = a => a.agent?.business || a.name;
+  const agents = admin ? (S.users || []).filter(x => x.role === "agent") : [];
+  const ag = admin ? agents.find(a => agName(a).trim().toLowerCase() === agText.trim().toLowerCase()) : null;
+  if (admin) {
+    C = S.clearances || []; active = true;
+    const k = agText.trim().toLowerCase();
+    W = (S.workers || []).filter(w => ag ? w.agentId === ag.id : k && !w.agentId && String(w.agentName || "").trim().toLowerCase() === k);
+  }
   const free = W.filter(w => !C.some(c => c.workerId === w.id && c.status !== "rejected"));
   const [sel, setSel] = React.useState(() => ui.clWorker && free.some(w => w.id === ui.clWorker) ? [ui.clWorker] : []);
   const [busy, setBusy] = React.useState(false);
   const [fresh, setFresh] = React.useState(() => (ui.clWorker || W.length ? [] : [1])); // workers typed in here (not yet in My workers)
   const nextKey = React.useRef(2);
   const toggle = id => setSel(L => L.includes(id) ? L.filter(x => x !== id) : [...L, id]);
+  React.useEffect(() => { if (admin) setSel([]); }, [admin, ag?.id, ag ? "" : agText.trim().toLowerCase()]);
   const submit = async e => {
     e.preventDefault(); const form = e.currentTarget; const fd = new FormData(form); const d = Object.fromEntries(fd);
     if (!active) return toast("Your account must be approved first.");
     const list = [...sel.map(id => ({ key: id, id })), ...fresh.map(k => ({ key: `n${k}`, nw: { name: (d[`nwName_n${k}`] || "").trim(), passport: (d[`nwPass_n${k}`] || "").trim(), phone: d[`nwPhone_n${k}`] || "", trade: d[`nwTrade_n${k}`] || "" } }))];
+    if (admin && !agText.trim()) return toast("Select the agent or write a name.");
     if (!list.length) return toast("Select at least one worker.");
     if (!String(d.employer || "").trim()) return toast("Enter the employer / sponsor name.");
     const pick = n => { const f = fd.get(n); return f && f.size ? f : null; };
@@ -305,7 +317,7 @@ function GroupEcForm({ C, W, active, onDone }) {
       for (const x of list) {
         const contractF = pick(`contract_${x.key}`);
         const files = { passport: await readUpload(pick(`pass_${x.key}`), { imageMax: 1800 }), visa: await readUpload(pick(`visa_${x.key}`), { imageMax: 1800 }), contract: contractF ? await readUpload(contractF, { imageMax: 1800 }) : null };
-        const r = await act("agent.clearance", { ...(x.id ? { workerId: x.id } : { newWorker: x.nw }), country: d.country, employer: d.employer, visaNo: d[`visaNo_${x.key}`] || "", visaType: d.visaType, flightDate: d.flightDate, notes: d.notes, files }, { quiet: true });
+        const r = await act(admin ? "admin.clearance" : "agent.clearance", { ...(admin ? (ag ? { agentId: ag.id } : { agentName: agText.trim() }) : {}), ...(x.id ? { workerId: x.id } : { newWorker: x.nw }), country: d.country, employer: d.employer, visaNo: d[`visaNo_${x.key}`] || "", visaType: d.visaType, flightDate: d.flightDate, notes: d.notes, files }, { quiet: true });
         if (r) ok++; else break; // the server's reason is shown; the workers already sent leave the list
       }
       if (ok && ok < list.length) { const done = new Set(list.slice(0, ok).map(x => x.key)); setSel(L => L.filter(id => !done.has(id))); setFresh(L => L.filter(k => !done.has(`n${k}`))); }
@@ -317,13 +329,17 @@ function GroupEcForm({ C, W, active, onDone }) {
     <form className="card fgrid ec-form" onSubmit={submit} noValidate>
       <h3 className="full">Create New Application</h3>
       <p className="muted small full">Choose the workers going to the same country and employer. Each worker gets their own EC Ref No.</p>
+      {admin && <Field label="Agent" hint={ag ? "Registered agent: the file also shows in this agent's portal." : agText.trim() ? "Custom name (not a registered agent)." : "Pick a registered agent from the list, or type a name."} full>
+        <input type="text" list="ec-agent-list" value={agText} onChange={e => setAgText(e.target.value)} maxLength={120} placeholder="Select an agent or type a name" />
+        <datalist id="ec-agent-list">{agents.map(a => <option key={a.id} value={agName(a)}>{a.agent?.business && a.name !== a.agent.business ? a.name : ""}</option>)}</datalist>
+      </Field>}
       <Field label="Destination country"><select name="country" defaultValue="Saudi Arabia"><Options list={Object.keys(COUNTRIES)} /></select></Field>
       <Field label="Employer / sponsor name"><input type="text" name="employer" required /></Field>
       <Field label="Visa type"><select name="visaType"><Options list={["Work visa", "Free visa", "Group visa", "Other"]} /></select></Field>
       <Field label="Planned flight date"><input type="date" name="flightDate" /></Field>
       <fieldset className="plain full"><legend className="small b">Workers</legend>
         {free.length ? <div className="ec-pick">{free.map(w => <label key={w.id} className={`check ec-chip${sel.includes(w.id) ? " on" : ""}`}><input type="checkbox" checked={sel.includes(w.id)} onChange={() => toggle(w.id)} /> {w.name} <span className="muted small" data-notr>{w.passport}</span></label>)}</div>
-          : <p className="muted small">{W.length ? "All your workers already have an open clearance file." : "No saved workers yet. Add a new worker below."}</p>}
+          : <p className="muted small">{admin ? (W.length ? "All this agent's workers already have an open clearance file." : "No saved workers for this agent. Add a new worker below.") : W.length ? "All your workers already have an open clearance file." : "No saved workers yet. Add a new worker below."}</p>}
       </fieldset>
       {sel.map(id => { const w = worker(id); return (
         <div key={id} className="full ec-worker">
@@ -336,7 +352,7 @@ function GroupEcForm({ C, W, active, onDone }) {
           <div className="fgrid mb6">
             <Field label="Worker's full name"><input type="text" name={`nwName_n${k}`} maxLength={120} /></Field>
             <Field label="Passport number" hint={(S.passports || []).length ? "Pick from the office's passport list, or type it" : ""}><input type="text" name={`nwPass_n${k}`} maxLength={30} style={{ textTransform: "uppercase" }} list="ec-pp-list"
-              onChange={e => { const pp = (S.passports || []).find(x => x.passport === e.target.value.replace(/\s+/g, "").toUpperCase()); const nm = e.target.form?.elements[`nwName_n${k}`]; if (pp && nm && !nm.value.trim()) nm.value = pp.name; }} /></Field>
+              onChange={e => { const pp = (S.passports || []).find(x => x.passport === e.target.value.replace(/\s+/g, "").toUpperCase()); const nm = e.target.form?.elements[`nwName_n${k}`]; if (pp && nm && !nm.value.trim()) nm.value = pp.name; if (admin && pp && !agText.trim()) { const pa = agents.find(a => a.id === pp.agentId); if (pa) setAgText(agName(pa)); } }} /></Field>
             <Field label="Mobile number (optional)"><input type="tel" name={`nwPhone_n${k}`} maxLength={30} /></Field>
             <Field label="Trade (optional)"><input type="text" name={`nwTrade_n${k}`} maxLength={80} placeholder="e.g. Mason" /></Field>
           </div>
@@ -344,10 +360,10 @@ function GroupEcForm({ C, W, active, onDone }) {
           <datalist id="ec-pp-list">{(S.passports || []).filter(x => !W.some(w => (w.passport || "").replace(/\s+/g, "").toUpperCase() === x.passport)).map(x => <option key={x.id} value={x.passport}>{`${x.name} · ${x.country}`}</option>)}</datalist>
         </div>))}
       <div className="full"><button type="button" className="btn sm" onClick={() => setFresh(L => [...L, nextKey.current++])}><LuPlus /> Add a new worker</button>
-        <span className="muted small"> The new worker is also saved in My workers.</span></div>
-      <Field label="Notes for the agency" full><textarea name="notes" className="short" /></Field>
+        <span className="muted small">{admin ? "The new worker is saved under this agent." : "The new worker is also saved in My workers."}</span></div>
+      <Field label={admin ? "Notes" : "Notes for the agency"} full><textarea name="notes" className="short" /></Field>
       <div className="full row"><button className="btn pri" type="submit" disabled={!active || busy || !(sel.length + fresh.length)}><LuSend /> {busy ? "Uploading…" : sel.length + fresh.length > 1 ? `Submit ${sel.length + fresh.length} applications` : "Submit application"}</button>
-        {fee > 0 && <span className="muted small">{`Processing charge of ${bdtFmt(fee)} per worker is added to your account.`}</span>}</div>
+        {fee > 0 && (!admin || ag) && <span className="muted small">{admin ? `Processing charge of ${bdtFmt(fee)} per worker is added to the agent's account.` : `Processing charge of ${bdtFmt(fee)} per worker is added to your account.`}</span>}</div>
     </form>
   );
 }

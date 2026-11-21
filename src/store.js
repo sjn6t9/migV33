@@ -76,8 +76,8 @@ export function candOf(a) {
 /* Whose clearance file is this: an agent's worker or a job seeker applying directly */
 export function clPerson(c) {
   if (c.workerId) {
-    const w = worker(c.workerId) || { name: "Removed worker" }; const ag = user(c.agentId);
-    return { ...w, via: ag?.agent?.business || ag?.name || "Agent", kind: "agent", ownerId: c.agentId };
+    const w = worker(c.workerId) || { name: "Removed worker" }; const ag = c.agentId ? user(c.agentId) : null;
+    return { ...w, via: ag ? ag.agent?.business || ag.name || "Agent" : c.agentName || w.agentName || "Office", kind: "agent", ownerId: c.agentId };
   }
   const u = user(c.candidateId) || { name: "Removed user", profile: {} }; const p = u.profile || {};
   return { name: c.fullName || u.name, passport: c.passportNo || p.passportNo || "", passportExpiry: p.passportExpiry, phone: p.phone, district: p.district, trade: p.trade, father: "", dob: "", via: "Job seeker (direct)", kind: "candidate", ownerId: c.candidateId };
