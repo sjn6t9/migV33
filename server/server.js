@@ -66,7 +66,9 @@ function save() {
 
 /* Fiji wages are hourly: mark Fiji jobs whose amounts already look hourly (others keep monthly until edited) */
 /* every clearance file gets an EC reference number, e.g. EC-2026-RL1217-100001 (older files get one in date order) */
-const ecRef = c => { db.clSeq = (db.clSeq || 100000) + 1; return `EC-${String(c.created || now()).slice(0, 4)}-RL1217-${db.clSeq}`; };
+const ecRef = c => { db.clSeq = (db.clSeq || 100000) + 1; return `IC-${String(c.created || now()).slice(0, 4)}-RL1217-${db.clSeq}`; };
+// numbers made before start with IC too (EC-2026-RL1217-100002 → IC-2026-RL1217-100002)
+for (const c of db.clearances) if (/^EC-\d{4}-RL1217-\d+$/.test(c.ref || "")) c.ref = "IC" + c.ref.slice(2);
 [...db.clearances].sort((a, b) => String(a.created).localeCompare(String(b.created))).forEach(c => { if (!c.ref) c.ref = ecRef(c); });
 for (const j of db.jobs) if (!j.period) j.period = HOURLY.includes(j.country) && Number(j.salaryMax) <= 500 ? "hour" : "month";
 /* home page slideshow: the pictures shipped in dist/scenery are the starting list; after that the admin manages it */
@@ -243,6 +245,7 @@ function viewFor(u) {
     if (can(u, "jobs")) pub.jobTemplates = db.jobTemplates;
     if (can(u, "office")) pub.office = { entries: db.office.entries, auto: officeAuto(), leaders: leaders() };
     { const me = leaders().find(x => x.uid === u.id); if (me) pub.myMoney = { entries: db.office.entries.filter(e => e.people?.includes(me.k)), me }; }
+    if (can(u, "clearance")) pub.raims = db.raims ? { email: db.raims.email, auto: db.raims.auto, saved: !!db.raims.pass, last: db.raims.last || null } : null;
     if (PP_PERMS.some(k => can(u, k))) { pub.passports = db.passports; pub.agentBook = db.agentBook; pub.bookMatch = Object.fromEntries(db.users.filter(x => x.role === "agent" && x.status !== "active").map(x => [x.id, bookMatches(x).map(b => b.name)]).filter(([, v]) => v.length)); }
     if (can(u, "visa")) pub.visa = db.visa;
     if (isStaffRole(u)) pub.attendance = attView(u, u.role === "admin");
@@ -823,6 +826,90 @@ A["admin.clStatus"] = async ({ id: cid, status, text }, u) => {
   const payNow = c.agentId && ["final", "approved"].includes(status) && !["submitted", "paid"].includes(c.payment?.status) ? " Send the payment receipt from BMET clearance (Unpaid)." : "";
   notify(c.agentId || c.candidateId, `BMET clearance for ${name}: ${LABEL[status]}.${status === "approved" ? " The clearance card will be sent to your portal." : ""}${payNow}`);
   return { msg: `Clearance status: ${LABEL[status]}.${c.agentId ? " Agent notified." : c.candidateId ? " Job seeker notified." : ""}` };
+};
+/* ---- RAIMS (raims.oep.gov.bd): the agency's own RAIMS sign-in, kept on this server; the EC application list
+   is read and each file here with the same IC number (or passport) takes the RAIMS status, up to Approved ---- */
+const RAIMS = process.env.RAIMS_BASE || "https://raims.oep.gov.bd";
+const raimsKey = (() => { const f = path.join(DATA_DIR, "raims.key"); try { return fs.readFileSync(f); } catch { const k = crypto.randomBytes(32); fs.writeFileSync(f, k, { mode: 0o600 }); return k; } })();
+const seal = t => { const iv = crypto.randomBytes(12), c = crypto.createCipheriv("aes-256-gcm", raimsKey, iv), e = Buffer.concat([c.update(String(t), "utf8"), c.final()]); return [iv, c.getAuthTag(), e].map(b => b.toString("base64")).join("."); };
+const unseal = v => { const [iv, tag, e] = String(v).split(".").map(b => Buffer.from(b, "base64")); const d = crypto.createDecipheriv("aes-256-gcm", raimsKey, iv); d.setAuthTag(tag); return Buffer.concat([d.update(e), d.final()]).toString("utf8"); };
+function jar() {
+  const c = {};
+  return { set(res) { for (const h of res.headers.getSetCookie?.() || []) { const [kv] = h.split(";"), i = kv.indexOf("="); if (i > 0) c[kv.slice(0, i).trim()] = kv.slice(i + 1).trim(); } }, get: () => Object.entries(c).map(([k, v]) => `${k}=${v}`).join("; "), c };
+}
+async function rq(J, url, opt = {}) {
+  let u = url.startsWith("http") ? url : RAIMS + url, r;
+  for (let i = 0; i < 6; i++) {
+    r = await fetch(u, { ...opt, redirect: "manual", headers: { "User-Agent": "Mozilla/5.0 (MAM Overseas portal)", Accept: "text/html,application/json,*/*", ...(opt.headers || {}), Cookie: J.get() }, signal: AbortSignal.timeout(30000) });
+    J.set(r); if (![301, 302, 303, 307, 308].includes(r.status)) break;
+    u = new URL(r.headers.get("location"), u).href; if (r.status !== 307 && r.status !== 308) opt = { headers: opt.headers };
+  }
+  return { r, url: u, text: await r.text() };
+}
+const RAIMS_STAGE = [[/reject|cancel|declin/i, "rejected"], [/^approved$|^approve$|clearance (issued|approved)|^issued/i, "approved"], [/final/i, "final"], [/\badg\b|additional director general/i, "adg"],
+  [/director general|\bdg\b/i, "adg"], [/\bdirector\b/i, "director"], [/\bdd\b|deputy director/i, "dd"], [/\bad\b|assistant director/i, "ad"], [/section|desk|officer/i, "section"], [/submit|bmet|forward|pending|process/i, "sent_bmet"]];
+const raimsStage = t => (RAIMS_STAGE.find(([re]) => re.test(String(t).trim())) || [])[1] || "";
+const cells = tr => [...tr.matchAll(/<t[dh][^>]*>([\s\S]*?)<\/t[dh]>/gi)].map(m => htmlText(m[1]).replace(/\s+/g, " ").trim());
+function raimsRows(html, json) {
+  const rows = [];
+  if (json) { const data = Array.isArray(json) ? json : json.data || json.rows || json.items || []; for (const x of data) rows.push(Array.isArray(x) ? x.map(v => htmlText(String(v ?? "")).trim()) : Object.entries(x).map(([k, v]) => `${k}: ${htmlText(String(v ?? "")).trim()}`)); return { head: [], rows }; }
+  const t = /<table[\s\S]*?<\/table>/i.exec(html || ""); if (!t) return { head: [], rows };
+  const trs = [...t[0].matchAll(/<tr[\s\S]*?<\/tr>/gi)].map(m => m[0]); const head = trs.length ? cells(trs[0]) : [];
+  for (const tr of trs.slice(1)) { const c = cells(tr); if (c.length > 1) rows.push(c); }
+  return { head, rows };
+}
+async function raimsSync(by = "auto") {
+  const R = db.raims; must(R?.email && R?.pass, "Save the RAIMS email and password first.");
+  const J = jar(), out = { at: now(), by, rows: 0, matched: 0, updated: [], statuses: {} };
+  try {
+    const lp = await rq(J, "/agency/login");
+    const tok = (/name="_token"[^>]*value="([^"]+)"/.exec(lp.text) || /name="csrf-token"[^>]*content="([^"]+)"/.exec(lp.text) || [])[1];
+    const action = (/<form[^>]*action="([^"]*login[^"]*)"/i.exec(lp.text) || [])[1] || "/agency/login";
+    must(tok, "The RAIMS sign-in page did not load (no form). The site may be down or blocking this server.");
+    const li = await rq(J, action.replace(/&amp;/g, "&"), { method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded", Referer: lp.url }, body: new URLSearchParams({ _token: tok, email: R.email, password: unseal(R.pass), remember: "on" }).toString() });
+    if (/name="password"/i.test(li.text) && /login/i.test(li.url)) { const m = /class="[^"]*(?:invalid-feedback|alert|text-danger|error)[^"]*"[^>]*>([\s\S]*?)<\//i.exec(li.text); must(false, `RAIMS did not accept the sign-in${m ? `: ${htmlText(m[1]).trim()}` : ". Check the email and password."}`); }
+    if (/otp|verification code/i.test(li.text) && /name="(otp|code)"/i.test(li.text)) must(false, "RAIMS asks for a one-time code at sign-in, so it cannot be read automatically.");
+    const lst = await rq(J, "/agency/ec/application/list");
+    must(!/name="password"/i.test(lst.text), "RAIMS signed out before the list opened. Try again.");
+    let parsed = raimsRows(lst.text);
+    if (!parsed.rows.length) { // a list filled by the page's script: ask the same address the script asks
+      const aj = (/ajax\s*:\s*\{?\s*(?:url\s*:\s*)?["'`]([^"'`]+)["'`]/i.exec(lst.text) || /url\s*:\s*["'`]([^"'`]*(?:ec|application)[^"'`]*)["'`]/i.exec(lst.text) || [])[1];
+      if (aj) { const q = new URLSearchParams({ draw: "1", start: "0", length: "1000" }); const j = await rq(J, aj.replace(/&amp;/g, "&") + (aj.includes("?") ? "&" : "?") + q, { headers: { "X-Requested-With": "XMLHttpRequest", Accept: "application/json", "X-CSRF-TOKEN": (/name="csrf-token"[^>]*content="([^"]+)"/.exec(lst.text) || [])[1] || "" } }); try { parsed = raimsRows("", JSON.parse(j.text)); out.ajax = aj; } catch {} }
+    }
+    out.head = parsed.head; out.rows = parsed.rows.length; out.sample = parsed.rows.slice(0, 3);
+    const si = parsed.head.findIndex(h => /status/i.test(h));
+    for (const row of parsed.rows) {
+      const line = row.join(" | "), ic = (/\bIC[-\s]?[A-Z0-9][A-Z0-9-]{3,}/i.exec(line) || [])[0]?.replace(/\s+/g, "").toUpperCase();
+      const pp = (/\b([A-Z]{1,2}\d{7,8})\b/.exec(line) || [])[1];
+      const st = si >= 0 ? row[si] : (row.find(v => raimsStage(v.replace(/^status:\s*/i, ""))) || "").replace(/^status:\s*/i, "");
+      if (st) out.statuses[st] = (out.statuses[st] || 0) + 1;
+      const c = db.clearances.find(x => ic && String(x.ref || "").toUpperCase() === ic) || db.clearances.find(x => pp && ppNorm(worker(x.workerId)?.passport || user(x.candidateId)?.profile?.passportNo || x.passport || "") === pp);
+      if (!c) continue; out.matched++;
+      const stage = raimsStage(st); if (!stage) continue;
+      const cur = c.status === "custom" ? c.baseStage : c.status, ci = CL_STAGES.indexOf(cur), ni = CL_STAGES.indexOf(stage);
+      if (c.status === "approved" || c.card) continue; // done here already
+      if (stage !== "rejected" && ni <= ci) continue; // RAIMS behind or equal: keep ours
+      await A["admin.clStatus"]({ id: c.id, status: stage }, { role: "admin", id: "raims", name: "RAIMS" });
+      c.history[c.history.length - 1].by = "RAIMS"; c.raims = { status: st, at: now() };
+      out.updated.push({ ref: c.ref, name: worker(c.workerId)?.name || c.fullName || "", from: LABEL[cur] || cur, to: LABEL[stage], raims: st });
+    }
+    out.ok = true;
+  } catch (e) { out.ok = false; out.error = e instanceof Fail ? e.message : `Could not reach RAIMS: ${e.message}`; }
+  R.last = out; save(); return out;
+}
+setInterval(() => { if (db.raims?.auto && db.raims.pass) raimsSync("auto").catch(() => {}); }, 30 * 60e3).unref();
+A["admin.raims"] = async (d, u) => {
+  needPerm(u, "clearance");
+  if (d.op === "save") {
+    must(u.role === "admin", "Only the admin can change the RAIMS sign-in.", 403);
+    const email = str(d.email, 120).toLowerCase(); must(/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email), "Enter the RAIMS email.");
+    db.raims = { ...(db.raims || {}), email, auto: d.auto !== false, ...(d.password ? { pass: seal(String(d.password).slice(0, 200)) } : {}) };
+    must(db.raims.pass, "Enter the RAIMS password.");
+    return { msg: "RAIMS sign-in saved." };
+  }
+  if (d.op === "remove") { must(u.role === "admin", "Only the admin can change the RAIMS sign-in.", 403); delete db.raims; return { msg: "RAIMS sign-in removed." }; }
+  if (d.op === "sync") { const r = await raimsSync(u.name); return r.ok ? { msg: `RAIMS: ${r.rows} files read, ${r.matched} matched, ${r.updated.length} updated.` } : { problem: r.error }; }
+  must(false, "Unknown request.");
 };
 /* the EC reference number can be set or changed by the agency until the file is Approved */
 A["admin.clRef"] = async ({ id: cid, ref }, u) => {

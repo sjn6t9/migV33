@@ -24,7 +24,7 @@ import { BulkEcForm } from "./BulkClearance.jsx";
 import { AgentsPage } from "./AgentBook.jsx";
 import { agentRows } from "../statement.js";
 import { MFS, BANKS } from "../banks.js";
-import { LuReceipt, LuLandmark, LuBanknote, LuScrollText, LuBookUser, LuFileCheck2, LuHandCoins, LuPlaneTakeoff, LuCalendarCheck, LuSettings2, LuLogOut, LuMegaphone, LuCirclePlus, LuListPlus, LuContact, LuGlobe } from "react-icons/lu";
+import { LuReceipt, LuLandmark, LuBanknote, LuScrollText, LuBookUser, LuFileCheck2, LuHandCoins, LuPlaneTakeoff, LuCalendarCheck, LuSettings2, LuLogOut, LuMegaphone, LuCirclePlus, LuListPlus, LuContact, LuGlobe, LuRefreshCw } from "react-icons/lu";
 import { ShareButton, storeCard } from "../Share.jsx";
 import { ChatInbox, useInboxUnread } from "../LiveChat.jsx";
 
@@ -554,6 +554,35 @@ const SENT_IDX = CL_STAGES.indexOf("sent_bmet");
 const pastSent = c => c.status === "rejected" || CL_STAGES.indexOf(clStage(c)) >= SENT_IDX; // from "Send to BMET" on, Details replaces the document downloads
 
 export const clDelete = c => { const p = clPerson(c); confirmBox(`Delete the clearance file ${c.ref || ""} of ${p.name}? Its documents and the charges it added to the agent account are deleted too. This cannot be undone.`, async () => { if (await act("admin.clDelete", { id: c.id })) closeModal(); }, "Delete"); };
+/* RAIMS: the agency's own sign-in on raims.oep.gov.bd; the server reads the EC application list and moves each file here
+   (same IC number, or passport) to the RAIMS status, up to Approved. Checked every 30 minutes, or with Sync now. */
+function RaimsPanel() {
+  const R = store.S.raims, isAdmin = user(store.S.session)?.role === "admin";
+  const [edit, setEdit] = React.useState(!R?.saved); const [busy, setBusy] = React.useState(false);
+  const save = async e => { e.preventDefault(); const [d] = formData(e); setBusy(true); const r = await act("admin.raims", { op: "save", email: d.email, password: d.password, auto: !!d.auto }); setBusy(false); if (r) setEdit(false); };
+  const sync = async () => { setBusy(true); const r = await act("admin.raims", { op: "sync" }); setBusy(false); if (r?.problem) toast(r.problem); };
+  const L = R?.last;
+  return <div className="card raims">
+    <div className="row between"><div><h3 className="bulk-h"><LuRefreshCw /> RAIMS status sync</h3>
+      <p className="muted small">Signs in to raims.oep.gov.bd with the agency's RAIMS account, reads the EC application list, and sets each file here with the same IC number (or passport no.) to the RAIMS status — Section, AD, DD, Director, ADG, Final Approval, Approved. A file never moves back, and Approved files are left as they are.</p></div>
+      {R?.saved && <button className="btn pri" disabled={busy} onClick={sync}><LuRefreshCw /> {busy ? "Reading RAIMS…" : "Sync now"}</button>}</div>
+    {R?.saved && !edit && <p className="small mt8" data-notr>{`Signed in as ${R.email} · ${R.auto ? "checked every 30 minutes" : "only with Sync now"}`} {isAdmin && <button className="btn sm link" onClick={() => setEdit(true)}>Change</button>}
+      {isAdmin && <button className="btn sm link danger" onClick={() => confirmBox("Remove the RAIMS sign-in from this site?", () => act("admin.raims", { op: "remove" }), "Remove")}>Remove</button>}</p>}
+    {edit && (isAdmin ? <form className="fgrid mt8" onSubmit={save} noValidate autoComplete="off">
+      <Field label="RAIMS email"><input type="email" name="email" defaultValue={R?.email || ""} autoComplete="off" /></Field>
+      <Field label="RAIMS password" hint={R?.saved ? "Leave empty to keep the saved password" : "Kept encrypted on this server; never shown again"}><input type="password" name="password" autoComplete="new-password" /></Field>
+      <label className="check full"><input type="checkbox" name="auto" defaultChecked={R ? R.auto : true} /> Check RAIMS every 30 minutes</label>
+      <div className="row full"><button className="btn pri" disabled={busy}><LuCheck /> Save</button>{R?.saved && <button type="button" className="btn" onClick={() => setEdit(false)}>Cancel</button>}</div>
+    </form> : <p className="muted small mt8">The admin sets the RAIMS sign-in.</p>)}
+    {L && <div className="mt10 small">
+      {L.ok ? <p>{`Last check ${new Date(L.at).toLocaleString("en-GB")} (${L.by}): ${L.rows} files on RAIMS, ${L.matched} matched here, ${L.updated.length} updated.`}</p> : <p className="vf-err">{`Last check ${new Date(L.at).toLocaleString("en-GB")}: ${L.error}`}</p>}
+      {L.updated?.length > 0 && <div className="tbl mt8"><table><thead><tr><th>IC No</th><th>Name</th><th>Was</th><th>Now</th><th>RAIMS status</th></tr></thead><tbody>
+        {L.updated.map((x, i) => <tr key={i}><td className="num" data-notr>{x.ref}</td><td data-notr>{x.name}</td><td>{x.from}</td><td className="b">{x.to}</td><td data-notr>{x.raims}</td></tr>)}</tbody></table></div>}
+      {L.ok && Object.keys(L.statuses || {}).length > 0 && <p className="muted mt8" data-notr>{`Statuses on RAIMS: ${Object.entries(L.statuses).map(([k, v]) => `${k} (${v})`).join(", ")}`}</p>}
+      {L.ok && !L.rows && <details className="vf-det mt8"><summary>RAIMS list was empty — what was read</summary><p className="muted" data-notr>{`Columns: ${(L.head || []).join(", ") || "none"}${L.ajax ? ` · list address ${L.ajax}` : ""}`}</p></details>}
+    </div>}
+  </div>;
+}
 function AdminClearanceList() {
   const S = store.S; const isAdmin = user(store.S.session)?.role === "admin"; const f = ui.clFilter || "all";
   const [q, setQ] = React.useState(""); const [per, setPer] = React.useState(25); const [page, setPage] = React.useState(1);
@@ -571,8 +600,10 @@ function AdminClearanceList() {
       <div className="ec-head-btns">
         <button className={`btn ${form === "one" ? "dark" : "soft"}`} onClick={() => setForm(x => x === "one" ? "" : "one")}>{form === "one" ? <LuX /> : <LuCirclePlus />} {form === "one" ? "Close the form" : "Create application"}</button>
         <button className={`btn ${form === "bulk" ? "dark" : "soft"}`} onClick={() => setForm(x => x === "bulk" ? "" : "bulk")}>{form === "bulk" ? <LuX /> : <LuListPlus />} {form === "bulk" ? "Close bulk entry" : "Add bulk"}</button>
+        <button className={`btn ${form === "raims" ? "dark" : "soft"}`} onClick={() => setForm(x => x === "raims" ? "" : "raims")}>{form === "raims" ? <LuX /> : <LuRefreshCw />} RAIMS</button>
       </div>
     </div>
+    {form === "raims" && <RaimsPanel />}
     {form === "one" && <GroupEcForm admin onDone={() => setForm("")} />}
     {form === "bulk" && <BulkEcForm onDone={() => setForm("")} />}
     <p className="muted small">{`Status flow: ${CL_STAGES.map(x => LABEL[x]).join(" › ")}. Choose “Custom…” in Status to write your own status. The EC Ref No can be changed until the file is Approved. When a file reaches Final Approval, the agent sends a payment receipt (Payments to check). When a file is Approved, upload the clearance card in Details: the agent then sees Approved and can download it.`}</p>
