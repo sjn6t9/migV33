@@ -8,7 +8,7 @@ import fs from "node:fs";
 import path from "node:path";
 import crypto from "node:crypto";
 import { fileURLToPath } from "node:url";
-import { COUNTRIES, HOURLY, STAGES, CL_STAGES, STAFF_PERMS, LABEL, INITIAL, TEAM_DEPTS, VISA_FIELDS, VISA_DATES, clCountryOk } from "../src/constants.js";
+import { COUNTRIES, HOURLY, STAGES, CL_STAGES, STAFF_PERMS, LABEL, INITIAL, TEAM_DEPTS, VISA_FIELDS, VISA_DATES, clCountryOk, CL_REGIONS } from "../src/constants.js";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 loadEnv(path.join(HERE, "..", ".env"));
@@ -840,7 +840,7 @@ function jar() {
   return { set(res) { for (const h of res.headers.getSetCookie?.() || []) { const [kv] = h.split(";"), i = kv.indexOf("="); if (i > 0) c[kv.slice(0, i).trim()] = kv.slice(i + 1).trim(); } }, get: () => Object.entries(c).map(([k, v]) => `${k}=${v}`).join("; "), c };
 }
 async function rq(J, url, opt = {}) {
-  let u = url.startsWith("http") ? url : RAIMS + url, r;
+  let u = url.startsWith("http") ? url.replace(/^https?:\/\/raims\.oep\.gov\.bd/i, RAIMS) : RAIMS + url, r;
   for (let i = 0; i < 6; i++) {
     r = await fetch(u, { ...opt, redirect: "manual", headers: { "User-Agent": "Mozilla/5.0 (MAM Overseas portal)", Accept: "text/html,application/json,*/*", ...(opt.headers || {}), Cookie: J.get() }, signal: AbortSignal.timeout(30000) });
     J.set(r); if (![301, 302, 303, 307, 308].includes(r.status)) break;
@@ -854,15 +854,20 @@ const raimsStage = t => (RAIMS_STAGE.find(([re]) => re.test(String(t).trim())) |
 const cells = tr => [...tr.matchAll(/<t[dh][^>]*>([\s\S]*?)<\/t[dh]>/gi)].map(m => htmlText(m[1]).replace(/\s+/g, " ").trim());
 function raimsRows(html, json) {
   const rows = [];
-  if (json) { const data = Array.isArray(json) ? json : json.data || json.rows || json.items || []; for (const x of data) rows.push(Array.isArray(x) ? x.map(v => htmlText(String(v ?? "")).trim()) : Object.entries(x).map(([k, v]) => `${k}: ${htmlText(String(v ?? "")).trim()}`)); return { head: [], rows }; }
+  const hrefs = h => [...String(h || "").matchAll(/href=["']([^"'#]+)["']/gi)].map(m => m[1].replace(/&amp;/g, "&")).filter(x => !/^(javascript|mailto|tel):/i.test(x));
+  if (json) { const data = Array.isArray(json) ? json : json.data || json.rows || json.items || [], links = []; let head = [];
+    for (const x of data) { if (Array.isArray(x)) { rows.push(x.map(v => htmlText(String(v ?? "")).trim())); links.push(x.flatMap(v => hrefs(v))); }
+      else { head = Object.keys(x); rows.push(Object.values(x).map(v => htmlText(typeof v === "object" && v ? JSON.stringify(v) : String(v ?? "")).trim()));
+        links.push([...Object.values(x).flatMap(v => hrefs(v)), ...(x.id && /^\d+$/.test(String(x.id)) ? [`/agency/ec/application/individual/${x.id}/show`] : [])]); } }
+    return { head, rows, links }; }
   const t = /<table[\s\S]*?<\/table>/i.exec(html || ""); if (!t) return { head: [], rows };
   const trs = [...t[0].matchAll(/<tr[\s\S]*?<\/tr>/gi)].map(m => m[0]); const head = trs.length ? cells(trs[0]) : [];
   const links = [];
-  for (const tr of trs.slice(1)) { const c = cells(tr); if (c.length > 1) { rows.push(c); links.push([...tr.matchAll(/href="([^"#]+)"/gi)].map(m => m[1].replace(/&amp;/g, "&")).filter(h => !/^(javascript|mailto|tel):/i.test(h))); } }
+  for (const tr of trs.slice(1)) { const c = cells(tr); if (c.length > 1) { rows.push(c); links.push(hrefs(tr)); } }
   return { head, rows, links };
 }
 /* signs in and reads the EC application list; throws a Fail with a plain message when something is wrong */
-async function raimsOpen() {
+async function raimsOpen(search = "") {
   const R = db.raims; must(R?.email && R?.pass, "Save the RAIMS email and password first (BMET clearance › RAIMS).");
   const J = jar();
   try {
@@ -875,12 +880,15 @@ async function raimsOpen() {
     if (/otp|verification code/i.test(li.text) && /name="(otp|code)"/i.test(li.text)) must(false, "RAIMS asks for a one-time code at sign-in, so it cannot be read automatically.");
     const lst = await rq(J, "/agency/ec/application/list");
     must(!/name="password"/i.test(lst.text), "RAIMS signed out before the list opened. Try again.");
-    let parsed = raimsRows(lst.text), ajax = "";
+    let parsed = raimsRows(lst.text), ajax = "", pages = 1;
     if (!parsed.rows.length) { // a list filled by the page's script: ask the same address the script asks
       const aj = (/ajax\s*:\s*\{?\s*(?:url\s*:\s*)?["'`]([^"'`]+)["'`]/i.exec(lst.text) || /url\s*:\s*["'`]([^"'`]*(?:ec|application)[^"'`]*)["'`]/i.exec(lst.text) || [])[1];
-      if (aj) { const q = new URLSearchParams({ draw: "1", start: "0", length: "1000" }); const j = await rq(J, aj.replace(/&amp;/g, "&") + (aj.includes("?") ? "&" : "?") + q, { headers: { "X-Requested-With": "XMLHttpRequest", Accept: "application/json", "X-CSRF-TOKEN": (/name="csrf-token"[^>]*content="([^"]+)"/.exec(lst.text) || [])[1] || "" } }); try { parsed = raimsRows("", JSON.parse(j.text)); ajax = aj; } catch {} }
+      if (aj) { const q = new URLSearchParams({ draw: "1", start: "0", length: "1000", "search[value]": search, "search[regex]": "false" }); const j = await rq(J, aj.replace(/&amp;/g, "&") + (aj.includes("?") ? "&" : "?") + q, { headers: { "X-Requested-With": "XMLHttpRequest", Accept: "application/json", "X-CSRF-TOKEN": (/name="csrf-token"[^>]*content="([^"]+)"/.exec(lst.text) || [])[1] || "" } }); try { parsed = raimsRows("", JSON.parse(j.text)); ajax = aj; } catch {} }
+    } else { // a list in pages (?page=2 …): read them all (at most 60)
+      const last = Math.min(60, Math.max(1, ...[...lst.text.matchAll(/[?&]page=(\d+)/g)].map(m => +m[1])));
+      for (let pg = 2; pg <= last; pg++) { const x = raimsRows((await rq(J, `/agency/ec/application/list?page=${pg}`)).text); if (!x.rows.length) break; parsed.rows.push(...x.rows); parsed.links.push(...x.links); pages = pg; }
     }
-    return { J, lst, parsed, ajax };
+    return { J, lst, parsed, ajax, pages };
   } catch (e) { if (e instanceof Fail) throw e; must(false, `Could not reach RAIMS: ${e.message}`); }
 }
 async function raimsSync(by = "auto") {
@@ -921,24 +929,44 @@ A["admin.raims"] = async (d, u) => {
   if (d.op === "remove") { must(u.role === "admin", "Only the admin can change the RAIMS sign-in.", 403); delete db.raims; return { msg: "RAIMS sign-in removed." }; }
   /* Add bulk: an IC number or application ID → every worker under it (name, passport, country, IC number) */
   if (d.op === "lookup") {
-    const q = str(d.q, 60).replace(/\s+/g, "").toUpperCase(); must(q.length >= 3, "Enter the IC number or application ID.");
-    const { J, parsed } = await raimsOpen(), H = parsed.head.map(h => h.toLowerCase());
+    const raw = str(d.q, 300).trim(), q = raw.replace(/\s+/g, "").toUpperCase(); must(q.length >= 3, "Enter the IC number, the RAIMS link or its number.");
+    const norm = v => String(v || "").replace(/\s+/g, "").toUpperCase(), PPR = /\b([A-Z]{1,2}\d{7,8})\b/;
+    // the RAIMS page of one application (…/agency/ec/application/individual/1705123/show): its workers
+    const showPage = async (J, link, ic0, country0) => {
+      const pg = await rq(J, link), txt = htmlText(pg.text);
+      must(!/name="password"/i.test(pg.text), "RAIMS signed out. Try again.");
+      const icp = norm((/\bIC[-\s]?\d{4}[-\s]?RL\d+[-\s]?\d+/i.exec(txt) || /\bIC[-\s]?[A-Z0-9][A-Z0-9-]{5,}/i.exec(txt) || [])[0]) || ic0 || "";
+      const ctry = country0 || (() => { const i = txt.search(/country/i); if (i < 0) return ""; const seg = txt.slice(i, i + 80).toLowerCase(); let best = ""; let at = 1e9;
+        for (const c of [...Object.keys(COUNTRIES), ...CL_REGIONS.flatMap(([, L]) => L)]) { const j = seg.indexOf(c.toLowerCase()); if (j >= 0 && (j < at || (j === at && c.length > best.length))) { at = j; best = c; } } return best; })();
+      const people = [];
+      for (const m of pg.text.matchAll(/<table[\s\S]*?<\/table>/gi)) {
+        const t = raimsRows(m[0]); if (!t.rows.some(r => PPR.test(r.join(" ")))) continue;
+        const H = t.head.map(h => h.toLowerCase()), c = re => H.findIndex(h => re.test(h)), ci = { name: c(/name/), pp: c(/passport/), country: c(/country|destination/), ic: c(/\bic\b|clearance/) };
+        for (const r of t.rows) { const pp = (PPR.exec(r.join(" ")) || [])[1]; if (!pp) continue;
+          people.push({ ic: (ci.ic >= 0 && norm(r[ci.ic])) || icp, name: ci.name >= 0 ? r[ci.name] : r.find(v => /^[A-Z][A-Z .'-]{4,}$/.test(v) && !PPR.test(v)) || "", passport: pp, country: (ci.country >= 0 && r[ci.country]) || ctry }); }
+      }
+      if (!people.length) { // one person on the page, written as label: value
+        const pp = (/Passport\s*(?:No\.?|Number)?\s*:?\s*([A-Z]{1,2}\d{7,8})/i.exec(txt) || PPR.exec(txt) || [])[1];
+        const nm = ((/(?:Worker|Applicant|Emigrant|Full)?\s*Name\s*:?\s*([A-Z][A-Z .'-]{3,60}?)(?=\s{2,}|\s+[A-Z][a-z]+\s*:|$)/.exec(txt) || [])[1] || "").trim();
+        if (pp) people.push({ ic: icp, name: nm, passport: pp, country: ctry });
+      }
+      return { people, txt };
+    };
+    const idm = /individual\/(\d+)\/show/i.exec(raw) || /^(\d{4,10})$/.exec(raw);
+    if (idm) { const { J } = await raimsOpen(); const r = await showPage(J, `/agency/ec/application/individual/${idm[1]}/show`); must(r.people.length, `RAIMS page ${idm[1]} has no workers that this site can read.`); return { people: r.people.slice(0, 100) }; }
+    const { J, parsed, ajax, pages } = await raimsOpen(q), H = parsed.head.map(h => h.toLowerCase());
     const col = re => H.findIndex(h => re.test(h));
-    const ci = { ic: col(/\bic\b|ic no|clearance no|ref/), name: col(/name/), pp: col(/passport/), country: col(/country|destination/), app: col(/app|application|id/) };
-    const norm = v => String(v || "").replace(/\s+/g, "").toUpperCase();
-    const pick = (row, k, re) => ci[k] >= 0 ? row[ci[k]] : ((row.find(v => re.test(v)) || "").replace(/^[a-z_ ]+:\s*/i, ""));
-    const person = row => ({ ic: norm((/\bIC[-\s]?[A-Z0-9][A-Z0-9-]{3,}/i.exec(row.join(" | ")) || [])[0]) || norm(pick(row, "ic", /^ic/i)), name: pick(row, "name", /^name/i), passport: norm((/\b([A-Z]{1,2}\d{7,8})\b/.exec(row.join(" ")) || [])[1] || pick(row, "pp", /passport/i)), country: pick(row, "country", /country/i) });
+    const ci = { ic: col(/\bic\b|ic no|clearance no|ref/), name: col(/name/), country: col(/country|destination/) };
     const hit = parsed.rows.map((r, i) => [r, i]).filter(([r]) => r.some(v => norm(v).includes(q)));
-    let people = hit.map(([r]) => person(r)).filter(x => x.passport || x.name);
-    // one row for a group application: open its page and read the workers listed there
-    if (hit.length === 1 && people.length <= 1) {
-      const link = (parsed.links?.[hit[0][1]] || []).find(h => /ec|application|view|show|detail/i.test(h));
-      if (link) { const pg = await rq(J, link); const t = [...pg.text.matchAll(/<table[\s\S]*?<\/table>/gi)].map(m => raimsRows(m[0])).find(x => x.rows.some(r => /\b[A-Z]{1,2}\d{7,8}\b/.test(r.join(" "))));
-        if (t) { const H2 = t.head.map(h => h.toLowerCase()), c2 = re => H2.findIndex(h => re.test(h)), cc = { name: c2(/name/), country: c2(/country|destination/) };
-          const top = people[0] || {};
-          people = t.rows.filter(r => /\b[A-Z]{1,2}\d{7,8}\b/.test(r.join(" "))).map(r => ({ ic: norm((/\bIC[-\s]?[A-Z0-9][A-Z0-9-]{3,}/i.exec(r.join(" | ")) || [])[0]) || top.ic || "", name: cc.name >= 0 ? r[cc.name] : "", passport: (/\b([A-Z]{1,2}\d{7,8})\b/.exec(r.join(" ")) || [])[1], country: cc.country >= 0 ? r[cc.country] : top.country || "" })); } }
+    let people = [];
+    for (const [r, i] of hit.slice(0, 20)) {
+      const link = (parsed.links?.[i] || []).find(h => /individual\/\d+\/show/i.test(h)) || (parsed.links?.[i] || []).find(h => /ec\/application\/.*(show|view)/i.test(h));
+      const ic = norm((/\bIC[-\s]?[A-Z0-9][A-Z0-9-]{3,}/i.exec(r.join(" | ")) || [])[0]) || (ci.ic >= 0 ? norm(r[ci.ic]) : "");
+      if (link) { const x = await showPage(J, link, ic, ci.country >= 0 ? r[ci.country] : ""); if (x.people.length) { people.push(...x.people); continue; } }
+      const pp = (PPR.exec(r.join(" ")) || [])[1]; if (pp) people.push({ ic, name: ci.name >= 0 ? r[ci.name] : "", passport: pp, country: ci.country >= 0 ? r[ci.country] : "" });
     }
-    must(people.length, `Nothing on RAIMS matches ${q}.`);
+    const seen = new Set(); people = people.filter(x => x.passport && !seen.has(x.passport) && seen.add(x.passport));
+    if (!people.length) return { problem: `Nothing on RAIMS matches ${q}.`, seen: { rows: parsed.rows.length, pages, head: parsed.head.slice(0, 12), ajax, first: (parsed.rows[0] || []).slice(0, 10), links: (parsed.links?.[0] || []).slice(0, 5), hits: hit.length } };
     return { people: people.slice(0, 100) };
   }
   if (d.op === "sync") { const r = await raimsSync(u.name); return r.ok ? { msg: `RAIMS: ${r.rows} files read, ${r.matched} matched, ${r.updated.length} updated.` } : { problem: r.error }; }

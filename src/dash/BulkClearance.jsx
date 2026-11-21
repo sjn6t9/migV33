@@ -50,12 +50,13 @@ export function BulkEcForm({ onDone }) {
     set(r.k, { phone: v, agent, auto });
   };
   /* RAIMS search: an IC number or application ID → one row for each worker under it */
-  const [ric, setRic] = React.useState(""), [rbusy, setRbusy] = React.useState(false);
+  const [ric, setRic] = React.useState(""), [rbusy, setRbusy] = React.useState(false), [rdiag, setRdiag] = React.useState(null);
   const allCountries = [...Object.keys(COUNTRIES), ...CL_REGIONS.flatMap(([, L]) => L)];
   const findCountry = v => { const k = String(v || "").trim().toLowerCase(); return allCountries.find(c => c.toLowerCase() === k) || allCountries.find(c => k && (k.includes(c.toLowerCase()) || c.toLowerCase().includes(k))) || ""; };
   const raimsSearch = async () => {
-    if (ric.trim().length < 3) return toast("Enter the IC number or application ID.");
-    setRbusy(true); const r = await act("admin.raims", { op: "lookup", q: ric.trim() }); setRbusy(false);
+    if (ric.trim().length < 3) return toast("Enter the IC number, the RAIMS link or its number.");
+    setRbusy(true); setRdiag(null); const r = await act("admin.raims", { op: "lookup", q: ric.trim() }); setRbusy(false);
+    if (r?.problem) { toast(r.problem); setRdiag(r.seen || null); return; }
     if (!r?.people?.length) return;
     const have = new Set(rows.map(x => x.passport.replace(/\s+/g, "").toUpperCase()).filter(Boolean));
     const fresh = r.people.filter(x => !have.has(String(x.passport || "").toUpperCase()));
@@ -85,8 +86,10 @@ export function BulkEcForm({ onDone }) {
     <div className="bulk-ec">
       <div className="card">
         <h3 className="bulk-h"><LuSearch /> Search RAIMS</h3>
-        <div className="bulk-raims"><input type="text" value={ric} onChange={e => setRic(e.target.value)} onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); raimsSearch(); } }} placeholder="IC number or application ID" aria-label="IC number or application ID" style={{ textTransform: "uppercase" }} maxLength={60} />
+        <div className="bulk-raims"><input type="text" value={ric} onChange={e => setRic(e.target.value)} onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); raimsSearch(); } }} placeholder="IC number, RAIMS link or its number (e.g. 1705123)" aria-label="IC number, RAIMS link or its number" style={{ textTransform: "uppercase" }} maxLength={60} />
           <button type="button" className="btn pri" disabled={rbusy} onClick={raimsSearch}><LuSearch /> {rbusy ? "Searching RAIMS…" : "Search"}</button></div>
+        {rdiag && <details className="vf-det small mt8" open><summary>What was read on RAIMS</summary><p className="muted" data-notr>{`${rdiag.rows} rows on ${rdiag.pages || 1} page(s)${rdiag.ajax ? ` (list address ${rdiag.ajax})` : ""} · matching rows: ${rdiag.hits} · columns: ${(rdiag.head || []).join(", ") || "none"} · first row: ${(rdiag.first || []).join(" | ") || "—"} · its links: ${(rdiag.links || []).join(", ") || "none"}`}</p>
+          <p className="small">Tip: open the IC number on RAIMS and paste that page's link (…/individual/1705123/show) here.</p></details>}
         <p className="muted small mt8">{store.S.raims?.saved ? "Every worker under this number is added as a row with the name, passport number and IC number, and the country is set." : "Set the RAIMS sign-in first (RAIMS button above)."}</p>
       </div>
       <div className="card">
