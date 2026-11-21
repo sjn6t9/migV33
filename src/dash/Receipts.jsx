@@ -9,6 +9,7 @@ import { Tiles, Empty } from "../ui.jsx";
 import { Statement } from "./Statement.jsx";
 import { passports, ppMatch, PassportPick, ppLine } from "./Passports.jsx";
 import { agentRows, accountRows } from "../statement.js";
+import { bookAgents, bookByName, bookAccount } from "./AgentBook.jsx";
 import { drawReceipt, receiptPng, receiptPdf, receiptPdfBlob, receiptXlsx, receiptsXlsx, takaWords, tk, rDate, receiptUrl, payText } from "../receipt.js";
 
 import { METHODS, channelsFor } from "../banks.js";
@@ -159,8 +160,8 @@ export function MrEntry({ aid: aid0, pp: pp0 }) {
   const [aid, setAid] = React.useState(aid0 || acc1?.id || null);
   const acc = aid && MR().accounts.find(a => a.id === aid);
   const blank = { name: "", mobile: "", passport: "", email: "", agent: "" };
-  const [p, setP] = React.useState(acc ? { ...blank, ...pick(acc) } : pp1 ? { ...blank, name: pp1.name, passport: pp1.passport } : blank);
-  const [agentId, setAgentId] = React.useState(acc?.agentId || (!acc && pp1?.agentId) || ""); const [agentOther, setAgentOther] = React.useState(!!(acc ? !acc.agentId && acc.agent : pp1 && !pp1.agentId && pp1.ref));
+  const [p, setP] = React.useState(acc ? { ...blank, ...pick(acc) } : pp1 ? { ...blank, name: pp1.name, passport: pp1.passport, agent: pp1.agentId ? "" : pp1.ref || "" } : blank);
+  const [agentId, setAgentId] = React.useState(acc?.agentId || (!acc && pp1?.agentId) || ""); const [agentOther, setAgentOther] = React.useState(() => { const n = acc ? !acc.agentId && acc.agent : pp1 && !pp1.agentId && pp1.ref; return n ? (bookByName(n) ? "book" : true) : false; });
   const [price, setPrice] = React.useState(acc?.price != null ? String(acc.price) : "");
   const newLine = () => ({ k: Math.random().toString(36).slice(2), amount: "", date: today(), method: "Cash", channel: "", chOther: false, ref: "", purpose: "" });
   const [lines, setLines] = React.useState(() => [newLine()]);
@@ -168,10 +169,10 @@ export function MrEntry({ aid: aid0, pp: pp0 }) {
   const [q, setQ] = React.useState(""); const [busy, setBusy] = React.useState(false);
   const found = q.trim() ? MR().accounts.filter(mrMatch(q)).slice(0, 6) : [];
   const foundPp = q.trim() ? passports().filter(ppMatch(q)).filter(x => !MR().accounts.some(a => a.passport === x.passport)).slice(0, 5) : [];
-  const usePp = x => { setAid(null); setP({ ...blank, name: x.name, passport: x.passport, agent: x.agentId ? "" : x.ref || "" }); setAgentId(x.agentId || ""); setAgentOther(!x.agentId && !!x.ref); setPrice(""); setQ(""); };
+  const usePp = x => { setAid(null); setP({ ...blank, name: x.name, passport: x.passport, agent: x.agentId ? "" : x.ref || "" }); setAgentId(x.agentId || ""); setAgentOther(!x.agentId && !!x.ref ? (bookByName(x.ref) ? "book" : true) : false); setPrice(""); setQ(""); };
   const auto = !aid && MR().accounts.find(a => ["passport", "mobile", "email"].some(k => p[k] && norm(k, p[k]) === a[k]));
   const target = acc || auto;
-  const choose = a => { setAid(a.id); setP({ ...blank, ...pick(a) }); setAgentId(a.agentId || ""); setAgentOther(!a.agentId && !!a.agent); setPrice(a.price != null ? String(a.price) : ""); setQ(""); };
+  const choose = a => { setAid(a.id); setP({ ...blank, ...pick(a) }); setAgentId(a.agentId || ""); setAgentOther(!a.agentId && !!a.agent ? (bookByName(a.agent) ? "book" : true) : false); setPrice(a.price != null ? String(a.price) : ""); setQ(""); };
   const clear = () => { setAid(null); setP(blank); setAgentId(""); setAgentOther(false); setPrice(""); };
   const has = Object.values(p).some(v => v.trim()) || !!agentId;
   const amt = lines.reduce((t, L) => t + (Number(L.amount) > 0 ? Number(L.amount) : 0), 0);
@@ -179,7 +180,7 @@ export function MrEntry({ aid: aid0, pp: pp0 }) {
   const before = target ? paid(accReceipts(target.id).filter(ok)) : 0;
   const bal = ag ? { kind: "agent", before: balanceOf(ag.id), paid: amt, after: balanceOf(ag.id) - amt }
     : (Number(price) || 0) + (target ? charges(target.id).reduce((s, c) => s + c.amount, 0) : 0) > 0 ? (() => { const pay = (Number(price) || 0) + (target ? charges(target.id).reduce((s, c) => s + c.amount, 0) : 0); return { kind: "price", price: pay, before, paid: amt, after: pay - before - amt }; })() : null;
-  const pickAgent = v => { if (v === "__other") { setAgentId(""); setAgentOther(true); } else { setAgentId(v); setAgentOther(false); const x = agents().find(y => y.id === v); setP({ ...p, agent: x ? x.name : "" }); } };
+  const pickAgent = v => { if (v.startsWith("book:")) { const b = bookAgents().find(x => x.id === v.slice(5)); setAgentId(""); setAgentOther("book"); setP({ ...p, agent: b ? b.name : "" }); } else if (v === "__other") { setAgentId(""); setAgentOther(true); } else { setAgentId(v); setAgentOther(false); const x = agents().find(y => y.id === v); setP({ ...p, agent: x ? x.name : "" }); } };
   const submit = async e => {
     e.preventDefault(); const d = Object.fromEntries(new FormData(e.currentTarget));
     if (!has) { toast("Enter at least one of: name, mobile, passport no., email or agent name."); return; }
@@ -210,10 +211,11 @@ export function MrEntry({ aid: aid0, pp: pp0 }) {
       : auto ? <div className="mr-acc soft"><LuUserRound /><span>This payment will be added to the existing account of <b data-notr>{auto.name || auto.passport || auto.mobile}</b>.</span><button type="button" className="btn sm link" onClick={() => choose(auto)}>Open account</button></div> : null}
     <fieldset className="card mr-box"><legend>Payer details <span className="muted small">· fill in any one or all</span></legend>
       <div className="fgrid">{PAYER.filter(x => x[0] !== "agent").map(([k, l, t, ph]) => <Field key={k} label={l}><input type={t} value={p[k]} onChange={e => setP({ ...p, [k]: e.target.value })} placeholder={ph} maxLength={120} inputMode={k === "mobile" ? "tel" : undefined} /></Field>)}
-        <Field label="Agent"><select value={agentOther ? "__other" : agentId} onChange={e => pickAgent(e.target.value)}><option value="">— No agent —</option>
+        <Field label="Agent"><select value={agentOther === "book" && bookByName(p.agent) ? `book:${bookByName(p.agent).id}` : agentOther ? "__other" : agentId} onChange={e => pickAgent(e.target.value)}><option value="">— No agent —</option>
           {agents().map(x => { const d = balanceOf(x.id); return <option key={x.id} value={x.id} data-notr>{`${x.name}${d > 0 ? ` · due ${tk(d)}` : d < 0 ? ` · advance ${tk(-d)}` : ""}`}</option>; })}
+          {bookAgents().length > 0 && <optgroup label="Agent list">{[...bookAgents()].sort((x, y) => x.name.localeCompare(y.name)).map(b => { const d = bookAccount(b).due; return <option key={b.id} value={`book:${b.id}`} data-notr>{`${b.name}${d > 0 ? ` · due ${tk(d)}` : ""}`}</option>; })}</optgroup>}
           <option value="__other">Other agent (type the name)</option></select></Field>
-        {agentOther && <Field label="Agent name"><input type="text" value={p.agent} onChange={e => setP({ ...p, agent: e.target.value })} maxLength={120} placeholder="Agent or office" /></Field>}
+        {agentOther === true && <Field label="Agent name"><input type="text" value={p.agent} onChange={e => setP({ ...p, agent: e.target.value })} maxLength={120} placeholder="Agent or office" /></Field>}
       </div>
     </fieldset>
     <fieldset className="card mr-box"><legend>{lines.length > 1 ? `Payments (${lines.length})` : "Payment"}</legend>

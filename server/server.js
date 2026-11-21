@@ -243,7 +243,7 @@ function viewFor(u) {
     if (can(u, "jobs")) pub.jobTemplates = db.jobTemplates;
     if (can(u, "office")) pub.office = { entries: db.office.entries, auto: officeAuto(), leaders: leaders() };
     { const me = leaders().find(x => x.uid === u.id); if (me) pub.myMoney = { entries: db.office.entries.filter(e => e.people?.includes(me.k)), me }; }
-    if (PP_PERMS.some(k => can(u, k))) pub.passports = db.passports;
+    if (PP_PERMS.some(k => can(u, k))) { pub.passports = db.passports; pub.agentBook = db.agentBook; }
     if (can(u, "visa")) pub.visa = db.visa;
     if (isStaffRole(u)) pub.attendance = attView(u, u.role === "admin");
     if (can(u, "headlines")) pub.headlinesAll = db.headlines || [];
@@ -1638,6 +1638,7 @@ A["attendance.tick"] = async (d, u, ctx) => {
 };
 /* ---------- HEADLINES on the website: a scrolling news line under the header ---------- */
 if (!db.headlines) db.headlines = [];
+if (!db.agentBook) db.agentBook = [];
 A["admin.headlines"] = async (d, u) => {
   needPerm(u, "headlines"); const L = db.headlines, x = d.id ? L.find(h => h.id === d.id) : null;
   if (d.op === "save") {
@@ -2128,6 +2129,15 @@ A["admin.passport"] = async (d, u) => {
     if (left.length) { p.lists = left; if (d.list === "fiji") delete p.fiji; return { msg: `Passport ${p.passport} removed from this list.` }; }
     db.passports = db.passports.filter(x => x !== p); return { msg: `Passport ${p.passport} deleted.` };
   }
+  /* Visa applications entry: the worker's status in one list (KSA or Fiji) */
+  if (d.op === "status") {
+    const p = db.passports.find(x => x.id === d.id); must(p, "Passport not found."); must(["ksa", "fiji", "bmet"].includes(d.list), "Unknown list.");
+    const t = str(d.status, 60); p.vstatus = p.vstatus || {};
+    if (!t) { delete p.vstatus[d.list]; return { msg: "Status cleared." }; }
+    if (p.vstatus[d.list]?.s === t) return {};
+    p.vstatus[d.list] = { s: t, at: now(), by: u.name }; p.vhist = [...(p.vhist || []), { list: d.list, s: t, at: now(), by: u.name }].slice(-50);
+    return { msg: `Status: ${t}` };
+  }
   /* Fiji Passport Entry: work details and what was handed in with the passport; an existing passport gets these added */
   if (d.op === "fiji") {
     const name = str(d.name, 120), passport = ppNorm(d.passport).slice(0, 20), x = d.fiji || {};
@@ -2148,6 +2158,39 @@ A["admin.passport"] = async (d, u) => {
     db.passports.unshift({ id: id("pp"), name, passport, country: "Fiji", gender: "", ref, agentId: ag ? ag.id : null, fiji, lists: ["fiji"], by: u.name, at: now() });
     return { msg: `Passport ${passport} added.` };
   }
+  must(false, "Unknown request.");
+};
+/* Agent list: agents typed by name (not registered on the site). The first time a new name is written as the agent
+   (passport entry, Fiji entry, clearance, money receipt) it is saved here, so it can be picked from the list next time. */
+const bookKey = v => String(v || "").trim().replace(/\s+/g, " ").toLowerCase();
+function bookAgent(name, u) {
+  const n = str(name, 120).replace(/\s+/g, " "), k = bookKey(n);
+  if (n.length < 2 || ["self", "office", "self (no agent)"].includes(k)) return null;
+  if (db.users.some(x => x.role === "agent" && bookKey(agentName(x)) === k)) return null;
+  const old = db.agentBook.find(a => bookKey(a.name) === k); if (old) return old;
+  const a = { id: id("ab"), name: n, fullName: "", mobile: "", email: "", agency: "", address: "", created: now(), by: u?.name || "" };
+  db.agentBook.push(a); return a;
+}
+/* a typed agent name is written the same way as the agent it matches: a registered agent (then linked by id) or a name in the agent list */
+const agentMatch = n => { const k = bookKey(n); if (!k) return null; const r = db.users.find(x => x.role === "agent" && bookKey(agentName(x)) === k); if (r) return { id: r.id, name: agentName(r) }; const b = db.agentBook.find(a => bookKey(a.name) === k); return b ? { name: b.name } : null; };
+{ const wrap = (k, fix, names) => { const f = A[k]; A[k] = async (d, u) => { try { fix(d); } catch {} const r = await f(d, u); try { names(d).forEach(n => bookAgent(n, u)); } catch {} return r; }; };
+  const ppRows = d => ["add", "update", "fiji"].includes(d.op) ? (Array.isArray(d.rows) ? d.rows : [d]) : [];
+  wrap("admin.passport", d => ppRows(d).forEach(x => { if (x.agentId || !x.ref) return; const m = agentMatch(x.ref); if (m) { x.ref = m.name; if (m.id) x.agentId = m.id; } }),
+    d => ppRows(d).filter(x => !x.agentId).map(x => x.ref));
+  wrap("admin.clearance", d => { if (d.agentId || !d.agentName) return; const m = agentMatch(d.agentName); if (m) { if (m.id) d.agentId = m.id; else d.agentName = m.name; } }, d => d.agentId ? [] : [d.agentName]);
+  wrap("admin.mr", d => { if (d.op !== "entry" || d.agentId || !d.payer?.agent) return; const m = agentMatch(d.payer.agent); if (m) { d.payer.agent = m.name; if (m.id) d.agentId = m.id; } },
+    d => d.op === "entry" && !d.agentId ? [d.payer?.agent] : []); }
+A["admin.agentBook"] = async (d, u) => {
+  must(PP_PERMS.some(k => can(u, k)), "You do not have permission for this.", 403);
+  const F = x => ({ fullName: str(x.fullName, 120), mobile: str(x.mobile, 30), email: str(x.email, 120).toLowerCase(), agency: str(x.agency, 150), address: str(x.address, 500) });
+  if (d.op === "save") {
+    const v = F(d); must(!v.email || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v.email), "Check the email address.");
+    if (d.id) { const a = db.agentBook.find(x => x.id === d.id); must(a, "Agent not found."); Object.assign(a, v, { updated: now() }); return { msg: "Agent updated." }; }
+    const name = str(d.name, 120).replace(/\s+/g, " ") || v.agency || v.fullName; must(name.length >= 2, "Enter the agent name.");
+    must(!db.agentBook.some(a => bookKey(a.name) === bookKey(name)) && !db.users.some(x => x.role === "agent" && bookKey(agentName(x)) === bookKey(name)), `${name} is already in the agent list.`);
+    db.agentBook.push({ id: id("ab"), name, ...v, created: now(), by: u.name }); return { msg: `${name} added to the agent list.` };
+  }
+  if (d.op === "delete") { const a = db.agentBook.find(x => x.id === d.id); must(a, "Agent not found."); db.agentBook = db.agentBook.filter(x => x !== a); return { msg: `${a.name} removed from the agent list.` }; }
   must(false, "Unknown request.");
 };
 A["admin.about"] = async (d, u) => {

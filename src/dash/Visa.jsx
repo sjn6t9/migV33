@@ -1,6 +1,6 @@
 // Visa applications › KSA visa › HR files: a dashboard of client files (MOFA, visa, sponsor, medical) and the Create Client File form.
 import React from "react";
-import { LuFilePlus2, LuSearch, LuPencil, LuTrash2, LuFileSpreadsheet, LuX, LuExternalLink, LuCheck, LuArrowLeft, LuDownload, LuFileText, LuRefreshCw, LuClipboardPaste, LuBookmark, LuChevronDown, LuChevronUp } from "react-icons/lu";
+import { LuReceipt, LuFilePlus2, LuSearch, LuPencil, LuTrash2, LuFileSpreadsheet, LuX, LuExternalLink, LuCheck, LuArrowLeft, LuDownload, LuFileText, LuRefreshCw, LuClipboardPaste, LuBookmark, LuChevronDown, LuChevronUp } from "react-icons/lu";
 import { VISA_FIELDS, VISA_DATES, VISA_LINKS } from "../constants.js";
 import { occEn, cityOf, mofaLabel, STAY_AR, parseWafid } from "../ksaDict.js";
 import { store, commit } from "../store.js";
@@ -9,6 +9,7 @@ import { Field } from "./shared.jsx";
 import { Empty } from "../ui.jsx";
 import { PassportPick, passports, inList } from "./Passports.jsx";
 import { xlsx } from "../receipt.js";
+import { AgentDatalist, VStatusCell } from "./AgentBook.jsx";
 
 export const MOFA_ST = ["Not applied", "Applied", "Issued", "Rejected", "Cancelled"];
 export const VISA_ST = ["Pending", "Applied", "Issued", "Stamped", "Rejected", "Cancelled"];
@@ -30,7 +31,7 @@ export function VisaAdmin() {
 }
 
 /* Visa applications › Passport Entry: the Personal and Passport Information of the client file, entered once; Fetch in Quick Import fills them in */
-const PP_BLANK = { name: "", passport: "", gender: "", agentId: "", info: { prevNationality: "BANGLADESH", nationality: "BANGLADESH", religion: "Muslim", issuePlace: "DHAKA" } };
+const PP_BLANK = { name: "", passport: "", gender: "", agentId: "", ref: "", info: { prevNationality: "BANGLADESH", nationality: "BANGLADESH", religion: "Muslim", issuePlace: "DHAKA" } };
 export function VisaPassportEntry() {
   const [f, setF] = React.useState(PP_BLANK), [edit, setEdit] = React.useState(null), [busy, setBusy] = React.useState(false), [q, setQ] = React.useState("");
   const set = v => setF(o => ({ ...o, ...v })), setI = v => setF(o => ({ ...o, info: { ...o.info, ...v } }));
@@ -38,11 +39,11 @@ export function VisaPassportEntry() {
   const SI = (k, opts) => <select value={f.info[k] || ""} onChange={e => setI({ [k]: e.target.value })}><option value="">Select</option>{opts.map(x => <option key={x}>{x}</option>)}</select>;
   const save = async e => {
     e.preventDefault(); setBusy(true);
-    const row = { name: f.name, passport: f.passport, gender: f.gender, agentId: f.agentId, country: f.country || "Saudi Arabia", info: f.info };
+    const row = { name: f.name, passport: f.passport, gender: f.gender, agentId: f.agentId, ref: f.agentId ? "" : f.ref, country: f.country || "Saudi Arabia", info: f.info };
     const r = await act("admin.passport", edit ? { op: "update", id: edit, ...row } : { op: "add", list: "ksa", rows: [row] }); setBusy(false);
     if (r) { setF(PP_BLANK); setEdit(null); }
   };
-  const start = p => { setEdit(p.id); setF({ name: p.name, passport: p.passport, gender: p.gender, agentId: p.agentId || "", country: p.country, info: { ...(p.info || {}) } }); window.scrollTo?.({ top: 0, behavior: "smooth" }); };
+  const start = p => { setEdit(p.id); setF({ name: p.name, passport: p.passport, gender: p.gender, agentId: p.agentId || "", ref: p.ref || "", country: p.country, info: { ...(p.info || {}) } }); window.scrollTo?.({ top: 0, behavior: "smooth" }); };
   const s0 = q.trim().toLowerCase(), list = passports().filter(inList("ksa")).filter(p => !s0 || [p.name, p.passport, p.info?.fatherName, p.ref, p.info?.mofaId].some(v => (v || "").toLowerCase().includes(s0)));
   return <>
     <div className="ec-head"><div><h2>KSA Passport Entry</h2><p className="muted small">Enter the passport once. In Create Client File, Fetch with the passport number fills in the Personal and Passport Information.</p></div></div>
@@ -64,7 +65,7 @@ export function VisaPassportEntry() {
           <Field label="Home address" full>{I("address", { maxLength: 1000 })}</Field>
           <Field label="MOFA application ID">{I("mofaId", { placeholder: "New MOFA" })}</Field>
           <Field label="Old MOFA application ID">{I("oldMofaId", { placeholder: "Old MOFA" })}</Field>
-          <Field label="Agent"><select value={f.agentId || ""} onChange={e => set({ agentId: e.target.value })}><option value="">No agent (office client)</option>{agentsList().map(a => <option key={a.id} value={a.id}>{a.name}</option>)}</select></Field>
+          <Field label="Agent" hint={f.agentId ? "Registered agent" : f.ref.trim() ? "From the agent list (a new name is added to it)" : "Choose an agent or type a name; empty = office client"}><input type="text" list="ksa-agents" value={f.ref} maxLength={120} placeholder="Agent name" onChange={e => { const a = agentsList().find(x => x.name.toLowerCase() === e.target.value.trim().toLowerCase()); set({ ref: e.target.value, agentId: a ? a.id : "" }); }} /><AgentDatalist id="ksa-agents" /></Field>
         </div>
       </Sec>
       <Sec n="2" title="Passport Information" sub="Travel document details">
@@ -80,9 +81,9 @@ export function VisaPassportEntry() {
     </form>
     <div className="card mt14">
       <div className="vf-tools"><label className="ec-search mr-search"><input type="text" value={q} onChange={e => setQ(e.target.value)} placeholder="Search name, passport, father's name, MOFA ID" aria-label="Search passports" /><LuSearch /></label></div>
-      {list.length ? <div className="tbl vf-tbl"><table><thead><tr><th>SL</th><th>Name</th><th>Passport</th><th>Father's name</th><th>Date of birth</th><th>Sex</th><th>Expiry date</th><th>MOFA ID</th><th>Agent</th><th>Actions</th></tr></thead><tbody>
-        {list.map((p, i) => <tr key={p.id}><td className="num">{list.length - i}</td><td className="b">{p.name}</td><td className="num">{p.passport}</td><td>{p.info?.fatherName || "—"}</td><td className="nowrap">{day(p.info?.dob)}</td><td>{p.gender}</td><td className="nowrap">{day(p.info?.expiryDate)}</td><td className="num">{p.info?.mofaId || "—"}</td><td>{p.ref || <span className="muted">Office</span>}</td>
-          <td className="nowrap"><button className="btn sm" onClick={() => start(p)}><LuPencil /> Edit</button><button className="btn sm link danger" aria-label={`Delete ${p.passport}`} onClick={() => confirmBox(`Delete passport ${p.passport}?`, () => act("admin.passport", { op: "delete", id: p.id, list: "ksa" }), "Delete")}><LuTrash2 /></button></td></tr>)}
+      {list.length ? <div className="tbl vf-tbl"><table><thead><tr><th>SL</th><th>Name</th><th>Passport</th><th>Father's name</th><th>Date of birth</th><th>Sex</th><th>Expiry date</th><th>MOFA ID</th><th>Agent</th><th>Status</th><th>Actions</th></tr></thead><tbody>
+        {list.map((p, i) => <tr key={p.id}><td className="num">{list.length - i}</td><td className="b">{p.name}</td><td className="num">{p.passport}</td><td>{p.info?.fatherName || "—"}</td><td className="nowrap">{day(p.info?.dob)}</td><td>{p.gender}</td><td className="nowrap">{day(p.info?.expiryDate)}</td><td className="num">{p.info?.mofaId || "—"}</td><td>{p.ref || <span className="muted">Office</span>}</td><td><VStatusCell p={p} list="ksa" /></td>
+          <td className="nowrap"><button className="btn sm" title="Money receipt for this worker" onClick={() => openModal("mrEntry", { pp: p.id })}><LuReceipt /> Receipt</button><button className="btn sm" onClick={() => start(p)}><LuPencil /> Edit</button><button className="btn sm link danger" aria-label={`Delete ${p.passport}`} onClick={() => confirmBox(`Delete passport ${p.passport}?`, () => act("admin.passport", { op: "delete", id: p.id, list: "ksa" }), "Delete")}><LuTrash2 /></button></td></tr>)}
       </tbody></table></div> : <Empty>{q ? "No passports match." : "No passports yet."}</Empty>}
     </div>
   </>;

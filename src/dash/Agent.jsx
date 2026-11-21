@@ -6,6 +6,7 @@ import { store, commit, worker, job, live, money, fdate, bdtFmt, balanceOf, unre
 import { toast, formData, setTab, openModal, closeModal, confirmBox, withdraw, readUpload, act, DOC_TYPES, downloadFile, cardFileName } from "../actions.js";
 import { LuDownload, LuMaximize2, LuMinimize2, LuRefreshCw, LuSearch, LuFileText, LuBanknote, LuCirclePlus, LuX } from "react-icons/lu";
 import { Rail, Tiles, Pill, Pipe, ClPipe, Empty, CardDownload, Avatar } from "../ui.jsx";
+import { AgentDatalist } from "./AgentBook.jsx";
 import { NotifPanel, Field, Options, ClCountryOptions, AgentDocUploads, AGENT_DOCS } from "./shared.jsx";
 
 const ui = store.ui;
@@ -329,9 +330,9 @@ export function GroupEcForm({ C, W, active, onDone, admin }) {
     <form className="card fgrid ec-form" onSubmit={submit} noValidate>
       <h3 className="full">Create New Application</h3>
       <p className="muted small full">Choose the workers going to the same country and employer. Each worker gets their own EC Ref No.</p>
-      {admin && <Field label="Agent" hint={ag ? "Registered agent: the file also shows in this agent's portal." : agText.trim() ? "Custom name (not a registered agent)." : "Pick a registered agent from the list, or type a name."} full>
+      {admin && <Field label="Agent" hint={ag ? "Registered agent: the file also shows in this agent's portal." : agText.trim() ? "From the agent list (a new name is added to it)." : "Pick a registered agent from the list, or type a name."} full>
         <input type="text" list="ec-agent-list" value={agText} onChange={e => setAgText(e.target.value)} maxLength={120} placeholder="Select an agent or type a name" />
-        <datalist id="ec-agent-list">{agents.map(a => <option key={a.id} value={agName(a)}>{a.agent?.business && a.name !== a.agent.business ? a.name : ""}</option>)}</datalist>
+        <AgentDatalist id="ec-agent-list" />
       </Field>}
       <Field label="Destination country"><select name="country" defaultValue="Saudi Arabia"><ClCountryOptions /></select></Field>
       <Field label="Employer / sponsor name"><input type="text" name="employer" required /></Field>

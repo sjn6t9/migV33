@@ -21,9 +21,10 @@ import { PassportEntry, PassportPick, ppLine } from "./Passports.jsx";
 import { Statement } from "./Statement.jsx";
 import { GroupEcForm } from "./Agent.jsx";
 import { BulkEcForm } from "./BulkClearance.jsx";
+import { AgentBookList } from "./AgentBook.jsx";
 import { agentRows } from "../statement.js";
 import { MFS, BANKS } from "../banks.js";
-import { LuReceipt, LuLandmark, LuBanknote, LuScrollText, LuBookUser, LuFileCheck2, LuHandCoins, LuPlaneTakeoff, LuCalendarCheck, LuSettings2, LuLogOut, LuMegaphone, LuCirclePlus, LuListPlus } from "react-icons/lu";
+import { LuReceipt, LuLandmark, LuBanknote, LuScrollText, LuBookUser, LuFileCheck2, LuHandCoins, LuPlaneTakeoff, LuCalendarCheck, LuSettings2, LuLogOut, LuMegaphone, LuCirclePlus, LuListPlus, LuContact } from "react-icons/lu";
 import { ShareButton, storeCard } from "../Share.jsx";
 import { ChatInbox, useInboxUnread } from "../LiveChat.jsx";
 
@@ -244,12 +245,12 @@ export function Admin({ u }) {
   if (t === "visa") body = <VisaAdmin />;
   if (t === "clearance") body = <AdminClearanceList />;
   if (t === "passports") { // BMET Passport Entry, and Visa applications entry (choose KSA or Fiji)
-    const subs = [can("clearance") && ["bmet", "BMET Passport Entry", LuStamp], ["visa", "Visa applications entry", LuPlaneTakeoff]].filter(Boolean);
+    const subs = [can("clearance") && ["bmet", "BMET Passport Entry", LuStamp], ["visa", "Visa applications entry", LuPlaneTakeoff], ["agents", "Agent list", LuContact]].filter(Boolean);
     const pp = subs.some(x => x[0] === ui.ppSub) ? ui.ppSub : subs[0][0];
     const vc = (ui.ppCountry === "ksa" && !can("visa")) ? "" : ui.ppCountry || "";
     body = <>
       {subs.length > 1 && <nav className="pay-tabs" aria-label="Passport Entry">{subs.map(([k, l, I]) => <button key={k} className={pp === k ? "on" : ""} aria-current={pp === k ? "page" : undefined} onClick={() => { ui.ppSub = k; commit(); }}><I /> {l}</button>)}</nav>}
-      {pp === "bmet" ? <PassportEntry title="BMET Passport Entry" /> : <>
+      {pp === "agents" ? <AgentBookList /> : pp === "bmet" ? <PassportEntry title="BMET Passport Entry" /> : <>
         <div className="ec-head"><div><h2>Visa applications entry</h2><p className="muted small">Choose the country to open its passport entry.</p></div></div>
         <div className="pp-country" role="radiogroup" aria-label="Country">{[can("visa") && ["ksa", "KSA", "Saudi Arabia"], ["fiji", "Fiji", "Republic of Fiji"]].filter(Boolean).map(([k, l, sub]) =>
           <button key={k} type="button" role="radio" aria-checked={vc === k} className={vc === k ? "on" : ""} onClick={() => { ui.ppCountry = k; commit(); }}><b>{l}</b><span className="small muted">{sub}</span></button>)}</div>

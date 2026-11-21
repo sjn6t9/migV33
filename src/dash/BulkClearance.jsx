@@ -3,6 +3,7 @@ import { LuPlus, LuTrash2, LuSend, LuX, LuUsers, LuGlobe } from "react-icons/lu"
 import { store, balanceOf, bdtFmt, COUNTRIES } from "../store.js";
 import { toast, act } from "../actions.js";
 import { Field, Options, ClCountryOptions } from "./shared.jsx";
+import { AgentDatalist, bookAgents, bookByName, bookAccount } from "./AgentBook.jsx";
 
 /* Admin/staff: many BMET clearance files at once. Destination and employer are the same for every row;
    each row is one candidate with their own agent (registered or a typed name), processing fee and previous due. */
@@ -21,7 +22,9 @@ export function BulkEcForm({ onDone }) {
   const [busy, setBusy] = React.useState(false);
   const set = (k, patch) => setRows(L => L.map(r => r.k === k ? { ...r, ...patch } : r));
   const digits = v => String(v || "").replace(/\D/g, "").slice(-10);
-  const agentByPhone = v => { const d = digits(v); return d.length >= 10 ? agents.find(a => [a.agent?.phone, a.phone, a.profile?.phone].some(x => digits(x) === d)) : null; };
+  // an agent's mobile number: registered agents and the agent list
+  const agentByPhone = v => { const d = digits(v); if (d.length < 10) return null; const a = agents.find(x => [x.agent?.phone, x.phone, x.profile?.phone].some(y => digits(y) === d)); if (a) return a;
+    const b = bookAgents().find(x => digits(x.mobile) === d); return b ? { book: true, name: b.name } : null; };
   // fill a field typed by the person only when it is empty; a field filled automatically is replaced by the new match
   const fill = (r, vals) => { const auto = { ...(r.auto || {}) }, patch = {};
     for (const [k, v] of Object.entries(vals)) if (!String(r[k]).trim() || auto[k]) { patch[k] = v || ""; auto[k] = !!v; }
@@ -40,7 +43,7 @@ export function BulkEcForm({ onDone }) {
   const pickPhone = (r, v) => {
     const a = agentByPhone(v), d = digits(v), auto = { ...(r.auto || {}) }, empty = !r.agent.trim(), fromPhone = auto.agent === "phone";
     let agent = r.agent;
-    if (a && (empty || auto.agent)) { agent = agName(a); auto.agent = "phone"; }
+    if (a && (empty || auto.agent)) { agent = a.book ? a.name : agName(a); auto.agent = "phone"; }
     else if (!a && d.length >= 10 && (empty || fromPhone)) { agent = "Self"; auto.agent = "phone"; }
     else if (d.length < 10 && fromPhone) { agent = ""; auto.agent = false; }
     set(r.k, { phone: v, agent, auto });
@@ -81,14 +84,15 @@ export function BulkEcForm({ onDone }) {
               <td><input type="text" value={r.icNo} maxLength={40} placeholder="Optional" onChange={e => set(r.k, { icNo: e.target.value, auto: { ...(r.auto || {}), icNo: false } })} aria-label="IC No." /></td>
               <td><input type="tel" value={r.phone} maxLength={30} placeholder="Candidate or agent" onChange={e => pickPhone(r, e.target.value)} aria-label="Mobile" /></td>
               <td><input type="text" value={r.agent} list="bulk-agent-list" maxLength={120} placeholder="Select or type" onChange={e => set(r.k, { agent: e.target.value, auto: { ...(r.auto || {}), agent: false } })} aria-label="Agent" />
-                {r.agent.trim() && <div className={`bulk-hint ${a ? (bal > 0 ? "bad" : "muted") : "muted"}`}>{a ? (bal > 0 ? `Due now: ${bdtFmt(bal)}` : "No due") : r.agent.trim().toLowerCase() === "self" ? "Self (no agent)" : "Custom name"}</div>}</td>
+                {r.agent.trim() && (() => { const bk = !a && bookByName(r.agent), bd = bk ? bookAccount(bk).due : 0;
+                  return <div className={`bulk-hint ${(a ? bal : bd) > 0 ? "bad" : "muted"}`}>{a ? (bal > 0 ? `Due now: ${bdtFmt(bal)}` : "No due") : r.agent.trim().toLowerCase() === "self" ? "Self (no agent)" : bk ? (bd > 0 ? `Agent list · due ${bdtFmt(bd)}` : "Agent list") : "New name: added to the agent list"}</div>; })()}</td>
               <td><input type="number" min="0" step="any" value={r.fee} placeholder={defFee ? String(defFee) : "0"} onChange={e => set(r.k, { fee: e.target.value })} aria-label="Processing fee" /></td>
               <td><input type="number" min="0" step="any" value={r.due} placeholder="0" onChange={e => set(r.k, { due: e.target.value })} aria-label="Due amount" /></td>
               <td><button type="button" className="ec-ico del" title="Remove row" aria-label="Remove row" onClick={() => setRows(L => L.length > 1 ? L.filter(x => x.k !== r.k) : [blank()])}><LuX /></button></td>
             </tr>); })}
         </tbody></table></div>
         <datalist id="bulk-pp-list">{pps.map(x => <option key={x.id} value={x.passport}>{`${x.name} · ${x.country}`}</option>)}</datalist>
-        <datalist id="bulk-agent-list">{agents.map(a => <option key={a.id} value={agName(a)} />)}</datalist>
+        <AgentDatalist id="bulk-agent-list" />
         <p className="muted small mt8">{`Empty rows are skipped. Processing fee: leave it blank to use the default${defFee ? ` (${bdtFmt(defFee)})` : ""}. Due amount: an older amount the agent still owes. For a registered agent, the fee and the due are added to the agent's account. Mobile: an agent's number fills in that agent; any other number fills in Self. A passport entered before fills in the rest of the row. Passport, visa and contract copies can be added later from Details.`}</p>
         <div className="bulk-foot">
           <div className="bulk-btns">

@@ -8,6 +8,7 @@ import { Field } from "./shared.jsx";
 import { Empty } from "../ui.jsx";
 import { COUNTRIES, MIDDLE_EAST, ASIA } from "../constants.js";
 import { xlsx } from "../receipt.js";
+import { AgentDatalist } from "./AgentBook.jsx";
 
 export const passports = () => store.S.passports || [];
 /* the passports of one entry list: "bmet", "ksa" or "fiji" */
@@ -87,7 +88,7 @@ function PassportForm() {
       {rows.length > 1 && <div className="mr-line-head full"><b>{`Passport ${i + 1}`}</b><button type="button" className="btn sm link danger" onClick={() => setRows(rows.filter((_, j) => j !== i))}><LuX /> Remove</button></div>}
       <Fields v={r} set={v => set(i, v)} idx={rows.length > 1 ? i + 1 : 0} />
     </div>)}
-    <datalist id="pp-ref-agents">{agentsList().map(a => <option key={a.id} value={a.name} />)}</datalist>
+    <AgentDatalist id="pp-ref-agents" />
     <div className="row6 mt8"><button type="button" className="btn sm" onClick={() => { const l = rows[rows.length - 1]; setRows([...rows, blank(undefined, l.country)]); }}><LuPlus /> Add another passport</button></div>
     <div className="mt14"><button className="btn pri" disabled={busy}>{rows.length > 1 ? `Save ${rows.length} passports` : "Save passport"}</button></div>
   </form>;
@@ -96,7 +97,7 @@ function EditRow({ p, onDone }) {
   const [v, setV] = React.useState({ name: p.name, passport: p.passport, country: p.country, gender: p.gender, ref: p.ref || "", agentId: p.agentId || "" });
   const save = async () => { if (await act("admin.passport", { op: "update", id: p.id, ...v })) onDone(); };
   return <tr className="sel"><td colSpan={8}><div className="fgrid pp-edit"><Fields v={v} set={x => setV({ ...v, ...x })} />
-    <datalist id="pp-ref-agents">{agentsList().map(a => <option key={a.id} value={a.name} />)}</datalist>
+    <AgentDatalist id="pp-ref-agents" />
     <div className="full row6"><button type="button" className="btn sm pri" onClick={save}><LuCheck /> Save</button><button type="button" className="btn sm" onClick={onDone}><LuX /> Cancel</button></div></div></td></tr>;
 }
 

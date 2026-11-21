@@ -1313,3 +1313,8 @@ button.hold-tile{cursor:pointer}
 .bulk-foot{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-top:12px}
 .bulk-btns{display:flex;gap:8px;flex-wrap:wrap}
 .ec-head-btns{display:flex;gap:8px;flex-wrap:wrap}
+/* Visa applications entry: worker status */
+.vs-sel{padding:5px 8px;font-size:13px;border-radius:8px;min-width:150px}
+.vs-sel.info{background:#e8f1fd;border-color:#9cc2f0}.vs-sel.ok{background:#e6f6ec;border-color:#8fd3a8}.vs-sel.bad{background:#fdecec;border-color:#f0a3a3}
+:root[data-theme="dark"] .vs-sel.info,:root[data-theme="dark"] .vs-sel.ok,:root[data-theme="dark"] .vs-sel.bad{background:var(--surface)}
+.tiny-d{font-size:11.5px;margin-top:2px}

@@ -1,12 +1,13 @@
 // Passport Entry › Fiji Passport Entry: trade, experience, returnee, reference, and what was handed in with the passport
 import React from "react";
-import { LuCheck, LuSearch, LuPencil, LuTrash2, LuX, LuFileSpreadsheet } from "react-icons/lu";
+import { LuCheck, LuSearch, LuPencil, LuTrash2, LuX, LuFileSpreadsheet, LuReceipt } from "react-icons/lu";
 import { store } from "../store.js";
-import { act, confirmBox } from "../actions.js";
+import { act, confirmBox, openModal } from "../actions.js";
 import { Field } from "./shared.jsx";
 import { Empty } from "../ui.jsx";
 import { passports, inList, CountrySelect } from "./Passports.jsx";
 import { xlsx } from "../receipt.js";
+import { AgentDatalist, VStatusCell } from "./AgentBook.jsx";
 
 const agentsList = () => store.S.users.filter(u => u.role === "agent").map(u => ({ id: u.id, name: u.agent?.business || u.name })).sort((a, b) => a.name.localeCompare(b.name));
 const DOCS = [["photo", "Photo"], ["police", "Police clearance"], ["medical", "Medical report"]];
@@ -46,7 +47,7 @@ export function FijiPassportEntry() {
         {J.returnee === "yes" && <Field label={<span>Came back from (country)<span className="req"> *</span></span>}><CountrySelect value={J.prevCountry} onChange={c => setJ({ prevCountry: c })} placeholder="— Choose the country —" label="Came back from" /></Field>}
         <Field label="Reference / agent" hint={refAgent ? `Agent: ${refAgent.name}` : "Choose an agent or type who referred the person"}>
           <input type="text" value={f.ref} list="fj-agents" onChange={e => { const a = ags.find(x => x.name === e.target.value); set({ ref: e.target.value, agentId: a ? a.id : "" }); }} maxLength={120} placeholder="Agent or reference name" />
-          <datalist id="fj-agents">{ags.map(a => <option key={a.id} value={a.name} />)}</datalist></Field>
+          <AgentDatalist id="fj-agents" /></Field>
         <Field label="Passport handed in"><div className="seg2" role="radiogroup" aria-label="Passport handed in">{[["original", "Original passport"], ["photocopy", "Photocopy"]].map(([k, l]) =>
           <button key={k} type="button" role="radio" aria-checked={J.submitted === k} className={J.submitted === k ? "on" : ""} onClick={() => setJ({ submitted: k })}>{l}</button>)}</div></Field>
         <Field label="Handed in with the passport" full><div className="fj-docs">{DOCS.map(([k, l]) => <label key={k} className="check"><input type="checkbox" checked={J.docs.includes(k)} onChange={e => setJ({ docs: e.target.checked ? [...J.docs, k] : J.docs.filter(x => x !== k) })} /> {l}</label>)}</div></Field>
@@ -58,15 +59,16 @@ export function FijiPassportEntry() {
       <div className="vf-tools"><b>{`Fiji passports (${all.length})`}</b><span className="grow" />
         <label className="ec-search mr-search"><input type="text" value={q} onChange={e => setQ(e.target.value)} placeholder="Search name, passport, profession, reference" aria-label="Search Fiji passports" /><LuSearch /></label>
         <button className="btn" disabled={!list.length} onClick={excel}><LuFileSpreadsheet /> Excel</button></div>
-      {list.length ? <div className="tbl vf-tbl"><table><thead><tr><th>SL</th><th>Name</th><th>Passport</th><th>Profession</th><th>Experience</th><th>Returnee</th><th>Ref. / Agent</th><th>Passport</th><th>Handed in</th><th>Note</th><th>Actions</th></tr></thead><tbody>
+      {list.length ? <div className="tbl vf-tbl"><table><thead><tr><th>SL</th><th>Name</th><th>Passport</th><th>Profession</th><th>Experience</th><th>Returnee</th><th>Ref. / Agent</th><th>Status</th><th>Passport</th><th>Handed in</th><th>Note</th><th>Actions</th></tr></thead><tbody>
         {list.map((p, i) => <tr key={p.id}>
           <td className="num">{list.length - i}</td><td className="b" data-notr>{p.name}</td><td className="num" data-notr>{p.passport}</td><td>{p.fiji.profession}</td><td className="num">{`${p.fiji.experience || 0} yr`}</td>
           <td>{p.fiji.returnee === "yes" ? <span className="vf-pill info">{`Yes · ${p.fiji.prevCountry}`}</span> : <span className="muted">No</span>}</td>
           <td data-notr>{p.ref || <span className="muted">Office</span>}</td>
+          <td><VStatusCell p={p} list="fiji" /></td>
           <td><span className={`vf-pill ${p.fiji.submitted === "photocopy" ? "wait" : "ok"}`}>{p.fiji.submitted === "photocopy" ? "Photocopy" : "Original"}</span></td>
           <td>{docsText(p).length ? docsText(p).join(", ") : <span className="muted">—</span>}</td>
           <td className="fj-note">{p.fiji.note || <span className="muted">—</span>}</td>
-          <td className="nowrap"><button className="btn sm" onClick={() => start(p)}><LuPencil /> Edit</button>
+          <td className="nowrap"><button className="btn sm" title="Money receipt for this worker" onClick={() => openModal("mrEntry", { pp: p.id })}><LuReceipt /> Receipt</button><button className="btn sm" onClick={() => start(p)}><LuPencil /> Edit</button>
             <button className="btn sm link danger" aria-label={`Delete ${p.passport}`} onClick={() => confirmBox(`Delete passport ${p.passport} (${p.name})?`, () => act("admin.passport", { op: "delete", id: p.id, list: "fiji" }), "Delete")}><LuTrash2 /></button></td>
         </tr>)}
       </tbody></table></div> : <Empty>{q ? "No passports match." : "No Fiji passports yet. Add the first one above."}</Empty>}
