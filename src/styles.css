@@ -1005,7 +1005,7 @@ body.drawer-on .floaters,body.drawer-on .ai-cap,body.drawer-on #aipraktor-chat{v
 .bell{position:relative;display:inline-flex}
 .bell-btn{position:relative;font-size:16px;padding:6px 9px}
 .bell-btn .count{position:absolute;top:-7px;inset-inline-end:-7px;font-size:11px;min-width:19px;line-height:1.5;padding:0 5px}
-.bell-pop{position:fixed;z-index:90;background:var(--surface);border:1px solid var(--line);border-radius:12px;box-shadow:0 14px 40px rgba(0,0,0,.18);display:flex;flex-direction:column;max-height:min(70vh,520px)}
+.bell-pop{position:fixed;z-index:90;background:var(--surface);color:var(--ink);font-size:14px;border:1px solid var(--line);border-radius:12px;box-shadow:0 14px 40px rgba(0,0,0,.18);display:flex;flex-direction:column;max-height:min(70vh,520px)}
 .bell-head{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:12px 14px;border-bottom:1px solid var(--line)}
 .bell-list{overflow-y:auto;padding:6px}
 .bell-item{display:flex;gap:10px;padding:9px 8px;border-radius:8px;font-size:14px;line-height:1.4}
