@@ -361,7 +361,8 @@ export function VisaFileForm({ id }) {
         {mc.lines?.length > 0 && <details className="vf-det small"><summary>What MOFA answered</summary><p className="muted">{mc.lines.join(" · ")}</p></details>}
       </div>}
       {mc?.result && <div className="vf-mofa ok"><p className="small"><b>From MOFA (application)</b><button type="button" className="btn sm link ms6" onClick={() => setMc(null)} aria-label="Close"><LuX /></button></p>
-        <dl className="vf-dl">{(mc.result.pairs || []).filter(([k]) => !/^عرض|display/i.test(k)).map(([k, v]) => <div key={k} className="vf-dl-row"><dt>{mofaLabel(k)}</dt><dd dir="auto">{v}</dd></div>)}</dl></div>}
+        <dl className="vf-dl">{(mc.result.pairs || []).filter(([k]) => !/^عرض|display/i.test(k)).map(([k, v]) => <div key={k} className="vf-dl-row"><dt>{mofaLabel(k)}</dt><dd dir="auto">{v}</dd></div>)}</dl>
+        {mc.result.lines?.length > 0 && <details className="vf-det small"><summary>What MOFA answered (all text)</summary><p className="muted" dir="auto">{mc.result.lines.join(" · ")}</p></details>}</div>}
       {dup && (dup.file || dup.passport) && <p className={`small vf-dup ${dup.file ? "bad" : "warn"}`}><LuTriangleAlert /> {dup.file ? <>{`Already added: ${dup.file.name} (SL ${dup.file.sl}, ${day(dup.file.created)}) · `}<button type="button" className="btn sm link" onClick={() => openModal("visaFile", { id: dup.file.id })}>Open</button></> : "Already in the Passport Entry list."}</p>}
       {med && <div className="vf-mofa">
         <p className="small"><b>MOFA health certificate check</b> · {`Application ${f.mofaId || "—"}, passport ${f.passport || qp}. Type the image code.`}</p>

@@ -2027,11 +2027,14 @@ async function mofaSubmit(d) {
     ["Number of Entries", /^(number of entries|عدد مرات الدخول)$/i], ["Sponsor Name", /^(sponsor name|اسم الكفيل|اسم صاحب العمل)$/i], ["Name", /^(name|الاسم)$/i], ["Passport Number", /^(passport number|رقم الجواز)$/i],
     ["Date of Expiry", /^(date of expiry|تاريخ الانتهاء|تاريخ انتهاء)/i], ["Date of Birth", /^(date of birth|تاريخ الميلاد)$/i], ["Place of Birth", /^(place of birth|مكان الميلاد|محل الميلاد)$/i], ["Gender", /^(gender|الجنس)$/i],
     ["Occupation", /^(occupation|المهنة)$/i], ["Purpose", /^(purpose|الغرض|الغاية)/i], ["Visa Number", /^(visa (no|number)|رقم التأشيرة|رقم التاشيرة)$/i], ["Visa Status", /^(visa status|حالة التأشيرة|حالة الطلب|status|الحالة)$/i]];
-  const pairs = K.map(([k, re]) => [k, k === "Application Number" ? appNo : get(re)]).filter(([, v]) => v && v !== "0");
+  // a value is the first line after its label that is not itself a label (the printed form repeats some labels, e.g. Name / Name)
+  const isLabel = x => K.some(([k, re]) => re.test(String(x).replace(/\s*[:：]\s*$/, "")) || k.toLowerCase() === String(x).trim().toLowerCase());
+  const getV = re => { for (let i = 0; i < L.length - 1; i++) { const l = L[i].replace(/\s*[:：]\s*$/, ""); if (l.length < 50 && re.test(l)) { const m = /[:：]\s*(.+)$/.exec(L[i]); if (m && m[1].trim() && !isLabel(m[1])) return m[1].trim(); for (let j = i + 1; j < Math.min(L.length, i + 4); j++) if (!isLabel(L[j]) && L[j].length < 200) return L[j]; } } return ""; };
+  const pairs = K.map(([k, re]) => [k, k === "Application Number" ? appNo : getV(re)]).filter(([, v]) => v && v !== "0");
   const v = Object.fromEntries(pairs), vs = v["Visa Status"] || "";
   const visaNo = (/^\d{8,12}$/.test(v["Visa Number"] || "") ? v["Visa Number"] : "");
   const dmy = x => { const m = /(\d{1,2})\/(\d{1,2})\/(\d{4})/.exec(x || ""); return m ? `${m[3]}-${m[2].padStart(2, "0")}-${m[1].padStart(2, "0")}` : ""; };
-  return { ok: true, pairs, found: {
+  return { ok: true, pairs, lines: L.slice(0, 150), found: {
     mofaStatus: /reject|رفض/i.test(vs) ? "Rejected" : /cancel|ملغ/i.test(vs) ? "Cancelled" : visaNo || /issued|صدر|إصدار/i.test(vs) ? "Issued" : "Applied",
     visaStatus: /stamp|مختوم/i.test(vs) ? "Stamped" : /reject|رفض/i.test(vs) ? "Rejected" : /cancel|ملغ/i.test(vs) ? "Cancelled" : visaNo || /issued|صدر|إصدار/i.test(vs) ? "Issued" : "Applied",
     mofaId: appNo, visaNo, mofaProfession: v.Occupation || "", dob: dmy(v["Date of Birth"]), expiryDate: dmy(v["Date of Expiry"]), birthPlace: v["Place of Birth"] || "",
