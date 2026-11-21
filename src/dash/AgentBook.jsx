@@ -144,14 +144,18 @@ export function AgentBookEdit({ id }) {
 }
 
 /* Visa applications entry: status of a worker in one list (KSA or Fiji) */
-export const VSTATUS = ["New", "Documents received", "Medical done", "MOFA done", "Visa applied", "Visa issued", "Fingerprint done", "BMET clearance", "Ticket booked", "Flown", "On hold", "Cancelled"];
+export const VSTATUS = ["New", "Documents received", "File Processing", "Medical done", "MOFA done", "Visa applied", "Visa issued", "Fingerprint done", "BMET clearance", "Ticket booked", "Flight Done", "Flown", "On hold", "Cancelled"];
+/* each status has its own colour; the whole row of the worker takes it */
+const VS_COLOR = { "New": "#64748b", "Documents received": "#0ea5e9", "File Processing": "#6366f1", "Medical done": "#14b8a6", "MOFA done": "#8b5cf6", "Visa applied": "#f59e0b", "Visa issued": "#22c55e",
+  "Fingerprint done": "#ec4899", "BMET clearance": "#0d9488", "Ticket booked": "#3b82f6", "Flight Done": "#15803d", "Flown": "#15803d", "On hold": "#ea580c", "Cancelled": "#dc2626" };
+export const vsColor = s => VS_COLOR[s] || (s ? `hsl(${[...s].reduce((h, c) => (h * 31 + c.charCodeAt(0)) % 360, 7)} 55% 45%)` : "");
+export const vsRow = (p, list) => { const c = vsColor(p.vstatus?.[list]?.s || ""); return c ? { className: "vs-row", style: { "--vs": c } } : {}; };
 export function VStatusCell({ p, list }) {
   const cur = p.vstatus?.[list]?.s || ""; const [custom, setCustom] = React.useState(false); const [t, setT] = React.useState("");
   const set = s => act("admin.passport", { op: "status", id: p.id, list, status: s }, { quiet: true });
   if (custom) return <div className="row6 nowrap"><input type="text" value={t} maxLength={60} autoFocus placeholder="Write the status" onChange={e => setT(e.target.value)} onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); if (t.trim()) { set(t.trim()); setCustom(false); } } }} style={{ width: 150 }} aria-label="Custom status" />
     <button className="btn sm pri" aria-label="Save status" onClick={() => { if (t.trim()) { set(t.trim()); setCustom(false); } }}><LuCheck /></button><button className="btn sm" aria-label="Cancel" onClick={() => setCustom(false)}><LuX /></button></div>;
-  const st = cur === "Cancelled" ? "bad" : cur === "Flown" || cur === "Visa issued" ? "ok" : cur ? "info" : "";
-  return <div><select className={`vs-sel ${st}`} value={cur} aria-label="Status" onChange={e => { if (e.target.value === "__custom") { setT(VSTATUS.includes(cur) ? "" : cur); setCustom(true); } else set(e.target.value); }}>
+  return <div><select className={`vs-sel${cur ? " on" : ""}`} style={cur ? { "--vs": vsColor(cur) } : undefined} value={cur} aria-label="Status" onChange={e => { if (e.target.value === "__custom") { setT(VSTATUS.includes(cur) ? "" : cur); setCustom(true); } else set(e.target.value); }}>
     <option value="">— Set status —</option>{[...VSTATUS, ...(cur && !VSTATUS.includes(cur) ? [cur] : [])].map(x => <option key={x} value={x}>{x}</option>)}<option value="__custom">Custom…</option></select>
     {cur && <div className="muted tiny-d">{fdate(p.vstatus[list].at)}</div>}</div>;
 }

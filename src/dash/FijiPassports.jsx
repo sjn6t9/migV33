@@ -7,7 +7,7 @@ import { Field } from "./shared.jsx";
 import { Empty } from "../ui.jsx";
 import { passports, inList, CountrySelect } from "./Passports.jsx";
 import { xlsx } from "../receipt.js";
-import { AgentDatalist, VStatusCell } from "./AgentBook.jsx";
+import { AgentDatalist, VStatusCell, vsRow } from "./AgentBook.jsx";
 
 const agentsList = () => store.S.users.filter(u => u.role === "agent").map(u => ({ id: u.id, name: u.agent?.business || u.name })).sort((a, b) => a.name.localeCompare(b.name));
 const DOCS = [["photo", "Photo"], ["police", "Police clearance"], ["medical", "Medical report"]];
@@ -60,7 +60,7 @@ export function FijiPassportEntry() {
         <label className="ec-search mr-search"><input type="text" value={q} onChange={e => setQ(e.target.value)} placeholder="Search name, passport, profession, reference" aria-label="Search Fiji passports" /><LuSearch /></label>
         <button className="btn" disabled={!list.length} onClick={excel}><LuFileSpreadsheet /> Excel</button></div>
       {list.length ? <div className="tbl vf-tbl"><table><thead><tr><th>SL</th><th>Name</th><th>Passport</th><th>Profession</th><th>Experience</th><th>Returnee</th><th>Ref. / Agent</th><th>Status</th><th>Passport</th><th>Handed in</th><th>Note</th><th>Actions</th></tr></thead><tbody>
-        {list.map((p, i) => <tr key={p.id}>
+        {list.map((p, i) => <tr key={p.id} {...vsRow(p, "fiji")}>
           <td className="num">{list.length - i}</td><td className="b" data-notr>{p.name}</td><td className="num" data-notr>{p.passport}</td><td>{p.fiji.profession}</td><td className="num">{`${p.fiji.experience || 0} yr`}</td>
           <td>{p.fiji.returnee === "yes" ? <span className="vf-pill info">{`Yes · ${p.fiji.prevCountry}`}</span> : <span className="muted">No</span>}</td>
           <td data-notr>{p.ref || <span className="muted">Office</span>}</td>

@@ -9,7 +9,7 @@ import { Field } from "./shared.jsx";
 import { Empty } from "../ui.jsx";
 import { PassportPick, passports, inList } from "./Passports.jsx";
 import { xlsx } from "../receipt.js";
-import { AgentDatalist, VStatusCell } from "./AgentBook.jsx";
+import { AgentDatalist, VStatusCell, vsRow } from "./AgentBook.jsx";
 
 export const MOFA_ST = ["Not applied", "Applied", "Issued", "Rejected", "Cancelled"];
 export const VISA_ST = ["Pending", "Applied", "Issued", "Stamped", "Rejected", "Cancelled"];
@@ -82,7 +82,7 @@ export function VisaPassportEntry() {
     <div className="card mt14">
       <div className="vf-tools"><label className="ec-search mr-search"><input type="text" value={q} onChange={e => setQ(e.target.value)} placeholder="Search name, passport, father's name, MOFA ID" aria-label="Search passports" /><LuSearch /></label></div>
       {list.length ? <div className="tbl vf-tbl"><table><thead><tr><th>SL</th><th>Name</th><th>Passport</th><th>Father's name</th><th>Date of birth</th><th>Sex</th><th>Expiry date</th><th>MOFA ID</th><th>Agent</th><th>Status</th><th>Actions</th></tr></thead><tbody>
-        {list.map((p, i) => <tr key={p.id}><td className="num">{list.length - i}</td><td className="b">{p.name}</td><td className="num">{p.passport}</td><td>{p.info?.fatherName || "—"}</td><td className="nowrap">{day(p.info?.dob)}</td><td>{p.gender}</td><td className="nowrap">{day(p.info?.expiryDate)}</td><td className="num">{p.info?.mofaId || "—"}</td><td>{p.ref || <span className="muted">Office</span>}</td><td><VStatusCell p={p} list="ksa" /></td>
+        {list.map((p, i) => <tr key={p.id} {...vsRow(p, "ksa")}><td className="num">{list.length - i}</td><td className="b">{p.name}</td><td className="num">{p.passport}</td><td>{p.info?.fatherName || "—"}</td><td className="nowrap">{day(p.info?.dob)}</td><td>{p.gender}</td><td className="nowrap">{day(p.info?.expiryDate)}</td><td className="num">{p.info?.mofaId || "—"}</td><td>{p.ref || <span className="muted">Office</span>}</td><td><VStatusCell p={p} list="ksa" /></td>
           <td className="nowrap"><button className="btn sm" title="Money receipt for this worker" onClick={() => openModal("mrEntry", { pp: p.id })}><LuReceipt /> Receipt</button><button className="btn sm" onClick={() => start(p)}><LuPencil /> Edit</button><button className="btn sm link danger" aria-label={`Delete ${p.passport}`} onClick={() => confirmBox(`Delete passport ${p.passport}?`, () => act("admin.passport", { op: "delete", id: p.id, list: "ksa" }), "Delete")}><LuTrash2 /></button></td></tr>)}
       </tbody></table></div> : <Empty>{q ? "No passports match." : "No passports yet."}</Empty>}
     </div>
