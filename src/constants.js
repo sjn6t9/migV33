@@ -40,7 +40,7 @@ export const INITIAL = {
       about: { title: "About Us | Mam & Mam Overseas Ltd.", desc: "About Mam & Mam Overseas Ltd., recruiting licence RL 1217." },
       blog: { title: "Blog | Mam & Mam Overseas Ltd.", desc: "Guides for workers going abroad and employers hiring from Bangladesh." },
       contact: { title: "Contact | Mam & Mam Overseas Ltd.", desc: "Contact Mam & Mam Overseas Ltd." },
-      track: { title: "Track Your File | Mam & Mam Overseas Ltd.", desc: "Check your application, BMET clearance and air ticket status with your passport and mobile number." },
+      track: { title: "Track / Verify | Mam & Mam Overseas Ltd.", desc: "Track your application, BMET clearance, visa and air ticket with your passport or mobile number, and verify money receipts, statements and team members." },
       team: { title: "Expert Team | Mam & Mam Overseas Ltd.", desc: "Meet the Mam & Mam Overseas Ltd. team handling recruitment, visa and BMET clearance for workers and employers." }
     },
     packages: [

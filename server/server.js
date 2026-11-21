@@ -394,19 +394,47 @@ A["contact.send"] = async (d, u, ctx) => {
   notifyAdmins(`New contact message from ${str(d.name, 60)}.`, "messages");
   return { msg: "Message sent. We will contact you soon." };
 };
+/* Track/Verify › Track: the passport number OR the mobile number (either one) finds the person's files */
 A["track.lookup"] = async ({ passport, phone }, u, ctx) => {
   limit(ctx.ip, "track", 30, 3600e3);
-  const P = str(passport, 30).toUpperCase(); const dg = v => String(v || "").replace(/\D/g, ""); const pm = (a, b) => dg(a).length >= 6 && dg(b).length >= 6 && dg(a).slice(-6) === dg(b).slice(-6);
-  if (!P) return { result: false };
+  const P = str(passport, 30).replace(/\s+/g, "").toUpperCase(), dg = v => String(v || "").replace(/\D/g, "").slice(-10), M = dg(phone);
+  must(P.length >= 6 || M.length >= 10, "Enter the passport number or the mobile number.");
+  const byPass = x => P.length >= 6 && String(x || "").replace(/\s+/g, "").toUpperCase() === P, byPhone = x => M.length >= 10 && dg(x) === M;
   const strip = c => ({ id: c.id, country: c.country, status: c.status, statusText: c.statusText, baseStage: c.baseStage, history: c.history, created: c.created, card: c.card ? { sentAt: c.card.sentAt } : null });
   const appView = a => { const j = job(a.jobId); return { id: a.id, status: a.status, history: a.history, appliedAt: a.appliedAt, job: j ? { title: j.title, city: j.city, country: j.country } : null }; };
-  const w = db.workers.find(x => x.passport.toUpperCase() === P && pm(x.phone, phone));
-  if (w) return { result: { name: w.name, passport: w.passport, clearances: db.clearances.filter(c => c.workerId === w.id).map(strip), apps: db.applications.filter(a => a.workerId === w.id).map(appView), tickets: db.tickets.filter(t => t.workerId === w.id).map(t => ({ id: t.id, from: t.from, to: t.to, status: t.status, prefDate: t.prefDate, airline: t.airline, pnr: t.pnr, flightDate: t.flightDate })) } };
-  const c = db.users.find(x => x.role === "candidate" && (x.profile?.passportNo || "").toUpperCase() === P && pm(x.profile?.phone, phone));
-  if (c) return { result: { name: c.name, passport: c.profile.passportNo, clearances: db.clearances.filter(x => x.candidateId === c.id).map(strip), apps: db.applications.filter(a => a.candidateId === c.id).map(appView), tickets: [] } };
-  return { result: false };
+  const LN = { bmet: "BMET", ksa: "KSA (Saudi Arabia)", fiji: "Fiji" };
+  const visaOf = pass => { const p = db.passports.find(x => byPassOf(x.passport, pass)); return p ? Object.entries(p.vstatus || {}).map(([k, v]) => ({ list: LN[k] || k, status: v.s, at: v.at })) : []; };
+  const byPassOf = (a, b) => String(a || "").replace(/\s+/g, "").toUpperCase() === String(b || "").replace(/\s+/g, "").toUpperCase();
+  const out = [], seen = new Set();
+  for (const w of db.workers.filter(x => byPass(x.passport) || byPhone(x.phone))) {
+    seen.add(w.passport.toUpperCase());
+    out.push({ name: w.name, passport: w.passport, clearances: db.clearances.filter(c => c.workerId === w.id).map(strip), apps: db.applications.filter(a => a.workerId === w.id).map(appView),
+      tickets: db.tickets.filter(t => t.workerId === w.id).map(t => ({ id: t.id, from: t.from, to: t.to, status: t.status, prefDate: t.prefDate, airline: t.airline, pnr: t.pnr, flightDate: t.flightDate })), visa: visaOf(w.passport) });
+  }
+  for (const c of db.users.filter(x => x.role === "candidate" && (byPass(x.profile?.passportNo) || byPhone(x.profile?.phone)))) {
+    const pp = (c.profile?.passportNo || "").toUpperCase(); if (pp && seen.has(pp)) continue; if (pp) seen.add(pp);
+    out.push({ name: c.name, passport: c.profile?.passportNo || "", clearances: db.clearances.filter(x => x.candidateId === c.id).map(strip), apps: db.applications.filter(a => a.candidateId === c.id).map(appView), tickets: [], visa: visaOf(pp) });
+  }
+  // a passport only in the office lists (KSA / Fiji entry): its status
+  if (P.length >= 6 && !seen.has(P)) { const p = db.passports.find(x => byPass(x.passport)); if (p && (p.vstatus && Object.keys(p.vstatus).length)) out.push({ name: p.name, passport: p.passport, clearances: [], apps: [], tickets: [], visa: visaOf(p.passport) }); }
+  return { result: out.length ? out.slice(0, 10) : false };
 };
-
+/* Track/Verify: find a money receipt, salary receipt or statement by its number and amount, and open its verify page */
+A["verify.find"] = async ({ kind, no, amount }, u, ctx) => {
+  limit(ctx.ip, "verify", 40, 3600e3);
+  const N = str(no, 30).replace(/\s+/g, "").toUpperCase(), amt = Math.round(Number(String(amount ?? "").replace(/[^\d.]/g, "")) * 100) / 100;
+  must(N, "Enter the number printed on the paper."); must(amt > 0, "Enter the amount printed on the paper.");
+  const same = v => Math.abs(Math.round(Number(v || 0) * 100) / 100 - amt) < 0.01;
+  const notFound = "No document matches this number and amount. Check both, or contact the office.";
+  if (kind === "receipt") {
+    const r = db.mr.receipts.find(x => x.no.toUpperCase() === N); must(r && same(r.amount), notFound);
+    must(r.status === "approved" && r.token, r.void ? "This money receipt was cancelled by the office." : "This payment is not approved yet, so the money receipt is not valid yet.");
+    return { go: `receipt-${r.token}` };
+  }
+  if (kind === "salary") { const p = db.salary.pays.find(x => x.no.toUpperCase() === N); must(p && (same(p.paid) || same(p.net)) && p.token, notFound); must(!p.void, "This salary receipt was cancelled by the office."); return { go: `salary-${p.token}` }; }
+  if (kind === "statement") { const x = db.statements.list.find(y => y.no.toUpperCase() === N); must(x && (same(Math.abs(x.balance)) || same(x.debit) || same(x.credit)), notFound); return { go: `statement-${x.token}` }; }
+  must(false, "Choose what to verify.");
+};
 /* ---- job seeker ---- */
 A["cand.profile"] = async (d, u) => {
   needRole(u, "candidate");

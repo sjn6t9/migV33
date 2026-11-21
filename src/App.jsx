@@ -111,7 +111,7 @@ export default function App() {
 
 function Header({ navOn }) {
   const u = me(); const ui = store.ui;
-  const links = [["home", "Home"], ["jobs", "Jobs"], ["services", "Services"], ["track", "Track"], ["about", "About"], ["team", "Expert Team"], ["blog", "Blog"], ["contact", "Contact"]];
+  const links = [["home", "Home"], ["jobs", "Jobs"], ["services", "Services"], ["track", "Track/Verify"], ["about", "About"], ["team", "Expert Team"], ["blog", "Blog"], ["contact", "Contact"]];
   const panel = { admin: "Admin panel", staff: "Staff panel", employer: "Employer panel", agent: "Agent panel", candidate: "My dashboard" };
   return (
     <header className="top">

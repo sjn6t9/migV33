@@ -7,7 +7,7 @@ import {
   LuFileSearch, LuTicket, LuPlaneTakeoff, LuShieldCheck, LuScale, LuNetwork, LuHeadset, LuSearchCheck, LuQuote, LuBriefcase, LuLanguages
 } from "react-icons/lu";
 import { FaWhatsapp } from "react-icons/fa6";
-import { LuAward, LuUsersRound, LuGlobe, LuChevronLeft, LuChevronRight, LuFileText, LuEye, LuDownload, LuX } from "react-icons/lu";
+import { LuAward, LuUsersRound, LuGlobe, LuChevronLeft, LuChevronRight, LuFileText, LuEye, LuDownload, LuX, LuReceipt, LuWallet } from "react-icons/lu";
 import {
   store, touch, me, user, job, live, money, num, bdtMin, bdtMax, isHourly, HOURS_PER_MONTH, fdate, filteredJobs,
   COUNTRIES, CATS, TYPES, BENEFITS, EMPTY_FILTERS, worker, company, LABEL, TEAM_DEPTS
@@ -334,28 +334,65 @@ export function Contact() {
   );
 }
 
-/* ---------------- Track status (public) ---------------- */
+/* ---------------- Track / Verify (public) ---------------- */
+const TV_TABS = [["track", "Track file", LuSearchCheck], ["receipt", "Money receipt", LuReceipt], ["statement", "Statement", LuFileText], ["salary", "Salary receipt", LuWallet], ["member", "Expert Team", LuBadgeCheck]];
 export function Track() {
-  const [res, setRes] = React.useState(null);
-  const submit = async e => { const [d] = formData(e); const r = await act("track.lookup", { passport: d.passport, phone: d.phone }, { quiet: true }); if (r) setRes(r.result); };
+  const [tab, setTab] = React.useState("track");
   return (
     <section className="sec"><div className="wrap stack">
-      <div><div className="eyebrow">Track status</div><h1 className="h1s">Track your file</h1><p className="muted mt8 measure">Enter your passport number and the mobile number given to us or your agent. You will see your job application, BMET clearance and air ticket status.</p></div>
-      <form className="card search track" onSubmit={submit}>
-        <input type="text" name="passport" placeholder="Passport number, e.g. A00000001" aria-label="Passport number" required />
-        <input type="tel" name="phone" placeholder="Mobile number" aria-label="Mobile number" required />
-        <button className="btn pri" type="submit"><LuSearchCheck /> Check status</button>
-      </form>
-      {res === false && <div className="notice">No file matches this passport and mobile number. Check both numbers, or contact the office.</div>}
-      {res && <div className="stack">
-        <div className="card row between"><div><h3>{res.name}</h3><div className="muted small">Passport {res.passport}</div></div></div>
-        {res.clearances.map(c => <div className="card" key={c.id}><div className="row between"><h4><LuIdCard /> BMET clearance · {c.country}</h4><Pill s={c.status} label={c.status === "custom" ? c.statusText : undefined} /></div><ClPipe c={c} /><p className="muted small mt6">Submitted {fdate(c.created)} · last update {fdate(c.history[c.history.length - 1].at)}</p>{c.card && <div className="notice ok mt8">Clearance card is ready. Sign in to your portal (or ask your agent) to download it.</div>}</div>)}
-        {res.apps.map(a => { const j = a.job; return <div className="card" key={a.id}><div className="row between"><h4><LuBriefcase /> {j?.title || "Job"}{j ? ` · ${j.city}, ${j.country}` : ""}</h4><Pill s={a.status} /></div><Pipe a={a} /><p className="muted small mt6">Applied {fdate(a.appliedAt)}</p></div>; })}
-        {res.tickets.map(x => <div className="card" key={x.id}><div className="row between"><h4><LuTicket /> Air ticket · {x.from} → {x.to}</h4><Pill s={x.status} /></div><p className="small mt6">{x.status === "booked" ? `${x.airline} · PNR ${x.pnr} · Flight ${fdate(x.flightDate)}` : `Preferred date ${fdate(x.prefDate)}`}</p></div>)}
-        {!res.clearances.length && !res.apps.length && !res.tickets.length && <Empty>No applications on this file yet.</Empty>}
-      </div>}
+      <div><div className="eyebrow">Track / Verify</div><h1 className="h1s">Track your file or verify a document</h1>
+        <p className="muted mt8 measure">Track your application, BMET clearance, visa and air ticket with your passport number or mobile number. Check that a money receipt, statement, salary receipt or team member's card is genuine.</p></div>
+      <nav className="tv-tabs" role="tablist" aria-label="Track / Verify">{TV_TABS.map(([k, l, I]) => <button key={k} type="button" role="tab" aria-selected={tab === k} className={tab === k ? "on" : ""} onClick={() => setTab(k)}><I /> <span>{l}</span></button>)}</nav>
+      {tab === "track" ? <TrackFile /> : tab === "member" ? <VerifyBox /> : <VerifyDoc key={tab} kind={tab} />}
     </div></section>
   );
+}
+function TrackFile() {
+  const [res, setRes] = React.useState(null); const [busy, setBusy] = React.useState(false);
+  const submit = async e => {
+    e.preventDefault(); const d = Object.fromEntries(new FormData(e.currentTarget)); const pass = String(d.passport || "").trim(), ph = String(d.phone || "").replace(/\D/g, "");
+    if (pass.length < 6 && ph.length < 10) return toast("Enter the passport number or the mobile number.");
+    setBusy(true); const r = await act("track.lookup", { passport: pass, phone: ph }, { quiet: true }); setBusy(false); if (r) setRes(r.result);
+  };
+  return <>
+    <form className="card search track" onSubmit={submit} noValidate>
+      <input type="text" name="passport" placeholder="Passport number, e.g. A00000001" aria-label="Passport number" autoComplete="off" style={{ textTransform: "uppercase" }} />
+      <span className="tv-or">or</span>
+      <input type="tel" name="phone" placeholder="Mobile number" aria-label="Mobile number" />
+      <button className="btn pri" type="submit" disabled={busy}><LuSearchCheck /> Check status</button>
+    </form>
+    <p className="muted small">Fill in either one: the passport number or the mobile number given to us or your agent.</p>
+    {res === false && <div className="notice">No file matches. Check the number, or contact the office.</div>}
+    {res && res.map((x, i) => <div className="stack" key={i}>
+      <div className="card row between"><div><h3>{x.name}</h3><div className="muted small">Passport {x.passport || "—"}</div></div></div>
+      {x.visa?.map((v, j) => <div className="card" key={`v${j}`}><div className="row between"><h4><LuPlaneTakeoff /> {`Visa file · ${v.list}`}</h4><span className="ec-badge">{v.status}</span></div><p className="muted small mt6">Updated {fdate(v.at)}</p></div>)}
+      {x.clearances.map(c => <div className="card" key={c.id}><div className="row between"><h4><LuIdCard /> BMET clearance · {c.country}</h4><Pill s={c.status} label={c.status === "custom" ? c.statusText : undefined} /></div><ClPipe c={c} /><p className="muted small mt6">Submitted {fdate(c.created)}{c.card ? ` · Clearance card ready (${fdate(c.card.sentAt)})` : ""}</p></div>)}
+      {x.apps.map(a => { const j = a.job; return <div className="card" key={a.id}><div className="row between"><h4><LuBriefcase /> {j?.title || "Job"}{j ? ` · ${j.city}, ${j.country}` : ""}</h4><Pill s={a.status} /></div><Pipe a={a} /><p className="muted small mt6">Applied {fdate(a.appliedAt)}</p></div>; })}
+      {x.tickets.map(t => <div className="card" key={t.id}><div className="row between"><h4><LuTicket /> Air ticket · {t.from} → {t.to}</h4><Pill s={t.status} /></div><p className="small mt6">{t.status === "booked" ? `${t.airline} · PNR ${t.pnr} · Flight ${fdate(t.flightDate)}` : `Preferred date ${fdate(t.prefDate)}`}</p></div>)}
+      {!x.clearances.length && !x.apps.length && !x.tickets.length && !x.visa?.length && <Empty>No applications on this file yet.</Empty>}
+    </div>)}
+  </>;
+}
+const DOC = { receipt: ["Money receipt", "Receipt No., e.g. MR-2026-0001", "Amount (BDT)", "Enter the receipt number and the amount printed on the money receipt. Or scan the QR code on the receipt."],
+  statement: ["Statement", "Statement No., e.g. ST-2026-0001", "Balance, total debit or total credit (BDT)", "Enter the statement number and one of the totals printed on it (balance, total debit or total credit). Or scan the QR code on the statement."],
+  salary: ["Salary receipt", "Receipt No., e.g. SP-2026-0001", "Amount paid (BDT)", "Enter the salary receipt number and the amount paid. Or scan the QR code on the receipt."] };
+function VerifyDoc({ kind }) {
+  const [t, ph, amt, help] = DOC[kind]; const [busy, setBusy] = React.useState(false); const [msg, setMsg] = React.useState("");
+  const submit = async e => {
+    e.preventDefault(); const d = Object.fromEntries(new FormData(e.currentTarget)); setMsg("");
+    if (!String(d.no || "").trim() || !String(d.amount || "").trim()) return toast("Enter the number and the amount.");
+    setBusy(true); const r = await act("verify.find", { kind, no: d.no, amount: d.amount }, { quiet: true }); setBusy(false);
+    if (r?.go) location.hash = r.go; else if (r?.error) setMsg(r.error);
+  };
+  return <form className="card verify-box" onSubmit={submit} noValidate>
+    <div className="vb-text"><h2><LuShieldCheck /> {`Verify a ${t.toLowerCase()}`}</h2><p className="muted">{help}</p></div>
+    <div className="vb-form tv-doc">
+      <input type="text" name="no" placeholder={ph} aria-label={ph} autoComplete="off" style={{ textTransform: "uppercase" }} maxLength={30} />
+      <input type="text" name="amount" inputMode="decimal" placeholder={amt} aria-label={amt} maxLength={20} />
+      <button className="btn pri" type="submit" disabled={busy}><LuSearch /> Verify</button>
+    </div>
+    {msg && <div className="notice mt8">{msg}</div>}
+  </form>;
 }
 
 /* ---------------- first admin account (one-time link from the installer) ---------------- */
