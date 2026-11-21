@@ -1341,3 +1341,9 @@ button.hold-tile{cursor:pointer}
 .ag-match{color:#9a5b00;background:#fff4e5;padding:4px 8px;border-radius:6px;max-width:320px}
 :root[data-theme="dark"] .ag-match{background:var(--surface);color:#f0b45a}
 .bulk-raims{display:flex;gap:8px;flex-wrap:wrap}.bulk-raims input{flex:1 1 220px;min-width:0}
+.raims-url{flex:1 1 280px;display:flex;align-items:center;gap:4px;border:1px solid var(--line);border-radius:10px;background:var(--bg);padding:0 10px;min-width:0}
+.raims-url input{border:0!important;background:transparent!important;padding:10px 2px!important;flex:1;min-width:90px;font-weight:700;letter-spacing:.04em}
+.raims-url input:focus{outline:none;box-shadow:none}
+.raims-url:focus-within{border-color:var(--brand);box-shadow:0 0 0 3px color-mix(in srgb,var(--brand) 20%,transparent)}
+.raims-pre{color:var(--muted);font-size:13px;white-space:nowrap}
+

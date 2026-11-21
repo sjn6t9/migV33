@@ -70,6 +70,9 @@ export function BulkEcForm({ onDone }) {
     if (c.length === 1) setCommon(v => ({ ...v, country: c[0] }));
     toast(`${made.length} row${made.length === 1 ? "" : "s"} added from RAIMS${fresh.length < r.people.length ? ` (${r.people.length - fresh.length} already in the list)` : ""}.${c.length > 1 ? " The workers go to different countries: check the destination." : ""}`);
   };
+  // a RAIMS number typed (or changed): the list is read by itself after a short pause
+  const lastAuto = React.useRef("");
+  React.useEffect(() => { const v = ric.trim(); if (!/^\d{6,10}$/.test(v) || v === lastAuto.current || rbusy) return; const t = setTimeout(() => { lastAuto.current = v; raimsSearch(); }, 900); return () => clearTimeout(t); }, [ric]);
   const used = rows.filter(filled);
   const submit = async () => {
     if (!used.length) return toast("Fill in at least one row.");
@@ -88,13 +91,16 @@ export function BulkEcForm({ onDone }) {
     <div className="bulk-ec">
       <div className="card">
         <h3 className="bulk-h"><LuSearch /> Search RAIMS</h3>
-        <div className="bulk-raims"><input type="text" value={ric} onChange={e => setRic(e.target.value)} onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); raimsSearch(); } }} placeholder="IC number, RAIMS link or its number (e.g. 1705123)" aria-label="IC number, RAIMS link or its number" maxLength={400} autoCapitalize="off" autoCorrect="off" spellCheck={false} />
+        <div className="bulk-raims">
+          <label className="raims-url" title="https://raims.oep.gov.bd/agency/ec/application/individual/…/show"><span className="raims-pre">raims…/individual/</span>
+            <input type="text" inputMode="numeric" value={ric} onChange={e => { const v = e.target.value; const m = /individual\/(\d+)\/show/i.exec(v); setRic(m ? m[1] : v); }} onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); raimsSearch(); } }} onFocus={e => e.target.select()} placeholder="1701417" aria-label="RAIMS number (from the link), or an IC number" maxLength={400} autoCapitalize="off" autoCorrect="off" spellCheck={false} />
+            <span className="raims-pre">/show</span></label>
           <button type="button" className="btn pri" disabled={rbusy} onClick={raimsSearch}><LuSearch /> {rbusy ? "Searching RAIMS…" : "Search"}</button></div>
         {rdiag && <details className="vf-det small mt8" open><summary>What was read on RAIMS</summary><p className="muted" data-notr>{rdiag.text ? "" : `${rdiag.rows} rows on ${rdiag.pages || 1} page(s)${rdiag.ajax ? ` (list address ${rdiag.ajax})` : ""} · matching rows: ${rdiag.hits} · columns: ${(rdiag.head || []).join(", ") || "none"} · first row: ${(rdiag.first || []).join(" | ") || "—"} · its links: ${(rdiag.links || []).join(", ") || "none"}`}</p>
           {(rdiag.list || rdiag.text) && <p className="muted" data-notr dir="auto">{rdiag.text ? `Page ${rdiag.page} → ${rdiag.url} · title "${rdiag.title}" · tables: ${rdiag.tables} · data addresses: ${(rdiag.hints || []).join(" , ") || "none"} · text: ${rdiag.text.slice(0, 500)}` : `List page → ${rdiag.list.url} (${rdiag.list.status}) · after sign-in → ${rdiag.list.login?.url} (${rdiag.list.login?.status}) · title "${rdiag.list.title}" · tables: ${rdiag.list.tables} · scripts: ${(rdiag.list.scripts || []).join(", ")} · data addresses: ${(rdiag.list.hints || []).join(" , ") || "none"} · text: ${rdiag.list.text.slice(0, 400)}`}</p>}
           <p className="small">Tip: open the IC number on RAIMS and paste that page's link (…/individual/1705123/show) here.</p></details>}
         {(rdiag || rgot) && <p className="small mt8"><button type="button" className="btn sm link" onClick={rawDl}>Download the RAIMS page that was read</button> <span className="muted">{rgot ? `${rgot} worker(s) were read. If some are missing, send this file to support.` : "Send this file to support."}</span></p>}
-        <p className="muted small mt8">{store.S.raims?.saved ? "Every worker under this number is added as a row with the name, passport number and IC number, and the country is set." : "Set the RAIMS sign-in first (RAIMS button above)."}</p>
+        <p className="muted small mt8">{store.S.raims?.saved ? "Type only the number from the RAIMS link (…/individual/1701417/show → 1701417); the workers are added by themselves. Change the number to add the next list. An IC number works too (press Search)." : "Set the RAIMS sign-in first (RAIMS button above)."}</p>
       </div>
       <div className="card">
         <h3 className="bulk-h"><LuGlobe /> Same for all rows</h3>
