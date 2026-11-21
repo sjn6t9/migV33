@@ -30,7 +30,14 @@ export async function act(type, payload = {}, { quiet = false } = {}) {
 
 /* ---- account ---- */
 export async function signOut() { ui.apply = null; ui.modal = null; const r = await act("auth.logout", {}, { quiet: true }); if (r) { toast("Signed out."); go("home"); } }
-export function afterLogin(r) { if (!r) return; ui.modal = null; touch(); go("dashboard"); }
+/* a phone that zoomed in while a field was being typed goes back to normal size */
+export function resetZoom() {
+  const m = document.querySelector('meta[name="viewport"]'); if (!m) return; const c = m.getAttribute("content");
+  // iPhone/iPad keep maximum-scale=1 all the time (they still allow pinch zoom, but never zoom in on a form by themselves); elsewhere: snap back once
+  if (/maximum-scale/.test(c)) { m.setAttribute("content", "width=device-width, initial-scale=1"); requestAnimationFrame(() => m.setAttribute("content", c)); return; }
+  m.setAttribute("content", c + ", maximum-scale=1"); setTimeout(() => m.setAttribute("content", c), 300);
+}
+export function afterLogin(r) { if (!r) return; ui.modal = null; document.activeElement?.blur?.(); resetZoom(); touch(); go("dashboard"); window.scrollTo(0, 0); }
 
 /* ---- job seeker ---- */
 export async function toggleSave(jid) {

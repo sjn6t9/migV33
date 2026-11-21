@@ -27,6 +27,7 @@ const html = `<!DOCTYPE html>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="theme-color" content="#006a4e">
 <meta name="color-scheme" content="light dark">
+<script>try{if(/iP(hone|ad|od)/.test(navigator.userAgent)||(navigator.platform==="MacIntel"&&navigator.maxTouchPoints>1))document.querySelector('meta[name="viewport"]').setAttribute("content","width=device-width, initial-scale=1, maximum-scale=1");}catch(e){}</script>
 <script>try{var t=localStorage.getItem("mam_theme");if(t)document.documentElement.dataset.theme=t;var l=localStorage.getItem("mam_lang");if(l==="ar")document.documentElement.dir="rtl";}catch(e){}</script>
 <title>Mam &amp; Mam Overseas Ltd.</title>
 <meta name="description" content="Mam & Mam Overseas Ltd. — licensed recruiting agency (RL 1217). Overseas jobs in Saudi Arabia, Malaysia and Fiji.">
