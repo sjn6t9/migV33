@@ -888,6 +888,7 @@ async function raimsOpen(search = "") {
       const last = Math.min(60, Math.max(1, ...[...lst.text.matchAll(/[?&]page=(\d+)/g)].map(m => +m[1])));
       for (let pg = 2; pg <= last; pg++) { const x = raimsRows((await rq(J, `/agency/ec/application/list?page=${pg}`)).text); if (!x.rows.length) break; parsed.rows.push(...x.rows); parsed.links.push(...x.links); pages = pg; }
     }
+    parsed.page = { url: lst.url, status: lst.r.status, title: htmlText((/<title>([\s\S]*?)<\/title>/i.exec(lst.text) || [])[1] || ""), tables: (lst.text.match(/<table/gi) || []).length, scripts: [...lst.text.matchAll(/<script[^>]*src="([^"]+)"/gi)].map(m => m[1]).filter(x => !/jquery|bootstrap|cdn/i.test(x)).slice(0, 6), text: htmlText(lst.text).slice(0, 1200), login: { url: li.url, status: li.r.status } };
     return { J, lst, parsed, ajax, pages };
   } catch (e) { if (e instanceof Fail) throw e; must(false, `Could not reach RAIMS: ${e.message}`); }
 }
@@ -933,7 +934,7 @@ A["admin.raims"] = async (d, u) => {
     const norm = v => String(v || "").replace(/\s+/g, "").toUpperCase(), PPR = /\b([A-Z]{1,2}\d{7,8})\b/;
     // the RAIMS page of one application (…/agency/ec/application/individual/1705123/show): its workers
     const showPage = async (J, link, ic0, country0) => {
-      const pg = await rq(J, link), txt = htmlText(pg.text);
+      const pg = await rq(J, link), txt = htmlText(pg.text), title = htmlText((/<title>([\s\S]*?)<\/title>/i.exec(pg.text) || [])[1] || ""), tables = (pg.text.match(/<table/gi) || []).length;
       must(!/name="password"/i.test(pg.text), "RAIMS signed out. Try again.");
       const icp = norm((/\bIC[-\s]?\d{4}[-\s]?RL\d+[-\s]?\d+/i.exec(txt) || /\bIC[-\s]?[A-Z0-9][A-Z0-9-]{5,}/i.exec(txt) || [])[0]) || ic0 || "";
       const ctry = country0 || (() => { const i = txt.search(/country/i); if (i < 0) return ""; const seg = txt.slice(i, i + 80).toLowerCase(); let best = ""; let at = 1e9;
@@ -950,10 +951,15 @@ A["admin.raims"] = async (d, u) => {
         const nm = ((/(?:Worker|Applicant|Emigrant|Full)?\s*Name\s*:?\s*([A-Z][A-Z .'-]{3,60}?)(?=\s{2,}|\s+[A-Z][a-z]+\s*:|$)/.exec(txt) || [])[1] || "").trim();
         if (pp) people.push({ ic: icp, name: nm, passport: pp, country: ctry });
       }
-      return { people, txt };
+      return { people, txt, title, url: pg.url, tables };
     };
-    const idm = /individual\/(\d+)\/show/i.exec(raw) || /^(\d{4,10})$/.exec(raw);
-    if (idm) { const { J } = await raimsOpen(); const r = await showPage(J, `/agency/ec/application/individual/${idm[1]}/show`); must(r.people.length, `RAIMS page ${idm[1]} has no workers that this site can read.`); return { people: r.people.slice(0, 100) }; }
+    // a RAIMS page link pasted as it is (any page on raims.oep.gov.bd), or only the number in such a link
+    const link = /^https?:\/\/raims\.oep\.gov\.bd(\/[^\s]*)$/i.exec(raw)?.[1] || (/^(\d{4,10})$/.test(raw) ? `/agency/ec/application/individual/${raw}/show` : "");
+    if (link) {
+      const { J } = await raimsOpen(); const r = await showPage(J, link);
+      if (!r.people.length) return { problem: "That RAIMS page has no workers that this site can read.", seen: { page: link, title: r.title, url: r.url, text: r.txt.slice(0, 1500), tables: r.tables } };
+      return { people: r.people.slice(0, 100) };
+    }
     const { J, parsed, ajax, pages } = await raimsOpen(q), H = parsed.head.map(h => h.toLowerCase());
     const col = re => H.findIndex(h => re.test(h));
     const ci = { ic: col(/\bic\b|ic no|clearance no|ref/), name: col(/name/), country: col(/country|destination/) };
@@ -966,7 +972,7 @@ A["admin.raims"] = async (d, u) => {
       const pp = (PPR.exec(r.join(" ")) || [])[1]; if (pp) people.push({ ic, name: ci.name >= 0 ? r[ci.name] : "", passport: pp, country: ci.country >= 0 ? r[ci.country] : "" });
     }
     const seen = new Set(); people = people.filter(x => x.passport && !seen.has(x.passport) && seen.add(x.passport));
-    if (!people.length) return { problem: `Nothing on RAIMS matches ${q}.`, seen: { rows: parsed.rows.length, pages, head: parsed.head.slice(0, 12), ajax, first: (parsed.rows[0] || []).slice(0, 10), links: (parsed.links?.[0] || []).slice(0, 5), hits: hit.length } };
+    if (!people.length) return { problem: `Nothing on RAIMS matches ${q}.`, seen: { rows: parsed.rows.length, pages, head: parsed.head.slice(0, 12), ajax, first: (parsed.rows[0] || []).slice(0, 10), links: (parsed.links?.[0] || []).slice(0, 5), hits: hit.length, list: parsed.page } };
     return { people: people.slice(0, 100) };
   }
   if (d.op === "sync") { const r = await raimsSync(u.name); return r.ok ? { msg: `RAIMS: ${r.rows} files read, ${r.matched} matched, ${r.updated.length} updated.` } : { problem: r.error }; }
