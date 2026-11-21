@@ -1305,8 +1305,8 @@ button.hold-tile{cursor:pointer}
 .bulk-tbl th{font-size:12px;text-transform:uppercase;letter-spacing:.03em;white-space:nowrap;text-align:left;padding:8px 6px}
 .bulk-tbl td{padding:4px 5px;vertical-align:top;border:0}
 .bulk-tbl input{width:100%;min-width:0;padding:8px 9px;font-size:14px}
-.bulk-tbl td:nth-child(2){min-width:130px}.bulk-tbl td:nth-child(3){min-width:160px}.bulk-tbl td:nth-child(7){min-width:170px}
-.bulk-tbl td:nth-child(8),.bulk-tbl td:nth-child(9){width:110px}
+.bulk-tbl td:nth-child(2){min-width:130px}.bulk-tbl td:nth-child(3){min-width:160px}.bulk-tbl td:nth-child(6){min-width:170px}
+.bulk-tbl td:nth-child(7),.bulk-tbl td:nth-child(8){width:110px}
 .bulk-no{display:inline-grid;place-items:center;min-width:26px;height:26px;margin-top:6px;border-radius:7px;background:var(--soft);color:var(--brand);font-weight:700;font-size:13px}
 .bulk-hint{font-size:12px;margin-top:3px}
 .ec-ico.del{background:#fde8e8;color:#c62828;margin-top:3px}
