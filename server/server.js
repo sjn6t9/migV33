@@ -1680,6 +1680,8 @@ A["attendance.tick"] = async (d, u, ctx) => {
 /* ---------- HEADLINES on the website: a scrolling news line under the header ---------- */
 if (!db.headlines) db.headlines = [];
 if (!db.agentBook) db.agentBook = [];
+// the old "Visa & BMET processing" department is now two: BMET section and Visa section (a title with BMET goes to BMET section)
+for (const m of db.team || []) if (m.dept === "Visa & BMET processing") m.dept = /bmet|clearance|emigration/i.test(`${m.title} ${m.bio}`) ? "BMET section" : "Visa section";
 A["admin.headlines"] = async (d, u) => {
   needPerm(u, "headlines"); const L = db.headlines, x = d.id ? L.find(h => h.id === d.id) : null;
   if (d.op === "save") {

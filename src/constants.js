@@ -14,7 +14,7 @@ export const CARD_TYPES = ".pdf,.jpg,.jpeg,.png,.webp";
 export const CL_DOCS = ["Passport copy", "Visa copy", "Medical report", "Employment contract", "Training certificate", "Photo"];
 export const PAY_METHODS = ["bKash", "Nagad", "Rocket", "Bank transfer", "Cash at office"];
 export const PAGES = ["home", "jobs", "services", "track", "about", "team", "blog", "contact"];
-export const TEAM_DEPTS = ["Management", "Recruitment", "Visa & BMET processing", "Accounts", "Agent relations", "Customer support"];
+export const TEAM_DEPTS = ["Management", "Recruitment", "BMET section", "Visa section", "Accounts", "Agent relations", "Customer support"];
 export const STAFF_PERMS = [["users", "Accounts"], ["jobs", "Job moderation"], ["apps", "Applications"], ["clearance", "BMET clearance"], ["visa", "Visa applications"], ["tickets", "Air tickets"], ["ledger", "Agent accounts"], ["packages", "Employer packages"], ["receipts", "Money receipts"], ["office", "Main account"], ["salary", "Salary accounts"], ["content", "Website content"], ["headlines", "Headlines"], ["blog", "Blog"], ["seo", "SEO"], ["settings", "Site settings"], ["messages", "Messages"], ["chat", "Live chat"]];
 export const LABEL = {
   applied: "Applied", shortlisted: "Shortlisted", interview: "Interview", medical: "Medical", visa: "Visa processing", clearance: "BMET clearance", flight: "Flight booked", hired: "Hired", rejected: "Rejected",
