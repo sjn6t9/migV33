@@ -6,7 +6,7 @@ import { store } from "../store.js";
 import { act, openModal, toast, confirmBox } from "../actions.js";
 import { Field } from "./shared.jsx";
 import { Empty } from "../ui.jsx";
-import { COUNTRIES } from "../constants.js";
+import { COUNTRIES, MIDDLE_EAST, ASIA } from "../constants.js";
 import { xlsx } from "../receipt.js";
 
 export const passports = () => store.S.passports || [];
@@ -14,6 +14,14 @@ export const passports = () => store.S.passports || [];
 export const inList = k => p => (p.lists || [p.fiji && "fiji", p.info && "ksa", !p.fiji && !p.info && "bmet"].filter(Boolean)).includes(k);
 const agentsList = () => store.S.users.filter(u => u.role === "agent").map(u => ({ id: u.id, name: u.agent?.business || u.name })).sort((a, b) => a.name.localeCompare(b.name));
 const countries = () => [...new Set([...Object.keys(COUNTRIES), ...passports().map(p => p.country)])];
+/* our destination countries first, then every country of the Middle East and Asia */
+export function CountrySelect({ value, onChange, placeholder = "— Choose —", label }) {
+  const ours = countries().filter(Boolean), me = MIDDLE_EAST.filter(c => !ours.includes(c)), as = ASIA.filter(c => !ours.includes(c));
+  return <select value={value || ""} onChange={e => onChange(e.target.value)} aria-label={label}><option value="">{placeholder}</option>
+    <optgroup label="Our destinations">{ours.map(c => <option key={c}>{c}</option>)}</optgroup>
+    {me.length > 0 && <optgroup label="Middle East">{me.map(c => <option key={c}>{c}</option>)}</optgroup>}
+    {as.length > 0 && <optgroup label="Asia">{as.map(c => <option key={c}>{c}</option>)}</optgroup>}</select>;
+}
 export const ppMatch = q => { const s = q.trim().toLowerCase(), n = s.replace(/\s+/g, ""); return p => !s || p.passport.toLowerCase().includes(n) || p.name.toLowerCase().includes(s) || (p.ref || "").toLowerCase().includes(s) || p.country.toLowerCase().includes(s); };
 /** text for an account line, like the office sheet: "1 FIJI PP (A0123456) · Name" */
 export const ppLine = p => `1 ${p.country.toUpperCase()} PP (${p.passport}) · ${p.name}`;
@@ -51,7 +59,7 @@ function Fields({ v, set, idx }) {
   return <>
     <Field label="Full name"><input type="text" value={v.name} onChange={e => set({ name: e.target.value })} maxLength={120} placeholder="As in the passport" aria-label={`Full name${idx ? ` ${idx}` : ""}`} /></Field>
     <Field label="Passport number"><input type="text" value={v.passport} onChange={e => set({ passport: e.target.value.toUpperCase() })} maxLength={20} placeholder="A01234567" style={{ textTransform: "uppercase" }} /></Field>
-    <Field label="Country"><select value={v.country} onChange={e => set({ country: e.target.value })}><option value="">— Choose —</option>{countries().map(c => <option key={c}>{c}</option>)}</select></Field>
+    <Field label="Country"><CountrySelect value={v.country} onChange={c => set({ country: c })} /></Field>
     <Field label="Male/Female"><div className="seg2" role="radiogroup">{["Male", "Female"].map(g => <button key={g} type="button" role="radio" aria-checked={v.gender === g} className={v.gender === g ? "on" : ""} onClick={() => set({ gender: g })}>{g}</button>)}</div></Field>
     <Field label="Ref." hint={refAgent ? `${refAgent.name} can use this passport in the agent panel.` : "An agent, or who referred the person"}>
       <input type="text" value={v.ref} list="pp-ref-agents" onChange={e => { const a = ags.find(x => x.name === e.target.value); set({ ref: e.target.value, agentId: a ? a.id : "" }); }} maxLength={120} placeholder="Agent or reference" /></Field>

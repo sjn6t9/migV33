@@ -5,7 +5,7 @@ import { store } from "../store.js";
 import { act, confirmBox } from "../actions.js";
 import { Field } from "./shared.jsx";
 import { Empty } from "../ui.jsx";
-import { passports, inList } from "./Passports.jsx";
+import { passports, inList, CountrySelect } from "./Passports.jsx";
 import { xlsx } from "../receipt.js";
 
 const agentsList = () => store.S.users.filter(u => u.role === "agent").map(u => ({ id: u.id, name: u.agent?.business || u.name })).sort((a, b) => a.name.localeCompare(b.name));
@@ -43,8 +43,7 @@ export function FijiPassportEntry() {
         <Field label="Work experience (years)"><input type="number" min="0" max="50" step="1" inputMode="numeric" value={J.experience} onChange={e => setJ({ experience: e.target.value })} placeholder="0" /></Field>
         <Field label="Worked abroad before?"><div className="seg2" role="radiogroup" aria-label="Worked abroad before">{[["yes", "Returnee"], ["no", "Not a returnee"]].map(([k, l]) =>
           <button key={k} type="button" role="radio" aria-checked={J.returnee === k} className={J.returnee === k ? "on" : ""} onClick={() => setJ({ returnee: k, ...(k === "no" ? { prevCountry: "" } : {}) })}>{l}</button>)}</div></Field>
-        {J.returnee === "yes" && <Field label={<span>Came back from (country)<span className="req"> *</span></span>}><input type="text" value={J.prevCountry} onChange={e => setJ({ prevCountry: e.target.value })} maxLength={80} placeholder="e.g. Saudi Arabia" list="fj-countries" />
-          <datalist id="fj-countries">{["Saudi Arabia", "United Arab Emirates", "Qatar", "Kuwait", "Oman", "Bahrain", "Malaysia", "Singapore", "Maldives", "Jordan", "Lebanon", "Romania", "Croatia", "Japan", "South Korea"].map(c => <option key={c} value={c} />)}</datalist></Field>}
+        {J.returnee === "yes" && <Field label={<span>Came back from (country)<span className="req"> *</span></span>}><CountrySelect value={J.prevCountry} onChange={c => setJ({ prevCountry: c })} placeholder="— Choose the country —" label="Came back from" /></Field>}
         <Field label="Reference / agent" hint={refAgent ? `Agent: ${refAgent.name}` : "Choose an agent or type who referred the person"}>
           <input type="text" value={f.ref} list="fj-agents" onChange={e => { const a = ags.find(x => x.name === e.target.value); set({ ref: e.target.value, agentId: a ? a.id : "" }); }} maxLength={120} placeholder="Agent or reference name" />
           <datalist id="fj-agents">{ags.map(a => <option key={a.id} value={a.name} />)}</datalist></Field>

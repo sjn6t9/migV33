@@ -71,3 +71,7 @@ export const VISA_LINKS = [["Visa Check", "https://visa.mofa.gov.sa/Enjaz/GetVis
   ["Mofa Check", "https://visa.mofa.gov.sa/VisaPerson/GetApplicantData"], ["Medical Update", "https://visa.mofa.gov.sa/VisaPerson/CheckMedicalResult"],
   ["Tasheer Finger", "https://vc.tasheer.com"], ["Takamul", "https://svp-international.qiwa.sa"],
   ["Apostille Check", "https://mofa-servicedirectory.apostille.mygov.bd"], ["PDO/LMS Check", "https://training.oep.gov.bd/pdo-certificate"]];
+
+/* countries for passport entries: the Middle East and Asia, A–Z */
+export const MIDDLE_EAST = ["Bahrain", "Cyprus", "Egypt", "Iran", "Iraq", "Israel", "Jordan", "Kuwait", "Lebanon", "Oman", "Palestine", "Qatar", "Saudi Arabia", "Syria", "Turkey", "United Arab Emirates", "Yemen"];
+export const ASIA = ["Afghanistan", "Armenia", "Azerbaijan", "Bangladesh", "Bhutan", "Brunei", "Cambodia", "China", "Georgia", "Hong Kong", "India", "Indonesia", "Japan", "Kazakhstan", "Kyrgyzstan", "Laos", "Macau", "Malaysia", "Maldives", "Mongolia", "Myanmar", "Nepal", "North Korea", "Pakistan", "Philippines", "Singapore", "South Korea", "Sri Lanka", "Taiwan", "Tajikistan", "Thailand", "Timor-Leste", "Turkmenistan", "Uzbekistan", "Vietnam"];
