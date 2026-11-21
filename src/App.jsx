@@ -7,7 +7,7 @@ import { ChatWidget } from "./Chat.jsx";
 import { TeamChatWidget } from "./TeamChat.jsx";
 import { ShareJob } from "./Share.jsx";
 import { store, subscribe, getVersion, touch, me, user, job, unread, PAGES, fdate, kb, candOf, worker, clPerson, LABEL, CL_STAGES, CL_DOCS , findMember, bdtFmt } from "./store.js";
-import { openModal, closeModal, signOut, toast, formData, setClStatus, downloadFile, fileExt, act, afterLogin, readUpload, DOC_TYPES, confirmBox } from "./actions.js";
+import { openModal, closeModal, signOut, toast, formData, setClStatus, downloadFile, fileExt, act, afterLogin, readUpload, DOC_TYPES, confirmBox, dashHash } from "./actions.js";
 import { Logo, Toast, ModalFrame, Pill, ClPipe, CardDownload, Avatar, Drawer } from "./ui.jsx";
 import { CardAdmin, AgentDocsView } from "./dash/shared.jsx";
 import { Home, Jobs, JobDetail, Services, About, Blog, Post, Contact, Track, Setup, Team, waLink } from "./pages/Public.jsx";
@@ -24,11 +24,13 @@ import { SITE } from "./site.js";
 import { LuExternalLink, LuShieldCheck, LuUpload, LuTrash2 } from "react-icons/lu";
 import { AgentBookEdit } from "./dash/AgentBook.jsx";
 
+let navSeq = 0, dashSeq = -1, dashFromAddr = false; // navSeq counts address changes (link, Back/Forward); dashSeq is the last one applied to the dashboard
 function useHash() {
   const [h, setH] = useState(location.hash.slice(1) || "home");
   useEffect(() => {
-    const f = () => { setH(location.hash.slice(1) || "home"); store.ui.navOpen = false; window.scrollTo(0, 0); };
-    window.addEventListener("hashchange", f); return () => window.removeEventListener("hashchange", f);
+    const f = () => { navSeq++; setH(location.hash.slice(1) || "home"); store.ui.navOpen = false; touch(); window.scrollTo(0, 0); };
+    window.addEventListener("hashchange", f); window.addEventListener("popstate", f);
+    return () => { window.removeEventListener("hashchange", f); window.removeEventListener("popstate", f); };
   }, []);
   return h;
 }
@@ -45,11 +47,21 @@ export default function App() {
   else if (h.startsWith("receipt-")) { page = "receipt"; arg = h.slice(8); }
   else if (h.startsWith("salary-")) { page = "salary"; arg = h.slice(7); }
   else if (h.startsWith("statement-")) { page = "statement"; arg = h.slice(10); }
+  else if (h.startsWith("dashboard/")) { page = "dashboard"; arg = h.slice(10); }
   else if (h === "wafid-import") page = "wafid";
   else if (!PAGES.includes(h) && h !== "dashboard") page = "home";
   const panelSite = SITE.admin ? "admin" : SITE.agent ? "agent" : null; // admin.<domain> or agent.<domain>
   if (panelSite && h.startsWith("handoff-")) { page = "handoff"; arg = h.slice(8); }
   else if (panelSite && !["dashboard", "setup", "job", "post", "verify", "receipt", "salary", "statement", "wafid"].includes(page)) page = "dashboard"; // the panel opens straight to the dashboard
+  // the address names the dashboard section: opening or reloading #dashboard/<section> opens that section
+  const u0 = me();
+  if (page === "dashboard" && u0 && dashSeq !== navSeq) { dashSeq = navSeq; dashFromAddr = true; if (u0.role in store.ui.tab) { const t = arg || "overview"; if (dashHash() !== (t === "overview" ? "dashboard" : `dashboard/${t}`)) { store.ui.tab[u0.role] = t; if (t !== "post") store.ui.editJob = null; } } }
+  useEffect(() => { // a section opened from inside the page (not by the address): put it in the address, so Back and reload work
+    if (page !== "dashboard" || !me()) return;
+    const want = "#" + dashHash(), fromAddr = dashFromAddr; dashFromAddr = false;
+    // the address was just opened and only tidied (e.g. #dashboard/pay → its first section): replace it; a section picked inside the page: a new history step
+    if (location.hash !== want) history[location.hash.startsWith("#dashboard") && !fromAddr ? "pushState" : "replaceState"](null, "", want);
+  });
   useEffect(() => {
     if (page !== "handoff") return;
     history.replaceState(null, "", "#dashboard"); // the one-time pass leaves the address bar at once

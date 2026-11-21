@@ -4,7 +4,7 @@ import {
   LuHeartPulse, LuShield, LuSparkles, LuWheat, LuShoppingBag, LuMonitor, LuStar, LuDownload, LuBadgeCheck, LuMenu, LuChevronDown
 } from "react-icons/lu";
 import { store, touch, me, company, money, num, bdtMin, isHourly, fdate, bdtFmt, LABEL, STAGES, CL_STAGES } from "./store.js";
-import { toggleSave, downloadFile, cardFileName } from "./actions.js";
+import { toggleSave, downloadFile, cardFileName, go } from "./actions.js";
 import { ShareButton } from "./Share.jsx";
 import { SITE } from "./site.js";
 
@@ -145,7 +145,7 @@ export function Rail({ role, items, foot = [] }) {
   const inPanel = !!(SITE.admin || SITE.agent); // the panels open this drawer from the ☰ button in their header
   const open = inPanel ? !!store.ui.railOpen : open0;
   const setOpen = v => { if (inPanel) { store.ui.railOpen = v; touch(); } else setOpen0(v); };
-  const pick = k => { store.ui.tab[role] = k; if (k !== "post") store.ui.editJob = null; setOpen(false); touch(); window.scrollTo({ top: 0, behavior: "smooth" }); };
+  const pick = k => { store.ui.tab[role] = k; if (k !== "post") store.ui.editJob = null; setOpen(false); go("dashboard"); touch(); window.scrollTo({ top: 0, behavior: "smooth" }); };
   const now = [...items, ...foot].find(x => x[0] === cur) || items[0]; const total = items.reduce((s, x) => s + (Number(x[3]) || 0), 0);
   const btn = ([k, label, Icon, c, onClick]) => (
     <button key={k} className={cur === k && !onClick ? "on" : ""} aria-current={cur === k && !onClick ? "page" : undefined} onClick={() => (onClick ? (setOpen(false), onClick()) : pick(k))}>
