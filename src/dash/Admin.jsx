@@ -241,12 +241,18 @@ export function Admin({ u }) {
 
   if (t === "visa") body = <VisaAdmin />;
   if (t === "clearance") body = <AdminClearanceList />;
-  if (t === "passports") { // BMET, KSA and Fiji passport entries together
-    const subs = [can("clearance") && ["bmet", "BMET Passport Entry", LuStamp], can("visa") && ["ksa", "KSA Passport Entry", LuPlaneTakeoff], ["fiji", "Fiji Passport Entry", LuBookUser]].filter(Boolean);
+  if (t === "passports") { // BMET Passport Entry, and Visa applications entry (choose KSA or Fiji)
+    const subs = [can("clearance") && ["bmet", "BMET Passport Entry", LuStamp], ["visa", "Visa applications entry", LuPlaneTakeoff]].filter(Boolean);
     const pp = subs.some(x => x[0] === ui.ppSub) ? ui.ppSub : subs[0][0];
+    const vc = (ui.ppCountry === "ksa" && !can("visa")) ? "" : ui.ppCountry || "";
     body = <>
       {subs.length > 1 && <nav className="pay-tabs" aria-label="Passport Entry">{subs.map(([k, l, I]) => <button key={k} className={pp === k ? "on" : ""} aria-current={pp === k ? "page" : undefined} onClick={() => { ui.ppSub = k; commit(); }}><I /> {l}</button>)}</nav>}
-      {pp === "ksa" ? <VisaPassportEntry /> : pp === "fiji" ? <FijiPassportEntry /> : <PassportEntry title="BMET Passport Entry" />}</>;
+      {pp === "bmet" ? <PassportEntry title="BMET Passport Entry" /> : <>
+        <div className="ec-head"><div><h2>Visa applications entry</h2><p className="muted small">Choose the country to open its passport entry.</p></div></div>
+        <div className="pp-country" role="radiogroup" aria-label="Country">{[can("visa") && ["ksa", "KSA", "Saudi Arabia"], ["fiji", "Fiji", "Republic of Fiji"]].filter(Boolean).map(([k, l, sub]) =>
+          <button key={k} type="button" role="radio" aria-checked={vc === k} className={vc === k ? "on" : ""} onClick={() => { ui.ppCountry = k; commit(); }}><b>{l}</b><span className="small muted">{sub}</span></button>)}</div>
+        {vc === "ksa" ? <VisaPassportEntry /> : vc === "fiji" ? <FijiPassportEntry /> : <p className="muted mt14">Select KSA or Fiji above.</p>}
+      </>}</>;
   }
 
 
