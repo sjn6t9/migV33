@@ -1,6 +1,6 @@
 // Visa applications › KSA visa › HR files: a dashboard of client files (MOFA, visa, sponsor, medical) and the Create Client File form.
 import React from "react";
-import { LuReceipt, LuFilePlus2, LuSearch, LuPencil, LuTrash2, LuFileSpreadsheet, LuX, LuExternalLink, LuCheck, LuArrowLeft, LuDownload, LuFileText, LuRefreshCw, LuClipboardPaste, LuBookmark, LuChevronDown, LuChevronUp } from "react-icons/lu";
+import { LuTriangleAlert, LuReceipt, LuFilePlus2, LuSearch, LuPencil, LuTrash2, LuFileSpreadsheet, LuX, LuExternalLink, LuCheck, LuArrowLeft, LuDownload, LuFileText, LuRefreshCw, LuClipboardPaste, LuBookmark, LuChevronDown, LuChevronUp } from "react-icons/lu";
 import { VISA_FIELDS, VISA_DATES, VISA_LINKS } from "../constants.js";
 import { occEn, cityOf, mofaLabel, STAY_AR, parseWafid } from "../ksaDict.js";
 import { store, commit } from "../store.js";
@@ -254,6 +254,16 @@ const workType = list => { const ok = o => /عمل|work/i.test(o.text) && !/مؤ
   return ((list.find(o => /^(تأشيرة |تاشيرة )?(عمل|work)$/i.test(o.text.trim())) || list.find(ok) || list.find(o => /عمل|work/i.test(o.text)) || list[0] || {}).value) || ""; };
 const Sec = ({ n, title, sub, children }) => <section className="vf-sec"><div className="vf-sec-h"><span className="vf-num">{n}</span><div><h4>{title}</h4>{sub && <p className="muted small">{sub}</p>}</div></div>{children}</section>;
 /* Create / edit a client file: the same sections as the office's MOFA client file */
+/* GCC (Wafid) medical slip: valid 90 days from the slip date; shows the time left */
+function GccLeft({ date }) {
+  const [, tick] = React.useState(0);
+  React.useEffect(() => { if (!date) return; const t = setInterval(() => tick(x => x + 1), 60000); return () => clearInterval(t); }, [date]);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date || "")) return null;
+  const end = new Date(`${date}T00:00:00+06:00`).getTime() + 90 * 864e5, left = end - Date.now();
+  if (left <= 0) return <span className="vf-gcc bad">GCC slip expired</span>;
+  const d = Math.floor(left / 864e5), h = Math.floor(left / 36e5 % 24), m = Math.floor(left / 6e4 % 60);
+  return <span className={`vf-gcc ${d < 10 ? "bad" : ""}`} title="The GCC slip is valid 90 days">{`${d}d ${h}h ${m}m left`}</span>;
+}
 export function VisaFileForm({ id }) {
   const old = id && files().find(f => f.id === id);
   const [f, setF] = React.useState(() => ({ mofaStatus: "Not applied", visaStatus: "Pending", prevNationality: "BANGLADESH", nationality: "BANGLADESH", religion: "Muslim", issuePlace: "DHAKA", stayEn: "02 Years", finger: "Yes", salary: "800", food: "200", experience: "No",
@@ -265,10 +275,23 @@ export function VisaFileForm({ id }) {
   const S = (k, opts, ph = "Select") => <select value={f[k] || ""} onChange={e => set({ [k]: e.target.value })}><option value="">{ph}</option>{opts.map(x => <option key={x}>{x}</option>)}</select>;
   const L = (k, label) => <span>{label}{REQUIRED[k] && <span className="req"> *</span>}</span>;
   const pm = profMatch(f), missing = Object.entries(REQUIRED).filter(([k]) => !String(f[k] || "").trim()).map(([, l]) => l);
+  // passport validity from the issue and expiry dates (5 or 10 years)
+  React.useEffect(() => { if (f.validity || !f.issueDate || !f.expiryDate) return; const y = Math.round((new Date(f.expiryDate) - new Date(f.issueDate)) / (365.25 * 864e5)); if (y === 5 || y === 10) set({ validity: `${y} Years` }); }, [f.issueDate, f.expiryDate]);
+  const [dup, setDup] = React.useState(null); // another client file / passport list entry with this passport
+  const [med, setMed] = React.useState(null); // MOFA health certificate check: { sid, img, code, error }
+  const medStart = async () => { setBusy("med"); const r = await act("admin.visa", { op: "medStart" }, { quiet: true }); setBusy(""); if (r?.sid) setMed({ sid: r.sid, img: r.img, code: "" }); };
+  const medNew = async () => { const r = await act("admin.visa", { op: "enjazCaptcha", sid: med.sid }, { quiet: true }); if (r?.img) setMed({ ...med, img: r.img, code: "", error: "" }); };
+  const medGo = async () => {
+    setBusy("medgo"); const r = await act("admin.visa", { op: "medSubmit", sid: med.sid, code: med.code, passport: f.passport || qp, appNo: f.mofaId }, { quiet: true }); setBusy("");
+    if (!r) return;
+    if (!r.ok) { setMed({ ...med, code: "", error: r.problem || "No answer.", img: r.img || med.img, lines: r.lines }); return; }
+    set({ mofaMedical: r.issued ? "Issued" : "Not issued" }); setMed(null); toast(r.message);
+  };
   const [mc, setMc] = React.useState(null); // MOFA application check: { sid, img, code, visaTypes, visaType, nationality, natOpts, error, result }
   const fetchPp = async () => {
     setBusy("pp"); const pp = qp.replace(/\s+/g, "").toUpperCase();
-    const r = await act("admin.visa", { op: "fetch", passport: qp, id }, { quiet: false });
+    const r = await act("admin.visa", { op: "fetch", passport: qp, id }, { quiet: false }); setDup(r?.exists || null);
+    if (r?.problem) toast(r.problem);
     if (r?.found) set({ ...Object.fromEntries(Object.entries(r.found).filter(([k]) => VISA_FIELDS.includes(k) || k === "name")), passport: pp }); else set({ passport: pp });
     const m = await act("admin.visa", { op: "mofaStart" }, { quiet: true }); setBusy("");
     if (m?.sid) setMc({ sid: m.sid, img: m.img, code: "", visaTypes: m.visaTypes || [], visaType: workType(m.visaTypes || []), nationality: m.nationality || "", natOpts: m.natOpts || [] });
@@ -279,7 +302,13 @@ export function VisaFileForm({ id }) {
     if (!r) return;
     if (!r.ok) { setMc({ ...mc, code: "", error: r.problem || "Nothing found.", img: r.img || mc.img, lines: r.lines }); return; }
     const x = r.found || {}, keep = k => (x[k] && !f[k] ? { [k]: x[k] } : {});
-    set({ ...(x.mofaStatus ? { mofaStatus: x.mofaStatus } : {}), ...(x.visaStatus ? { visaStatus: x.visaStatus } : {}), ...(x.mofaId ? { mofaId: x.mofaId } : {}), ...keep("visaNo"), ...keep("mofaProfession"), ...keep("dob"), ...keep("expiryDate"), ...keep("birthPlace") });
+    // like the printed MOFA application: identity fills empty fields; the profession always comes from MOFA (Arabic, and English from the word list)
+    const ocEn = x.occupationAr ? occEn(x.occupationAr) : "";
+    set({ ...(x.mofaStatus ? { mofaStatus: x.mofaStatus } : {}), ...(x.visaStatus ? { visaStatus: x.visaStatus } : {}), ...(x.mofaId ? { mofaId: x.mofaId } : {}), ...keep("visaNo"), ...keep("mofaProfession"), ...keep("dob"), ...keep("expiryDate"), ...keep("birthPlace"),
+      ...keep("name"), ...keep("sex"), ...keep("issuePlaceEn"), ...keep("travelPurpose"), ...(x.issuePlaceEn && !f.issuePlaceAr ? { issuePlaceAr: "دكا" } : {}),
+      ...(x.occupationAr ? { professionAr: x.occupationAr, mofaProfession: ocEn || x.occupationAr } : {}), ...(ocEn ? { professionEn: ocEn } : {}), ...(!x.occupationAr && x.mofaProfession && /^[A-Za-z .,&/-]+$/.test(x.mofaProfession) ? { professionEn: x.mofaProfession } : {}),
+      ...(!f.stayAr && STAY_AR[String(f.stayEn || "").toLowerCase()] ? { stayAr: STAY_AR[String(f.stayEn).toLowerCase()] } : {}) });
+    if (x.mofaId && (f.passport || qp)) setTimeout(medStart, 0); // next: has the health certificate been issued?
     if (x.visaNo && !qv.visaNo) setQv(v => ({ ...v, visaNo: x.visaNo }));
     setMc({ result: r }); toast("MOFA and visa status filled in.");
   };
@@ -333,6 +362,17 @@ export function VisaFileForm({ id }) {
       </div>}
       {mc?.result && <div className="vf-mofa ok"><p className="small"><b>From MOFA (application)</b><button type="button" className="btn sm link ms6" onClick={() => setMc(null)} aria-label="Close"><LuX /></button></p>
         <dl className="vf-dl">{(mc.result.pairs || []).filter(([k]) => !/^عرض|display/i.test(k)).map(([k, v]) => <div key={k} className="vf-dl-row"><dt>{mofaLabel(k)}</dt><dd dir="auto">{v}</dd></div>)}</dl></div>}
+      {dup && (dup.file || dup.passport) && <p className={`small vf-dup ${dup.file ? "bad" : "warn"}`}><LuTriangleAlert /> {dup.file ? <>{`Already added: ${dup.file.name} (SL ${dup.file.sl}, ${day(dup.file.created)}) · `}<button type="button" className="btn sm link" onClick={() => openModal("visaFile", { id: dup.file.id })}>Open</button></> : "Already in the Passport Entry list."}</p>}
+      {med && <div className="vf-mofa">
+        <p className="small"><b>MOFA health certificate check</b> · {`Application ${f.mofaId || "—"}, passport ${f.passport || qp}. Type the image code.`}</p>
+        <div className="vf-cap mt8">{med.img ? <img src={med.img} alt="Image code from MOFA" /> : <span className="muted small">No image</span>}
+          <button type="button" className="btn sm" onClick={medNew} aria-label="New image code"><LuRefreshCw /></button>
+          <input type="text" inputMode="numeric" maxLength={6} value={med.code} onChange={e => setMed({ ...med, code: e.target.value })} placeholder="Image code" aria-label="Image code for the health certificate check" autoComplete="off" onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); medGo(); } }} />
+          <button type="button" className="btn pri" disabled={busy === "medgo" || !med.code.trim()} onClick={medGo}>{busy === "medgo" ? "Checking…" : "Check"}</button>
+          <button type="button" className="btn sm link" onClick={() => setMed(null)} aria-label="Close"><LuX /></button></div>
+        {med.error && <p className="small vf-err">{med.error}</p>}
+        {med.lines?.length > 0 && <details className="vf-det small"><summary>What MOFA answered</summary><p className="muted">{med.lines.join(" · ")}</p></details>}
+      </div>}
       <WafidPaste passport={f.passport || qp} onFill={v => set(v)} />
       <div className="fgrid">
         <Field label="Agent"><select value={f.agentId || ""} onChange={e => set({ agentId: e.target.value })}><option value="">No agent (office client)</option>{agentsList().map(a => <option key={a.id} value={a.id}>{a.name}</option>)}</select></Field>
@@ -342,7 +382,9 @@ export function VisaFileForm({ id }) {
         <Field label="Profession match"><div className={`vf-box ${pm == null ? "" : pm ? "ok" : "bad"}`}>{pm == null ? "Not checked" : pm ? "Match" : "Not match"}</div></Field>
         <Field label="Medical report">{S("medicalResult", ["FIT", "UNFIT", "Pending"])}</Field>
         <Field label="GCC slip info"><div className="vf-two">{T("gccSlipNo", { placeholder: "Slip no.", "aria-label": "Slip no." })}{T("medicalCenter", { placeholder: "Medical center", "aria-label": "Medical center" })}</div></Field>
-        <Field label="Medical slip date">{T("medicalSlipDate")}</Field>
+        <Field label="Medical slip date">{T("medicalSlipDate")}<GccLeft date={f.medicalSlipDate} /></Field>
+        <Field label="MOFA medical (health certificate)"><div className="vf-two"><div className={`vf-box ${f.mofaMedical === "Issued" ? "ok" : f.mofaMedical ? "bad" : ""}`}>{f.mofaMedical === "Issued" ? "Certificate issued" : f.mofaMedical || "Not checked"}</div>
+          <button type="button" className="btn sm" disabled={busy === "med" || !f.mofaId || !(f.passport || qp)} title={f.mofaId ? "Check on the MOFA site" : "Enter the MOFA application ID first"} onClick={medStart}><LuRefreshCw /> Check</button></div></Field>
       </div>
     </Sec>
     <Sec n="1" title="Personal Information" sub="Basic identity of the applicant">

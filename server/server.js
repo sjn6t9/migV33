@@ -1963,7 +1963,26 @@ async function enjazFetch(sess, path, opt = {}) {
   }
   throw new Error("Too many redirects.");
 }
-const MOFA_APPLICANT = "/VisaPerson/GetApplicantData";
+const MOFA_APPLICANT = "/VisaPerson/GetApplicantData", MOFA_MEDICAL = "/VisaPerson/CheckMedicalResult";
+/* MOFA "check that the health certificate was issued": application number + passport + the image code the office types */
+async function medSubmit(d) {
+  const sess = enjazSessions.get(d.sid); must(sess && sess.page === MOFA_MEDICAL, "The image code has expired. Press Check again.");
+  const pp = ppNorm(d.passport), app = str(d.appNo, 20).toUpperCase(), code = str(d.code, 10);
+  must(/^[A-Z0-9]{6,15}$/.test(pp), "Enter the passport number."); must(/^E?\d{6,12}$/.test(app), "Enter the MOFA application ID (E…)."); must(code, "Type the image code.");
+  const form = new URLSearchParams({ AppNo: app, PassportNo: pp, Captcha: code }); if (sess.token) form.set("__RequestVerificationToken", sess.token);
+  const r = await enjazFetch(sess, MOFA_MEDICAL, { method: "POST", body: form.toString() }), html = await r.text();
+  const L = pageLines(html).filter(l => !/^(التأكد من اصدار الشهادة الصحية|التأكد من إصدار الشهادة الصحية|check medical result)$/i.test(l));
+  const msg = L.find(l => /(تم|لم يتم|has been|not been|no medical|لا يوجد|غير)\s.*(الشهاد|certificate|medical|الطبي)|medical certificate|الشهادة الصحية/i.test(l) && l.length < 220) || "";
+  if (!msg) {
+    const err = (/class="[^"]*(?:validation-summary-errors|alert-danger|field-validation-error|error)[^"]*"[^>]*>([\s\S]*?)<\/(?:div|span|ul)>/i.exec(html) || [])[1];
+    const img = (/id=['"]imgCaptcha['"][^>]*src=['"]([^'"]+)['"]/i.exec(html) || [])[1];
+    const tok = (/name="__RequestVerificationToken"[^>]*value="([^"]+)"/.exec(html) || [])[1]; if (tok) sess.token = tok; sess.t = Date.now();
+    return { ok: false, problem: htmlText(err || "") || (img ? "No answer. Check the image code." : "The MOFA page answered in a way this form does not know yet."), img: img ? await enjazCaptcha(sess, img).catch(() => null) : null, lines: img ? undefined : L.slice(0, 60) };
+  }
+  enjazSessions.delete(d.sid);
+  const issued = !/لم|not been|not issued|no medical|لا يوجد|غير/i.test(msg) && /تم|has been|issued|صدر/i.test(msg);
+  return { ok: true, issued, message: msg };
+}
 const optsOf = (html, name) => { const m = new RegExp(`<select\\b[^>]*name="${name}"[^>]*>([\\s\\S]*?)<\\/select>`, "i").exec(html); return m ? [...m[1].matchAll(/<option\b[^>]*value="([^"]*)"[^>]*>([^<]*)</gi)].map(o => ({ value: o[1], text: htmlText(o[2]) })).filter(o => o.value) : []; };
 async function enjazStart(page = ENJAZ_PAGE) {
   must(typeof fetch === "function", "The server's Node.js is too old for this.");
@@ -2015,7 +2034,10 @@ async function mofaSubmit(d) {
   return { ok: true, pairs, found: {
     mofaStatus: /reject|رفض/i.test(vs) ? "Rejected" : /cancel|ملغ/i.test(vs) ? "Cancelled" : visaNo || /issued|صدر|إصدار/i.test(vs) ? "Issued" : "Applied",
     visaStatus: /stamp|مختوم/i.test(vs) ? "Stamped" : /reject|رفض/i.test(vs) ? "Rejected" : /cancel|ملغ/i.test(vs) ? "Cancelled" : visaNo || /issued|صدر|إصدار/i.test(vs) ? "Issued" : "Applied",
-    mofaId: appNo, visaNo, mofaProfession: v.Occupation || "", dob: dmy(v["Date of Birth"]), expiryDate: dmy(v["Date of Expiry"]), birthPlace: v["Place of Birth"] || "" } };
+    mofaId: appNo, visaNo, mofaProfession: v.Occupation || "", dob: dmy(v["Date of Birth"]), expiryDate: dmy(v["Date of Expiry"]), birthPlace: v["Place of Birth"] || "",
+    name: (v.Name || "").replace(/\s+/g, " ").trim(), sex: /^(male|ذكر)/i.test(v.Gender || "") ? "Male" : /^(female|أنثى|انثى)/i.test(v.Gender || "") ? "Female" : "",
+    issuePlaceEn: /dhaka|دكا|داكا/i.test(v["Saudi Mission in"] || "") ? "Dhaka" : "", travelPurpose: /work|عمل/i.test(v["Visa Type"] || v.Purpose || "") ? "Work" : "",
+    occupationAr: /[\u0600-\u06FF]/.test(v.Occupation || "") ? v.Occupation : "", sponsorNameAr: v["Sponsor Name"] || "" } };
 }
 async function enjazCaptcha(sess, img) {
   const r = await enjazFetch(sess, img.startsWith("/") ? img : "/Base/GetRandomCaptchaImage/" + Math.floor(Math.random() * 1e9));
@@ -2098,8 +2120,9 @@ A["admin.visa"] = async (d, u) => {
     if (old) { const { id: _i, sl, created, by, updated, updatedBy, ...rest } = old; put(rest); }
     const w = (db.workers || []).find(x => ppNorm(x.passport) === pp); if (w) put({ name: w.name, agentId: w.agentId, address: w.district, mofaProfession: w.trade });
     const c = db.users.find(x => x.role === "candidate" && ppNorm(x.profile?.passport) === pp); if (c) put({ name: c.name, dob: c.profile?.dob, sex: c.profile?.gender, address: c.profile?.address, mofaProfession: c.profile?.trade });
-    must(Object.keys(out).length, `Nothing found for passport ${pp}. Fill in the form.`);
-    return { msg: `Found passport ${pp}${p ? " (Passport Entry)" : old ? " (from an earlier file)" : ""}.`, found: out };
+    const dupFile = old && { id: old.id, name: old.name, sl: old.sl, created: old.created }, inList = !!p;
+    if (!Object.keys(out).length) return { problem: `Nothing found for passport ${pp} in the office records.`, exists: { file: dupFile || null, passport: inList } };
+    return { exists: { file: dupFile || null, passport: inList }, msg: `Found passport ${pp}${p ? " (Passport Entry)" : old ? " (from an earlier file)" : ""}.`, found: out };
   }
   /* Search by visa number / sponsor ID: copy the visa and sponsor details from another file with the same visa */
   if (d.op === "visaSearch") {
@@ -2111,6 +2134,8 @@ A["admin.visa"] = async (d, u) => {
     return { msg: `Visa details copied from ${hit.name}'s file (SL ${hit.sl}).`, found: Object.fromEntries(K.filter(k => hit[k]).map(k => [k, hit[k]])) };
   }
   if (d.op === "mofaStart") { try { return await enjazStart(MOFA_APPLICANT); } catch (e) { if (e instanceof Fail) throw e; must(false, `Could not reach the MOFA site: ${e.message}`); } }
+  if (d.op === "medStart") { try { return await enjazStart(MOFA_MEDICAL); } catch (e) { if (e instanceof Fail) throw e; must(false, `Could not reach the MOFA site: ${e.message}`); } }
+  if (d.op === "medSubmit") { try { return await medSubmit(d); } catch (e) { if (e instanceof Fail) throw e; must(false, `Could not reach the MOFA site: ${e.message}`); } }
   if (d.op === "mofaSubmit") { try { return await mofaSubmit(d); } catch (e) { if (e instanceof Fail) throw e; must(false, `Could not reach the MOFA site: ${e.message}`); } }
   /* Medical result brought from Wafid by the office's bookmark: saved on every file of the passport, and kept for files made later */
   if (d.op === "medical") {
