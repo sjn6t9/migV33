@@ -1279,3 +1279,5 @@ button.hold-tile{cursor:pointer}
 @media (prefers-reduced-motion:reduce){.card.job-urgent,.card.job-new,.card.job-upcoming{animation:none}}
 /* Expert Team: Managing Director, Director and Chairman get a thin red border */
 .teamcard.lead{border:1.5px solid #dc2626 !important}
+.fj-docs{display:flex;flex-wrap:wrap;gap:8px 22px}
+.fj-note{max-width:260px;white-space:normal !important}

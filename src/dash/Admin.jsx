@@ -12,6 +12,7 @@ import { StatusSelect, Field, Options, JobFields, blankJob } from "./shared.jsx"
 import { setClStatus, signOut } from "../actions.js";
 import { ReceiptsAdmin, SignatureBox } from "./Receipts.jsx";
 import { VisaAdmin, VisaPassportEntry } from "./Visa.jsx";
+import { FijiPassportEntry } from "./FijiPassports.jsx";
 import { HeadlinesAdmin } from "./Headlines.jsx";
 import { MySettings, Attendance, AttendanceSettings } from "./MySettings.jsx";
 import { OfficeAccount, SalaryAdmin, MySalary, MoneyWithMe } from "./Accounts.jsx";
@@ -240,12 +241,14 @@ export function Admin({ u }) {
 
   if (t === "visa") body = <VisaAdmin />;
   if (t === "clearance") body = <AdminClearanceList />;
-  if (t === "passports") { // BMET and KSA passport entries together
-    const pp = can("clearance") && can("visa") ? (ui.ppSub || "bmet") : can("visa") ? "ksa" : "bmet";
+  if (t === "passports") { // BMET, KSA and Fiji passport entries together
+    const subs = [can("clearance") && ["bmet", "BMET Passport Entry", LuStamp], can("visa") && ["ksa", "KSA Passport Entry", LuPlaneTakeoff], ["fiji", "Fiji Passport Entry", LuBookUser]].filter(Boolean);
+    const pp = subs.some(x => x[0] === ui.ppSub) ? ui.ppSub : subs[0][0];
     body = <>
-      {can("clearance") && can("visa") && <nav className="pay-tabs" aria-label="Passport Entry">{[["bmet", "BMET Passport Entry", LuStamp], ["ksa", "KSA Passport Entry", LuPlaneTakeoff]].map(([k, l, I]) => <button key={k} className={pp === k ? "on" : ""} aria-current={pp === k ? "page" : undefined} onClick={() => { ui.ppSub = k; commit(); }}><I /> {l}</button>)}</nav>}
-      {pp === "ksa" ? <VisaPassportEntry /> : <PassportEntry title="BMET Passport Entry" />}</>;
+      {subs.length > 1 && <nav className="pay-tabs" aria-label="Passport Entry">{subs.map(([k, l, I]) => <button key={k} className={pp === k ? "on" : ""} aria-current={pp === k ? "page" : undefined} onClick={() => { ui.ppSub = k; commit(); }}><I /> {l}</button>)}</nav>}
+      {pp === "ksa" ? <VisaPassportEntry /> : pp === "fiji" ? <FijiPassportEntry /> : <PassportEntry title="BMET Passport Entry" />}</>;
   }
+
 
   if (t === "ledger") {
     const sel = ui.ledgerAgent ? user(ui.ledgerAgent) : null;

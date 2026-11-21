@@ -2045,6 +2045,26 @@ A["admin.passport"] = async (d, u) => {
     Object.assign(p, v, { updated: now() }); return { msg: "Passport updated." };
   }
   if (d.op === "delete") { const p = db.passports.find(x => x.id === d.id); must(p, "Passport not found."); db.passports = db.passports.filter(x => x !== p); return { msg: `Passport ${p.passport} deleted.` }; }
+  /* Fiji Passport Entry: work details and what was handed in with the passport; an existing passport gets these added */
+  if (d.op === "fiji") {
+    const name = str(d.name, 120), passport = ppNorm(d.passport).slice(0, 20), x = d.fiji || {};
+    must(name.length >= 2, "Enter the full name."); must(/^[A-Z0-9]{6,15}$/.test(passport), "Check the passport number (letters and numbers, 6 to 15).");
+    const ag = d.agentId ? user(d.agentId) : null; must(!d.agentId || ag?.role === "agent", "Agent not found.");
+    const returnee = x.returnee === "yes" ? "yes" : "no";
+    const fiji = { profession: str(x.profession, 80), experience: Math.max(0, Math.min(50, Number(x.experience) || 0)), returnee, prevCountry: returnee === "yes" ? str(x.prevCountry, 80) : "",
+      submitted: x.submitted === "photocopy" ? "photocopy" : "original", docs: ["photo", "police", "medical"].filter(k => (x.docs || []).includes(k)), note: str(x.note, 1000), at: now(), by: u.name };
+    must(fiji.profession, "Enter the profession."); must(returnee === "no" || fiji.prevCountry, "Enter the country the person came back from.");
+    const ref = ag ? agentName(ag) : str(d.ref, 120);
+    const old = d.id ? db.passports.find(p => p.id === d.id) : db.passports.find(p => p.passport === passport);
+    must(!d.id || old, "Passport not found.");
+    if (old) {
+      must(!db.passports.some(p => p !== old && p.passport === passport), `Passport ${passport} is already in the list.`);
+      Object.assign(old, { name, passport, ref, agentId: ag ? ag.id : null, fiji, updated: now() }); if (!old.country) old.country = "Fiji";
+      return { msg: d.id ? "Passport updated." : `Fiji details added to passport ${passport}.` };
+    }
+    db.passports.unshift({ id: id("pp"), name, passport, country: "Fiji", gender: "", ref, agentId: ag ? ag.id : null, fiji, by: u.name, at: now() });
+    return { msg: `Passport ${passport} added.` };
+  }
   must(false, "Unknown request.");
 };
 A["admin.about"] = async (d, u) => {
