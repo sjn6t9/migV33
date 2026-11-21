@@ -2,7 +2,7 @@ import React from "react";
 import { LuPlus, LuTrash2, LuSend, LuX, LuUsers, LuGlobe } from "react-icons/lu";
 import { store, balanceOf, bdtFmt, COUNTRIES } from "../store.js";
 import { toast, act } from "../actions.js";
-import { Field, Options } from "./shared.jsx";
+import { Field, Options, ClCountryOptions } from "./shared.jsx";
 
 /* Admin/staff: many BMET clearance files at once. Destination and employer are the same for every row;
    each row is one candidate with their own agent (registered or a typed name), processing fee and previous due. */
@@ -20,9 +20,30 @@ export function BulkEcForm({ onDone }) {
   const [common, setCommon] = React.useState({ country: "Saudi Arabia", employer: "", visaType: "Work visa", flightDate: "", notes: "" });
   const [busy, setBusy] = React.useState(false);
   const set = (k, patch) => setRows(L => L.map(r => r.k === k ? { ...r, ...patch } : r));
+  const digits = v => String(v || "").replace(/\D/g, "").slice(-10);
+  const agentByPhone = v => { const d = digits(v); return d.length >= 10 ? agents.find(a => [a.agent?.phone, a.phone, a.profile?.phone].some(x => digits(x) === d)) : null; };
+  // fill a field typed by the person only when it is empty; a field filled automatically is replaced by the new match
+  const fill = (r, vals) => { const auto = { ...(r.auto || {}) }, patch = {};
+    for (const [k, v] of Object.entries(vals)) if (!String(r[k]).trim() || auto[k]) { patch[k] = v || ""; auto[k] = !!v; }
+    return { ...patch, auto }; };
+  /* a passport entered before (office passport list, a saved worker, an older clearance file) fills the rest of the row */
   const pickPassport = (r, v) => {
-    const p = v.replace(/\s+/g, "").toUpperCase(); const pp = pps.find(x => x.passport === p);
-    set(r.k, { passport: v, ...(pp ? { name: r.name.trim() ? r.name : pp.name, agent: r.agent.trim() ? r.agent : pp.ref || "" } : {}) });
+    const p = v.replace(/\s+/g, "").toUpperCase(); const norm = x => String(x || "").replace(/\s+/g, "").toUpperCase();
+    const pp = p.length >= 6 ? pps.find(x => norm(x.passport) === p) : null;
+    const w = p.length >= 6 ? (S.workers || []).find(x => norm(x.passport) === p) : null;
+    const old = w ? [...(S.clearances || [])].reverse().find(c => c.workerId === w.id) : null;
+    const wAg = w && (w.agentId ? agents.find(a => a.id === w.agentId) : null), ppAg = pp && pp.agentId ? agents.find(a => a.id === pp.agentId) : null;
+    const agent = wAg ? agName(wAg) : w?.agentName || (ppAg ? agName(ppAg) : pp?.ref || "");
+    set(r.k, { passport: v, ...(pp || w ? fill(r, { name: w?.name || pp?.name, phone: w?.phone || "", icNo: old?.icNo || "", agent }) : fill(r, { name: "", phone: "", icNo: "", agent: "" })) });
+  };
+  /* mobile number: an agent's number puts that agent in the row; any other number means the candidate came direct (Self) */
+  const pickPhone = (r, v) => {
+    const a = agentByPhone(v), d = digits(v), auto = { ...(r.auto || {}) }, empty = !r.agent.trim(), fromPhone = auto.agent === "phone";
+    let agent = r.agent;
+    if (a && (empty || auto.agent)) { agent = agName(a); auto.agent = "phone"; }
+    else if (!a && d.length >= 10 && (empty || fromPhone)) { agent = "Self"; auto.agent = "phone"; }
+    else if (d.length < 10 && fromPhone) { agent = ""; auto.agent = false; }
+    set(r.k, { phone: v, agent, auto });
   };
   const used = rows.filter(filled);
   const submit = async () => {
@@ -33,7 +54,7 @@ export function BulkEcForm({ onDone }) {
       if (!r.agent.trim()) return toast(`Row ${i + 1}: select the agent or write a name.`);
     }
     setBusy(true);
-    const payload = { ...common, rows: used.map(r => { const a = findAg(r.agent); return { passport: r.passport.trim(), name: r.name.trim(), icNo: r.icNo.trim(), phone: r.phone.trim(), ...(a ? { agentId: a.id } : { agentName: r.agent.trim() }), fee: r.fee, due: r.due }; }) };
+    const payload = { ...common, rows: used.map(r => { const a = findAg(r.agent); return { passport: r.passport.trim(), name: r.name.trim(), icNo: r.icNo.trim(), phone: agentByPhone(r.phone) ? "" : r.phone.trim(), ...(a ? { agentId: a.id } : { agentName: r.agent.trim() }), fee: r.fee, due: r.due }; }) };
     const res = await act("admin.clearanceBulk", payload);
     setBusy(false);
     if (res) { setRows(Array.from({ length: 5 }, blank)); onDone && onDone(); }
@@ -43,7 +64,7 @@ export function BulkEcForm({ onDone }) {
       <div className="card">
         <h3 className="bulk-h"><LuGlobe /> Same for all rows</h3>
         <div className="fgrid">
-          <Field label="Destination country *"><select value={common.country} onChange={e => setCommon({ ...common, country: e.target.value })}><Options list={Object.keys(COUNTRIES)} /></select></Field>
+          <Field label="Destination country *"><select value={common.country} onChange={e => setCommon({ ...common, country: e.target.value })}><ClCountryOptions /></select></Field>
           <Field label="Employer / sponsor name (optional)"><input type="text" value={common.employer} maxLength={150} onChange={e => setCommon({ ...common, employer: e.target.value })} /></Field>
           <Field label="Visa type"><select value={common.visaType} onChange={e => setCommon({ ...common, visaType: e.target.value })}><Options list={["Work visa", "Free visa", "Group visa", "Other"]} /></select></Field>
           <Field label="Planned flight date (optional)"><input type="date" value={common.flightDate} onChange={e => setCommon({ ...common, flightDate: e.target.value })} /></Field>
@@ -56,11 +77,11 @@ export function BulkEcForm({ onDone }) {
             <tr key={r.k}>
               <td><span className="bulk-no">{i + 1}</span></td>
               <td><input type="text" value={r.passport} list="bulk-pp-list" maxLength={30} placeholder="Passport No." style={{ textTransform: "uppercase" }} onChange={e => pickPassport(r, e.target.value)} aria-label="Passport No." /></td>
-              <td><input type="text" value={r.name} maxLength={120} placeholder="Full name" onChange={e => set(r.k, { name: e.target.value })} aria-label="Candidate name" /></td>
-              <td><input type="text" value={r.icNo} maxLength={40} placeholder="Optional" onChange={e => set(r.k, { icNo: e.target.value })} aria-label="IC No." /></td>
-              <td><input type="tel" value={r.phone} maxLength={30} placeholder="Optional" onChange={e => set(r.k, { phone: e.target.value })} aria-label="Mobile" /></td>
-              <td><input type="text" value={r.agent} list="bulk-agent-list" maxLength={120} placeholder="Select or type" onChange={e => set(r.k, { agent: e.target.value })} aria-label="Agent" />
-                {r.agent.trim() && <div className={`bulk-hint ${a ? (bal > 0 ? "bad" : "muted") : "muted"}`}>{a ? (bal > 0 ? `Due now: ${bdtFmt(bal)}` : "No due") : "Custom name"}</div>}</td>
+              <td><input type="text" value={r.name} maxLength={120} placeholder="Full name" onChange={e => set(r.k, { name: e.target.value, auto: { ...(r.auto || {}), name: false } })} aria-label="Candidate name" /></td>
+              <td><input type="text" value={r.icNo} maxLength={40} placeholder="Optional" onChange={e => set(r.k, { icNo: e.target.value, auto: { ...(r.auto || {}), icNo: false } })} aria-label="IC No." /></td>
+              <td><input type="tel" value={r.phone} maxLength={30} placeholder="Candidate or agent" onChange={e => pickPhone(r, e.target.value)} aria-label="Mobile" /></td>
+              <td><input type="text" value={r.agent} list="bulk-agent-list" maxLength={120} placeholder="Select or type" onChange={e => set(r.k, { agent: e.target.value, auto: { ...(r.auto || {}), agent: false } })} aria-label="Agent" />
+                {r.agent.trim() && <div className={`bulk-hint ${a ? (bal > 0 ? "bad" : "muted") : "muted"}`}>{a ? (bal > 0 ? `Due now: ${bdtFmt(bal)}` : "No due") : r.agent.trim().toLowerCase() === "self" ? "Self (no agent)" : "Custom name"}</div>}</td>
               <td><input type="number" min="0" step="any" value={r.fee} placeholder={defFee ? String(defFee) : "0"} onChange={e => set(r.k, { fee: e.target.value })} aria-label="Processing fee" /></td>
               <td><input type="number" min="0" step="any" value={r.due} placeholder="0" onChange={e => set(r.k, { due: e.target.value })} aria-label="Due amount" /></td>
               <td><button type="button" className="ec-ico del" title="Remove row" aria-label="Remove row" onClick={() => setRows(L => L.length > 1 ? L.filter(x => x.k !== r.k) : [blank()])}><LuX /></button></td>
@@ -68,7 +89,7 @@ export function BulkEcForm({ onDone }) {
         </tbody></table></div>
         <datalist id="bulk-pp-list">{pps.map(x => <option key={x.id} value={x.passport}>{`${x.name} · ${x.country}`}</option>)}</datalist>
         <datalist id="bulk-agent-list">{agents.map(a => <option key={a.id} value={agName(a)} />)}</datalist>
-        <p className="muted small mt8">{`Empty rows are skipped. Processing fee: leave it blank to use the default${defFee ? ` (${bdtFmt(defFee)})` : ""}. Due amount: an older amount the agent still owes. For a registered agent, the fee and the due are added to the agent's account. Passport, visa and contract copies can be added later from Details.`}</p>
+        <p className="muted small mt8">{`Empty rows are skipped. Processing fee: leave it blank to use the default${defFee ? ` (${bdtFmt(defFee)})` : ""}. Due amount: an older amount the agent still owes. For a registered agent, the fee and the due are added to the agent's account. Mobile: an agent's number fills in that agent; any other number fills in Self. A passport entered before fills in the rest of the row. Passport, visa and contract copies can be added later from Details.`}</p>
         <div className="bulk-foot">
           <div className="bulk-btns">
             <button type="button" className="btn sm" onClick={() => setRows(L => [...L, blank()])}><LuPlus /> Add row</button>

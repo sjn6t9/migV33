@@ -6,7 +6,7 @@ import {
 import { store, commit, job, live, company, money, isHourly, fdate, kb, completeness, unread, COUNTRIES, CATS } from "../store.js";
 import { toast, formData, withdraw, setTab, openModal, readUpload, downloadFile, fileExt, act, DOC_TYPES } from "../actions.js";
 import { Rail, Tiles, Pipe, ClPipe, Pill, Empty, JobCard, CardDownload, Avatar } from "../ui.jsx";
-import { NotifPanel, Field, Options } from "./shared.jsx";
+import { NotifPanel, Field, Options, ClCountryOptions } from "./shared.jsx";
 
 const ui = store.ui;
 
@@ -168,7 +168,7 @@ function ClearanceForm({ u }) {
   return (
     <form className="card fgrid" onSubmit={submit}>
       <h3 className="full">New clearance application</h3>
-      <Field label="Select country"><select name="country" required defaultValue=""><option value="" disabled>Choose destination country</option><Options list={Object.keys(COUNTRIES)} /></select></Field>
+      <Field label="Select country"><select name="country" required defaultValue=""><option value="" disabled>Choose destination country</option><ClCountryOptions /></select></Field>
       <Field label="Full name (as in passport)"><input type="text" name="fullName" defaultValue={u.name.replace(" (sample)", "")} required /></Field>
       <Field label="Passport number"><input type="text" name="passportNo" defaultValue={p.passportNo} required /></Field>
       <Field label="Upload passport copy" hint={p.passportFile ? `Leave empty to use the passport in your profile (${p.passportFile.name})` : "PDF or JPG"}><input type="file" name="passportCopy" accept={DOC_TYPES} required={!p.passportFile} /></Field>

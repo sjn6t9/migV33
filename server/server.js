@@ -8,7 +8,7 @@ import fs from "node:fs";
 import path from "node:path";
 import crypto from "node:crypto";
 import { fileURLToPath } from "node:url";
-import { COUNTRIES, HOURLY, STAGES, CL_STAGES, STAFF_PERMS, LABEL, INITIAL, TEAM_DEPTS, VISA_FIELDS, VISA_DATES } from "../src/constants.js";
+import { COUNTRIES, HOURLY, STAGES, CL_STAGES, STAFF_PERMS, LABEL, INITIAL, TEAM_DEPTS, VISA_FIELDS, VISA_DATES, clCountryOk } from "../src/constants.js";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 loadEnv(path.join(HERE, "..", ".env"));
@@ -447,7 +447,7 @@ A["app.withdraw"] = async ({ id: aid }, u) => {
   db.applications = db.applications.filter(x => x.id !== aid); return { msg: "Application withdrawn." };
 };
 A["cand.clearance"] = async (d, u) => {
-  needRole(u, "candidate"); must(COUNTRIES[d.country], "Select a country.");
+  needRole(u, "candidate"); must(clCountryOk(d.country), "Select a country.");
   must(!db.clearances.some(c => c.candidateId === u.id && c.status !== "rejected" && !c.card), "You already have a clearance file in progress.");
   const fullName = str(d.fullName, 120), passportNo = str(d.passportNo, 30).toUpperCase(); must(fullName && passportNo, "Enter your full name and passport number.");
   must(d.files?.visa, "Upload the visa copy."); must(d.files?.passport || u.profile.passportFile, "Upload the passport copy.");
@@ -602,11 +602,11 @@ A["agent.clearance"] = async (d, u) => {
     const nw = d.newWorker, pass = str(nw.passport, 30).toUpperCase();
     must(str(nw.name).length >= 2 && pass, "Enter the worker's name and passport number.");
     must(!db.workers.some(x => x.passport.toUpperCase() === pass), `A worker with passport ${pass} is already registered. Choose them from your workers.`);
-    must(COUNTRIES[d.country], "Select a country."); must(d.files?.passport && d.files?.visa, "Upload the passport copy and visa copy."); must(str(d.employer), "Enter the employer / sponsor name.");
+    must(clCountryOk(d.country), "Select a country."); must(d.files?.passport && d.files?.visa, "Upload the passport copy and visa copy."); must(str(d.employer), "Enter the employer / sponsor name.");
     const nwr = { id: id("w"), agentId: u.id, name: str(nw.name, 120), father: "", passport: pass, passportExpiry: "", dob: "", phone: str(nw.phone, 30), district: "", trade: str(nw.trade, 80), experience: 0, created: now() };
     db.workers.push(nwr); d.workerId = nwr.id;
   }
-  const w = worker(d.workerId); must(w && w.agentId === u.id, "Choose one of your workers."); must(COUNTRIES[d.country], "Select a country.");
+  const w = worker(d.workerId); must(w && w.agentId === u.id, "Choose one of your workers."); must(clCountryOk(d.country), "Select a country.");
   must(!db.clearances.some(c => c.workerId === w.id && c.status !== "rejected"), "This worker already has an open clearance file.");
   must(d.files?.passport && d.files?.visa, "Upload the passport copy and visa copy."); must(str(d.employer), "Enter the employer / sponsor name.");
   const files = { passport: storeFile(d.files.passport, u.id), visa: storeFile(d.files.visa, u.id), contract: d.files.contract ? storeFile(d.files.contract, u.id) : null, others: [] };
@@ -623,7 +623,7 @@ A["agent.clearance"] = async (d, u) => {
 A["admin.clearanceBulk"] = async (d, u) => {
   needPerm(u, "clearance");
   const rows = Array.isArray(d.rows) ? d.rows.slice(0, 200) : []; must(rows.length, "Add at least one row.");
-  must(COUNTRIES[d.country], "Select a country.");
+  must(clCountryOk(d.country), "Select a country.");
   const seen = new Set();
   rows.forEach((r, i) => { // check every row first, so nothing is saved when one row is wrong
     const pass = str(r.passport, 30).replace(/\s+/g, "").toUpperCase(), n = `Row ${i + 1}: `;
@@ -646,7 +646,7 @@ A["admin.clearance"] = async (d, u) => {
   const ag = d.agentId ? db.users.find(x => x.id === d.agentId && x.role === "agent") : null;
   must(!d.agentId || ag, "Agent not found.");
   const agentName = ag ? "" : str(d.agentName, 120);
-  must(COUNTRIES[d.country], "Select a country."); if (!d.bulk) { must(d.files?.passport && d.files?.visa, "Upload the passport copy and visa copy."); must(str(d.employer), "Enter the employer / sponsor name."); }
+  must(clCountryOk(d.country), "Select a country."); if (!d.bulk) { must(d.files?.passport && d.files?.visa, "Upload the passport copy and visa copy."); must(str(d.employer), "Enter the employer / sponsor name."); }
   const mine = w => ag ? w.agentId === ag.id : !w.agentId;
   if (!d.workerId && d.newWorker) {
     const nw = d.newWorker, pass = str(nw.passport, 30).replace(/\s+/g, "").toUpperCase();

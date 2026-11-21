@@ -6,7 +6,7 @@ import { store, commit, worker, job, live, money, fdate, bdtFmt, balanceOf, unre
 import { toast, formData, setTab, openModal, closeModal, confirmBox, withdraw, readUpload, act, DOC_TYPES, downloadFile, cardFileName } from "../actions.js";
 import { LuDownload, LuMaximize2, LuMinimize2, LuRefreshCw, LuSearch, LuFileText, LuBanknote, LuCirclePlus, LuX } from "react-icons/lu";
 import { Rail, Tiles, Pill, Pipe, ClPipe, Empty, CardDownload, Avatar } from "../ui.jsx";
-import { NotifPanel, Field, Options, AgentDocUploads, AGENT_DOCS } from "./shared.jsx";
+import { NotifPanel, Field, Options, ClCountryOptions, AgentDocUploads, AGENT_DOCS } from "./shared.jsx";
 
 const ui = store.ui;
 const open = c => !["approved", "rejected"].includes(c.status);
@@ -333,7 +333,7 @@ export function GroupEcForm({ C, W, active, onDone, admin }) {
         <input type="text" list="ec-agent-list" value={agText} onChange={e => setAgText(e.target.value)} maxLength={120} placeholder="Select an agent or type a name" />
         <datalist id="ec-agent-list">{agents.map(a => <option key={a.id} value={agName(a)}>{a.agent?.business && a.name !== a.agent.business ? a.name : ""}</option>)}</datalist>
       </Field>}
-      <Field label="Destination country"><select name="country" defaultValue="Saudi Arabia"><Options list={Object.keys(COUNTRIES)} /></select></Field>
+      <Field label="Destination country"><select name="country" defaultValue="Saudi Arabia"><ClCountryOptions /></select></Field>
       <Field label="Employer / sponsor name"><input type="text" name="employer" required /></Field>
       <Field label="Visa type"><select name="visaType"><Options list={["Work visa", "Free visa", "Group visa", "Other"]} /></select></Field>
       <Field label="Planned flight date"><input type="date" name="flightDate" /></Field>

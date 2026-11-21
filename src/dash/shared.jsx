@@ -4,7 +4,7 @@ import { store, num, fdate, kb, bdtFmt, candOf, clPerson, job, STAGES, LABEL, CA
 import { openModal, setAppStatus, confirmPayment, confirmBox, toast, downloadFile, cardFileName, formData, act } from "../actions.js";
 import { Pill, Empty, Avatar } from "../ui.jsx";
 import { descriptionFor, requirementsFor, toLines, PASSPORT_LINE, TERM_BENEFITS } from "../jobtpl.js";
-import { HOURS_PER_DAY } from "../constants.js";
+import { HOURS_PER_DAY, CL_REGIONS } from "../constants.js";
 import { readUpload, fileExt } from "../actions.js";
 
 export function NotifPanel({ u }) {
@@ -78,6 +78,9 @@ export function LedgerTable({ agentId, admin }) {
 }
 
 export const Field = ({ label, hint, children, full }) => <label className={`f${full ? " full" : ""}`}>{label}{children}{hint && <span className="hint">{hint}</span>}</label>;
+/* country options for BMET clearance forms: our destinations, then Middle East, Asia, Europe and Oceania */
+export const ClCountryOptions = () => { const ours = Object.keys(COUNTRIES); return <><optgroup label="Our destinations">{ours.map(c => <option key={c}>{c}</option>)}</optgroup>
+  {CL_REGIONS.map(([g, L]) => <optgroup key={g} label={g}>{L.filter(c => !ours.includes(c)).map(c => <option key={c}>{c}</option>)}</optgroup>)}</>; };
 export const Options = ({ list, blank }) => <>{blank !== undefined && <option value="">{blank}</option>}{list.map(v => Array.isArray(v) ? <option key={v[0]} value={v[0]}>{v[1]}</option> : <option key={v}>{v}</option>)}</>;
 
 /* Admin: upload the BMET clearance card for an approved file, set the card fee and send it to the agent or job seeker */
