@@ -50,14 +50,16 @@ export function BulkEcForm({ onDone }) {
     set(r.k, { phone: v, agent, auto });
   };
   /* RAIMS search: an IC number or application ID → one row for each worker under it */
-  const [ric, setRic] = React.useState(""), [rbusy, setRbusy] = React.useState(false), [rdiag, setRdiag] = React.useState(null);
+  const [ric, setRic] = React.useState(""), [rbusy, setRbusy] = React.useState(false), [rdiag, setRdiag] = React.useState(null), [rgot, setRgot] = React.useState(0);
+  const rawDl = async () => { const r = await act("admin.raims", { op: "rawPage" }); if (!r?.html) return; const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([`<!-- ${r.url} -->\n${r.html}`], { type: "text/html" })); a.download = "raims-page.html"; document.body.appendChild(a); a.click(); a.remove(); };
   const allCountries = [...Object.keys(COUNTRIES), ...CL_REGIONS.flatMap(([, L]) => L)];
   const findCountry = v => { const k = String(v || "").trim().toLowerCase(); return allCountries.find(c => c.toLowerCase() === k) || allCountries.find(c => k && (k.includes(c.toLowerCase()) || c.toLowerCase().includes(k))) || ""; };
   const raimsSearch = async () => {
     if (ric.trim().length < 3) return toast("Enter the IC number, the RAIMS link or its number.");
-    setRbusy(true); setRdiag(null); const r = await act("admin.raims", { op: "lookup", q: ric.trim() }); setRbusy(false);
+    setRbusy(true); setRdiag(null); setRgot(0); const r = await act("admin.raims", { op: "lookup", q: ric.trim() }); setRbusy(false);
     if (r?.problem) { toast(r.problem); setRdiag(r.seen || null); return; }
     if (!r?.people?.length) return;
+    setRgot(r.people.length);
     const have = new Set(rows.map(x => x.passport.replace(/\s+/g, "").toUpperCase()).filter(Boolean));
     const fresh = r.people.filter(x => !have.has(String(x.passport || "").toUpperCase()));
     const made = fresh.map(x => { const b = blank(); const pp = pps.find(y => y.passport === x.passport), w = (S.workers || []).find(y => String(y.passport).toUpperCase() === x.passport);
@@ -91,6 +93,7 @@ export function BulkEcForm({ onDone }) {
         {rdiag && <details className="vf-det small mt8" open><summary>What was read on RAIMS</summary><p className="muted" data-notr>{rdiag.text ? "" : `${rdiag.rows} rows on ${rdiag.pages || 1} page(s)${rdiag.ajax ? ` (list address ${rdiag.ajax})` : ""} · matching rows: ${rdiag.hits} · columns: ${(rdiag.head || []).join(", ") || "none"} · first row: ${(rdiag.first || []).join(" | ") || "—"} · its links: ${(rdiag.links || []).join(", ") || "none"}`}</p>
           {(rdiag.list || rdiag.text) && <p className="muted" data-notr dir="auto">{rdiag.text ? `Page ${rdiag.page} → ${rdiag.url} · title "${rdiag.title}" · tables: ${rdiag.tables} · data addresses: ${(rdiag.hints || []).join(" , ") || "none"} · text: ${rdiag.text.slice(0, 500)}` : `List page → ${rdiag.list.url} (${rdiag.list.status}) · after sign-in → ${rdiag.list.login?.url} (${rdiag.list.login?.status}) · title "${rdiag.list.title}" · tables: ${rdiag.list.tables} · scripts: ${(rdiag.list.scripts || []).join(", ")} · data addresses: ${(rdiag.list.hints || []).join(" , ") || "none"} · text: ${rdiag.list.text.slice(0, 400)}`}</p>}
           <p className="small">Tip: open the IC number on RAIMS and paste that page's link (…/individual/1705123/show) here.</p></details>}
+        {(rdiag || rgot) && <p className="small mt8"><button type="button" className="btn sm link" onClick={rawDl}>Download the RAIMS page that was read</button> <span className="muted">{rgot ? `${rgot} worker(s) were read. If some are missing, send this file to support.` : "Send this file to support."}</span></p>}
         <p className="muted small mt8">{store.S.raims?.saved ? "Every worker under this number is added as a row with the name, passport number and IC number, and the country is set." : "Set the RAIMS sign-in first (RAIMS button above)."}</p>
       </div>
       <div className="card">

@@ -920,6 +920,7 @@ async function raimsSync(by = "auto") {
   if (db.raims) db.raims.last = out; save(); return out;
 }
 setInterval(() => { if (db.raims?.auto && db.raims.pass) raimsSync("auto").catch(() => {}); }, 30 * 60e3).unref();
+const lastRaims = new Map(); // the last RAIMS page read, for the admin to download when a page is not read right
 A["admin.raims"] = async (d, u) => {
   needPerm(u, "clearance");
   if (d.op === "save") {
@@ -929,6 +930,7 @@ A["admin.raims"] = async (d, u) => {
     must(db.raims.pass, "Enter the RAIMS password.");
     return { msg: "RAIMS sign-in saved." };
   }
+  if (d.op === "rawPage") { must(u.role === "admin", "Only the admin can download this.", 403); const x = lastRaims.get("page"); must(x, "Search RAIMS first."); return { url: x.url, html: x.html }; }
   if (d.op === "remove") { must(u.role === "admin", "Only the admin can change the RAIMS sign-in.", 403); delete db.raims; return { msg: "RAIMS sign-in removed." }; }
   /* Add bulk: an IC number or application ID → every worker under it (name, passport, country, IC number) */
   if (d.op === "lookup") {
@@ -961,11 +963,21 @@ A["admin.raims"] = async (d, u) => {
           const ct = (e.find(([k, v]) => /country/i.test(k) && typeof v === "string") || [])[1] || ctry;
           people.push({ ic: icp, name: String(nm).trim(), passport: pp, country: ct }); }
       }
-      if (!people.length) { // one person on the page, written as label: value
-        const pp = (/Passport\s*(?:No\.?|Number)?\s*:?\s*([A-Z]{1,2}\d{7,8})/i.exec(txt) || PPR.exec(txt) || [])[1];
-        const nm = ((/(?:Worker|Applicant|Emigrant|Full)?\s*Name\s*:?\s*([A-Z][A-Z .'-]{3,60}?)(?=\s{2,}|\s+[A-Z][a-z]+\s*:|$)/.exec(txt) || [])[1] || "").trim();
-        if (pp) people.push({ ic: icp, name: nm, passport: pp, country: ctry });
+      // pages laid out as label / value boxes (RAIMS cards): read the text pieces in order
+      const N = pg.text.replace(/<script[\s\S]*?<\/script>|<style[\s\S]*?<\/style>/gi, " ").split(/<[^>]+>/).map(x => htmlText(x)).filter(Boolean);
+      const isLab = x => x.length < 60 && /[a-z]/.test(x) && !PPR.test(x);
+      const valOf = re => { for (let i = 0; i < N.length - 1; i++) if (re.test(N[i]) && isLab(N[i])) { const v = N[i + 1]; if (v && !(isLab(v) && /:$|number|name|date|country/i.test(v))) return v; } return ""; };
+      const icLabel = valOf(/^(IC|EC|Clearance)\s*(No\.?|Number|Ref\.?)?\s*:?$/i).replace(/\s+/g, "").toUpperCase();
+      const country2 = ctry || valOf(/^(Destination\s*)?Country\s*:?$/i);
+      const nameRe = /^((emigrant|worker|candidate|applicant|migrant|passport\s*holder)('?s)?\s*)?(full\s*)?name(\s*\(.*\))?\s*:?$/i, notName = /father|mother|spouse|employer|company|owner|contact|agency|agent|nominee|user|bank|person/i;
+      for (let i = 0; i < N.length; i++) {
+        const pp = (/^\s*([A-Z]{1,2}\d{7,8})\s*$/.exec(N[i]) || [])[1]; if (!pp || people.some(x => x.passport === pp)) continue;
+        let nm = ""; for (let j = i - 1; j >= Math.max(0, i - 40); j--) { if (nameRe.test(N[j]) && !notName.test(N[j]) && N[j + 1] && !isLab(N[j + 1]) || (nameRe.test(N[j]) && !notName.test(N[j]) && /^[A-Z][A-Z .'-]{2,}$/.test(N[j + 1] || ""))) { nm = N[j + 1]; break; } if (/^\s*[A-Z]{1,2}\d{7,8}\s*$/.test(N[j])) break; }
+        if (!nm) for (let j = i + 1; j < Math.min(N.length, i + 30); j++) { if (/^\s*[A-Z]{1,2}\d{7,8}\s*$/.test(N[j])) break; if (nameRe.test(N[j]) && !notName.test(N[j]) && N[j + 1]) { nm = N[j + 1]; break; } }
+        people.push({ ic: icLabel || icp, name: nm, passport: pp, country: country2 });
       }
+      for (const x of people) { if (!x.ic) x.ic = icLabel || icp; if (!x.country) x.country = country2; }
+      lastRaims.set("page", { url: pg.url, html: pg.text.slice(0, 600000) });
       return { people, txt, title, url: pg.url, tables, hints: dataHints(pg.text) };
     };
     // a RAIMS page link pasted as it is (any page on raims.oep.gov.bd), or only the number in such a link
