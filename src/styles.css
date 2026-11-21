@@ -39,7 +39,7 @@ h4{font-size:16px;font-weight:600}
 p{margin:0}
 a{color:var(--brand)}
 img{max-width:100%}
-.wrap{max-width:1180px;margin:0 auto;padding:0 20px}
+.wrap{max-width:1760px;margin:0 auto;padding:0 clamp(16px,3vw,48px)}
 .muted{color:var(--muted)}
 .small{font-size:14px}
 .num{font-variant-numeric:tabular-nums}
@@ -90,9 +90,10 @@ textarea{min-height:96px;resize:vertical}
 /* cards */
 .card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:20px}
 .grid{display:grid;gap:16px}
-.g2{grid-template-columns:repeat(auto-fit,minmax(300px,1fr))}
-.g3{grid-template-columns:repeat(auto-fit,minmax(260px,1fr))}
-.g4{grid-template-columns:repeat(auto-fit,minmax(200px,1fr))}
+/* g2/g3/g4: at most 2/3/4 columns, fewer on narrow screens (the page is full width on big screens) */
+.g2{grid-template-columns:repeat(auto-fit,minmax(max(300px,calc((100% - 16px) / 2)),1fr))}
+.g3{grid-template-columns:repeat(auto-fit,minmax(max(260px,calc((100% - 32px) / 3)),1fr))}
+.g4{grid-template-columns:repeat(auto-fit,minmax(max(200px,calc((100% - 48px) / 4)),1fr))}
 section.sec{padding:44px 0}
 .sec-head{display:flex;justify-content:space-between;align-items:end;gap:12px;flex-wrap:wrap;margin-bottom:20px}
 .eyebrow{font-size:13px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--accent)}
@@ -300,7 +301,7 @@ tr.sel td{background:var(--soft)}
 .sub{margin:22px 0 8px}
 .search .btn{gap:8px}
 .demo-strip span{display:inline-flex;align-items:center;gap:6px;flex-wrap:wrap}
-.wrap.dash{padding:28px 20px 50px}
+.wrap.dash{padding-top:28px;padding-bottom:50px}
 .rail .count{align-self:center;line-height:1.55;min-width:20px;text-align:center}
 
 /* ---- v2: chat assistant, WhatsApp, testimonials, team, gallery, track ---- */
@@ -1286,3 +1287,11 @@ button.hold-tile{cursor:pointer}
 .pp-country button b{font-size:1.1rem}
 .pp-country button.on{border-color:var(--pri,#006a4e);background:color-mix(in srgb,var(--pri,#006a4e) 8%,transparent)}
 .pp-country button.on b{color:var(--pri,#006a4e)}
+
+/* wide screens */
+@media (min-width:1400px){.steps.steps8{grid-template-columns:repeat(8,1fr)}}
+@media (min-width:900px) and (max-width:1399px){.steps.steps8{grid-template-columns:repeat(4,1fr)}}
+.tilegrid{grid-template-columns:repeat(auto-fill,minmax(160px,1fr))}
+@media (min-width:1500px){.tcar-track{grid-auto-columns:calc((100% - 4 * 20px) / 5)}}
+@media (min-width:1850px){.tcar-track{grid-auto-columns:calc((100% - 5 * 20px) / 6)}}
+.tilegrid{grid-template-columns:repeat(auto-fill,minmax(200px,1fr))}
