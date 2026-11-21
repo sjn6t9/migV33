@@ -21,7 +21,7 @@ import { PassportEntry, PassportPick, ppLine } from "./Passports.jsx";
 import { Statement } from "./Statement.jsx";
 import { GroupEcForm } from "./Agent.jsx";
 import { BulkEcForm } from "./BulkClearance.jsx";
-import { AgentBookList } from "./AgentBook.jsx";
+import { AgentsPage } from "./AgentBook.jsx";
 import { agentRows } from "../statement.js";
 import { MFS, BANKS } from "../banks.js";
 import { LuReceipt, LuLandmark, LuBanknote, LuScrollText, LuBookUser, LuFileCheck2, LuHandCoins, LuPlaneTakeoff, LuCalendarCheck, LuSettings2, LuLogOut, LuMegaphone, LuCirclePlus, LuListPlus, LuContact } from "react-icons/lu";
@@ -39,7 +39,7 @@ function FilterButtons({ items, cur, onPick }) {
 const PAY_SUB = [["receipts", "Money receipts", LuReceipt], ["ledger", "Agent accounts", LuWallet], ["office", "Main account", LuLandmark], ["salary", "Salary accounts", LuBanknote], ["statements", "Statements", LuScrollText], ["packages", "Employer packages", LuPackage]];
 const TABS = [
   ["overview", "Overview", LuLayoutDashboard], ["users", "Accounts", LuUsers], ["jobs", "Job moderation", LuBriefcase], ["apps", "Applications", LuFileText],
-  ["clearance", "BMET clearance", LuStamp], ["passports", "Passport Entry", LuBookUser], ["visa", "Visa applications", LuPlaneTakeoff], ["tickets", "Air tickets", LuTicket], ["pay", "Payments & receipts", LuReceipt], ["mysalary", "My salary", LuWallet], ["mymoney", "Money with me", LuHandCoins], ["attendance", "Office attendance", LuCalendarCheck],
+  ["clearance", "BMET clearance", LuStamp], ["passports", "Passport Entry", LuBookUser], ["agents", "Agents", LuContact], ["visa", "Visa applications", LuPlaneTakeoff], ["tickets", "Air tickets", LuTicket], ["pay", "Payments & receipts", LuReceipt], ["mysalary", "My salary", LuWallet], ["mymoney", "Money with me", LuHandCoins], ["attendance", "Office attendance", LuCalendarCheck],
   ["content", "Website content", LuImage], ["headlines", "Headlines", LuMegaphone], ["about", "About page", LuInfo], ["slides", "Home slideshow", LuGalleryHorizontal], ["blog", "Blog", LuNewspaper], ["seo", "SEO", LuSearch], ["settings", "Site settings", LuSettings],
   ["chat", "Live chat", LuMessagesSquare], ["messages", "Messages", LuMessageSquare], ["staff", "Staff & permissions", LuUserCog]
 ];
@@ -47,7 +47,7 @@ const TABS = [
 export function Admin({ u }) {
   const S = store.S; const R = u.role; const isAdmin = R === "admin";
   const chatUnread = useInboxUnread(isAdmin || !!u.perms?.includes("chat"));
-  const can0 = k => k === "passports" ? can0("clearance") || can0("visa") : k === "mymoney" ? !!S.myMoney : k === "overview" || k === "mysalary" || k === "attendance" || k === "mysettings" || isAdmin || (k !== "staff" && u.perms?.includes(k === "slides" || k === "about" ? "content" : k));
+  const can0 = k => k === "agents" ? ["clearance", "receipts", "ledger", "office", "visa"].some(can0) : k === "passports" ? can0("clearance") || can0("visa") : k === "mymoney" ? !!S.myMoney : k === "overview" || k === "mysalary" || k === "attendance" || k === "mysettings" || isAdmin || (k !== "staff" && u.perms?.includes(k === "slides" || k === "about" ? "content" : k));
   // employer packages only matter when paid job posting is on (or orders are still open)
   const paySubs = PAY_SUB.filter(([k]) => (k === "statements" ? ["ledger", "receipts", "salary", "office"].some(can0) : can0(k)) && (k !== "packages" || S.settings.paidPosting || S.orders.some(o => o.status === "pending")));
   const can = k => k === "pay" ? paySubs.length > 0 : PAY_SUB.some(x => x[0] === k) ? paySubs.some(x => x[0] === k) : can0(k);
@@ -244,13 +244,14 @@ export function Admin({ u }) {
 
   if (t === "visa") body = <VisaAdmin />;
   if (t === "clearance") body = <AdminClearanceList />;
+  if (t === "agents") body = <AgentsPage AddForm={can("ledger") || can("receipts") ? LedgerAddForm : null} canLedger={can("ledger")} canMr={can("receipts")} />;
   if (t === "passports") { // BMET Passport Entry, and Visa applications entry (choose KSA or Fiji)
-    const subs = [can("clearance") && ["bmet", "BMET Passport Entry", LuStamp], ["visa", "Visa applications entry", LuPlaneTakeoff], ["agents", "Agent list", LuContact]].filter(Boolean);
+    const subs = [can("clearance") && ["bmet", "BMET Passport Entry", LuStamp], ["visa", "Visa applications entry", LuPlaneTakeoff]].filter(Boolean);
     const pp = subs.some(x => x[0] === ui.ppSub) ? ui.ppSub : subs[0][0];
     const vc = (ui.ppCountry === "ksa" && !can("visa")) ? "" : ui.ppCountry || "";
     body = <>
       {subs.length > 1 && <nav className="pay-tabs" aria-label="Passport Entry">{subs.map(([k, l, I]) => <button key={k} className={pp === k ? "on" : ""} aria-current={pp === k ? "page" : undefined} onClick={() => { ui.ppSub = k; commit(); }}><I /> {l}</button>)}</nav>}
-      {pp === "agents" ? <AgentBookList /> : pp === "bmet" ? <PassportEntry title="BMET Passport Entry" /> : <>
+      {pp === "bmet" ? <PassportEntry title="BMET Passport Entry" /> : <>
         <div className="ec-head"><div><h2>Visa applications entry</h2><p className="muted small">Choose the country to open its passport entry.</p></div></div>
         <div className="pp-country" role="radiogroup" aria-label="Country">{[can("visa") && ["ksa", "KSA", "Saudi Arabia"], ["fiji", "Fiji", "Republic of Fiji"]].filter(Boolean).map(([k, l, sub]) =>
           <button key={k} type="button" role="radio" aria-checked={vc === k} className={vc === k ? "on" : ""} onClick={() => { ui.ppCountry = k; commit(); }}><b>{l}</b><span className="small muted">{sub}</span></button>)}</div>
@@ -822,7 +823,7 @@ function StaffAdmin({ u }) {
 
 const confirmLedger = (lid, ok) => act("admin.ledgerConfirm", { id: lid, ok });
 /* add a line to an agent's payment history: a charge (quantity × rate) or a payment received */
-function LedgerAddForm({ sel }) {
+function LedgerAddForm({ sel, book, title = "Add to payment history" }) {
   const day = () => new Date(Date.now() - new Date().getTimezoneOffset() * 6e4).toISOString().slice(0, 10);
   const blankRow = (type = "charge", date = day()) => ({ k: Math.random().toString(36).slice(2), type, date, rate: "", qty: "1", method: "Cash", ref: "", desc: "" });
   const [rows, setRows] = React.useState(() => [blankRow()]); const [busy, setBusy] = React.useState(false);
@@ -832,12 +833,12 @@ function LedgerAddForm({ sel }) {
     e.preventDefault();
     for (const [i, r] of rows.entries()) if (!(total(r) >= 1) || !r.desc.trim()) { toast(`Enter the amount and description${rows.length > 1 ? ` (row ${i + 1})` : ""}.`); return; }
     setBusy(true);
-    const res = await act("admin.ledgerAdd", { agentId: sel.id, rows: rows.map(r => ({ type: r.type, date: r.date, desc: r.desc, rate: r.rate, qty: r.type === "charge" ? r.qty : 1, method: r.method, ref: r.ref })) });
+    const res = await act(book ? "admin.agentBook" : "admin.ledgerAdd", { ...(book ? { op: "entries", id: sel.id } : { agentId: sel.id }), rows: rows.map(r => ({ type: r.type, date: r.date, desc: r.desc, rate: r.rate, qty: r.type === "charge" ? r.qty : 1, method: r.method, ref: r.ref })) });
     setBusy(false); if (res) setRows([blankRow(rows[rows.length - 1].type, rows[rows.length - 1].date)]);
   };
   const sum = rows.reduce((t, r) => t + (r.type === "charge" ? 1 : -1) * total(r), 0);
   return <form className="divider ledger-add" onSubmit={add} noValidate key={sel.id}>
-    <h4>Add to payment history</h4>
+    <h4>{title}</h4>
     {rows.map((r, i) => <div key={r.k} className={`fgrid${rows.length > 1 ? " mr-line" : ""}`}>
       {rows.length > 1 && <div className="mr-line-head full"><b>{`Entry ${i + 1}`}</b><button type="button" className="btn sm link danger" onClick={() => setRows(rows.filter((_, j) => j !== i))} aria-label={`Remove entry ${i + 1}`}><LuX /> Remove</button></div>}
       <Field label="Type"><select value={r.type} onChange={e => set(i, { type: e.target.value })}><option value="charge">Debit: charge (agent owes)</option><option value="payment">Credit: money received</option></select></Field>

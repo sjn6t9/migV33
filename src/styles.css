@@ -1318,3 +1318,5 @@ button.hold-tile{cursor:pointer}
 .vs-sel.info{background:#e8f1fd;border-color:#9cc2f0}.vs-sel.ok{background:#e6f6ec;border-color:#8fd3a8}.vs-sel.bad{background:#fdecec;border-color:#f0a3a3}
 :root[data-theme="dark"] .vs-sel.info,:root[data-theme="dark"] .vs-sel.ok,:root[data-theme="dark"] .vs-sel.bad{background:var(--surface)}
 .tiny-d{font-size:11.5px;margin-top:2px}
+.ag-link{background:none;border:0;padding:0;font:inherit;font-weight:700;color:var(--brand);cursor:pointer;text-align:left;text-decoration:underline;text-underline-offset:3px}
+.ag-link:hover{text-decoration-thickness:2px}

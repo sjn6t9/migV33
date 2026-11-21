@@ -154,14 +154,17 @@ export function BalanceBox({ b, note }) {
   return <div className="mr-bal">{rows.map(([l, v, k], i) => <div key={i} className={k ? `mr-bal-end ${k}` : ""}><span>{l}</span><b className="num">{v}</b></div>)}{note && <p className="muted small">{note}</p>}</div>;
 }
 
-export function MrEntry({ aid: aid0, pp: pp0 }) {
+export function MrEntry({ aid: aid0, pp: pp0, agentId: ag0, book: bk0 }) {
+  // started from Agents: the payer is the agent itself
+  const reg0 = ag0 && store.S.users.find(x => x.id === ag0), bk1 = bk0 && bookAgents().find(x => x.id === bk0);
+  const fromAgent = reg0 ? { name: reg0.name || "", mobile: reg0.agent?.phone || reg0.phone || "", passport: "", email: reg0.email || "", agent: "" } : bk1 ? { name: bk1.fullName || bk1.name, mobile: bk1.mobile || "", passport: "", email: bk1.email || "", agent: bk1.name } : null;
   const pp1 = pp0 && passports().find(x => x.id === pp0); // started from Passport entry
   const acc1 = !aid0 && pp1 ? MR().accounts.find(a => a.passport === pp1.passport) : null;
   const [aid, setAid] = React.useState(aid0 || acc1?.id || null);
   const acc = aid && MR().accounts.find(a => a.id === aid);
   const blank = { name: "", mobile: "", passport: "", email: "", agent: "" };
-  const [p, setP] = React.useState(acc ? { ...blank, ...pick(acc) } : pp1 ? { ...blank, name: pp1.name, passport: pp1.passport, agent: pp1.agentId ? "" : pp1.ref || "" } : blank);
-  const [agentId, setAgentId] = React.useState(acc?.agentId || (!acc && pp1?.agentId) || ""); const [agentOther, setAgentOther] = React.useState(() => { const n = acc ? !acc.agentId && acc.agent : pp1 && !pp1.agentId && pp1.ref; return n ? (bookByName(n) ? "book" : true) : false; });
+  const [p, setP] = React.useState(fromAgent && !acc ? fromAgent : acc ? { ...blank, ...pick(acc) } : pp1 ? { ...blank, name: pp1.name, passport: pp1.passport, agent: pp1.agentId ? "" : pp1.ref || "" } : blank);
+  const [agentId, setAgentId] = React.useState(reg0 ? reg0.id : acc?.agentId || (!acc && pp1?.agentId) || ""); const [agentOther, setAgentOther] = React.useState(() => { if (bk1) return "book"; if (reg0) return false; const n = acc ? !acc.agentId && acc.agent : pp1 && !pp1.agentId && pp1.ref; return n ? (bookByName(n) ? "book" : true) : false; });
   const [price, setPrice] = React.useState(acc?.price != null ? String(acc.price) : "");
   const newLine = () => ({ k: Math.random().toString(36).slice(2), amount: "", date: today(), method: "Cash", channel: "", chOther: false, ref: "", purpose: "" });
   const [lines, setLines] = React.useState(() => [newLine()]);

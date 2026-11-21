@@ -2191,6 +2191,24 @@ A["admin.agentBook"] = async (d, u) => {
     db.agentBook.push({ id: id("ab"), name, ...v, created: now(), by: u.name }); return { msg: `${name} added to the agent list.` };
   }
   if (d.op === "delete") { const a = db.agentBook.find(x => x.id === d.id); must(a, "Agent not found."); db.agentBook = db.agentBook.filter(x => x !== a); return { msg: `${a.name} removed from the agent list.` }; }
+  /* balance update: charges (agent owes) and money received, like Agent accounts */
+  if (d.op === "entries") {
+    must(can(u, "ledger") || can(u, "receipts") || u.role === "admin", "You do not have permission for this.", 403);
+    const a = db.agentBook.find(x => x.id === d.id); must(a, "Agent not found.");
+    const rows = (Array.isArray(d.rows) ? d.rows : [d]).slice(0, 30); must(rows.length, "Add an entry.");
+    const made = rows.map((r, i) => {
+      const at = rows.length > 1 ? ` (row ${i + 1})` : "", type = r.type === "payment" ? "payment" : "charge";
+      const rate = Math.round(Number(r.rate) * 100) / 100, qty = type === "charge" ? Math.max(1, Math.min(10000, Math.round(Number(r.qty) || 1))) : 1;
+      must(rate > 0 && rate < 1e9 && str(r.desc), `Enter the amount and description${at}.`);
+      return { id: id("ae"), type, date: /^\d{4}-\d{2}-\d{2}$/.test(r.date || "") ? r.date : now().slice(0, 10), desc: str(r.desc, 200), rate, qty, amount: Math.round(rate * qty * 100) / 100, method: type === "payment" ? str(r.method, 40) : "", ref: str(r.ref, 80), by: u.name, at: now() };
+    });
+    a.entries = [...(a.entries || []), ...made]; return { msg: made.length > 1 ? `${made.length} entries added.` : "Added to the account." };
+  }
+  if (d.op === "entryDelete") {
+    must(can(u, "ledger") || can(u, "receipts") || u.role === "admin", "You do not have permission for this.", 403);
+    const a = db.agentBook.find(x => x.id === d.id); must(a, "Agent not found."); must((a.entries || []).some(e => e.id === d.eid), "Entry not found.");
+    a.entries = a.entries.filter(e => e.id !== d.eid); return { msg: "Entry deleted." };
+  }
   must(false, "Unknown request.");
 };
 A["admin.about"] = async (d, u) => {

@@ -22,7 +22,7 @@ import { VisitingCard, VerifyMember, VerifyBody } from "./VCard.jsx";
 import { currentTheme, toggleTheme } from "./theme.js";
 import { SITE } from "./site.js";
 import { LuExternalLink, LuShieldCheck, LuUpload } from "react-icons/lu";
-import { AgentBookEdit, AgentBookAccount } from "./dash/AgentBook.jsx";
+import { AgentBookEdit } from "./dash/AgentBook.jsx";
 
 function useHash() {
   const [h, setH] = useState(location.hash.slice(1) || "home");
@@ -293,7 +293,7 @@ function ModalHost() {
   const m = store.ui.modal; if (!m) return null;
   const close = closeModal;
   return (
-    <ModalFrame onClose={close} wide={m.type === "share" || m.type === "vcard" || m.type === "mrEntry" || m.type === "mrView" || m.type === "mrAccount" || m.type === "salaryPay" || m.type === "salaryView" || m.type === "visaFile" || m.type === "agentBookAcc"} className={m.type === "memberCheck" ? "modal-verify" : ""}>
+    <ModalFrame onClose={close} wide={m.type === "share" || m.type === "vcard" || m.type === "mrEntry" || m.type === "mrView" || m.type === "mrAccount" || m.type === "salaryPay" || m.type === "salaryView" || m.type === "visaFile"} className={m.type === "memberCheck" ? "modal-verify" : ""}>
       {m.type === "confirm" && <>
         <h3>Please confirm</h3><p className="confirm-msg">{m.msg}</p>
         <div className="row"><button className="btn pri" autoFocus onClick={() => { closeModal(); m.onYes(); }}>{m.yes}</button><button className="btn" onClick={close}>Cancel</button></div>
@@ -312,8 +312,7 @@ function ModalHost() {
       {m.type === "wafidHelp" && <WafidBookmarkHelp />}
       {m.type === "visaFile" && <VisaFileForm key={m.id || "new"} id={m.id} />}
       {m.type === "agentBook" && <AgentBookEdit id={m.id} />}
-      {m.type === "agentBookAcc" && <AgentBookAccount id={m.id} />}
-      {m.type === "mrEntry" && <MrEntry key={m.aid || m.pp || "new"} aid={m.aid} pp={m.pp} />}
+      {m.type === "mrEntry" && <MrEntry key={m.aid || m.pp || m.agentId || m.book || "new"} aid={m.aid} pp={m.pp} agentId={m.agentId} book={m.book} />}
       {m.type === "mrView" && <MrView rid={m.rid} fresh={m.fresh} />}
       {m.type === "mrAccount" && <MrAccount key={m.aid} aid={m.aid} />}
       {m.type === "salaryPay" && <SalaryPay key={m.uid} uid={m.uid} />}
