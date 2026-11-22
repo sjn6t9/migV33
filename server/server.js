@@ -1191,7 +1191,7 @@ A["admin.raims"] = async (d, u) => {
         const t = raimsRows(m[0]); if (!t.rows.some(r => PPR.test(r.join(" ")))) continue;
         const H = t.head.map(h => h.toLowerCase()), c = re => H.findIndex(h => re.test(h)), ci = { name: c(/name/), pp: c(/passport/), country: c(/country|destination/), ic: c(/\bic\b|clearance/) };
         for (const r of t.rows) { const pp = (PPR.exec(r.join(" ")) || [])[1]; if (!pp) continue;
-          people.push({ ic: (ci.ic >= 0 && norm(r[ci.ic])) || icp, name: ci.name >= 0 ? r[ci.name] : r.find(v => /^[A-Z][A-Z .'-]{4,}$/.test(v) && !PPR.test(v)) || "", passport: pp, country: (ci.country >= 0 && r[ci.country]) || ctry }); }
+          people.push({ ic: (ci.ic >= 0 && norm(r[ci.ic])) || icp, name: ci.name >= 0 ? r[ci.name] : r.find(v => /^[A-Za-z][A-Za-z .'-]{4,}$/.test(v) && /\s/.test(v) && !PPR.test(v)) || "", passport: pp, country: (ci.country >= 0 && r[ci.country]) || ctry }); }
       }
       if (!people.length) { // the page fills its list with a script: read the same addresses the script reads
         const xsrf = (/name="csrf-token"[^>]*content="([^"]+)"/.exec(pg.text) || [])[1] || "";
@@ -1215,8 +1215,10 @@ A["admin.raims"] = async (d, u) => {
       const nameRe = /^((emigrant|worker|candidate|applicant|migrant|passport\s*holder)('?s)?\s*)?(full\s*)?name(\s*\(.*\))?\s*:?$/i, notName = /father|mother|spouse|employer|company|owner|contact|agency|agent|nominee|user|bank|person/i;
       for (let i = 0; i < N.length; i++) {
         const pp = (/^\s*([A-Z]{1,2}\d{7,8})\s*$/.exec(N[i]) || [])[1]; if (!pp || people.some(x => x.passport === pp)) continue;
-        let nm = ""; for (let j = i - 1; j >= Math.max(0, i - 40); j--) { if (nameRe.test(N[j]) && !notName.test(N[j]) && N[j + 1] && !isLab(N[j + 1]) || (nameRe.test(N[j]) && !notName.test(N[j]) && /^[A-Z][A-Z .'-]{2,}$/.test(N[j + 1] || ""))) { nm = N[j + 1]; break; } if (/^\s*[A-Z]{1,2}\d{7,8}\s*$/.test(N[j])) break; }
-        if (!nm) for (let j = i + 1; j < Math.min(N.length, i + 30); j++) { if (/^\s*[A-Z]{1,2}\d{7,8}\s*$/.test(N[j])) break; if (nameRe.test(N[j]) && !notName.test(N[j]) && N[j + 1]) { nm = N[j + 1]; break; } }
+        // the value after a "Name" label (names can be "RAJU AHMED" or "Raju Ahmed"; the next label is not a name)
+        const nameVal = v => !!v && v.length <= 80 && !/:\s*$/.test(v) && !PPR.test(v) && !/\d{3,}/.test(v) && !/\b(name|number|date|gender|address|type|country|place|passport|phone|mobile|nid|visa|sponsor|father|mother|issue|expire|referral|sticker|returnee|employee|information|documents?)\b/i.test(v);
+        let nm = ""; for (let j = i - 1; j >= Math.max(0, i - 40); j--) { if (nameRe.test(N[j]) && !notName.test(N[j]) && nameVal(N[j + 1])) { nm = N[j + 1]; break; } if (/^\s*[A-Z]{1,2}\d{7,8}\s*$/.test(N[j])) break; }
+        if (!nm) for (let j = i + 1; j < Math.min(N.length, i + 30); j++) { if (/^\s*[A-Z]{1,2}\d{7,8}\s*$/.test(N[j])) break; if (nameRe.test(N[j]) && !notName.test(N[j]) && nameVal(N[j + 1])) { nm = N[j + 1]; break; } }
         people.push({ ic: icLabel || icp, name: nm, passport: pp, country: country2 });
       }
       for (const x of people) { if (!x.ic) x.ic = icLabel || icp; if (!x.country) x.country = country2; }
