@@ -1489,10 +1489,12 @@ button.hold-tile{cursor:pointer}
 /* agent › job circulars slideshow */
 .js-wrap{overflow:hidden}
 .js-stage{position:relative;display:flex;align-items:center;gap:8px;margin-top:6px}
-.js-track{flex:1;display:grid;grid-template-columns:1fr;gap:14px;min-width:0}
-.js-track.two{grid-template-columns:1fr 1fr}
-@media (max-width:700px){.js-track.two{grid-template-columns:1fr}.js-track .js-second{display:none}}
-.js-card{display:block;width:100%;padding:0;border:1px solid var(--line,#d5e3dc);border-radius:14px;overflow:hidden;background:#f3f7f5;cursor:pointer;aspect-ratio:1080/1350;max-height:560px;margin:0 auto;animation:jsIn .45s ease}
+.js-view-port{flex:1;min-width:0;overflow:hidden}
+.js-strip{display:flex;gap:14px;will-change:transform}
+.js-strip.anim{transition:transform .8s cubic-bezier(.25,.8,.25,1)}
+.js-slide{flex:0 0 calc((100% - (var(--per) - 1) * 14px) / var(--per));min-width:0}
+@media (prefers-reduced-motion:reduce){.js-strip.anim{transition:none}}
+.js-card{display:block;width:100%;padding:0;border:1px solid var(--line,#d5e3dc);border-radius:14px;overflow:hidden;background:#f3f7f5;cursor:pointer;aspect-ratio:1080/1350;max-height:560px;margin:0 auto}
 .js-card img{width:100%;height:100%;object-fit:contain;display:block}
 .js-card:hover{box-shadow:0 6px 20px rgba(0,0,0,.12)}
 @keyframes jsIn{from{opacity:.25;transform:translateX(12px)}to{opacity:1;transform:none}}

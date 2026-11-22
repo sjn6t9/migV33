@@ -873,7 +873,7 @@ A["agent.payment"] = async (d, u) => {
   // paid to the Managing Director / a Director / the Chairman: the payment is counted with that person ("Person · md | bKash")
   const lead = d.paidTo ? leaders().find(x => x.k === d.paidTo) : null, m0 = str(d.method, 60);
   const method = lead ? `Person · ${lead.k}${m0 && !/^cash/i.test(m0) ? ` | ${m0}` : ""}` : m0;
-  db.ledger.push({ id: id("l"), at: now(), agentId: u.id, type: "payment", desc: str(d.desc, 200) || (lead ? `Payment given to ${lead.name} · ${lead.title}` : "Payment sent by agent"), amount, date: str(d.date, 10) || now().slice(0, 10), method, ref: str(d.ref, 80), status: "pending" });
+  db.ledger.push({ id: id("l"), at: now(), agentId: u.id, type: "payment", desc: str(d.desc, 200) || (lead ? `Payment given to ${lead.name} · ${lead.title}` : "Payment sent by agent"), amount, date: str(d.date, 10) || now().slice(0, 10), method, ref: str(d.ref, 80), status: "pending", ...(d.proof?.data ? { proof: storeFile(d.proof, u.id) } : {}) });
   notifyAdmins(`Payment reported by ${u.agent.business}: ${bdt(amount)} ${lead ? `given to ${lead.name} (${lead.title})` : `via ${m0}`}.`, "ledger");
   if (lead?.uid) notify(lead.uid, `${u.agent.business} says they gave you ${bdt(amount)}. It counts as money with you once the agency confirms it.`);
   return { msg: "Payment submitted. It appears in your balance after confirmation." };

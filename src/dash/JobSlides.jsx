@@ -26,25 +26,37 @@ function Card({ j, onOpen }) {
   </button>;
 }
 
+/* a sliding strip: 2 cards on wide screens, 1 on phones; it glides one card at a time and loops (copies of the first cards sit at the end) */
+const usePerView = () => { const q = () => (typeof matchMedia !== "undefined" && matchMedia("(max-width:700px)").matches ? 1 : 2); const [v, setV] = React.useState(q);
+  React.useEffect(() => { const f = () => setV(q()); addEventListener("resize", f); return () => removeEventListener("resize", f); }, []); return v; };
 export function JobSlides({ workers, apps, active }) {
   const L = live().filter(j => j.postedBy || !j.employerId); // jobs the agency posted itself (Admin / Staff panel)
-  const [i, setI] = React.useState(0), [open, setOpen] = React.useState(""), [pause, setPause] = React.useState(false);
-  const n = L.length, cur = n ? ((i % n) + n) % n : 0;
-  React.useEffect(() => { if (n < 2 || pause || open) return; const t = setInterval(() => setI(x => x + 1), 4500); return () => clearInterval(t); }, [n, pause, open]);
+  const n = L.length, per = Math.min(usePerView(), n || 1);
+  const [pos, setPos] = React.useState(0), [anim, setAnim] = React.useState(true), [open, setOpen] = React.useState(""), [pause, setPause] = React.useState(false);
+  const loop = n > per; // nothing to slide when every card is already in view
+  const strip = loop ? [...L, ...L.slice(0, per)] : L;
+  const go = d => { if (!loop) return;
+    if (d > 0) { setAnim(true); setPos(p => Math.min(p + 1, n)); return; }
+    setPos(p => { if (p > 0) { setAnim(true); return p - 1; } // from the first card back: jump (unseen) to its copy at the end, then glide one back
+      setAnim(false); requestAnimationFrame(() => requestAnimationFrame(() => { setAnim(true); setPos(n - 1); })); return n; }); };
+  const end = () => { if (pos >= n) { setAnim(false); setPos(0); } }; // at the copies: back to the real first card without moving
+  React.useEffect(() => { if (!anim) { const t = requestAnimationFrame(() => requestAnimationFrame(() => setAnim(true))); return () => cancelAnimationFrame(t); } }, [anim]);
+  React.useEffect(() => { if (!loop || pause || open) return; const t = setInterval(() => go(1), 4000); return () => clearInterval(t); }, [loop, pause, open, n, per]);
+  React.useEffect(() => { if (pos > n) setPos(0); }, [n]);
   const touch = React.useRef(null);
   if (!n) return null;
-  // two cards side by side on wide screens; the visible pair moves one card at a time
-  const shown = n === 1 ? [L[0]] : [L[cur], L[(cur + 1) % n]];
+  const cur = pos % n;
   return <div className="card js-wrap">
     <div className="row between"><h3 className="mb6">Job circulars</h3><span className="muted small">Tap a card to see the job and apply</span></div>
     <div className="js-stage" onMouseEnter={() => setPause(true)} onMouseLeave={() => setPause(false)}
       onTouchStart={e => { touch.current = e.touches[0].clientX; setPause(true); }}
-      onTouchEnd={e => { const d = e.changedTouches[0].clientX - (touch.current ?? 0); if (Math.abs(d) > 40) setI(x => x + (d < 0 ? 1 : -1)); setPause(false); }}>
-      {n > 1 && <button type="button" className="js-nav prev" onClick={() => setI(x => x - 1)} aria-label="Previous job"><LuChevronLeft /></button>}
-      <div className={`js-track${shown.length > 1 ? " two" : ""}`}>{shown.map((j, k) => <div key={j.id} className={k ? "js-second" : ""}><Card j={j} onOpen={setOpen} /></div>)}</div>
-      {n > 1 && <button type="button" className="js-nav next" onClick={() => setI(x => x + 1)} aria-label="Next job"><LuChevronRight /></button>}
+      onTouchEnd={e => { const d = e.changedTouches[0].clientX - (touch.current ?? 0); if (Math.abs(d) > 40) go(d < 0 ? 1 : -1); setPause(false); }}>
+      {loop && <button type="button" className="js-nav prev" onClick={() => go(-1)} aria-label="Previous job"><LuChevronLeft /></button>}
+      <div className="js-view-port"><div className={`js-strip${anim ? " anim" : ""}`} style={{ "--per": per, transform: `translateX(calc(${-pos} * (100% + 14px) / ${per}))` }} onTransitionEnd={end}>
+        {strip.map((j, k) => <div key={`${j.id}-${k}`} className="js-slide"><Card j={j} onOpen={setOpen} /></div>)}</div></div>
+      {loop && <button type="button" className="js-nav next" onClick={() => go(1)} aria-label="Next job"><LuChevronRight /></button>}
     </div>
-    {n > 1 && <div className="js-dots" role="tablist" aria-label="Job circulars">{L.map((j, k) => <button key={j.id} type="button" className={k === cur ? "on" : ""} aria-label={j.title} aria-selected={k === cur} onClick={() => setI(k)} />)}</div>}
+    {loop && <div className="js-dots" role="tablist" aria-label="Job circulars">{L.map((j, k) => <button key={j.id} type="button" className={k === cur ? "on" : ""} aria-label={j.title} aria-selected={k === cur} onClick={() => { setAnim(true); setPos(k); }} />)}</div>}
     {open && <JobView id={open} workers={workers} apps={apps} active={active} onClose={() => setOpen("")} />}
   </div>;
 }

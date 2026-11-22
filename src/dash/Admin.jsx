@@ -296,6 +296,7 @@ export function Admin({ u }) {
         <Statement key={sel.id} title={sel.agent?.business || sel.name} sub={[sel.name, sel.agent?.phone, sel.email].filter(Boolean).join(" · ")} rows={agentRows(S.ledger, sel.id)}
           onRate={(r, v) => act("admin.ledgerEdit", { id: r.id, ...v })}
           actions={r => <div className="row tight nowrap">
+            {r.src?.proof?.id && <button className="btn sm" onClick={() => dlFile(`/api/files/${r.src.proof.id}`, r.src.proof.name || "payment-proof")}><LuEye /> Proof</button>}
             {r.pending && <><button className="btn sm pri" onClick={() => confirmLedger(r.id, true)}><LuCheck /> Confirm</button><button className="btn sm danger" onClick={() => confirmLedger(r.id, false)}><LuX /> Reject</button></>}
             {!r.src?.mr && <button className="btn sm link danger" aria-label="Delete entry" onClick={() => confirmBox("Delete this entry from the payment history?", () => act("admin.ledgerDelete", { id: r.id }), "Delete")}><LuTrash2 /></button>}
           </div>} />

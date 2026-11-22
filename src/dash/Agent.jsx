@@ -148,9 +148,9 @@ export function Agent({ u }) {
     const conf = S.ledger.filter(l => l.agentId === u.id && l.status === "confirmed");
     const ch = conf.filter(l => l.type === "charge").reduce((s, l) => s + Number(l.amount), 0);
     const pd = conf.filter(l => l.type === "payment").reduce((s, l) => s + Number(l.amount), 0);
-    const pay = e => {
-      const [d] = formData(e);
-      const form = e.currentTarget; act("agent.payment", d).then(r => { if (r) form.reset(); });
+    const pay = async e => {
+      const [d, fd] = formData(e); const form = e.currentTarget; const f = fd.get("proof");
+      try { const proof = f && f.size ? await readUpload(f, { imageMax: 1800 }) : null; const r = await act("agent.payment", { ...d, proof }); if (r) form.reset(); } catch (err) { toast(err.message); }
     };
     body = <>
       <h2>Payment history</h2>
@@ -158,11 +158,11 @@ export function Agent({ u }) {
       <form className="card fgrid" onSubmit={pay}>
         <h3 className="full">Report a payment</h3>
         <Field label="Amount (BDT)"><input type="number" name="amount" min="1" required /></Field>
-        <Field label="Paid to"><select name="paidTo"><option value="">The office (MAM &amp; MAM Overseas)</option>{(S.leaders || []).map(l => <option key={l.k} value={l.k}>{`${l.name} · ${l.title}`}</option>)}</select></Field>
         <Field label="Payment method"><select name="method"><Options list={PAY_METHODS} /></select></Field>
         <Field label="Transaction / reference no."><input type="text" name="ref" /></Field>
         <Field label="Payment date"><input type="date" name="date" defaultValue={now().slice(0, 10)} required /></Field>
         <Field label="Note" full><input type="text" name="desc" placeholder="e.g. Payment for Jamal Hossain clearance" /></Field>
+        <Field label="Payment proof (optional)" hint="Screenshot of the bKash / bank transfer or a photo of the receipt. JPG, PNG or PDF." full><input type="file" name="proof" accept="image/*,.pdf" /></Field>
         <div className="full row"><button className="btn pri" type="submit"><LuWallet /> Submit payment</button><span className="muted small">The balance updates after the agency confirms receipt.</span></div>
       </form>
     </>;
