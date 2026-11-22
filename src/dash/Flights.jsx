@@ -47,6 +47,7 @@ function FlightDetail({ f, staff }) {
     </tbody></table></div>}
     {tab === "fare" && <div className="tbl"><table><thead><tr><th>Traveller</th><th className="num">Base fare</th><th className="num">Taxes</th><th className="num">Per person</th><th className="num">Total</th></tr></thead><tbody>
       {(F.perPax || []).map((p, i) => <tr key={i}><td>{paxName(p.type)} × {p.n}</td><td className="num">{bdtFmt(p.base)}</td><td className="num">{bdtFmt(p.tax)}</td><td className="num">{bdtFmt(p.total)}</td><td className="num">{bdtFmt(p.total * p.n)}</td></tr>)}
+      {(() => { const other = Math.round((F.total || f.price) - (F.service || 0) - (F.perPax || []).reduce((t, p) => t + p.total * p.n, 0)); return other ? <tr><td colSpan={4}>Other charges (AIT, airline and booking fees)</td><td className="num">{bdtFmt(other)}</td></tr> : null; })()}
       {F.service > 0 && <tr><td colSpan={4}>Service charge</td><td className="num">{bdtFmt(F.service)}</td></tr>}
       <tr className="b"><td colSpan={4}>Total</td><td className="num">{bdtFmt(F.total || f.price)}</td></tr>
       {staff && f.net != null && <tr className="muted"><td colSpan={4}>Agency net (WFTT payable){f.discount ? ` · discount ${bdtFmt(f.discount)}` : ""}{f.ait ? ` · AIT ${bdtFmt(f.ait)}` : ""}</td><td className="num">{bdtFmt(f.net)}</td></tr>}
