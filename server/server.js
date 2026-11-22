@@ -934,10 +934,20 @@ async function preEcCheck({ passport, returnee, otherPassport }) {
     if (fx.fields.filter(([, v]) => v).length < 3) {
       // the search runs in the page's script: ask its addresses the way a browser does (session cookie, XSRF token, same-site Referer/Origin)
       const xsrf = decodeURIComponent(J.c["XSRF-TOKEN"] || ""), origin = new URL(pg.url).origin;
-      const xh = extra => ({ "X-Requested-With": "XMLHttpRequest", Accept: "application/json, text/html, */*", "X-CSRF-TOKEN": tok, ...(xsrf ? { "X-XSRF-TOKEN": xsrf } : {}), Referer: pg.url, Origin: origin, ...extra });
+      // the RAIMS API (/api/v1/…) wants a token the page holds for its script (meta tag, script value, or a cookie)
+      const bearer = (() => { const t = pg.text;
+        const m = /Bearer\s*["'`]?\s*\+?\s*["'`]?([A-Za-z0-9._|\-]{20,})/.exec(t) || /(?:api_?token|access_?token|auth_?token|bearer_?token|jwt|token)["']?\s*[:=,]\s*["'`]([A-Za-z0-9._|\-]{20,})["'`]/i.exec(t) || /<meta[^>]*name=["'](?:api-token|access-token|token|jwt)["'][^>]*content=["']([^"']{20,})["']/i.exec(t);
+        if (m) return { v: m[1], from: "page" };
+        const ck = Object.entries(J.c).find(([k, v]) => /token|jwt|auth/i.test(k) && !/xsrf|csrf/i.test(k) && v.length > 20); return ck ? { v: decodeURIComponent(ck[1]), from: `cookie ${ck[0]}` } : null; })();
+      tried.push(bearer ? `token for the API: found (${bearer.from})` : "token for the API: not found on the page");
+      for (const m of pg.text.matchAll(/.{0,80}(?:Authorization|Bearer|localStorage|sessionStorage|api_token|access_token).{0,80}/gi)) tried.push(`page script: ${m[0].replace(/[A-Za-z0-9._|\-]{24,}/g, x => x.slice(0, 6) + "…").trim()}`);
+      const xh = extra => ({ "X-Requested-With": "XMLHttpRequest", Accept: "application/json, text/html, */*", "X-CSRF-TOKEN": tok, ...(xsrf ? { "X-XSRF-TOKEN": xsrf } : {}), ...(bearer ? { Authorization: `Bearer ${bearer.v}` } : {}), Referer: pg.url, Origin: origin, ...extra });
       const hints = dataHints(pg.text).filter(u => /pre|ec|check|passport|employee|search|emigrant|worker/i.test(u)).slice(0, 6);
+      const rtCode = rtName ? body.get(rtName) : "no", oldPp = returnee === "other" ? ppNorm(otherPassport) : "null";
       for (const h of hints) {
-        const u = h.replace(/\{[^}]*\}|:passport\b|\$\{[^}]*\}/gi, pp);
+        tried.push(`address: ${h}`);
+        // fill the route's own parts (…/details/:passport_no/:returnee/:old_passport/:ap_house_…)
+        const u = h.replace(/:([a-z_]+)/gi, (all, k) => /^passport/i.test(k) ? pp : /returnee|return/i.test(k) ? encodeURIComponent(rtCode || "no") : /old|other/i.test(k) ? encodeURIComponent(oldPp || "null") : /^\d+$/.test(k) ? all : "null").replace(/\{[^}]*\}|\$\{[^}]*\}/g, pp);
         for (const m of ["GET", "POST", "POSTJSON"]) {
           let x; try {
             x = m === "GET" ? await rq(J, u + (u.includes(pp) ? "" : (u.includes("?") ? "&" : "?") + `${ppName}=${pp}&passport=${pp}`), { headers: xh() })
