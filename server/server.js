@@ -813,7 +813,24 @@ A["admin.clDelete"] = async ({ id: cid }, u) => {
   if (w && !db.clearances.some(x => x.workerId === w.id) && !db.applications.some(a => a.workerId === w.id)) { db.workers = db.workers.filter(x => x !== w); gone = true; }
   return { msg: `Clearance file ${c.ref || ""} for ${name} deleted${gone ? ", with the worker" : ""}.` };
 };
-A["admin.clStatus"] = async ({ id: cid, status, text }, u) => {
+// the files under one RAIMS IC number (EC Ref No or IC No.)
+const icOf = c => { const r = String(c.icNo || "").replace(/\s+/g, "").toUpperCase() || (/^IC-/.test(String(c.ref || "").toUpperCase()) ? String(c.ref).toUpperCase() : ""); return r; };
+const icFiles = ic => db.clearances.filter(x => icOf(x) === ic || String(x.ref || "").toUpperCase() === ic);
+A["admin.clStatus"] = async (d, u) => {
+  const r = await clStatusOne(d, u);
+  if (d.status === "sent_bmet") syncSoon();
+  // the same IC number = the same RAIMS application: the other files under it take the same status
+  const c = db.clearances.find(x => x.id === d.id), ic = c && icOf(c);
+  if (c && ic && d.group !== false && u?.id !== "raims") {
+    let n = 0;
+    for (const x of icFiles(ic)) { if (x === c || (x.status === "approved" && x.card)) continue;
+      if (x.status === c.status && (c.status !== "custom" || x.statusText === c.statusText)) continue;
+      await clStatusOne({ id: x.id, status: c.status, text: c.statusText }, u); n++; }
+    if (n && r?.msg) r.msg += ` ${n} more file(s) with ${ic} changed too.`;
+  }
+  return r;
+};
+async function clStatusOne({ id: cid, status, text }, u) {
   needPerm(u, "clearance"); const c = db.clearances.find(x => x.id === cid); must(c, "File not found."); must([...CL_STAGES, "rejected", "custom"].includes(status), "Unknown status.");
   const name = c.workerId ? worker(c.workerId)?.name : c.fullName || user(c.candidateId)?.name;
   if (status === "custom") { // a status written by the agency, e.g. "Fingerprint taken"; the progress bar stays at the last stage
@@ -1085,7 +1102,8 @@ async function raimsSync(by = "auto") {
       if (st) out.statuses[st] = (out.statuses[st] || 0) + 1;
       // a row with a passport is that worker's file; a row with only the IC number is every file under that IC
       const byPp = pp && db.clearances.find(x => ppNorm(worker(x.workerId)?.passport || user(x.candidateId)?.profile?.passportNo || x.passport || "") === pp);
-      const files = byPp ? [byPp] : ic ? db.clearances.filter(x => String(x.ref || "").toUpperCase() === ic || String(x.icNo || "").replace(/\s+/g, "").toUpperCase() === ic) : [];
+      // one IC number is one RAIMS application: its status is every worker's status under that IC
+      const files = [...new Set([...(ic ? icFiles(ic) : []), ...(byPp ? [byPp] : [])])];
       if (!files.length) continue; out.matched += files.length;
       const stage = raimsStage(st); if (!stage) continue;
       const cardNo = (/\b(IT-[A-Z]-\d{4}-\d{4,})\b/i.exec(line) || [])[1]?.toUpperCase();
@@ -1110,7 +1128,11 @@ async function raimsSync(by = "auto") {
   } catch (e) { out.ok = false; out.error = e instanceof Fail ? e.message : `Could not reach RAIMS: ${e.message}`; }
   if (db.raims) db.raims.last = out; save(); return out;
 }
-setInterval(() => { if (db.raims?.auto && db.raims.pass) raimsSync("auto").catch(() => {}); }, 30 * 60e3).unref();
+// every 15 minutes while RAIMS is signed in (unless the admin turned automatic sync off); and shortly after a file is Sent to BMET
+let syncing = false, soonT = null;
+const autoSync = () => { if (syncing || !db.raims || db.raims.auto === false || !(db.raims.pass || db.raims.cookies)) return; syncing = true; raimsSync("auto").catch(() => {}).finally(() => { syncing = false; }); };
+setInterval(autoSync, 15 * 60e3).unref();
+const syncSoon = () => { clearTimeout(soonT); soonT = setTimeout(autoSync, 20e3); soonT.unref?.(); };
 const lastRaims = new Map(); // the last RAIMS page read, for the admin to download when a page is not read right
 /* Pre EC Check (RAIMS): admin/staff with the BMET clearance permission, and agents */
 /* ======================= agent history: what each agent did, from where (IP, place, device) ======================= */
