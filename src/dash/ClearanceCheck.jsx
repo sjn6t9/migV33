@@ -7,7 +7,7 @@ import { act, toast, downloadFile } from "../actions.js";
 import { Field } from "./shared.jsx";
 
 const ppOf = c => (store.S.workers || []).find(w => w.id === c.workerId)?.passport || (store.S.users || []).find(u => u.id === c.candidateId)?.profile?.passportNo || c.passport || "";
-const SECTIONS = [["Clearance Information", ["Clearance Type", "Clearance Date", "Permit Id", "Visa No", "Visa Issue Date", "Visa Expire Date", "Country", "Post", "Employer Name", "Employer Address", "Agent Name", "Agent License No", "Agent Address", "Passport Number", "Passport Issue Date", "Passport Expire Date"]],
+const SECTIONS = [["Clearance Information", ["Clearance Type", "Clearance Date", "Permit Id", "Visa No", "Visa Issue Date", "Visa Expire Date", "Country", "Post", "Employer Name", "Employer Address", "Agent Name", "Agent License No", "Agent Address", "Referral No", "Sponsor ID", "Passport Number", "Passport Issue Date", "Passport Expire Date"]],
   ["Personal Information", ["Father's Name", "Mother's Name", "NID Number", "Phone Number", "Present Address", "Permanent Address"]]];
 
 export function ClearanceCheck({ onClose }) {
@@ -31,7 +31,8 @@ export function ClearanceCheck({ onClose }) {
     </form>}
     {res && (res.ok ? <div className="cc-res">
       <h4 className="mt14 mb6">Clearance Information</h4>
-      <div className="cc-top">{["Name", "BMET No", "Clearance ID"].filter(val).map(k => <p key={k}><span>{k}:</span> <b data-notr>{val(k)}</b></p>)}</div>
+      <div className="cc-head">{res.photo && <img className="cc-photo" src={res.photo} alt="" width="110" height="128" />}
+        <div className="cc-top">{["Name", "BMET No", "Clearance ID"].filter(val).map(k => <p key={k}><span>{k}:</span> <b data-notr>{val(k)}</b></p>)}</div></div>
       {SECTIONS.map(([h, keys], i) => { const rows = keys.filter(val); return rows.length ? <React.Fragment key={h}>{i > 0 && <h4 className="mt14 mb6">{h}</h4>}
         <dl className="cc-grid">{rows.map(k => <div key={k}><dt>{k}</dt><dd data-notr>{val(k)}</dd></div>)}</dl></React.Fragment> : null; })}
       {res.id ? <div className="cc-actions">

@@ -1089,10 +1089,34 @@ async function raimsOpen(search = "") {
     return { J, lst, parsed, ajax, pages };
   } catch (e) { if (e instanceof Fail) throw e; must(false, `Could not reach RAIMS: ${e.message}`); }
 }
+/* the RAIMS EC application list from its API: rows [EC Ref No (IC), status name, RID:<application id>] */
+async function raimsApiList() {
+  for (let attempt = 0; attempt < 2; attempt++) {
+    const J = await raimsLogin(attempt > 0);
+    const pg = await rq(J, "/agency/ec/application/list");
+    if (/name="password"/i.test(pg.text) && /login/i.test(pg.url)) { raimsSess = null; continue; }
+    const keys = [...pg.text.matchAll(/jsUtlt\[['"]apiKey['"]\]\s*=\s*['"]([^'"]{20,})['"]/g)].map(m => m[1]); const key = keys[keys.length - 1];
+    must(key, "RAIMS list page gave no API key.");
+    const rows = []; let total = Infinity;
+    for (let start = 0, draw = 1; start < Math.min(total, 2000); start += 100, draw++) {
+      const q = new URLSearchParams({ draw: String(draw), start: String(start), length: "100", status: "1", ap_type: "", "search[value]": "", "search[regex]": "false", "order[0][column]": "0", "order[0][dir]": "desc", "columns[0][data]": "id" });
+      const x = await rq(J, `/api/v1/agency/ec/apllication/list?${q}`, { headers: { Authorization: `Bearer ${key}`, Accept: "application/json", "X-Requested-With": "XMLHttpRequest", Referer: pg.url } });
+      must(x.r.status < 400, `RAIMS list API answered ${x.r.status}.`);
+      const j = JSON.parse(x.text), P = j.payload || j; const data = P.data || [];
+      total = Number(P.recordsFiltered ?? P.recordsTotal ?? data.length) || data.length;
+      for (const r of data) if (!r.is_draft) rows.push([String(r.ref_no || ""), String(r.status?.name || ""), `RID:${r.id}`, r.country?.name || "", `approved ${r.approval_summary?.approved_count ?? 0}/${r.apply_qty ?? ""}`]);
+      if (data.length < 100) break;
+    }
+    return { head: ["EC Ref No", "Status", "ID", "Country", "Approved"], rows };
+  }
+  must(false, "RAIMS signed out.");
+}
 async function raimsSync(by = "auto") {
   const R = db.raims, out = { at: now(), by, rows: 0, matched: 0, updated: [], statuses: {} };
   try {
-    const { parsed, ajax } = await raimsOpen(); if (ajax) out.ajax = ajax;
+    // the list page fills its table from the RAIMS API (api/v1/agency/ec/apllication/list, Bearer = the page's jsUtlt apiKey)
+    let parsed = null; try { parsed = await raimsApiList(); out.via = "api"; } catch (e) { out.apiError = e.message; }
+    if (!parsed || !parsed.rows.length) { const o2 = await raimsOpen(); parsed = o2.parsed; if (o2.ajax) out.ajax = o2.ajax; out.via = "page"; }
     out.head = parsed.head; out.rows = parsed.rows.length; out.sample = parsed.rows.slice(0, 3);
     const si = parsed.head.findIndex(h => /status/i.test(h));
     for (const row of parsed.rows) {
@@ -1103,7 +1127,8 @@ async function raimsSync(by = "auto") {
       // a row with a passport is that worker's file; a row with only the IC number is every file under that IC
       const byPp = pp && db.clearances.find(x => ppNorm(worker(x.workerId)?.passport || user(x.candidateId)?.profile?.passportNo || x.passport || "") === pp);
       // one IC number is one RAIMS application: its status is every worker's status under that IC
-      const files = [...new Set([...(ic ? icFiles(ic) : []), ...(byPp ? [byPp] : [])])];
+      const rid = (/\bRID:(\d+)/.exec(line) || [])[1];
+      const files = [...new Set([...(ic ? icFiles(ic) : []), ...(rid ? db.clearances.filter(x => String(x.raimsId || "") === rid) : []), ...(byPp ? [byPp] : [])])];
       if (!files.length) continue; out.matched += files.length;
       const stage = raimsStage(st); if (!stage) continue;
       const cardNo = (/\b(IT-[A-Z]-\d{4}-\d{4,})\b/i.exec(line) || [])[1]?.toUpperCase();
@@ -1227,8 +1252,25 @@ async function clearanceCheck({ q, by }) {
     if (/name="password"/i.test(pg.text) && /login/i.test(pg.url)) { raimsSess = null; continue; }
     const tok = (/name="_token"[^>]*value="([^"]+)"/.exec(pg.text) || /name="csrf-token"[^>]*content="([^"]+)"/.exec(pg.text) || [])[1] || "";
     const tried = []; let got = null, raw = "";
+    // 0) what the page itself does: POST clearance_input_type (1 passport, 2 Clearance ID) + passport_or_clearance_no, X-CSRF-TOKEN from the meta tag
+    try {
+      const csrf = (/name="csrf-token"[^>]*content="([^"]+)"/.exec(pg.text) || [])[1] || tok;
+      const fd = new URLSearchParams({ clearance_input_type: isId ? "2" : "1", passport_or_clearance_no: v });
+      const x = await rq(J, "/agency/employee/clearance-check", { method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded", "X-CSRF-TOKEN": csrf, "X-Requested-With": "XMLHttpRequest", Accept: "application/json", Referer: pg.url }, body: fd.toString() });
+      tried.push(`POST /agency/employee/clearance-check → ${x.r.status} ${htmlText(x.text).replace(/\s+/g, " ").slice(0, 120)}`);
+      const j = JSON.parse(x.text);
+      if (j.success && j.payload) { const R = j.payload.payload || j.payload, A = R.ADDRESS || {};
+        const F = [["Name", R.NAME], ["BMET No", R.EMP_REG_ID], ["Clearance ID", R.CLEARANCE_ID], ["Clearance Type", R.CLEARANCE_TYPE], ["Clearance Date", R.CLEARANCE_DATE], ["Permit Id", R.APPLICATION_REF_NO], ["Visa No", R.VISA_NO],
+          ["Visa Issue Date", R.VISA_ISSUE_DATE], ["Visa Expire Date", R.VISA_EXPIRE_DATE], ["Country", R.COUNTRY], ["Post", R.JOB_CATEGORY], ["Employer Name", R.EMPLOYER_NAME], ["Employer Address", R.EMPLOYER_ADDRESS],
+          ["Agent Name", R.AGENT_NAME], ["Agent License No", R.AGENT_LICENSE_NO], ["Agent Address", R.AGENT_ADDRESS], ["Referral No", R.REFERRAL_NO], ["Sponsor ID", R.SPONSOR_ID], ["Passport Number", R.PASSPORT_ID], ["Passport Issue Date", R.ISSUE_DATE], ["Passport Expire Date", R.EXPIRE_DATE],
+          ["Father's Name", R.FATHER_NAME], ["Mother's Name", R.MOTHER_NAME], ["NID Number", R.NID], ["Phone Number", R.PHONE],
+          ["Present Address", [A.ML_ADDRESS, A.ML_VILL, A.ML_THANA, A.ML_DISTRICT, A.ML_DIVISION].filter(Boolean).join(", ")], ["Permanent Address", [A.PM_ADDRESS, A.PM_VILL, A.PM_THANA, A.PM_DISTRICT, A.PM_DIVISION].filter(Boolean).join(", ")]]
+          .map(([k, x2]) => [k, x2 == null ? "" : String(x2).trim()]).filter(([, x2]) => x2 && x2 !== "null");
+        got = { fields: F, id: String(R.CLEARANCE_ID || "").trim(), photo: R.PHOTO ? `data:${R.MYME_TYPE || "image/jpeg"};base64,${R.PHOTO}` : "" }; raw = x.text; }
+      else if (j.success === false || j.message) { lastRaims.set("page", { url: "clearance-check", html: x.text.slice(0, 600000) }); return { ok: false, q: v, problem: j.message || "RAIMS did not show a clearance for this number.", tried }; }
+    } catch (e) { tried.push(`POST clearance-check → ${e.message}`); }
     // 1) the page's own form (server-rendered result)
-    const form = [...pg.text.matchAll(/<form\b([^>]*)>([\s\S]*?)<\/form>/gi)].find(f => /passport|clearance/i.test(f[2]));
+    const form = got ? null : [...pg.text.matchAll(/<form\b([^>]*)>([\s\S]*?)<\/form>/gi)].find(f => /passport|clearance/i.test(f[2]) && /action=/i.test(f[1]));
     if (form) {
       const names = [...form[2].matchAll(/<(?:input|select|textarea)\b[^>]*name="([^"]+)"[^>]*>/gi)].map(m => [m[1], m[0]]);
       const body = new URLSearchParams(); if (tok) body.set("_token", tok);
@@ -1243,7 +1285,7 @@ async function clearanceCheck({ q, by }) {
         tried.push(`form ${post ? "POST" : "GET"} ${action} → ${x.r.status}`); got = ccFromHtml(x.text); raw = x.text; } catch (e) { tried.push(`form → ${e.message}`); }
     }
     // 2) the page's script addresses (as Pre EC Check: session cookie, XSRF token, the page's Bearer token)
-    if (!got) {
+    if (!got && !form) {
       const xsrf = decodeURIComponent(J.c["XSRF-TOKEN"] || ""), origin = new URL(pg.url).origin;
       const bm = /Bearer\s*["'`]?\s*\+?\s*["'`]?([A-Za-z0-9._|\-]{20,})/.exec(pg.text) || /(?:api_?token|access_?token|auth_?token|bearer_?token|jwt|token)["']?\s*[:=,]\s*["'`]([A-Za-z0-9._|\-]{20,})["'`]/i.exec(pg.text);
       const ck = Object.entries(J.c).find(([k, x]) => /token|jwt|auth/i.test(k) && !/xsrf|csrf/i.test(k) && x.length > 20), bearer = bm ? bm[1] : ck ? decodeURIComponent(ck[1]) : "";
@@ -1273,7 +1315,7 @@ async function clearanceCheck({ q, by }) {
     const pp = (got.fields.find(([k]) => k === "Passport Number") || [])[1] || (isId ? "" : v);
     // the file here with this passport takes the Clearance ID (for Download Card / Send Card)
     if (got.id && pp) for (const c of db.clearances) if (ppNorm(worker(c.workerId)?.passport || user(c.candidateId)?.profile?.passportNo || c.passport || "") === ppNorm(pp) && !c.cardNo) c.cardNo = got.id;
-    return { ok: true, q: v, id: got.id, passport: pp, fields: got.fields };
+    return { ok: true, q: v, id: got.id, passport: pp, fields: got.fields, photo: got.photo || "" };
   }
   must(false, "RAIMS signed out. Try again.");
 }

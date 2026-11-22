@@ -1441,3 +1441,4 @@ button.hold-tile{cursor:pointer}
 .cc-grid dt{font-weight:600}.cc-grid dd{margin:0;word-break:break-word}
 .cc-actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:16px}.cc-actions p{flex-basis:100%;margin:0}
 @media (max-width:720px){.cc-grid{grid-template-columns:1fr}}
+.cc-head{display:flex;gap:20px;align-items:center;flex-wrap:wrap}.cc-photo{border-radius:8px;object-fit:cover;border:1px solid var(--line)}
