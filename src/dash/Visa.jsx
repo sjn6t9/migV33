@@ -11,6 +11,18 @@ import { PassportPick, passports, inList } from "./Passports.jsx";
 import { xlsx } from "../receipt.js";
 import { AgentDatalist, VStatusCell, vsRow } from "./AgentBook.jsx";
 
+/* The MOFA image code: a person reads it and types it (it is there to stop bots).
+   To make that quick: the box is ready as soon as the image shows, only digits are kept,
+   and the check runs by itself once all 6 digits are typed. */
+function CapInput({ img, value, onChange, onDone, label = "Image code", auto = true }) {
+  const ref = React.useRef(null);
+  React.useEffect(() => { if (img && ref.current) { ref.current.focus(); ref.current.scrollIntoView?.({ block: "center", behavior: "smooth" }); } }, [img]);
+  const change = e => { const c = e.target.value.replace(/\D/g, "").slice(0, 6); onChange(c); if (auto && c.length === 6 && value.length < 6) setTimeout(() => onDone(c), 60); };
+  return <input ref={ref} className="cap-in" type="text" inputMode="numeric" pattern="[0-9]*" enterKeyHint="go" maxLength={6} value={value} onChange={change}
+    placeholder="Image code" aria-label={label} autoComplete="one-time-code" autoCorrect="off" spellCheck={false}
+    onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); if (value) onDone(value); } }} />;
+}
+
 export const MOFA_ST = ["Not applied", "Applied", "Issued", "Rejected", "Cancelled"];
 export const VISA_ST = ["Pending", "Applied", "Issued", "Stamped", "Rejected", "Cancelled"];
 const files = () => store.S.visa?.files || [];
@@ -281,8 +293,8 @@ export function VisaFileForm({ id }) {
   const [med, setMed] = React.useState(null); // MOFA health certificate check: { sid, img, code, error }
   const medStart = async () => { setBusy("med"); const r = await act("admin.visa", { op: "medStart" }, { quiet: true }); setBusy(""); if (r?.sid) setMed({ sid: r.sid, img: r.img, code: "" }); };
   const medNew = async () => { const r = await act("admin.visa", { op: "enjazCaptcha", sid: med.sid }, { quiet: true }); if (r?.img) setMed({ ...med, img: r.img, code: "", error: "" }); };
-  const medGo = async () => {
-    setBusy("medgo"); const r = await act("admin.visa", { op: "medSubmit", sid: med.sid, code: med.code, passport: f.passport || qp, appNo: f.mofaId }, { quiet: true }); setBusy("");
+  const medGo = async (code = med.code) => { if (busy) return;
+    setBusy("medgo"); const r = await act("admin.visa", { op: "medSubmit", sid: med.sid, code, passport: f.passport || qp, appNo: f.mofaId }, { quiet: true }); setBusy("");
     if (!r) return;
     if (!r.ok) { setMed({ ...med, code: "", error: r.problem || "No answer.", img: r.img || med.img, lines: r.lines }); return; }
     set({ mofaMedical: r.issued ? "Issued" : "Not issued" }); setMed(null); toast(r.message);
@@ -297,8 +309,8 @@ export function VisaFileForm({ id }) {
     if (m?.sid) setMc({ sid: m.sid, img: m.img, code: "", visaTypes: m.visaTypes || [], visaType: workType(m.visaTypes || []), nationality: m.nationality || "", natOpts: m.natOpts || [] });
   };
   const mcNew = async () => { const r = await act("admin.visa", { op: "enjazCaptcha", sid: mc.sid }, { quiet: true }); if (r?.img) setMc({ ...mc, img: r.img, code: "", error: "" }); };
-  const mcGo = async () => {
-    setBusy("mc"); const r = await act("admin.visa", { op: "mofaSubmit", sid: mc.sid, code: mc.code, passport: qp, visaType: mc.visaType, nationality: mc.nationality }, { quiet: true }); setBusy("");
+  const mcGo = async (code = mc.code) => { if (busy) return;
+    setBusy("mc"); const r = await act("admin.visa", { op: "mofaSubmit", sid: mc.sid, code, passport: qp, visaType: mc.visaType, nationality: mc.nationality }, { quiet: true }); setBusy("");
     if (!r) return;
     if (!r.ok) { setMc({ ...mc, code: "", error: r.problem || "Nothing found.", img: r.img || mc.img, lines: r.lines }); return; }
     const x = r.found || {}, keep = k => (x[k] && !f[k] ? { [k]: x[k] } : {});
@@ -322,8 +334,8 @@ export function VisaFileForm({ id }) {
     setBusy("");
   };
   const mofaNewImg = async () => { const r = await act("admin.visa", { op: "enjazCaptcha", sid: mofa.sid }, { quiet: true }); if (r?.img) setMofa({ ...mofa, img: r.img, code: "", error: "" }); };
-  const mofaGo = async () => {
-    setBusy("mofa"); const r = await act("admin.visa", { op: "enjazSubmit", sid: mofa.sid, code: mofa.code, ...qv }, { quiet: true }); setBusy("");
+  const mofaGo = async (code = mofa.code) => { if (busy) return;
+    setBusy("mofa"); const r = await act("admin.visa", { op: "enjazSubmit", sid: mofa.sid, code, ...qv }, { quiet: true }); setBusy("");
     if (!r) return;
     if (!r.ok) { setMofa({ ...mofa, code: "", error: r.problem || "Nothing found.", img: r.img || mofa.img }); return; }
     const x = r.found || {};
@@ -354,8 +366,8 @@ export function VisaFileForm({ id }) {
         </div>
         <div className="vf-cap mt8">{mc.img ? <img src={mc.img} alt="Image code from MOFA" /> : <span className="muted small">No image</span>}
           <button type="button" className="btn sm" onClick={mcNew} aria-label="New image code"><LuRefreshCw /></button>
-          <input type="text" inputMode="numeric" maxLength={6} value={mc.code} onChange={e => setMc({ ...mc, code: e.target.value })} placeholder="Image code" aria-label="Image code" autoComplete="off" onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); mcGo(); } }} />
-          <button type="button" className="btn pri" disabled={busy === "mc" || !mc.code.trim()} onClick={mcGo}>{busy === "mc" ? "Searching…" : "Get status"}</button>
+          <CapInput img={mc.img} value={mc.code} onChange={c => setMc({ ...mc, code: c })} onDone={mcGo} auto={!!mc.nationality || !mc.natOpts?.length} />
+          <button type="button" className="btn pri" disabled={busy === "mc" || !mc.code.trim()} onClick={() => mcGo()}>{busy === "mc" ? "Searching…" : "Get status"}</button>
           <button type="button" className="btn sm link" onClick={() => setMc(null)} aria-label="Close"><LuX /></button></div>
         {mc.error && <p className="small vf-err">{mc.error}</p>}
         {mc.lines?.length > 0 && <details className="vf-det small"><summary>What MOFA answered</summary><p className="muted">{mc.lines.join(" · ")}</p></details>}
@@ -368,8 +380,8 @@ export function VisaFileForm({ id }) {
         <p className="small"><b>MOFA health certificate check</b> · {`Application ${f.mofaId || "—"}, passport ${f.passport || qp}. Type the image code.`}</p>
         <div className="vf-cap mt8">{med.img ? <img src={med.img} alt="Image code from MOFA" /> : <span className="muted small">No image</span>}
           <button type="button" className="btn sm" onClick={medNew} aria-label="New image code"><LuRefreshCw /></button>
-          <input type="text" inputMode="numeric" maxLength={6} value={med.code} onChange={e => setMed({ ...med, code: e.target.value })} placeholder="Image code" aria-label="Image code for the health certificate check" autoComplete="off" onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); medGo(); } }} />
-          <button type="button" className="btn pri" disabled={busy === "medgo" || !med.code.trim()} onClick={medGo}>{busy === "medgo" ? "Checking…" : "Check"}</button>
+          <CapInput img={med.img} value={med.code} onChange={c => setMed({ ...med, code: c })} onDone={medGo} label="Image code for the health certificate check" />
+          <button type="button" className="btn pri" disabled={busy === "medgo" || !med.code.trim()} onClick={() => medGo()}>{busy === "medgo" ? "Checking…" : "Check"}</button>
           <button type="button" className="btn sm link" onClick={() => setMed(null)} aria-label="Close"><LuX /></button></div>
         {med.error && <p className="small vf-err">{med.error}</p>}
         {med.lines?.length > 0 && <details className="vf-det small"><summary>What MOFA answered</summary><p className="muted">{med.lines.join(" · ")}</p></details>}
@@ -425,8 +437,8 @@ export function VisaFileForm({ id }) {
         <p className="small"><b>MOFA visa information</b> · Type the image code to get the visa date and sponsor name.</p>
         <div className="vf-cap">{mofa.img ? <img src={mofa.img} alt="Image code from MOFA" /> : <span className="muted small">No image</span>}
           <button type="button" className="btn sm" onClick={mofaNewImg} aria-label="New image code"><LuRefreshCw /></button>
-          <input type="text" inputMode="numeric" maxLength={6} value={mofa.code} onChange={e => setMofa({ ...mofa, code: e.target.value })} placeholder="Image code" aria-label="Image code" autoComplete="off" onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); mofaGo(); } }} />
-          <button type="button" className="btn pri" disabled={busy === "mofa" || !mofa.code.trim()} onClick={mofaGo}>{busy === "mofa" ? "Searching…" : "Get details"}</button>
+          <CapInput img={mofa.img} value={mofa.code} onChange={c => setMofa({ ...mofa, code: c })} onDone={mofaGo} />
+          <button type="button" className="btn pri" disabled={busy === "mofa" || !mofa.code.trim()} onClick={() => mofaGo()}>{busy === "mofa" ? "Searching…" : "Get details"}</button>
           <button type="button" className="btn sm link" onClick={() => setMofa(null)}><LuX /></button></div>
         {mofa.error && <p className="small vf-err">{mofa.error}</p>}
       </div>}
