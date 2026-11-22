@@ -272,7 +272,8 @@ export function Admin({ u }) {
   }
 
 
-  if (t === "ledger") {
+  if (t === "ledger" && ui.agentView) body = <AgentsPage AddForm={LedgerAddForm} canLedger={can("ledger")} canMr={can("receipts")} />; // an agent opened from the list below
+  else if (t === "ledger") {
     const sel = ui.ledgerAgent ? user(ui.ledgerAgent) : null;
     const totalDue = agents.reduce((s, a) => s + balanceOf(a.id), 0);
     body = <>
@@ -298,6 +299,7 @@ export function Admin({ u }) {
           </div>} />
         <LedgerAddForm sel={sel} />
       </div> : <p className="muted">Choose an agent to see the full statement, confirm payments and add charges.</p>}
+      <div className="mt14 ledger-agents"><AgentsPage AddForm={LedgerAddForm} canLedger={can("ledger")} canMr={can("receipts")} /></div>
     </>;
   }
 
