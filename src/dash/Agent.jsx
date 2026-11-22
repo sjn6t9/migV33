@@ -156,6 +156,7 @@ export function Agent({ u }) {
       <form className="card fgrid" onSubmit={pay}>
         <h3 className="full">Report a payment</h3>
         <Field label="Amount (BDT)"><input type="number" name="amount" min="1" required /></Field>
+        <Field label="Paid to"><select name="paidTo"><option value="">The office (MAM &amp; MAM Overseas)</option>{(S.leaders || []).map(l => <option key={l.k} value={l.k}>{`${l.name} · ${l.title}`}</option>)}</select></Field>
         <Field label="Payment method"><select name="method"><Options list={PAY_METHODS} /></select></Field>
         <Field label="Transaction / reference no."><input type="text" name="ref" /></Field>
         <Field label="Payment date"><input type="date" name="date" defaultValue={now().slice(0, 10)} required /></Field>

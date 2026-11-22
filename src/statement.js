@@ -6,7 +6,9 @@ import { TAGLINE, OFFICE, xlsx, pdfFromCanvases, saveBlob, loadImg, rr, fitFont,
 const localDay = () => new Date(Date.now() - new Date().getTimezoneOffset() * 6e4).toISOString().slice(0, 10);
 export const sdate = d => { if (!d) return ""; const [y, m, dd] = d.slice(0, 10).split("-"); return `${dd}-${m}-${y.slice(2)}`; };
 export const amt = n => Number(n || 0).toLocaleString("en-US", { maximumFractionDigits: 2 });
+const LEAD = { md: "MD", director: "DIRECTOR", chairman: "CHAIRMAN" };
 const payWay = (method, channel) => {
+  const P = /^Person · ([a-z]+)(?: \| (.+))?$/.exec(String(method || "")); if (P) return `${LEAD[P[1]] || P[1].toUpperCase()}${P[2] ? ` · ${payWay(P[2])}` : ""}`; // given to the MD / a Director / the Chairman
   const c = String(channel || "").replace(/\s*\(.*\)\s*$/, ""), m = String(method || "");
   if (c) return c.toUpperCase();
   if (/^Mobile banking ·|^Bank transfer ·|^Cheque ·/.test(m)) return m.split("·").pop().trim().replace(/\s*\(.*\)\s*$/, "").toUpperCase();

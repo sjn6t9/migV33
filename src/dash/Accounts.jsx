@@ -64,25 +64,18 @@ function holdings(list) {
   return [...map.values()].map(x => ({ ...x, bal: x.in - x.out }));
 }
 /* statement rows as seen from one holder (or the whole office when key is empty) */
-/* the main account is the office's own money: cash in office, banks and wallets. Money with the MD / Directors / Chairman
-   is kept apart: it is not in the main balance. Money handed to one of them (or back) shows as money out (or in). */
-export function officeRows(list, key, pendingToo) {
+function officeRows(list, key, pendingToo) {
   const out = [];
   for (const e of list) {
     const pend = e.status === "pending", sub = e.auto ? `Added automatically · ${AUTO[e.auto]}` : [e.by && `Entered by ${e.by}`, pend && "Waiting for confirmation", e.status === "rejected" && `Not confirmed by ${e.rejected?.by || "director"}${e.rejected?.text ? `: ${e.rejected.text}` : ""}`].filter(Boolean).join(" · ");
     if (e.status === "rejected" && !pendingToo) continue;
     if (e.type === "transfer") {
-      if (!key) {
-        const a = holderOf(e.from), b = holderOf(e.to), ap = a.kind === "person", bp = b.kind === "person";
-        if (ap === bp) continue; // inside the main account, or between two leaders: not a change of the main balance
-        out.push({ id: e.id, date: e.date, at: e.at, details: `${e.desc} — ${bp ? `given to ${personName(b.k)}` : `received from ${personName(a.k)}`}`, ref: e.ref, rate: bp ? way(e.from) : way(e.to), debit: ap ? e.amount : 0, credit: bp ? e.amount : 0, manual: !e.auto, pending: pend || e.status === "rejected", sub, e });
-        continue;
-      }
+      if (!key) continue;
       const m = moves(e).find(x => x.h.key === key); if (!m) continue;
       out.push({ id: e.id, date: e.date, details: `${e.desc} — moved ${m.amount > 0 ? `from ${methodText(e.from)}` : `to ${methodText(e.to)}`}`, ref: e.ref, at: e.at, rate: m.h.via ? m.h.via.toUpperCase() : "TRANSFER", debit: m.amount > 0 ? e.amount : 0, credit: m.amount < 0 ? e.amount : 0, manual: !e.auto, pending: pend || e.status === "rejected", sub, e });
       continue;
     }
-    const h = holderOf(e.method); if (key ? h.key !== key : h.kind === "person") continue;
+    const h = holderOf(e.method); if (key && h.key !== key) continue;
     out.push({ id: e.id, date: e.date, at: e.at, details: e.desc, ref: e.ref, rate: h.kind === "person" ? h.via.toUpperCase() : way(e.method), debit: e.type === "in" ? e.amount : 0, credit: e.type === "out" ? e.amount : 0, manual: !e.auto, auto: e.auto, pending: pend || e.status === "rejected",
       sub: [h.kind === "person" && !key && `With ${personName(h.k)}`, sub].filter(Boolean).join(" · "), e });
   }
@@ -116,7 +109,7 @@ function Holdings({ H, waiting, sel, onPick }) {
   const banks = H.filter(h => h.kind === "bank").sort((a, b) => b.bal - a.bal), wallets = H.filter(h => h.kind === "wallet").sort((a, b) => b.bal - a.bal);
   const people = [...L.map(l => H.find(h => h.key === `p:${l.k}`) || { key: `p:${l.k}`, kind: "person", k: l.k, in: 0, out: 0, bal: 0, vias: {} }), ...H.filter(h => h.kind === "person" && !L.some(l => `p:${l.k}` === h.key))];
   const wait = k => waiting.filter(e => e.people?.includes(k) && !e.accepted?.includes(k));
-  const sum = l => l.reduce((t, h) => t + h.bal, 0), total = sum(H.filter(h => h.kind !== "person")); // the leaders' money is not in the main balance
+  const total = H.reduce((t, h) => t + h.bal, 0), sum = l => l.reduce((t, h) => t + h.bal, 0);
   const Row = ({ h, extra }) => <><tr className={`hold-row${sel === h.key ? " on" : ""}`} onClick={() => onPick(h.key)} title="Show these entries"><td className="b">{holderName(h)}{extra}</td><td className="num">{tk(h.in)}</td><td className="num">{tk(h.out)}</td><td className={`num b${h.bal < 0 ? " neg" : ""}`}>{tk(h.bal)}</td></tr>
     {Object.entries(h.vias || {}).sort((a, b) => (b[1].in - b[1].out) - (a[1].in - a[1].out)).map(([n, v]) => <tr key={n} className="hold-sub"><td>{`↳ ${n}`}</td><td className="num">{tk(v.in)}</td><td className="num">{tk(v.out)}</td><td className="num">{tk(v.in - v.out)}</td></tr>)}</>;
   const Group = ({ title, list, none }) => <div className="hold-group"><h4>{title}<span className="muted small ms6">{`${tk(sum(list))} BDT`}</span></h4>
@@ -126,12 +119,12 @@ function Holdings({ H, waiting, sel, onPick }) {
       <button type="button" className={`hold-tile${sel === "cash" ? " on" : ""}`} onClick={() => onPick("cash")}><span className="muted small">Cash in office (with me)</span><b>{`${tk(cash.bal)} BDT`}</b></button>
       <div className="hold-tile"><span className="muted small">In banks</span><b>{`${tk(sum(banks))} BDT`}</b></div>
       <div className="hold-tile"><span className="muted small">In mobile wallets</span><b>{`${tk(sum(wallets))} BDT`}</b></div>
-      <div className="hold-tile tot"><span className="muted small">Main account balance</span><b>{`${tk(total)} BDT`}</b><span className="muted small">Cash, banks and wallets</span></div>
-      <div className="hold-tile hold-sep"><span className="muted small">With MD / Directors / Chairman (separate)</span><b>{`${tk(sum(people))} BDT`}</b><span className="muted small">Not in the main balance</span></div>
+      <div className="hold-tile"><span className="muted small">With MD / Directors / Chairman</span><b>{`${tk(sum(people))} BDT`}</b></div>
+      <div className="hold-tile tot"><span className="muted small">Main account total</span><b>{`${tk(total)} BDT`}</b></div>
     </div>
     <Group title="Banks" list={banks} none="No money in any bank yet." />
     <Group title="Mobile wallets" list={wallets} none="No money in any mobile wallet yet." />
-    <Group title="Managing Director, Directors and Chairman (separate, not in the main balance)" list={people} none="" />
+    <Group title="Managing Director, Directors and Chairman" list={people} none="" />
     <LeaderIds L={L} />
     {waiting.length > 0 && <p className="muted small mt8">{`${waiting.length} ${waiting.length > 1 ? "entries are" : "entry is"} waiting for confirmation. They are shown dimmed and are not counted until confirmed.`}</p>}
     <p className="muted small mt8">Click a row to see only its entries.</p>

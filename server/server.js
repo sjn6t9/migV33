@@ -236,6 +236,7 @@ function viewFor(u) {
     pub.applications = db.applications.filter(a => a.agentId === u.id);
     pub.jobs = db.jobs.filter(j => j.status === "active" || pub.applications.some(a => a.jobId === j.id));
     pub.tickets = db.tickets.filter(t => t.agentId === u.id); pub.flightsReady = !!db.wftt?.token;
+    pub.leaders = leaders().map(({ k, name, title }) => ({ k, name, title })); // agents can say they paid one of them
     pub.ledger = db.ledger.filter(l => l.agentId === u.id);
     pub.passports = db.passports.filter(p => p.agentId === u.id).map(({ by, ...p }) => p); // passports the office entered with this agent as reference
   } else if (u.role === "admin" || u.role === "staff") {
@@ -245,7 +246,8 @@ function viewFor(u) {
     });
     if (can(u, "jobs")) pub.jobTemplates = db.jobTemplates;
     if (can(u, "office")) pub.office = { entries: db.office.entries, auto: officeAuto(), leaders: leaders() };
-    { const me = leaders().find(x => x.uid === u.id); if (me) pub.myMoney = { entries: db.office.entries.filter(e => e.people?.includes(me.k)), me }; }
+    { const me = leaders().find(x => x.uid === u.id); if (me) pub.myMoney = { entries: [...db.office.entries.filter(e => e.people?.includes(me.k)), ...officeAuto().filter(e => personOf(e.method) === me.k)], me }; }
+    if (can(u, "ledger") || can(u, "office")) pub.leaders = leaders().map(({ k, name, title }) => ({ k, name, title }));
     if (can(u, "clearance") || u.role === "agent") pub.raimsReady = !!db.raims?.pass;
     if (can(u, "tickets")) { pub.wftt = db.wftt ? { email: db.wftt.email, since: db.wftt.since || null, ready: !!db.wftt.token, markup: Number(db.settings.ticketMarkup || 0) } : null; pub.flightsReady = !!db.wftt?.token; }
     if (can(u, "clearance")) pub.raims = db.raims ? { email: db.raims.email, auto: db.raims.auto, saved: !!db.raims.pass, since: db.raims.since || null, last: db.raims.last || null } : null;
@@ -861,8 +863,12 @@ A["admin.wftt"] = async (d, u) => {
 A["agent.ticketCancel"] = async ({ id: tid }, u) => { const t = db.tickets.find(x => x.id === tid); must(u?.role === "agent" && t && t.agentId === u.id && t.status === "requested", "Not allowed.", 403); t.status = "cancelled"; return { msg: "Request cancelled." }; };
 A["agent.payment"] = async (d, u) => {
   must(u?.role === "agent", "Not allowed.", 403); const amount = numv(d.amount, 0, 1e8); must(amount >= 1, "Enter the amount.");
-  db.ledger.push({ id: id("l"), at: now(), agentId: u.id, type: "payment", desc: str(d.desc, 200) || "Payment sent by agent", amount, date: str(d.date, 10) || now().slice(0, 10), method: str(d.method, 40), ref: str(d.ref, 80), status: "pending" });
-  notifyAdmins(`Payment reported by ${u.agent.business}: ${bdt(amount)} via ${str(d.method, 40)}.`, "ledger");
+  // paid to the Managing Director / a Director / the Chairman: the payment is counted with that person ("Person · md | bKash")
+  const lead = d.paidTo ? leaders().find(x => x.k === d.paidTo) : null, m0 = str(d.method, 60);
+  const method = lead ? `Person · ${lead.k}${m0 && !/^cash/i.test(m0) ? ` | ${m0}` : ""}` : m0;
+  db.ledger.push({ id: id("l"), at: now(), agentId: u.id, type: "payment", desc: str(d.desc, 200) || (lead ? `Payment given to ${lead.name} · ${lead.title}` : "Payment sent by agent"), amount, date: str(d.date, 10) || now().slice(0, 10), method, ref: str(d.ref, 80), status: "pending" });
+  notifyAdmins(`Payment reported by ${u.agent.business}: ${bdt(amount)} ${lead ? `given to ${lead.name} (${lead.title})` : `via ${m0}`}.`, "ledger");
+  if (lead?.uid) notify(lead.uid, `${u.agent.business} says they gave you ${bdt(amount)}. It counts as money with you once the agency confirms it.`);
   return { msg: "Payment submitted. It appears in your balance after confirmation." };
 };
 
@@ -1707,7 +1713,7 @@ A["admin.ledgerAdd"] = async (d, u) => { // one entry, or several at once (d.row
     const charge = x.type !== "payment", qty = charge && x.qty != null && x.qty !== "" ? numv(x.qty, 1, 10000) : 1;
     const rate = x.rate != null && x.rate !== "" ? numv(x.rate, 0, 1e8) : numv(x.amount, 0, 1e8);
     const amount = Math.round(qty * rate * 100) / 100; must(amount >= 1 && amount <= 1e9 && str(x.desc), `Enter the amount and description${at}.`);
-    return { id: id("l"), at: now(), agentId: ag.id, type: charge ? "charge" : "payment", desc: str(x.desc, 200), amount, ...(charge ? { qty, rate } : {}), date: /^\d{4}-\d{2}-\d{2}$/.test(x.date || "") ? x.date : now().slice(0, 10), method: charge ? "" : str(x.method, 80), ref: charge ? "" : str(x.ref, 80), status: "confirmed" };
+    return { id: id("l"), at: now(), agentId: ag.id, type: charge ? "charge" : "payment", desc: str(x.desc, 200), amount, ...(charge ? { qty, rate } : {}), date: /^\d{4}-\d{2}-\d{2}$/.test(x.date || "") ? x.date : now().slice(0, 10), method: charge ? "" : str(x.method, 120), ref: charge ? "" : str(x.ref, 80), status: "confirmed" };
   });
   db.ledger.push(...made);
   for (const l of made) notify(ag.id, l.type === "charge" ? `New charge on your account: ${l.desc.slice(0, 100)} (${bdt(l.amount)}).` : `Payment of ${bdt(l.amount)} recorded.`);
