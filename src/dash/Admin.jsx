@@ -23,6 +23,7 @@ import { GroupEcForm } from "./Agent.jsx";
 import { BulkEcForm } from "./BulkClearance.jsx";
 import { AgentsPage } from "./AgentBook.jsx";
 import { PreEcCheck } from "./PreEc.jsx";
+import { ClearanceCheck } from "./ClearanceCheck.jsx";
 import { agentRows } from "../statement.js";
 import { MFS, BANKS } from "../banks.js";
 import { LuReceipt, LuLandmark, LuBanknote, LuScrollText, LuBookUser, LuFileCheck2, LuHandCoins, LuPlaneTakeoff, LuCalendarCheck, LuSettings2, LuLogOut, LuMegaphone, LuCirclePlus, LuListPlus, LuContact, LuGlobe, LuRefreshCw, LuShieldCheck, LuLogIn, LuCircleCheck } from "react-icons/lu";
@@ -603,10 +604,12 @@ function AdminClearanceList() {
         <button className={`btn ${form === "bulk" ? "dark" : "soft"}`} onClick={() => setForm(x => x === "bulk" ? "" : "bulk")}>{form === "bulk" ? <LuX /> : <LuListPlus />} {form === "bulk" ? "Close bulk entry" : "Add bulk"}</button>
         <button className={`btn ${form === "raims" ? "dark" : "soft"}`} onClick={() => setForm(x => x === "raims" ? "" : "raims")}>{form === "raims" ? <LuX /> : <LuRefreshCw />} RAIMS</button>
         <button className={`btn ${form === "preec" ? "dark" : "soft"}`} onClick={() => setForm(x => x === "preec" ? "" : "preec")}>{form === "preec" ? <LuX /> : <LuShieldCheck />} Pre EC Check</button>
+        <button className={`btn ${form === "cc" ? "dark" : "soft"}`} onClick={() => setForm(x => x === "cc" ? "" : "cc")}>{form === "cc" ? <LuX /> : <LuBadgeCheck />} Clearance Check</button>
       </div>
     </div>
     {form === "raims" && <RaimsPanel />}
     {form === "preec" && <PreEcCheck onClose={() => setForm("")} />}
+    {form === "cc" && <ClearanceCheck onClose={() => setForm("")} />}
     {form === "one" && <GroupEcForm admin onDone={() => setForm("")} />}
     {form === "bulk" && <BulkEcForm onDone={() => setForm("")} />}
     <p className="muted small">{`Status flow: Pending › Received › Send to BMET, then the status RAIMS shows (Pending Section / AD / DD / Director / Final Approval … Approved; a file can go back to Section and up again). Once a file is Sent to BMET, RAIMS sync sets its status; before that it stays ours. Choose “Custom…” in Status to write your own status. The EC Ref No can be changed until the file is Approved. When a file reaches Final Approval, the agent sends a payment receipt (Payments to check). When a file is Approved, open Details: get the card from RAIMS with its card number (Download Card / Send Card), or upload it; the agent then downloads it.`}</p>

@@ -1,5 +1,5 @@
 import React from "react";
-import { LuPlus, LuPencil, LuRotateCcw, LuEye, LuCheck, LuX, LuTrash2, LuUpload, LuSend, LuDownload, LuCamera, LuFileText, LuIdCard, LuFileBadge, LuShieldCheck } from "react-icons/lu";
+import { LuPlus, LuPencil, LuRotateCcw, LuEye, LuCheck, LuX, LuTrash2, LuUpload, LuSend, LuDownload, LuCamera, LuFileText, LuIdCard, LuFileBadge, LuShieldCheck, LuSearch } from "react-icons/lu";
 import { store, num, fdate, kb, bdtFmt, candOf, clPerson, job, STAGES, LABEL, CARD_TYPES, COUNTRIES, CATS, TYPES, BENEFITS, HOURLY } from "../store.js";
 import { openModal, setAppStatus, confirmPayment, confirmBox, toast, downloadFile, cardFileName, formData, act } from "../actions.js";
 import { Pill, Empty, Avatar } from "../ui.jsx";
@@ -93,14 +93,17 @@ function RaimsCard({ c, who }) {
     setBusy(op); const r = await act("admin.clRaimsCard", { id: c.id, no: no.trim(), op, fee: Number(fee || 0) }, op === "download" ? { quiet: true } : undefined); setBusy("");
     if (op === "download" && r?.file) downloadFile(r.file.data, r.file.name);
   };
+  // RAIMS Clearance Check by the file's passport number gives the Clearance ID
+  const find = async () => { setBusy("find"); const r = await act("admin.clRaimsCard", { id: c.id, op: "find" }); setBusy(""); if (r?.no) setNo(r.no); };
   return <div className="raims-card">
     <b><LuShieldCheck /> Clearance card from RAIMS</b>
     <div className="raims-card-row">
-      <label className="f">Card number<input type="text" value={no} maxLength={40} placeholder="IT-I-2026-6009034" autoCapitalize="characters" spellCheck={false}
+      <label className="f">Clearance ID (card number)<input type="text" value={no} maxLength={40} placeholder="IT-I-2026-6009034" autoCapitalize="characters" spellCheck={false}
         onChange={e => setNo(e.target.value.toUpperCase().replace(/\s+/g, ""))} onKeyDown={e => { if (e.key === "Enter") run("download"); }} /></label>
       {!c.card && <label className="f">Card fee (BDT)<input type="number" min="0" value={fee} onChange={e => setFee(e.target.value)} /></label>}
     </div>
     <div className="row tight wrap">
+      <button type="button" className="btn soft" disabled={!!busy} onClick={find}><LuSearch /> {busy === "find" ? "Checking…" : "Find from RAIMS"}</button>
       <button type="button" className="btn" disabled={!!busy || !ok} onClick={() => run("download")}><LuDownload /> {busy === "download" ? "Getting…" : "Download Card"}</button>
       <button type="button" className="btn pri" disabled={!!busy || !ok} onClick={() => run("send")}><LuSend /> {busy === "send" ? "Sending…" : c.card ? "Send Card again" : "Send Card"}</button>
       {ok && <a className="btn sm link" href={`https://raims.oep.gov.bd/agency/employee/clearance-check/download/card/${encodeURIComponent(no.trim())}`} target="_blank" rel="noopener noreferrer">Open in RAIMS</a>}

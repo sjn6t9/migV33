@@ -1435,3 +1435,9 @@ button.hold-tile{cursor:pointer}
 .raims-card-row{display:flex;gap:10px;flex-wrap:wrap}.raims-card-row .f{flex:1 1 200px}
 .raims-st{display:inline-flex;align-items:center;gap:5px}
 .raims-card .row{justify-content:flex-start;flex-wrap:wrap;gap:8px}
+.cc-top{display:grid;gap:6px;margin:4px 0 12px}.cc-top p{margin:0;font-size:1.05rem}.cc-top span{font-weight:600}
+.cc-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0 24px;margin:0}
+.cc-grid>div{display:grid;grid-template-columns:minmax(120px,40%) 1fr;gap:10px;padding:8px 0;border-bottom:1px solid var(--line)}
+.cc-grid dt{font-weight:600}.cc-grid dd{margin:0;word-break:break-word}
+.cc-actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:16px}.cc-actions p{flex-basis:100%;margin:0}
+@media (max-width:720px){.cc-grid{grid-template-columns:1fr}}

@@ -1102,6 +1102,7 @@ async function raimsSync(by = "auto") {
         c.history.push({ s: stage, t: st, at: now(), by: "RAIMS" }); c.raims = { status: st, stage, at: now() };
         const payNow = c.agentId && ["final", "approved"].includes(stage) && !["submitted", "paid"].includes(c.payment?.status) ? " Send the payment receipt from BMET clearance (Unpaid)." : "";
         notify(c.agentId || c.candidateId, `BMET clearance for ${name}: ${st}.${stage === "approved" ? " The clearance card will be sent to your portal." : ""}${payNow}`);
+        if (stage === "approved" && !c.cardNo) { const pp = worker(c.workerId)?.passport || user(c.candidateId)?.profile?.passportNo || c.passport; if (pp) try { await clearanceCheck({ q: pp }); } catch {} }
         out.updated.push({ ref: c.ref, name, from: c.history.length > 1 ? (c.history[c.history.length - 2].t || LABEL[cur] || cur) : LABEL[cur] || cur, to: st, raims: st });
       }
     }
@@ -1167,6 +1168,90 @@ A["admin.agentLog"] = async (d, u) => {
     .map(l => ({ id: "old" + l.id, at: l.at, type: "agent.payment", what: "Payment", detail: [`৳ ${Number(l.amount || 0).toLocaleString("en-IN")}`, l.method, l.ref, l.desc].filter(Boolean).join(" · "), ip: "", device: "", loc: "" }));
   return { log: [...log, ...older].sort((a, b) => b.at.localeCompare(a.at)).slice(0, 1000) };
 };
+/* ---- RAIMS Clearance Check (…/agency/employee/clearance-check): passport number or Clearance ID → the clearance
+   information and the Clearance ID (IT-I-2026-6009034) whose EC card is at …/clearance-check/download/card/<Clearance ID> ---- */
+const CC_ID = /\b([A-Z]{1,4}-[A-Z]{1,3}-\d{4}-\d{4,})\b/;
+const CC_LABELS = ["Name", "BMET No", "Clearance ID", "Clearance Type", "Clearance Date", "Permit Id", "Visa No", "Visa Issue Date", "Visa Expire Date", "Country", "Post", "Employer Name", "Employer Address",
+  "Agent Name", "Agent License No", "Agent Address", "Passport Number", "Passport Issue Date", "Passport Expire Date", "Father's Name", "Mother's Name", "NID Number", "Phone Number", "Present Address", "Permanent Address"];
+const CC_KEYS = { "Name": ["name", "name_en", "full_name", "employee_name"], "BMET No": ["registration_no", "bmet_no", "bmet_registration_no", "reg_no"], "Clearance ID": ["clearance_id", "clearance_no", "ec_no", "ec_number", "card_no"],
+  "Clearance Type": ["clearance_type", "type"], "Clearance Date": ["clearance_date", "approved_at", "issue_date_time"], "Permit Id": ["permit_id", "ic_no", "ic_number", "permission_id", "application_no"], "Visa No": ["visa_no", "visa_number"],
+  "Visa Issue Date": ["visa_issue_date"], "Visa Expire Date": ["visa_expire_date", "visa_expiry_date"], "Country": ["country", "country_name", "destination_country"], "Post": ["post", "designation", "profession", "occupation"],
+  "Employer Name": ["employer_name", "company_name"], "Employer Address": ["employer_address", "company_address"], "Agent Name": ["agent_name", "agency_name", "ra_name"], "Agent License No": ["agent_license_no", "license_no", "rl_no"],
+  "Agent Address": ["agent_address", "agency_address"], "Passport Number": ["passport_number", "passport_no"], "Passport Issue Date": ["passport_issue_date", "issue_date"], "Passport Expire Date": ["passport_expire_date", "passport_expiry_date", "expire_date"],
+  "Father's Name": ["fathers_name", "father_name"], "Mother's Name": ["mothers_name", "mother_name"], "NID Number": ["national_id", "nid", "nid_number"], "Phone Number": ["mobile", "phone", "phone_number"],
+  "Present Address": ["present_address"], "Permanent Address": ["permanent_address"] };
+function ccFromJson(j) {
+  const m = {}; const walk = (v, k) => { if (Array.isArray(v)) v.forEach(x => walk(x, k)); else if (v && typeof v === "object") Object.entries(v).forEach(([a, b]) => walk(b, a)); else if (k && !(k.toLowerCase() in m) && v != null && String(v).trim() !== "" && String(v) !== "null") m[k.toLowerCase()] = String(v).trim(); };
+  walk(j);
+  const F = CC_LABELS.map(l => [l, (CC_KEYS[l] || []).map(k => m[k]).find(Boolean) || ""]).filter(([, v]) => v);
+  const all = JSON.stringify(j); const id = (F.find(([k]) => k === "Clearance ID") || [])[1] || (CC_ID.exec(all) || [])[1] || "";
+  if (id && !F.some(([k]) => k === "Clearance ID")) F.splice(Math.min(2, F.length), 0, ["Clearance ID", id]);
+  return F.length >= 3 ? { fields: F, id } : null;
+}
+function ccFromHtml(html) {
+  const P = String(html || "").replace(/<script[\s\S]*?<\/script>|<style[\s\S]*?<\/style>|<form\b[\s\S]*?<\/form>|<select\b[\s\S]*?<\/select>/gi, " ").split(/<[^>]+>/).map(x => htmlText(x).trim()).filter(Boolean);
+  const F = []; const L = new Map(CC_LABELS.map(l => [l.toLowerCase(), l]));
+  for (let i = 0; i < P.length - 1; i++) { const lab = L.get(P[i].replace(/\s*:\s*$/, "").toLowerCase()); if (!lab || F.some(([k]) => k === lab)) continue; const v = P[i + 1]; if (!v || L.has(v.replace(/\s*:\s*$/, "").toLowerCase())) continue; F.push([lab, v]); }
+  const id = (CC_ID.exec((F.find(([k]) => k === "Clearance ID") || [])[1] || "") || /download\/card\/([A-Z]{1,4}-[A-Z]{1,3}-\d{4}-\d{4,})/i.exec(html) || [])[1] || "";
+  const G = F.filter(([k, v]) => k !== "Clearance ID" || CC_ID.test(v)); if (id && !G.some(([k]) => k === "Clearance ID")) G.push(["Clearance ID", id]);
+  return G.length >= 3 || id ? { fields: CC_LABELS.map(l => G.find(([k]) => k === l)).filter(Boolean), id } : null;
+}
+async function clearanceCheck({ q, by }) {
+  const v = String(q || "").trim().toUpperCase().replace(/\s+/g, ""), isId = by === "id" || CC_ID.test(v);
+  must(isId ? CC_ID.test(v) : /^[A-Z0-9]{6,15}$/.test(v), isId ? "Enter the Clearance ID, e.g. IT-I-2026-6009034." : "Enter the passport number.");
+  for (let attempt = 0; attempt < 2; attempt++) {
+    const J = await raimsLogin(attempt > 0);
+    const pg = await rq(J, "/agency/employee/clearance-check");
+    if (/name="password"/i.test(pg.text) && /login/i.test(pg.url)) { raimsSess = null; continue; }
+    const tok = (/name="_token"[^>]*value="([^"]+)"/.exec(pg.text) || /name="csrf-token"[^>]*content="([^"]+)"/.exec(pg.text) || [])[1] || "";
+    const tried = []; let got = null, raw = "";
+    // 1) the page's own form (server-rendered result)
+    const form = [...pg.text.matchAll(/<form\b([^>]*)>([\s\S]*?)<\/form>/gi)].find(f => /passport|clearance/i.test(f[2]));
+    if (form) {
+      const names = [...form[2].matchAll(/<(?:input|select|textarea)\b[^>]*name="([^"]+)"[^>]*>/gi)].map(m => [m[1], m[0]]);
+      const body = new URLSearchParams(); if (tok) body.set("_token", tok);
+      for (const [n, tag] of names) {
+        if (/^<select/i.test(tag)) { const sel = new RegExp(`<select[^>]*name="${n.replace(/[[\]]/g, "\\$&")}"[\\s\\S]*?<\\/select>`, "i").exec(form[2])?.[0] || ""; const opts = [...sel.matchAll(/<option[^>]*value="([^"]*)"[^>]*>([\s\S]*?)<\/option>/gi)].map(m => [m[1], htmlText(m[2])]);
+          body.set(n, (opts.find(([, t]) => (isId ? /clearance/i : /passport/i).test(t)) || opts.find(([x]) => x) || [""])[0]); }
+        else if (/type="hidden"/i.test(tag)) { if (n !== "_token") body.set(n, (/value="([^"]*)"/.exec(tag) || [])[1] || ""); }
+        else if (/passport|clearance|number|search|value|keyword|input/i.test(n)) body.set(n, v);
+      }
+      const post = /method\s*=\s*"?post/i.test(form[1]), action = ((/action="([^"]*)"/i.exec(form[1]) || [])[1] || "/agency/employee/clearance-check").replace(/&amp;/g, "&");
+      try { const x = post ? await rq(J, action, { method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded", Referer: pg.url, "X-CSRF-TOKEN": tok }, body: body.toString() }) : await rq(J, action + (action.includes("?") ? "&" : "?") + body.toString());
+        tried.push(`form ${post ? "POST" : "GET"} ${action} → ${x.r.status}`); got = ccFromHtml(x.text); raw = x.text; } catch (e) { tried.push(`form → ${e.message}`); }
+    }
+    // 2) the page's script addresses (as Pre EC Check: session cookie, XSRF token, the page's Bearer token)
+    if (!got) {
+      const xsrf = decodeURIComponent(J.c["XSRF-TOKEN"] || ""), origin = new URL(pg.url).origin;
+      const bm = /Bearer\s*["'`]?\s*\+?\s*["'`]?([A-Za-z0-9._|\-]{20,})/.exec(pg.text) || /(?:api_?token|access_?token|auth_?token|bearer_?token|jwt|token)["']?\s*[:=,]\s*["'`]([A-Za-z0-9._|\-]{20,})["'`]/i.exec(pg.text);
+      const ck = Object.entries(J.c).find(([k, x]) => /token|jwt|auth/i.test(k) && !/xsrf|csrf/i.test(k) && x.length > 20), bearer = bm ? bm[1] : ck ? decodeURIComponent(ck[1]) : "";
+      const xh = { "X-Requested-With": "XMLHttpRequest", Accept: "application/json, text/html, */*", "X-CSRF-TOKEN": tok, ...(xsrf ? { "X-XSRF-TOKEN": xsrf } : {}), ...(bearer ? { Authorization: `Bearer ${bearer}` } : {}), Referer: pg.url, Origin: origin };
+      const hints = dataHints(pg.text).filter(u => /clearance|check|passport|search|employee/i.test(u) && !/download\/card/i.test(u)).slice(0, 6);
+      for (const h of hints) {
+        const u = h.replace(/:([a-z_]+)/gi, (all, k) => /type|input/i.test(k) ? (isId ? "clearance" : "passport") : /^\d+$/.test(k) ? all : encodeURIComponent(v)).replace(/\{[^}]*\}|\$\{[^}]*\}/g, v);
+        for (const m of ["GET", "POSTJSON"]) {
+          let x; try { x = m === "GET" ? await rq(J, u + (u.includes(v) ? "" : (u.includes("?") ? "&" : "?") + `type=${isId ? "clearance" : "passport"}&passport=${v}&search=${v}`), { headers: xh })
+            : await rq(J, u, { method: "POST", headers: { ...xh, "Content-Type": "application/json" }, body: JSON.stringify({ type: isId ? "clearance" : "passport", input_type: isId ? "clearance_id" : "passport", passport: v, passport_no: v, clearance_id: v, search: v }) }); }
+          catch (e) { tried.push(`${m} ${u} → ${e.message}`); continue; }
+          tried.push(`${m} ${u} → ${x.r.status} ${htmlText(x.text).replace(/\s+/g, " ").slice(0, 80)}`);
+          if (x.r.status >= 400) continue;
+          try { const j = JSON.parse(x.text); got = (typeof j?.html === "string" && ccFromHtml(j.html)) || ccFromJson(j); } catch { got = ccFromHtml(x.text); }
+          if (got) { raw = x.text; break; }
+        }
+        if (got) break;
+      }
+      if (!hints.length) tried.push("the page names no search address");
+    }
+    lastRaims.set("page", { url: "clearance-check", html: String(raw || pg.text).slice(0, 600000) });
+    if (!got) return { ok: false, problem: "RAIMS did not show a clearance for this number.", tried };
+    const pp = (got.fields.find(([k]) => k === "Passport Number") || [])[1] || (isId ? "" : v);
+    // the file here with this passport takes the Clearance ID (for Download Card / Send Card)
+    if (got.id && pp) for (const c of db.clearances) if (ppNorm(worker(c.workerId)?.passport || user(c.candidateId)?.profile?.passportNo || c.passport || "") === ppNorm(pp) && !c.cardNo) c.cardNo = got.id;
+    return { ok: true, q: v, id: got.id, passport: pp, fields: got.fields };
+  }
+  must(false, "RAIMS signed out. Try again.");
+}
+A["raims.clearanceCheck"] = async (d, u) => { needPerm(u, "clearance"); limit(u.id, "cccheck", 200, 3600e3); return await clearanceCheck(d); };
 A["raims.preEc"] = async (d, u, ctx) => { // uses the admin's RAIMS sign-in
   must(u && (u.role === "agent" ? u.status === "active" : can(u, "clearance")), "You do not have permission for this.", 403);
   limit(u.id, "preec", u.role === "agent" ? 40 : 200, 3600e3);
@@ -1293,14 +1378,8 @@ A["admin.card"] = async ({ id: cid, file, fee }, u) => {
   notify(owner, `${replacing ? "Updated clearance card" : "Clearance card"} for ${name} is ready. Download it from your portal${f > 0 && !replacing ? `. Card fee: ${bdt(f)}` : ""}.`);
   return { msg: c.agentId ? "Clearance card sent to the agent." : c.candidateId ? "Clearance card sent to the job seeker." : "Clearance card saved." };
 };
-/* the clearance card from RAIMS (…/agency/employee/clearance-check/download/card/IT-I-2026-6009034):
-   download it here, or send it to the agent's portal (as the file's clearance card) */
-A["admin.clRaimsCard"] = async (d, u) => {
-  needPerm(u, "clearance"); const c = db.clearances.find(x => x.id === d.id); must(c, "File not found.");
-  const no = str(d.no, 40).toUpperCase().replace(/\s+/g, ""); must(/^[A-Z]{1,4}(-[A-Z0-9]{1,12}){2,4}$/.test(no), "Enter the card number, e.g. IT-I-2026-6009034.");
-  c.cardNo = no;
-  if (d.op === "save") return { msg: `Card number saved: ${no}` };
-  must(c.status === "approved", "The card can be taken after the file is Approved.");
+/* the EC card PDF RAIMS gives at …/clearance-check/download/card/<Clearance ID> */
+async function raimsCardFile(no) {
   let buf = null, type = "";
   for (let attempt = 0; attempt < 2 && !buf; attempt++) {
     const J = await raimsLogin(attempt > 0);
@@ -1316,6 +1395,24 @@ A["admin.clRaimsCard"] = async (d, u) => {
   must(buf, "RAIMS signed out. Sign in to RAIMS again from BMET clearance › RAIMS.");
   const ext = type === "application/pdf" ? "pdf" : type === "image/png" ? "png" : "jpg";
   const file = { name: `${no}.${ext}`, data: `data:${type};base64,${buf.toString("base64")}` };
+  return file;
+}
+A["raims.ecCard"] = async (d, u) => { needPerm(u, "clearance"); const no = str(d.no, 40).toUpperCase().replace(/\s+/g, ""); must(CC_ID.test(no), "Enter the Clearance ID, e.g. IT-I-2026-6009034."); return { file: await raimsCardFile(no) }; };
+/* the clearance card from RAIMS (…/agency/employee/clearance-check/download/card/IT-I-2026-6009034):
+   download it here, or send it to the agent's portal (as the file's clearance card) */
+A["admin.clRaimsCard"] = async (d, u) => {
+  needPerm(u, "clearance"); const c = db.clearances.find(x => x.id === d.id); must(c, "File not found.");
+  let no = str(d.no, 40).toUpperCase().replace(/\s+/g, "");
+  if (d.op === "find" || !no) { // the Clearance ID from RAIMS Clearance Check, by the file's passport number
+    const pp = worker(c.workerId)?.passport || user(c.candidateId)?.profile?.passportNo || c.passport; must(pp, "This file has no passport number.");
+    const r = await clearanceCheck({ q: pp }); must(r.ok && r.id, "RAIMS Clearance Check did not show a Clearance ID for this passport yet.");
+    c.cardNo = r.id; if (d.op === "find") return { msg: `Clearance ID from RAIMS: ${r.id}`, no: r.id }; no = r.id;
+  }
+  must(/^[A-Z]{1,4}(-[A-Z0-9]{1,12}){2,4}$/.test(no), "Enter the Clearance ID, e.g. IT-I-2026-6009034.");
+  c.cardNo = no;
+  if (d.op === "save") return { msg: `Card number saved: ${no}` };
+  must(c.status === "approved", "The card can be taken after the file is Approved.");
+  const file = await raimsCardFile(no);
   if (d.op === "send") { const r = await A["admin.card"]({ id: c.id, file, fee: d.fee }, u); return { ...r, msg: `${r.msg} (${no})` }; }
   return { file };
 };
