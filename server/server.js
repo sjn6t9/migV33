@@ -701,9 +701,9 @@ A["admin.clearance"] = async (d, u) => {
   const fee = amt(d.fee) ?? Number(db.settings.clearanceFee || 0), due = amt(d.due) || 0;
   must(fee >= 0 && fee < 1e8 && due >= 0 && due < 1e8, "Check the processing fee and due amount.");
   const c = { id: id("c"), agentId: ag ? ag.id : null, ...(ag ? {} : { agentName }), workerId: w.id, candidateId: null, country: d.country, employer: str(d.employer, 150), visaNo: str(d.visaNo, 40), visaType: str(d.visaType, 40), flightDate: str(d.flightDate, 10), icNo: str(d.icNo, 40), ...(/^\d{4,12}$/.test(String(d.raimsId || "")) ? { raimsId: String(d.raimsId) } : {}), fee, due, docs, files, notes: str(d.notes, 2000), status: "pending", history: [{ s: "pending", at: now() }], created: now(), by: u.id };
-  // a RAIMS IC number given with the file becomes its reference number (when no other file has it)
+  // a RAIMS IC number given with the file becomes its reference number; one IC covers every worker of that RAIMS application, so files can share it
   const icRef = c.icNo.replace(/\s+/g, "").toUpperCase();
-  db.clearances.push(c); c.ref = /^IC[-A-Z0-9/]{3,39}$/.test(icRef) && !db.clearances.some(x => x !== c && String(x.ref || "").toUpperCase() === icRef) ? icRef : ecRef(c);
+  db.clearances.push(c); c.ref = /^IC[-A-Z0-9/]{3,39}$/.test(icRef) ? icRef : ecRef(c);
   if (ag && fee > 0) db.ledger.push({ id: id("l"), agentId: ag.id, type: "charge", desc: `BMET clearance processing: ${w.name} (${c.ref})`, amount: fee, date: now().slice(0, 10), method: "", ref: "", status: "confirmed" });
   if (ag && due > 0) db.ledger.push({ id: id("l"), agentId: ag.id, type: "charge", desc: `Previous due: ${w.name} (${c.ref})`, amount: due, date: now().slice(0, 10), method: "", ref: "", status: "confirmed" });
   if (ag) notify(ag.id, `The agency created a BMET clearance file for ${w.name} (${d.country})${due > 0 ? `; previous due ${bdt(due)} added to your account` : ""}.`);
@@ -807,7 +807,7 @@ A["admin.clDelete"] = async ({ id: cid }, u) => {
   const c = db.clearances.find(x => x.id === cid); must(c, "File not found.");
   const w = c.workerId ? worker(c.workerId) : null, name = w?.name || c.fullName || "the worker";
   for (const f of [c.files?.passport, c.files?.visa, c.files?.contract, ...(c.files?.others || []), c.card, c.payment?.file]) if (f) { try { dropFile(f); } catch {} }
-  if (c.ref) db.ledger = db.ledger.filter(l => !(l.type === "charge" && l.agentId === c.agentId && String(l.desc || "").includes(`(${c.ref})`)));
+  if (c.ref) db.ledger = db.ledger.filter(l => !(l.type === "charge" && l.agentId === c.agentId && String(l.desc || "").includes(`${name} (${c.ref})`)));
   db.clearances = db.clearances.filter(x => x !== c);
   let gone = false;
   if (w && !db.clearances.some(x => x.workerId === w.id) && !db.applications.some(a => a.workerId === w.id)) { db.workers = db.workers.filter(x => x !== w); gone = true; }
@@ -909,28 +909,37 @@ function preEcView(j, pp) {
   const m = {}; const walk = (v, k) => { if (Array.isArray(v)) v.forEach(x => walk(x, k)); else if (v && typeof v === "object") Object.entries(v).forEach(([a, b]) => walk(b, a)); else if (k && !(k.toLowerCase() in m) && v != null && String(v).trim() !== "") m[k.toLowerCase()] = v; };
   walk(j);
   if (!Object.keys(m).some(k => /registration_no|passport_number|national_id|bmet_bio_finger|is_available_for_job/.test(k))) return null;
-  // the person's own name: "name" in the object that also holds the person's details (not a district's or a centre's name)
-  let person = ""; const look = v => { if (person || !v || typeof v !== "object") return; if (Array.isArray(v)) return v.forEach(look);
-    const ks = Object.keys(v).map(k => k.toLowerCase()); if (ks.some(k => /national_id|fathers?_name|date_of_birth|passport_number|name_bn/.test(k))) { const nk = Object.keys(v).find(k => /^(name|name_en|full_name|employee_name|applicant_name|name_english)$/i.test(k) && v[k]); if (nk) { person = String(v[nk]).trim(); return; } }
-    Object.values(v).forEach(look); };
-  look(j);
-  // every "…name…" value that is the person's own (not a parent's, a contact's, a place's or an office's), split by script:
-  // Bangla letters → Bangali Name, Latin letters → Name (RAIMS keeps both, under keys that differ between its pages)
-  const BN = /[\u0980-\u09FF]/, NOT_PERSON = /father|mother|spouse|husband|wife|contact|nominee|guardian|relation|institut|center|centre|district|division|upazila|upazilla|thana|police|post|union|village|ward|country|countr|file|user|bank|branch|company|agency|employer|training|profession|occupation|trade|course|embassy|office|batch|religion|nationality|type|status|created|updated|by_|_by/i;
-  const names = { en: "", bn: "" };
-  const pick = (k, v) => { if (!/name/i.test(k) || NOT_PERSON.test(k) || v == null || typeof v === "object") return; const t = String(v).trim(); if (!t || t === "null" || t.length > 120) return;
-    if (BN.test(t)) { if (!names.bn) names.bn = t; } else if (/[A-Za-z]/.test(t) && !names.en) names.en = t; };
-  const own = v => { if (!v || typeof v !== "object") return false; if (Array.isArray(v)) return v.some(own);
-    const ks = Object.keys(v); if (ks.some(k => /national_id|nid|fathers?_name|date_of_birth|dob|passport_number|passport_no|name_bn|bn_name|bangla/i.test(k))) { const ex = ks.find(k => /^name$/i.test(k)); if (ex) pick("name", v[ex]); ks.forEach(k => pick(k, v[k])); }
-    Object.values(v).forEach(x => { if (x && typeof x === "object") own(x); }); return false; };
-  own(j);
-  if (!names.en || !names.bn) for (const [k, v] of Object.entries(m)) pick(k, v);
-  if (BN.test(person)) { if (!names.bn) names.bn = person; person = ""; }
-  if (!person) person = names.en;
+  // the person's own names. RAIMS sends places, offices and relatives under "…name" keys too (e.g. an upazila {name: "Narsingdi Sadar"}),
+  // so every value is judged by its whole path: nothing under a place / office / relative key is the person's name.
+  const BN = /[ঀ-৿]/;
+  const NOT_PERSON = /father|mother|spouse|husband|wife|contact|nominee|guardian|relation|institut|center|centre|district|division|upazila|upazilla|thana|police|station|post|union|village|ward|city|area|address|zone|country|countr|nationality|file|user|bank|branch|company|agency|agent|employer|training|profession|occupation|trade|course|embassy|office|batch|religion|type|status|created|updated|by_|_by|place|location|permanent|present|_pa_|^pa_|_pr_|^pr_|recruit|sponsor|job|visa|demand/i;
+  const PERSON_KEYS = /national_id|^nid|fathers?_name|date_of_birth|^dob$|passport_number|passport_no|name_bn|bn_name|bangla|mothers?_name/i;
+  const cands = []; // [path, key, value, holder object]
+  const scan = (v, path) => { if (Array.isArray(v)) return v.forEach(x => scan(x, path)); if (!v || typeof v !== "object") return;
+    for (const [k, x] of Object.entries(v)) { if (x && typeof x === "object") { scan(x, [...path, k]); continue; }
+      if (!/name/i.test(k) || x == null) continue; const t = String(x).trim(); if (!t || t === "null" || t.length > 120 || /\d{3,}|@/.test(t)) continue;
+      if ([...path, k].some(z => NOT_PERSON.test(z))) continue; cands.push({ path, k, t, o: v }); } };
+  scan(j, []);
+  const ownObj = o => Object.keys(o).some(k => PERSON_KEYS.test(k));
+  const stem = k => k.toLowerCase().replace(/(^|_)(bn|bangla|bengali|bangali|en|english|eng)(_|$)/g, "$1$3").replace(/^_+|_+$/g, "");
+  const rank = c => (ownObj(c.o) ? 0 : 10) + (/^(name|name_en|full_name|employee_name|applicant_name|name_english|en_name)$/i.test(c.k) ? 0 : 3) + c.path.length;
+  const bnC = cands.filter(c => BN.test(c.t)).sort((x, y) => rank(x) - rank(y))[0];
+  const enAll = cands.filter(c => !BN.test(c.t) && /^[A-Za-z][A-Za-z .'-]*$/.test(c.t));
+  // English name: first next to the Bangla name (same object, same key stem), then in the person's own object
+  // a value RAIMS also gives as a place (under an upazila / district / thana … key) is a place, not the person
+  const places = new Set(); const pl = (v, path) => { if (Array.isArray(v)) return v.forEach(x => pl(x, path)); if (!v || typeof v !== "object") return;
+    for (const [k, x] of Object.entries(v)) { if (x && typeof x === "object") pl(x, [...path, k]); else if (x != null && [...path, k].some(z => /district|division|upazila|upazilla|thana|police|station|post|union|village|city|address|(^|_)(ps|po|upz|dist|div)(_|$)/i.test(z))) places.add(String(x).trim().toLowerCase()); } };
+  pl(j, []);
+  const enOk = enAll.filter(c => !places.has(c.t.toLowerCase()) && !/(^|_)(ps|po|upz|dist|div)(_|$)/i.test(c.k));
+  const best = L => L.sort((x, y) => rank(x) - rank(y))[0];
+  const enC = (bnC && (enOk.find(c => c.o === bnC.o && stem(c.k) === stem(bnC.k)) || best(enOk.filter(c => c.o === bnC.o)))) || best(enOk);
+  let person = enC ? enC.t : "";
+  const names = { en: person, bn: bnC ? bnC.t : "" };
   if (!person) { const fp = /passport_([A-Z_]+?)_\d{6,}/.exec(String(m.file_path || "")); if (fp) person = fp[1].replace(/_/g, " ").trim(); }
   const g = (...ks) => { for (const k of ks) if (m[k] != null && String(m[k]).trim() !== "" && String(m[k]) !== "null") return String(m[k]).trim(); return ""; };
   const yes = v => ["1", "true", "yes"].includes(String(v).toLowerCase());
   const day = v => { const x = String(v || ""); const d = /^(\d{4})-(\d{2})-(\d{2})/.exec(x); return d ? `${d[3]}-${d[2]}-${d[1]}` : x; };
+  const ymd = v => { const x = String(v || ""); return (/^(\d{4}-\d{2}-\d{2})/.exec(x) || [])[1] || x; }; // RAIMS shows dates as 2024-02-08
   const alerts = [];
   for (const k of ["message", "msg", "alert", "warning"]) if (m[k] && !/success/i.test(m[k])) alerts.push(String(m[k]));
   if (Array.isArray(j?.alerts)) alerts.push(...j.alerts.map(String));
@@ -944,26 +953,26 @@ function preEcView(j, pp) {
     ["BMET Registration No", g("registration_no", "bmet_registration_no", "reg_no")],
     ["BIO Finger", finger === "" ? "" : yes(finger) ? "Success" : "Not Found"],
     ["Availability", avail === "" ? "" : yes(avail) || /^available$/i.test(avail) ? "Available" : "Not Available"],
-    ["Name", person || g("name_en", "full_name", "employee_name", "applicant_name")],
-    ["Bangali Name", names.bn || [g("name_bn", "bn_name", "bangla_name", "name_bangla")].find(x => BN.test(x)) || person || g("name_en", "full_name")],
+    ["Name", person],
+    ["Bangali Name", names.bn || person],
     ["NID Number", g("national_id", "nid", "nid_number", "nid_no")],
-    ["Date of Birth", day(g("date_of_birth", "dob", "birth_date"))],
-    ["Father's Name", g("fathers_name", "father_name")],
-    ["Mother's Name", g("mothers_name", "mother_name")],
+    ["Date of Birth", ymd(g("date_of_birth", "dob", "birth_date"))],
+    ["Father's Name", g("fathers_name", "father_name", "father_name_en")],
+    ["Mother's Name", g("mothers_name", "mother_name", "mother_name_en")],
+    ["Phone Number", g("mobile", "phone", "phone_number", "mobile_no", "contact_number")],
     ["Gender", gender],
+    ["Passport Issue Date", ymd(g("issue_date", "passport_issue_date"))],
+    ["Passport Expire Date", ymd(exp)],
+    ["Contact Person Name", g("contact_person_name")],
+    ["Contact Person Phone Number", g("contact_person_mobile", "contact_person_phone", "contact_person_phone_number")],
+    ["Training Info", [g("pdo_completed") !== "" && yes(g("pdo_completed")) ? `PDO: ${ymd(g("pdo_completed_at", "pdo_date")) || "Yes"}` : "", g("name_of_institution", "training_center", "institute_name")].filter(Boolean).join(" · ")],
     ["Passport No", g("passport_number", "passport_no") || pp],
-    ["Passport Issue Date", day(g("issue_date", "passport_issue_date"))],
-    ["Passport Expire Date", day(exp)],
-    ["Mobile", g("mobile", "mobile_no", "phone", "contact_number")],
-    ["Profession", g("profession", "occupation")],
     ["Permanent Address", addr],
-    ["Contact Person", [g("contact_person_name"), g("contact_person_mobile")].filter(Boolean).join(" · ")],
-    ["Training", g("name_of_institution", "training_center", "institute_name")],
-    ["PDO Completed", g("pdo_completed") === "" ? "" : yes(g("pdo_completed")) ? `Yes${g("pdo_completed_at") ? ` (${day(g("pdo_completed_at"))})` : ""}` : "No"],
+    ["Profession", g("profession", "occupation")],
   ].filter(([, v]) => v);
   const val = l => (F.find(([k]) => k === l) || [])[1] || "";
-  const entry = { name: val("Name") || val("Bangali Name"), gender: gender === "Female" ? "Female" : gender === "Male" ? "Male" : "", bmet: { regNo: val("BMET Registration No"), finger: val("BIO Finger"), available: val("Availability"), nameBn: val("Bangali Name"), nid: val("NID Number"), dob: val("Date of Birth"),
-    father: val("Father's Name"), mother: val("Mother's Name"), mobile: val("Mobile"), profession: val("Profession"), address: val("Permanent Address"), training: val("Training"), pdo: val("PDO Completed"), issueDate: val("Passport Issue Date"), expiryDate: val("Passport Expire Date"), checked: true } };
+  const entry = { name: val("Name") || val("Bangali Name"), gender: gender === "Female" ? "Female" : gender === "Male" ? "Male" : "", bmet: { regNo: val("BMET Registration No"), finger: val("BIO Finger"), available: val("Availability"), nameBn: val("Bangali Name"), nid: val("NID Number"), dob: day(val("Date of Birth")),
+    father: val("Father's Name"), mother: val("Mother's Name"), mobile: val("Phone Number"), profession: val("Profession"), address: val("Permanent Address"), training: g("name_of_institution", "training_center", "institute_name"), pdo: (/PDO: ([^·]+)/.exec(val("Training Info")) || [])[1]?.trim() || "", issueDate: day(val("Passport Issue Date")), expiryDate: day(val("Passport Expire Date")), checked: true } };
   return { fields: F, alerts: [...new Set(alerts)], entry };
 }
 async function preEcCheck({ passport, returnee, otherPassport }) {
@@ -1021,7 +1030,7 @@ async function preEcCheck({ passport, returnee, otherPassport }) {
           let got = null;
           try { const j = JSON.parse(x.text);
             if (typeof j?.html === "string") { const f = raimsFields(j.html); if (f.fields.length) got = f; }
-            if (!got) { const v = preEcView(j, pp); if (v) got = v; }
+            if (!got) { const v = preEcView(j, pp); if (v) { got = v; lastRaims.set("page", { url: "pre-ec-check.json", html: JSON.stringify(j, null, 2).slice(0, 600000) }); } }
             if (!got) { const flat = []; const walk = (v, k) => { if (v && typeof v === "object") Object.entries(v).forEach(([a2, b2]) => walk(b2, a2)); else if (k && v != null && String(v).trim()) flat.push([k.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase()), htmlText(String(v)).trim()]); }; walk(j);
               if (flat.length >= 3 || flat.some(([, v]) => v.toUpperCase() === pp)) got = { fields: flat.slice(0, 80), alerts: [] }; }
           } catch { const f = raimsFields(x.text); if (f.fields.filter(([, v]) => v).length >= 3 && f.fields.some(([, v]) => v && v.toUpperCase() !== pp)) got = f; }
@@ -1074,15 +1083,19 @@ async function raimsSync(by = "auto") {
       const pp = (/\b([A-Z]{1,2}\d{7,8})\b/.exec(line) || [])[1];
       const st = si >= 0 ? row[si] : (row.find(v => raimsStage(v.replace(/^status:\s*/i, ""))) || "").replace(/^status:\s*/i, "");
       if (st) out.statuses[st] = (out.statuses[st] || 0) + 1;
-      const c = db.clearances.find(x => ic && (String(x.ref || "").toUpperCase() === ic || String(x.icNo || "").replace(/\s+/g, "").toUpperCase() === ic)) || db.clearances.find(x => pp && ppNorm(worker(x.workerId)?.passport || user(x.candidateId)?.profile?.passportNo || x.passport || "") === pp);
-      if (!c) continue; out.matched++;
+      // a row with a passport is that worker's file; a row with only the IC number is every file under that IC
+      const byPp = pp && db.clearances.find(x => ppNorm(worker(x.workerId)?.passport || user(x.candidateId)?.profile?.passportNo || x.passport || "") === pp);
+      const files = byPp ? [byPp] : ic ? db.clearances.filter(x => String(x.ref || "").toUpperCase() === ic || String(x.icNo || "").replace(/\s+/g, "").toUpperCase() === ic) : [];
+      if (!files.length) continue; out.matched += files.length;
       const stage = raimsStage(st); if (!stage) continue;
+      for (const c of files) {
       const cur = c.status === "custom" ? c.baseStage : c.status, ci = CL_STAGES.indexOf(cur), ni = CL_STAGES.indexOf(stage);
       if (c.status === "approved" || c.card) continue; // done here already
       if (stage !== "rejected" && ni <= ci) continue; // RAIMS behind or equal: keep ours
       await A["admin.clStatus"]({ id: c.id, status: stage }, { role: "admin", id: "raims", name: "RAIMS" });
       c.history[c.history.length - 1].by = "RAIMS"; c.raims = { status: st, at: now() };
       out.updated.push({ ref: c.ref, name: worker(c.workerId)?.name || c.fullName || "", from: LABEL[cur] || cur, to: LABEL[stage], raims: st });
+      }
     }
     out.ok = true;
   } catch (e) { out.ok = false; out.error = e instanceof Fail ? e.message : `Could not reach RAIMS: ${e.message}`; }
@@ -1255,7 +1268,9 @@ A["admin.clRef"] = async ({ id: cid, ref }, u) => {
   needPerm(u, "clearance"); const c = db.clearances.find(x => x.id === cid); must(c, "File not found.");
   must(c.status !== "approved" && !c.card, "The EC Ref No cannot be changed after the file is Approved.");
   const r = str(ref, 40).toUpperCase().replace(/\s+/g, ""); must(/^[A-Z0-9][A-Z0-9\-/]{3,39}$/.test(r), "Enter a valid EC Ref No (letters, numbers and dashes).");
-  must(!db.clearances.some(x => x.id !== c.id && String(x.ref || "").toUpperCase() === r), "Another file already has this EC Ref No.");
+  // an IC number from RAIMS covers all the workers of one application: several files may share it
+  must(/^IC/.test(r) || !db.clearances.some(x => x.id !== c.id && String(x.ref || "").toUpperCase() === r), "Another file already has this EC Ref No.");
+  if (/^IC/.test(r)) c.icNo = r;
   c.ref = r; return { msg: `EC Ref No saved: ${r}` };
 };
 A["admin.card"] = async ({ id: cid, file, fee }, u) => {

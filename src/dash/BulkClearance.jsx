@@ -38,7 +38,7 @@ export function BulkEcForm({ onDone }) {
     const old = w ? [...(S.clearances || [])].reverse().find(c => c.workerId === w.id) : null;
     const wAg = w && (w.agentId ? agents.find(a => a.id === w.agentId) : null), ppAg = pp && pp.agentId ? agents.find(a => a.id === pp.agentId) : null;
     const agent = wAg ? agName(wAg) : w?.agentName || (ppAg ? agName(ppAg) : pp?.ref || "");
-    set(r.k, { passport: v, ...(pp || w ? fill(r, { name: w?.name || pp?.name, phone: w?.phone || "", icNo: old?.icNo || "", agent }) : fill(r, { name: "", phone: "", icNo: "", agent: "" })) });
+    set(r.k, { passport: v, ...(pp || w ? fill(r, { name: w?.name || pp?.name, phone: w?.phone || "", icNo: lic || old?.icNo || "", agent }) : fill(r, { name: "", phone: "", icNo: "", agent: "" })) });
   };
   /* mobile number: an agent's number puts that agent in the row; any other number means the candidate came direct (Self) */
   const pickPhone = (r, v) => {
@@ -53,7 +53,8 @@ export function BulkEcForm({ onDone }) {
   const [rid, setRid] = React.useState(""); // RAIMS link number of the last search (saved with the files)
   const [lic, setLic] = React.useState(""); // IC number: one number for the workers of one list
   // a new IC number goes to every row that has the old one or none
-  const changeLic = v => { const old = lic; setLic(v); setRows(L => L.map(r => filled(r) && (!r.icNo.trim() || r.icNo === old) ? { ...r, icNo: v } : r)); };
+  // the IC number box: every row in the list takes it (a row whose IC No. was typed by hand keeps its own)
+  const changeLic = v => { setLic(v); setRows(L => L.map(r => r.auto?.icNo === false && r.icNo.trim() ? r : { ...r, icNo: v })); };
   const [ric, setRic] = React.useState(""), [rbusy, setRbusy] = React.useState(false), [rdiag, setRdiag] = React.useState(null), [rgot, setRgot] = React.useState(0);
   const rawDl = async () => { const r = await act("admin.raims", { op: "rawPage" }); if (!r?.html) return; const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([`<!-- ${r.url} -->\n${r.html}`], { type: "text/html" })); a.download = "raims-page.html"; document.body.appendChild(a); a.click(); a.remove(); };
   const allCountries = [...Object.keys(COUNTRIES), ...CL_REGIONS.flatMap(([, L]) => L)];
