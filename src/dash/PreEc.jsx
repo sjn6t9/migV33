@@ -17,7 +17,8 @@ const entryName = res => res?.entry?.name || ((res?.fields || []).find(([k, v]) 
 /* Add to Entry List: the checked person goes to Passport Entry › BMET Passport Entry with the RAIMS details */
 function AddToEntry({ res }) {
   const ags = agentsList();
-  const [v, setV] = React.useState({ country: "", ref: "", agentId: "", gender: res.entry.gender || "" });
+  const have = (store.S.passports || []).find(p => p.passport === res.passport);
+  const [v, setV] = React.useState({ country: have?.country || "", ref: have?.ref || "", agentId: have?.agentId || "", gender: res.entry.gender || have?.gender || "" });
   const [busy, setBusy] = React.useState(false), [done, setDone] = React.useState(res.inList);
   const add = async () => {
     if (!v.country) return toast("Choose the country.");

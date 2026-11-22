@@ -914,6 +914,19 @@ function preEcView(j, pp) {
     const ks = Object.keys(v).map(k => k.toLowerCase()); if (ks.some(k => /national_id|fathers?_name|date_of_birth|passport_number|name_bn/.test(k))) { const nk = Object.keys(v).find(k => /^(name|name_en|full_name|employee_name|applicant_name|name_english)$/i.test(k) && v[k]); if (nk) { person = String(v[nk]).trim(); return; } }
     Object.values(v).forEach(look); };
   look(j);
+  // every "…name…" value that is the person's own (not a parent's, a contact's, a place's or an office's), split by script:
+  // Bangla letters → Bangali Name, Latin letters → Name (RAIMS keeps both, under keys that differ between its pages)
+  const BN = /[\u0980-\u09FF]/, NOT_PERSON = /father|mother|spouse|husband|wife|contact|nominee|guardian|relation|institut|center|centre|district|division|upazila|upazilla|thana|police|post|union|village|ward|country|countr|file|user|bank|branch|company|agency|employer|training|profession|occupation|trade|course|embassy|office|batch|religion|nationality|type|status|created|updated|by_|_by/i;
+  const names = { en: "", bn: "" };
+  const pick = (k, v) => { if (!/name/i.test(k) || NOT_PERSON.test(k) || v == null || typeof v === "object") return; const t = String(v).trim(); if (!t || t === "null" || t.length > 120) return;
+    if (BN.test(t)) { if (!names.bn) names.bn = t; } else if (/[A-Za-z]/.test(t) && !names.en) names.en = t; };
+  const own = v => { if (!v || typeof v !== "object") return false; if (Array.isArray(v)) return v.some(own);
+    const ks = Object.keys(v); if (ks.some(k => /national_id|nid|fathers?_name|date_of_birth|dob|passport_number|passport_no|name_bn|bn_name|bangla/i.test(k))) { const ex = ks.find(k => /^name$/i.test(k)); if (ex) pick("name", v[ex]); ks.forEach(k => pick(k, v[k])); }
+    Object.values(v).forEach(x => { if (x && typeof x === "object") own(x); }); return false; };
+  own(j);
+  if (!names.en || !names.bn) for (const [k, v] of Object.entries(m)) pick(k, v);
+  if (BN.test(person)) { if (!names.bn) names.bn = person; person = ""; }
+  if (!person) person = names.en;
   if (!person) { const fp = /passport_([A-Z_]+?)_\d{6,}/.exec(String(m.file_path || "")); if (fp) person = fp[1].replace(/_/g, " ").trim(); }
   const g = (...ks) => { for (const k of ks) if (m[k] != null && String(m[k]).trim() !== "" && String(m[k]) !== "null") return String(m[k]).trim(); return ""; };
   const yes = v => ["1", "true", "yes"].includes(String(v).toLowerCase());
@@ -932,7 +945,7 @@ function preEcView(j, pp) {
     ["BIO Finger", finger === "" ? "" : yes(finger) ? "Success" : "Not Found"],
     ["Availability", avail === "" ? "" : yes(avail) || /^available$/i.test(avail) ? "Available" : "Not Available"],
     ["Name", person || g("name_en", "full_name", "employee_name", "applicant_name")],
-    ["Bangali Name", g("name_bn", "bangla_name", "name_bangla") || person || g("name_en", "full_name")],
+    ["Bangali Name", names.bn || [g("name_bn", "bn_name", "bangla_name", "name_bangla")].find(x => BN.test(x)) || person || g("name_en", "full_name")],
     ["NID Number", g("national_id", "nid", "nid_number", "nid_no")],
     ["Date of Birth", day(g("date_of_birth", "dob", "birth_date"))],
     ["Father's Name", g("fathers_name", "father_name")],
@@ -949,7 +962,7 @@ function preEcView(j, pp) {
     ["PDO Completed", g("pdo_completed") === "" ? "" : yes(g("pdo_completed")) ? `Yes${g("pdo_completed_at") ? ` (${day(g("pdo_completed_at"))})` : ""}` : "No"],
   ].filter(([, v]) => v);
   const val = l => (F.find(([k]) => k === l) || [])[1] || "";
-  const entry = { name: val("Name") || val("Bangali Name"), gender: gender === "Female" ? "Female" : gender === "Male" ? "Male" : "", bmet: { regNo: val("BMET Registration No"), finger: val("BIO Finger"), available: val("Availability"), nameBn: g("name_bn", "bangla_name"), nid: val("NID Number"), dob: val("Date of Birth"),
+  const entry = { name: val("Name") || val("Bangali Name"), gender: gender === "Female" ? "Female" : gender === "Male" ? "Male" : "", bmet: { regNo: val("BMET Registration No"), finger: val("BIO Finger"), available: val("Availability"), nameBn: val("Bangali Name"), nid: val("NID Number"), dob: val("Date of Birth"),
     father: val("Father's Name"), mother: val("Mother's Name"), mobile: val("Mobile"), profession: val("Profession"), address: val("Permanent Address"), training: val("Training"), pdo: val("PDO Completed"), issueDate: val("Passport Issue Date"), expiryDate: val("Passport Expire Date"), checked: true } };
   return { fields: F, alerts: [...new Set(alerts)], entry };
 }
@@ -1020,7 +1033,8 @@ async function preEcCheck({ passport, returnee, otherPassport }) {
     }
     lastRaims.set("page", { url: res?.url || pg.url, html: (res?.text || pg.text).slice(0, 600000) });
     const fields = fx.fields.filter(([k, v]) => v && !/^(type passport|has returnee|ami probashi|returnee other passport|_token)/i.test(k));
-    { const nm = fields.find(([k]) => /^name$/i.test(k)), bi = fields.findIndex(([k]) => /^bang(a|la)li? name$/i.test(k)); if (nm && bi < 0) fields.splice(fields.indexOf(nm) + 1, 0, ["Bangali Name", nm[1]]); }
+    { const nm = fields.find(([k]) => /^name$/i.test(k)), bi = fields.findIndex(([k]) => /^bang(a|la)li? name$/i.test(k)); if (nm && bi < 0) fields.splice(fields.indexOf(nm) + 1, 0, ["Bangali Name", nm[1]]);
+      else if (!nm && bi >= 0 && !/[\u0980-\u09FF]/.test(fields[bi][1])) fields.splice(bi, 0, ["Name", fields[bi][1]]); }
     if (fields.length <= 2 && fields.some(([k, v]) => /^(message|error)$/i.test(k) && /unauth|login|expired|forbidden|csrf/i.test(v))) return { ok: false, problem: `RAIMS answered: ${fields.map(([, v]) => v).join(" ")}`, tried, page: htmlText(pg.text).slice(0, 600) };
     if (!fields.length && !fx.alerts.length) return { ok: false, problem: "RAIMS did not show a result for this passport.", tried, page: htmlText(res?.text || pg.text).slice(0, 800) };
     const entry = fx.entry || (() => { const v = l => (fields.find(([k]) => new RegExp(`^${l}`, "i").test(k)) || [])[1] || ""; return { name: v("Name") || v("Bang") || v("Employee Name") || v("Full Name"), gender: /female/i.test(v("Gender")) ? "Female" : /male/i.test(v("Gender")) ? "Male" : "", bmet: { regNo: v("BMET Registration"), finger: v("BIO Finger"), available: v("Availability"), nameBn: v("Bangali Name"), nid: v("NID"), dob: v("Date of Birth"), checked: true } }; })();
