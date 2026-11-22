@@ -927,22 +927,40 @@ async function preEcCheck({ passport, returnee, otherPassport }) {
     const method = form && /method\s*=\s*"?post/i.test(form[1]) ? "POST" : "GET";
     const action = form ? ((/action="([^"]*)"/i.exec(form[1]) || [])[1] || "/agency/employee/pre-ec-check").replace(/&amp;/g, "&") : "";
     let res = null, tried = [];
-    if (action) { tried.push(`${method} ${action}`); res = method === "POST" ? await rq(J, action, { method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded", Referer: pg.url, "X-CSRF-TOKEN": tok }, body: body.toString() }) : await rq(J, action + (action.includes("?") ? "&" : "?") + body.toString()); }
+    if (action) { res = method === "POST" ? await rq(J, action, { method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded", Referer: pg.url, "X-CSRF-TOKEN": tok }, body: body.toString() }) : await rq(J, action + (action.includes("?") ? "&" : "?") + body.toString()); }
     // a page that searches with its own script: ask the same address the script asks
+    if (res) tried.push(`form ${method} ${action} → ${res.r.status} ${htmlText(res.text).replace(/\s+/g, " ").slice(0, 60)}`);
     let fx = res ? raimsFields(res.text) : { fields: [], alerts: [] };
     if (fx.fields.filter(([, v]) => v).length < 3) {
-      for (const h of dataHints(pg.text).filter(u => /pre|ec|check|passport|employee|search/i.test(u)).slice(0, 4)) {
-        const u = h.replace(/\{[^}]*\}|:passport\b/gi, pp);
-        for (const m of ["GET", "POST"]) { tried.push(`${m} ${u}`);
-          const x = m === "GET" ? await rq(J, u + (u.includes(pp) ? "" : (u.includes("?") ? "&" : "?") + `${ppName}=${pp}`), { headers: { "X-Requested-With": "XMLHttpRequest", Accept: "application/json, text/html", "X-CSRF-TOKEN": tok } })
-            : await rq(J, u, { method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded", "X-Requested-With": "XMLHttpRequest", Accept: "application/json, text/html", "X-CSRF-TOKEN": tok }, body: body.toString() });
-          let got = null; try { const j = JSON.parse(x.text); const flat = []; const walk = (v, k) => { if (v && typeof v === "object") Object.entries(v).forEach(([a, b]) => walk(b, a)); else if (k && v != null && String(v).trim()) flat.push([k.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase()), htmlText(String(v)).trim()]); }; walk(j); if (flat.length) got = { fields: flat.slice(0, 80), alerts: raimsFields(typeof j.html === "string" ? j.html : "").alerts }; if (typeof j.html === "string") { const f = raimsFields(j.html); if (f.fields.length) got = f; } } catch { const f = raimsFields(x.text); if (f.fields.filter(([, v]) => v).length >= 3) got = f; }
-          if (got) { fx = got; res = x; break; } }
+      // the search runs in the page's script: ask its addresses the way a browser does (session cookie, XSRF token, same-site Referer/Origin)
+      const xsrf = decodeURIComponent(J.c["XSRF-TOKEN"] || ""), origin = new URL(pg.url).origin;
+      const xh = extra => ({ "X-Requested-With": "XMLHttpRequest", Accept: "application/json, text/html, */*", "X-CSRF-TOKEN": tok, ...(xsrf ? { "X-XSRF-TOKEN": xsrf } : {}), Referer: pg.url, Origin: origin, ...extra });
+      const hints = dataHints(pg.text).filter(u => /pre|ec|check|passport|employee|search|emigrant|worker/i.test(u)).slice(0, 6);
+      for (const h of hints) {
+        const u = h.replace(/\{[^}]*\}|:passport\b|\$\{[^}]*\}/gi, pp);
+        for (const m of ["GET", "POST", "POSTJSON"]) {
+          let x; try {
+            x = m === "GET" ? await rq(J, u + (u.includes(pp) ? "" : (u.includes("?") ? "&" : "?") + `${ppName}=${pp}&passport=${pp}`), { headers: xh() })
+              : m === "POST" ? await rq(J, u, { method: "POST", headers: xh({ "Content-Type": "application/x-www-form-urlencoded" }), body: body.toString() })
+              : await rq(J, u, { method: "POST", headers: xh({ "Content-Type": "application/json" }), body: JSON.stringify({ ...Object.fromEntries(body), passport: pp, passport_no: pp, passport_number: pp }) });
+          } catch (e) { tried.push(`${m} ${u} → ${e.message}`); continue; }
+          tried.push(`${m === "POSTJSON" ? "POST(json)" : m} ${u} → ${x.r.status} ${htmlText(x.text).replace(/\s+/g, " ").slice(0, 90)}`);
+          if (x.r.status >= 400) continue;
+          let got = null;
+          try { const j = JSON.parse(x.text);
+            if (typeof j?.html === "string") { const f = raimsFields(j.html); if (f.fields.length) got = f; }
+            if (!got) { const flat = []; const walk = (v, k) => { if (v && typeof v === "object") Object.entries(v).forEach(([a2, b2]) => walk(b2, a2)); else if (k && v != null && String(v).trim()) flat.push([k.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase()), htmlText(String(v)).trim()]); }; walk(j);
+              if (flat.length >= 3 || flat.some(([, v]) => v.toUpperCase() === pp)) got = { fields: flat.slice(0, 80), alerts: [] }; }
+          } catch { const f = raimsFields(x.text); if (f.fields.filter(([, v]) => v).length >= 3 && f.fields.some(([, v]) => v && v.toUpperCase() !== pp)) got = f; }
+          if (got) { fx = got; res = x; break; }
+        }
         if (res && fx.fields.length >= 3) break;
       }
+      if (!hints.length) tried.push("the page names no search address");
     }
     lastRaims.set("page", { url: res?.url || pg.url, html: (res?.text || pg.text).slice(0, 600000) });
     const fields = fx.fields.filter(([k, v]) => v && !/^(type passport|has returnee|ami probashi|returnee other passport|_token)/i.test(k));
+    if (fields.length <= 2 && fields.some(([k, v]) => /^(message|error)$/i.test(k) && /unauth|login|expired|forbidden|csrf/i.test(v))) return { ok: false, problem: `RAIMS answered: ${fields.map(([, v]) => v).join(" ")}`, tried, page: htmlText(pg.text).slice(0, 600) };
     if (!fields.length && !fx.alerts.length) return { ok: false, problem: "RAIMS did not show a result for this passport.", tried, page: htmlText(res?.text || pg.text).slice(0, 800) };
     return { ok: true, passport: pp, alerts: fx.alerts, fields };
   }

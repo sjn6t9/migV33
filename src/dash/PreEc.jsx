@@ -33,6 +33,6 @@ export function PreEcCheck({ onClose }) {
       {res.alerts.map((a, i) => <div key={i} className="preec-alert"><LuTriangleAlert /> <span data-notr>{a}</span></div>)}
       <div className="preec-grid">{res.fields.map(([k, v], i) => <div key={i} className={`preec-f${good(v) ? " ok" : bad(v) ? " bad" : ""}`}><span>{k}</span><b data-notr dir="auto">{good(v) ? <LuCircleCheck /> : bad(v) ? <LuCircleX /> : null}{v}</b></div>)}</div>
     </div> : <div className="mt10"><p className="vf-err small">{res.problem}</p>
-      {res.page && <details className="vf-det small"><summary>What RAIMS showed</summary><p className="muted" data-notr>{`${(res.tried || []).join(" · ")} — ${res.page}`}</p></details>}</div>)}
+      {(res.page || res.tried) && <details className="vf-det small" open><summary>What RAIMS showed</summary>{(res.tried || []).map((t, i) => <p key={i} className="muted" data-notr>{t}</p>)}<p className="muted" data-notr>{res.page}</p></details>}</div>)}
   </div>;
 }
