@@ -246,7 +246,7 @@ function viewFor(u) {
     if (can(u, "office")) pub.office = { entries: db.office.entries, auto: officeAuto(), leaders: leaders() };
     { const me = leaders().find(x => x.uid === u.id); if (me) pub.myMoney = { entries: db.office.entries.filter(e => e.people?.includes(me.k)), me }; }
     if (can(u, "clearance") || u.role === "agent") pub.raimsReady = !!db.raims?.pass;
-    if (can(u, "clearance")) pub.raims = db.raims ? { email: db.raims.email, auto: db.raims.auto, saved: !!db.raims.pass, last: db.raims.last || null } : null;
+    if (can(u, "clearance")) pub.raims = db.raims ? { email: db.raims.email, auto: db.raims.auto, saved: !!db.raims.pass, since: db.raims.since || null, last: db.raims.last || null } : null;
     if (PP_PERMS.some(k => can(u, k))) { pub.passports = db.passports; pub.agentBook = db.agentBook; pub.bookMatch = Object.fromEntries(db.users.filter(x => x.role === "agent" && x.status !== "active").map(x => [x.id, bookMatches(x).map(b => b.name)]).filter(([, v]) => v.length)); }
     if (can(u, "visa")) pub.visa = db.visa;
     if (isStaffRole(u)) pub.attendance = attView(u, u.role === "admin");
@@ -870,11 +870,14 @@ function raimsRows(html, json) {
   return { head, rows, links };
 }
 /* a signed-in RAIMS session, kept for 15 minutes so several checks in a row do not sign in each time */
-let raimsSess = null;
+let raimsSess = null; // the admin's RAIMS sign-in: kept until the admin logs out of RAIMS (also across restarts); signed in again by itself if RAIMS ends it
+function raimsRestore() { if (raimsSess || !db.raims?.cookies) return; try { const J = jar(); Object.assign(J.c, JSON.parse(unseal(db.raims.cookies))); raimsSess = { J, at: Date.now(), email: db.raims.email }; } catch {} }
+function raimsKeep(J) { raimsSess = { J, at: Date.now(), email: db.raims.email }; try { db.raims.cookies = seal(JSON.stringify(J.c)); db.raims.since = db.raims.since || now(); save(); } catch {} }
 async function raimsLogin(fresh = false) {
-  const R = db.raims; must(R?.email && R?.pass, "The agency has not set up RAIMS yet (BMET clearance › RAIMS).");
-  if (!fresh && raimsSess && Date.now() - raimsSess.at < 15 * 60e3 && raimsSess.email === R.email) return raimsSess.J;
-  const J = jar();
+  const R = db.raims; must(R?.email && R?.pass, "The admin has not signed in to RAIMS yet (BMET clearance › RAIMS).");
+  raimsRestore();
+  if (!fresh && raimsSess && raimsSess.email === R.email) return raimsSess.J;
+  raimsSess = null; const J = jar();
   try {
     const lp = await rq(J, "/agency/login");
     const tok = (/name="_token"[^>]*value="([^"]+)"/.exec(lp.text) || /name="csrf-token"[^>]*content="([^"]+)"/.exec(lp.text) || [])[1];
@@ -882,7 +885,7 @@ async function raimsLogin(fresh = false) {
     must(tok, "The RAIMS sign-in page did not load. The site may be down or blocking this server.");
     const li = await rq(J, action.replace(/&amp;/g, "&"), { method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded", Referer: lp.url }, body: new URLSearchParams({ _token: tok, email: R.email, password: unseal(R.pass), remember: "on" }).toString() });
     must(!(/name="password"/i.test(li.text) && /login/i.test(li.url)), "RAIMS did not accept the sign-in. Check the RAIMS email and password.");
-    raimsSess = { J, at: Date.now(), email: R.email }; return J;
+    db.raims.since = now(); raimsKeep(J); return J;
   } catch (e) { if (e instanceof Fail) throw e; must(false, `Could not reach RAIMS: ${e.message}`); }
 }
 /* label → value pairs of a RAIMS page (labels with inputs, or label / value boxes), and its alert messages */
@@ -901,7 +904,7 @@ function raimsFields(html) {
   const alerts = [...h.matchAll(/<div[^>]*class="[^"]*\b(alert|alert-danger|alert-warning|alert-success|text-danger)\b[^"]*"[^>]*>([\s\S]*?)<\/div>/gi)].map(m => htmlText(m[2]).replace(/\s+/g, " ").trim()).filter(t => t && t.length < 400);
   return { fields: out, alerts: [...new Set(alerts)] };
 }
-async function preEcCheck({ passport, returnee, asn }) {
+async function preEcCheck({ passport, returnee, otherPassport }) {
   const pp = ppNorm(passport); must(/^[A-Z0-9]{6,15}$/.test(pp), "Enter the passport number.");
   for (let attempt = 0; attempt < 2; attempt++) {
     const J = await raimsLogin(attempt > 0);
@@ -912,10 +915,15 @@ async function preEcCheck({ passport, returnee, asn }) {
     const form = [...pg.text.matchAll(/<form\b([^>]*)>([\s\S]*?)<\/form>/gi)].find(f => /passport/i.test(f[2])) || null;
     const names = form ? [...form[2].matchAll(/<(?:input|select|textarea)\b[^>]*name="([^"]+)"[^>]*>/gi)].map(m => [m[1], m[0]]) : [];
     const pick = re => (names.find(([n]) => re.test(n)) || [])[0];
-    const ppName = pick(/passport/i) || "passport", rtName = pick(/return/i), asnName = pick(/asn|probashi/i);
+    const ppName = (names.find(([n]) => /passport/i.test(n) && !/other|return/i.test(n)) || [])[0] || pick(/passport/i) || "passport", rtName = pick(/has_?return|return(ee)?_?type|is_?return/i) || (names.find(([n, t]) => /return/i.test(n) && /^<select/i.test(t)) || [])[0];
+    const otherName = (names.find(([n]) => /other|return/i.test(n) && /pass/i.test(n) && n !== rtName) || [])[0];
+    const rtOpts = form ? [...((new RegExp(`<select[^>]*name="${(rtName || "x").replace(/[[\]]/g, "\\$&")}"[\\s\\S]*?<\\/select>`, "i").exec(form[2]) || [""])[0]).matchAll(/<option[^>]*value="([^"]*)"[^>]*>([\s\S]*?)<\/option>/gi)].map(m => [m[1], htmlText(m[2]).trim()]) : [];
+    const rtVal = (re, dflt) => (rtOpts.find(([v, t]) => v !== "" && re.test(t)) || [])[0] ?? dflt;
     const body = new URLSearchParams(); if (tok) body.set("_token", tok);
     for (const [n, tag] of names) if (/type="hidden"/i.test(tag) && n !== "_token") body.set(n, (/value="([^"]*)"/.exec(tag) || [])[1] || "");
-    body.set(ppName, pp); if (rtName) body.set(rtName, returnee ? (/value="(yes|1|true)"/i.exec(form[2]) || [, "1"])[1] : (/value="(no|0|false)"/i.exec(form[2]) || [, "0"])[1]); if (asnName && asn) body.set(asnName, str(asn, 40));
+    body.set(ppName, pp);
+    if (rtName) body.set(rtName, returnee === "other" ? rtVal(/other/i, "2") : returnee === "same" ? rtVal(/same/i, "1") : rtVal(/^no$/i, "0"));
+    if (returnee === "other") { const op = ppNorm(otherPassport); must(/^[A-Z0-9]{6,15}$/.test(op), "Enter the returnee's other passport number."); if (otherName) body.set(otherName, op); }
     const method = form && /method\s*=\s*"?post/i.test(form[1]) ? "POST" : "GET";
     const action = form ? ((/action="([^"]*)"/i.exec(form[1]) || [])[1] || "/agency/employee/pre-ec-check").replace(/&amp;/g, "&") : "";
     let res = null, tried = [];
@@ -934,7 +942,7 @@ async function preEcCheck({ passport, returnee, asn }) {
       }
     }
     lastRaims.set("page", { url: res?.url || pg.url, html: (res?.text || pg.text).slice(0, 600000) });
-    const fields = fx.fields.filter(([k, v]) => v && !/^(type passport|has returnee|ami probashi|_token)/i.test(k));
+    const fields = fx.fields.filter(([k, v]) => v && !/^(type passport|has returnee|ami probashi|returnee other passport|_token)/i.test(k));
     if (!fields.length && !fx.alerts.length) return { ok: false, problem: "RAIMS did not show a result for this passport.", tried, page: htmlText(res?.text || pg.text).slice(0, 800) };
     return { ok: true, passport: pp, alerts: fx.alerts, fields };
   }
@@ -942,18 +950,12 @@ async function preEcCheck({ passport, returnee, asn }) {
 }
 /* signs in and reads the EC application list; throws a Fail with a plain message when something is wrong */
 async function raimsOpen(search = "") {
-  const R = db.raims; must(R?.email && R?.pass, "Save the RAIMS email and password first (BMET clearance › RAIMS).");
-  const J = jar();
+  must(db.raims?.email && db.raims?.pass, "The admin has not signed in to RAIMS yet (BMET clearance › RAIMS).");
   try {
-    const lp = await rq(J, "/agency/login");
-    const tok = (/name="_token"[^>]*value="([^"]+)"/.exec(lp.text) || /name="csrf-token"[^>]*content="([^"]+)"/.exec(lp.text) || [])[1];
-    const action = (/<form[^>]*action="([^"]*login[^"]*)"/i.exec(lp.text) || [])[1] || "/agency/login";
-    must(tok, "The RAIMS sign-in page did not load (no form). The site may be down or blocking this server.");
-    const li = await rq(J, action.replace(/&amp;/g, "&"), { method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded", Referer: lp.url }, body: new URLSearchParams({ _token: tok, email: R.email, password: unseal(R.pass), remember: "on" }).toString() });
-    if (/name="password"/i.test(li.text) && /login/i.test(li.url)) { const m = /class="[^"]*(?:invalid-feedback|alert|text-danger|error)[^"]*"[^>]*>([\s\S]*?)<\//i.exec(li.text); must(false, `RAIMS did not accept the sign-in${m ? `: ${htmlText(m[1]).trim()}` : ". Check the email and password."}`); }
-    if (/otp|verification code/i.test(li.text) && /name="(otp|code)"/i.test(li.text)) must(false, "RAIMS asks for a one-time code at sign-in, so it cannot be read automatically.");
-    const lst = await rq(J, "/agency/ec/application/list");
+    let J = await raimsLogin(), lst = await rq(J, "/agency/ec/application/list");
+    if (/name="password"/i.test(lst.text) && /login/i.test(lst.url)) { J = await raimsLogin(true); lst = await rq(J, "/agency/ec/application/list"); }
     must(!/name="password"/i.test(lst.text), "RAIMS signed out before the list opened. Try again.");
+    const li = { url: "(kept sign-in)", r: { status: 200 } };
     let parsed = raimsRows(lst.text), ajax = "", pages = 1;
     if (!parsed.rows.length) { // a list filled by the page's script: ask the same address the script asks
       const aj = (/ajax\s*:\s*\{?\s*(?:url\s*:\s*)?["'`]([^"'`]+)["'`]/i.exec(lst.text) || /url\s*:\s*["'`]([^"'`]*(?:ec|application)[^"'`]*)["'`]/i.exec(lst.text) || [])[1];
@@ -994,7 +996,7 @@ async function raimsSync(by = "auto") {
 setInterval(() => { if (db.raims?.auto && db.raims.pass) raimsSync("auto").catch(() => {}); }, 30 * 60e3).unref();
 const lastRaims = new Map(); // the last RAIMS page read, for the admin to download when a page is not read right
 /* Pre EC Check (RAIMS): admin/staff with the BMET clearance permission, and agents */
-A["raims.preEc"] = async (d, u, ctx) => {
+A["raims.preEc"] = async (d, u, ctx) => { // uses the admin's RAIMS sign-in
   must(u && (u.role === "agent" ? u.status === "active" : can(u, "clearance")), "You do not have permission for this.", 403);
   limit(u.id, "preec", u.role === "agent" ? 40 : 200, 3600e3);
   return await preEcCheck(d);
@@ -1006,10 +1008,17 @@ A["admin.raims"] = async (d, u) => {
     const email = str(d.email, 120).toLowerCase(); must(/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email), "Enter the RAIMS email.");
     db.raims = { ...(db.raims || {}), email, auto: d.auto !== false, ...(d.password ? { pass: seal(String(d.password).slice(0, 200)) } : {}) };
     must(db.raims.pass, "Enter the RAIMS password.");
-    return { msg: "RAIMS sign-in saved." };
+    raimsSess = null; delete db.raims.cookies;
+    try { await raimsLogin(true); } catch (e) { delete db.raims.pass; throw e; }
+    return { msg: `Signed in to RAIMS as ${email}.` };
   }
   if (d.op === "rawPage") { must(u.role === "admin", "Only the admin can download this.", 403); const x = lastRaims.get("page"); must(x, "Search RAIMS first."); return { url: x.url, html: x.html }; }
-  if (d.op === "remove") { must(u.role === "admin", "Only the admin can change the RAIMS sign-in.", 403); delete db.raims; return { msg: "RAIMS sign-in removed." }; }
+  if (d.op === "remove" || d.op === "logout") {
+    must(u.role === "admin", "Only the admin can change the RAIMS sign-in.", 403);
+    try { raimsRestore(); if (raimsSess) { const pg = await rq(raimsSess.J, "/agency/dashboard"); const tok = (/name="csrf-token"[^>]*content="([^"]+)"/.exec(pg.text) || /name="_token"[^>]*value="([^"]+)"/.exec(pg.text) || [])[1] || "";
+      const act = (/<form[^>]*action="([^"]*logout[^"]*)"/i.exec(pg.text) || [])[1] || "/agency/logout"; await rq(raimsSess.J, act.replace(/&amp;/g, "&"), { method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded" }, body: new URLSearchParams({ _token: tok }).toString() }); } } catch {}
+    raimsSess = null; delete db.raims; return { msg: "Logged out of RAIMS." };
+  }
   /* Add bulk: an IC number or application ID → every worker under it (name, passport, country, IC number) */
   if (d.op === "lookup") {
     const raw = str(d.q, 300).trim(), q = raw.replace(/\s+/g, "").toUpperCase(); must(q.length >= 3, "Enter the IC number, the RAIMS link or its number.");

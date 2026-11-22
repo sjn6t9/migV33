@@ -10,20 +10,21 @@ const good = v => /^(success|available|yes|valid|verified|active|eligible|ok|pas
 const bad = v => /^(fail(ed)?|not available|unavailable|no|invalid|expired|blocked|ineligible|not found|pending)$/i.test(String(v).trim());
 
 export function PreEcCheck({ onClose }) {
-  const [f, setF] = React.useState({ returnee: "no", asn: "", passport: "" });
+  const [f, setF] = React.useState({ returnee: "no", other: "", passport: "" });
   const [busy, setBusy] = React.useState(false), [res, setRes] = React.useState(null);
   const ready = store.S.raimsReady ?? !!store.S.raims?.saved;
   const go = async e => {
     e?.preventDefault(); const pp = f.passport.replace(/\s+/g, "").toUpperCase();
     if (pp.length < 6) return toast("Enter the passport number.");
-    setBusy(true); setRes(null); const r = await act("raims.preEc", { passport: pp, returnee: f.returnee === "yes", asn: f.asn.trim() }, { quiet: true }); setBusy(false);
+    if (f.returnee === "other" && f.other.replace(/\s+/g, "").length < 6) return toast("Enter the returnee's other passport number.");
+    setBusy(true); setRes(null); const r = await act("raims.preEc", { passport: pp, returnee: f.returnee, otherPassport: f.other.replace(/\s+/g, "").toUpperCase() }, { quiet: true }); setBusy(false);
     if (r) setRes(r);
   };
   return <div className="card preec">
     <div className="row between"><h3 className="bulk-h"><LuShieldCheck /> Pre EC Check</h3>{onClose && <button type="button" className="btn sm link" onClick={onClose} aria-label="Close"><LuX /></button>}</div>
-    {!ready ? <p className="muted small">The agency has not set up RAIMS yet. The admin adds it in BMET clearance › RAIMS.</p> : <form className="fgrid" onSubmit={go} noValidate>
-      <Field label="Has returnee? *"><select value={f.returnee} onChange={e => setF({ ...f, returnee: e.target.value })}><option value="no">No</option><option value="yes">Yes</option></select></Field>
-      <Field label="Ami Probashi ASN (if required)"><input type="text" value={f.asn} maxLength={40} onChange={e => setF({ ...f, asn: e.target.value })} placeholder="ASN number" /></Field>
+    {!ready ? <p className="muted small">The admin has not signed in to RAIMS yet (BMET clearance › RAIMS).</p> : <form className="fgrid" onSubmit={go} noValidate>
+      <Field label="Has returnee? *" full><select value={f.returnee} onChange={e => setF({ ...f, returnee: e.target.value })}><option value="no">No</option><option value="same">Returnee with same passport</option><option value="other">Returnee with other passport</option></select></Field>
+      {f.returnee === "other" && <Field label="Returnee other passport no. *" full><input type="text" value={f.other} maxLength={15} autoCapitalize="characters" autoCorrect="off" spellCheck={false} onChange={e => setF({ ...f, other: e.target.value.toUpperCase() })} placeholder="Passport no" /></Field>}
       <Field label="Passport number *" full><div className="preec-pp"><input type="text" value={f.passport} maxLength={15} autoCapitalize="characters" autoCorrect="off" spellCheck={false} onChange={e => setF({ ...f, passport: e.target.value.toUpperCase() })} placeholder="A12345678" />
         <button className="btn pri" disabled={busy}><LuSearch /> {busy ? "Checking…" : "Search"}</button></div></Field>
     </form>}

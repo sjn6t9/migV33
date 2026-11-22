@@ -25,7 +25,7 @@ import { AgentsPage } from "./AgentBook.jsx";
 import { PreEcCheck } from "./PreEc.jsx";
 import { agentRows } from "../statement.js";
 import { MFS, BANKS } from "../banks.js";
-import { LuReceipt, LuLandmark, LuBanknote, LuScrollText, LuBookUser, LuFileCheck2, LuHandCoins, LuPlaneTakeoff, LuCalendarCheck, LuSettings2, LuLogOut, LuMegaphone, LuCirclePlus, LuListPlus, LuContact, LuGlobe, LuRefreshCw, LuShieldCheck } from "react-icons/lu";
+import { LuReceipt, LuLandmark, LuBanknote, LuScrollText, LuBookUser, LuFileCheck2, LuHandCoins, LuPlaneTakeoff, LuCalendarCheck, LuSettings2, LuLogOut, LuMegaphone, LuCirclePlus, LuListPlus, LuContact, LuGlobe, LuRefreshCw, LuShieldCheck, LuLogIn, LuCircleCheck } from "react-icons/lu";
 import { ShareButton, storeCard } from "../Share.jsx";
 import { ChatInbox, useInboxUnread } from "../LiveChat.jsx";
 
@@ -559,7 +559,7 @@ export const clDelete = c => { const p = clPerson(c); confirmBox(`Delete the cle
    (same IC number, or passport) to the RAIMS status, up to Approved. Checked every 30 minutes, or with Sync now. */
 function RaimsPanel() {
   const R = store.S.raims, isAdmin = user(store.S.session)?.role === "admin";
-  const [edit, setEdit] = React.useState(!R?.saved); const [busy, setBusy] = React.useState(false);
+  const [edit, setEdit] = React.useState(!R?.saved); React.useEffect(() => { if (!R?.saved) setEdit(true); }, [R?.saved]); const [busy, setBusy] = React.useState(false);
   const save = async e => { e.preventDefault(); const [d] = formData(e); setBusy(true); const r = await act("admin.raims", { op: "save", email: d.email, password: d.password, auto: !!d.auto }); setBusy(false); if (r) setEdit(false); };
   const sync = async () => { setBusy(true); const r = await act("admin.raims", { op: "sync" }); setBusy(false); if (r?.problem) toast(r.problem); };
   const L = R?.last;
@@ -567,13 +567,13 @@ function RaimsPanel() {
     <div className="row between"><div><h3 className="bulk-h"><LuRefreshCw /> RAIMS status sync</h3>
       <p className="muted small">Signs in to raims.oep.gov.bd with the agency's RAIMS account, reads the EC application list, and sets each file here with the same IC number (or passport no.) to the RAIMS status — Section, AD, DD, Director, ADG, Final Approval, Approved. A file never moves back, and Approved files are left as they are.</p></div>
       {R?.saved && <button className="btn pri" disabled={busy} onClick={sync}><LuRefreshCw /> {busy ? "Reading RAIMS…" : "Sync now"}</button>}</div>
-    {R?.saved && !edit && <p className="small mt8" data-notr>{`Signed in as ${R.email} · ${R.auto ? "checked every 30 minutes" : "only with Sync now"}`} {isAdmin && <button className="btn sm link" onClick={() => setEdit(true)}>Change</button>}
-      {isAdmin && <button className="btn sm link danger" onClick={() => confirmBox("Remove the RAIMS sign-in from this site?", () => act("admin.raims", { op: "remove" }), "Remove")}>Remove</button>}</p>}
+    {R?.saved && !edit && <p className="small mt8 raims-on" data-notr><LuCircleCheck /> {`Signed in to RAIMS as ${R.email}${R.since ? ` since ${new Date(R.since).toLocaleString("en-GB")}` : ""} · Pre EC Check, Add bulk and status sync use this sign-in until the admin logs out · ${R.auto ? "status checked every 30 minutes" : "status only with Sync now"}`}
+      {isAdmin && <button className="btn sm link danger" onClick={() => confirmBox("Log out of RAIMS? Pre EC Check, Add bulk search and status sync stop until the admin signs in again.", () => act("admin.raims", { op: "logout" }), "Log out")}><LuLogOut /> Log out of RAIMS</button>}</p>}
     {edit && (isAdmin ? <form className="fgrid mt8" onSubmit={save} noValidate autoComplete="off">
       <Field label="RAIMS email"><input type="email" name="email" defaultValue={R?.email || ""} autoComplete="off" /></Field>
-      <Field label="RAIMS password" hint={R?.saved ? "Leave empty to keep the saved password" : "Kept encrypted on this server; never shown again"}><input type="password" name="password" autoComplete="new-password" /></Field>
+      <Field label="RAIMS password" hint="Kept encrypted on this server; never shown again"><input type="password" name="password" autoComplete="new-password" /></Field>
       <label className="check full"><input type="checkbox" name="auto" defaultChecked={R ? R.auto : true} /> Check RAIMS every 30 minutes</label>
-      <div className="row full"><button className="btn pri" disabled={busy}><LuCheck /> Save</button>{R?.saved && <button type="button" className="btn" onClick={() => setEdit(false)}>Cancel</button>}</div>
+      <div className="row full"><button className="btn pri" disabled={busy}><LuLogIn /> {busy ? "Signing in…" : "Sign in to RAIMS"}</button>{R?.saved && <button type="button" className="btn" onClick={() => setEdit(false)}>Cancel</button>}</div>
     </form> : <p className="muted small mt8">The admin sets the RAIMS sign-in.</p>)}
     {L && <div className="mt10 small">
       {L.ok ? <p>{`Last check ${new Date(L.at).toLocaleString("en-GB")} (${L.by}): ${L.rows} files on RAIMS, ${L.matched} matched here, ${L.updated.length} updated.`}</p> : <p className="vf-err">{`Last check ${new Date(L.at).toLocaleString("en-GB")}: ${L.error}`}</p>}

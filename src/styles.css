@@ -1358,3 +1358,4 @@ button.hold-tile{cursor:pointer}
 .preec-f span{font-size:12.5px;color:var(--muted)}.preec-f b{display:flex;align-items:center;gap:6px;font-weight:600;word-break:break-word}
 .preec-f.ok{border:2px solid #4ade80}.preec-f.ok b{color:#16a34a}
 .preec-f.bad{border:2px solid #f87171}.preec-f.bad b{color:#dc2626}
+.raims-on{display:flex;align-items:center;gap:6px;flex-wrap:wrap;color:#15803d}.raims-on svg{flex:none}
