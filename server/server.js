@@ -221,6 +221,7 @@ function viewFor(u) {
     pub.applications = db.applications.filter(a => a.candidateId === u.id);
     pub.jobs = db.jobs.filter(j => j.status === "active" || pub.applications.some(a => a.jobId === j.id));
     pub.clearances = db.clearances.filter(c => c.candidateId === u.id).map(cleanCl);
+    pub.tickets = db.tickets.filter(t => t.candidateId === u.id); pub.flightsReady = !!db.wftt?.token;
   } else if (u.role === "employer") {
     const mine = db.jobs.filter(j => j.employerId === u.id);
     pub.jobs = [...live.filter(j => j.employerId !== u.id), ...mine];
@@ -234,7 +235,7 @@ function viewFor(u) {
     pub.clearances = db.clearances.filter(c => c.agentId === u.id).map(cleanCl);
     pub.applications = db.applications.filter(a => a.agentId === u.id);
     pub.jobs = db.jobs.filter(j => j.status === "active" || pub.applications.some(a => a.jobId === j.id));
-    pub.tickets = db.tickets.filter(t => t.agentId === u.id);
+    pub.tickets = db.tickets.filter(t => t.agentId === u.id); pub.flightsReady = !!db.wftt?.token;
     pub.ledger = db.ledger.filter(l => l.agentId === u.id);
     pub.passports = db.passports.filter(p => p.agentId === u.id).map(({ by, ...p }) => p); // passports the office entered with this agent as reference
   } else if (u.role === "admin" || u.role === "staff") {
@@ -246,6 +247,7 @@ function viewFor(u) {
     if (can(u, "office")) pub.office = { entries: db.office.entries, auto: officeAuto(), leaders: leaders() };
     { const me = leaders().find(x => x.uid === u.id); if (me) pub.myMoney = { entries: db.office.entries.filter(e => e.people?.includes(me.k)), me }; }
     if (can(u, "clearance") || u.role === "agent") pub.raimsReady = !!db.raims?.pass;
+    if (can(u, "tickets")) { pub.wftt = db.wftt ? { email: db.wftt.email, since: db.wftt.since || null, ready: !!db.wftt.token, markup: Number(db.settings.ticketMarkup || 0) } : null; pub.flightsReady = !!db.wftt?.token; }
     if (can(u, "clearance")) pub.raims = db.raims ? { email: db.raims.email, auto: db.raims.auto, saved: !!db.raims.pass, since: db.raims.since || null, last: db.raims.last || null } : null;
     if (PP_PERMS.some(k => can(u, k))) { pub.passports = db.passports; pub.agentBook = db.agentBook; pub.bookMatch = Object.fromEntries(db.users.filter(x => x.role === "agent" && x.status !== "active").map(x => [x.id, bookMatches(x).map(b => b.name)]).filter(([, v]) => v.length)); }
     if (can(u, "visa")) pub.visa = db.visa;
@@ -719,9 +721,122 @@ A["agent.applyJob"] = async ({ jobId, workerIds }, u) => {
 };
 A["agent.ticket"] = async (d, u) => {
   needRole(u, "agent"); const w = worker(d.workerId); must(w && w.agentId === u.id, "Choose one of your workers."); must(str(d.from) && str(d.to) && str(d.prefDate), "Fill in the route and date.");
-  db.tickets.push({ id: id("t"), agentId: u.id, workerId: w.id, from: str(d.from, 80), to: str(d.to, 80), prefDate: str(d.prefDate, 10), notes: str(d.notes, 500), status: "requested", fare: "", pnr: "", airline: "", flightDate: "", created: now() });
-  notifyAdmins(`Air ticket request: ${w.name}, ${str(d.from, 80)} → ${str(d.to, 80)} (${u.agent.business}).`, "tickets");
+  const fl = flightSnap(d.flight);
+  db.tickets.push({ id: id("t"), agentId: u.id, workerId: w.id, from: str(d.from, 80), to: str(d.to, 80), prefDate: str(d.prefDate, 10), returnDate: str(d.returnDate, 10), pax: str(d.pax, 60), notes: str(d.notes, 500), ...(fl ? { flight: fl } : {}), status: "requested", fare: "", pnr: "", airline: "", flightDate: "", created: now() });
+  notifyAdmins(`Air ticket request: ${w.name}, ${str(d.from, 80)} → ${str(d.to, 80)}${fl ? ` (${fl.airline}, ৳ ${fl.price})` : ""} (${u.agent.business}).`, "tickets");
   return { msg: "Ticket request sent. The agency will confirm the fare and booking." };
+};
+/* ======================= Air tickets: live fares from WFTT BD (b2b.wfttbd.com), the agency's own B2B account =======================
+   The admin signs in once (email + password, kept sealed on this server); the server keeps the 15-minute token fresh.
+   Agents and job seekers search flights here and send a request; the agency books it in WFTT. */
+const WFTT = process.env.WFTT_BASE || "https://wftt-server.m360ictapi.com/api/v1";
+const wfJar = () => { const J = jar(); try { if (db.wftt?.cookies) Object.assign(J.c, JSON.parse(unseal(db.wftt.cookies))); } catch {} return J; };
+const jwtExp = t => { try { return JSON.parse(Buffer.from(String(t).split(".")[1], "base64url").toString()).exp * 1000; } catch { return 0; } };
+async function wfReq(path, opt = {}, J = wfJar()) {
+  const r = await fetch(WFTT + path, { ...opt, headers: { "User-Agent": "Mozilla/5.0 (MAM Overseas portal)", Accept: "application/json", Origin: "https://b2b.wfttbd.com", Referer: "https://b2b.wfttbd.com/", ...(opt.headers || {}), ...(J.get() ? { Cookie: J.get() } : {}) }, signal: opt.signal || AbortSignal.timeout(30000) });
+  J.set(r); return { r, J };
+}
+function wfKeep(J, token) { db.wftt.token = seal(token); db.wftt.cookies = seal(JSON.stringify(J.c)); db.wftt.since = db.wftt.since || now(); save(); }
+async function wfLogin() {
+  must(db.wftt?.pass, "WFTT is not signed in. The admin signs in from Air tickets › WFTT.");
+  const { r, J } = await wfReq("/auth/agent/login", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email: db.wftt.email, password: unseal(db.wftt.pass) }) }, jar());
+  const j = await r.json().catch(() => ({}));
+  must(r.ok && j.success !== false, `WFTT sign-in failed: ${j.message || r.status}`);
+  must(j.token, j.data?.twoFA ? "WFTT asks for an email code (two-step sign-in). Turn it off in WFTT, or sign in again here when asked." : "WFTT gave no sign-in token.");
+  wfKeep(J, j.token); return j.token;
+}
+let wfBusy = null;
+async function wfToken() {
+  must(db.wftt?.email, "WFTT is not signed in. The admin signs in from Air tickets › WFTT.");
+  let t = ""; try { t = db.wftt.token ? unseal(db.wftt.token) : ""; } catch {}
+  if (t && jwtExp(t) - Date.now() > 30e3) return t;
+  if (wfBusy) return wfBusy;
+  wfBusy = (async () => {
+    if (t) try { const J = wfJar(); const { r } = await wfReq("/auth/agent/refresh", { method: "POST", headers: { Authorization: `Bearer ${t}` } }, J); const j = await r.json().catch(() => ({})); if (r.ok && j.token) { wfKeep(J, j.token); return j.token; } } catch {}
+    return await wfLogin();
+  })().finally(() => { wfBusy = null; });
+  return wfBusy;
+}
+setInterval(() => { if (db.wftt?.token) wfToken().catch(() => {}); }, 10 * 60e3).unref(); // keep the WFTT sign-in alive
+const AIRPORTS = new Map();
+A["flight.airports"] = async (d, u) => {
+  must(u, "Sign in first.", 401); const q = str(d.q, 40).trim(); if (q.length < 2) return { list: [] };
+  const k = q.toLowerCase(); if (AIRPORTS.has(k)) return { list: AIRPORTS.get(k) };
+  const { r } = await wfReq(`/common/airport?name=${encodeURIComponent(q)}`, {}, jar()); const j = await r.json().catch(() => ({}));
+  const list = (j.data || []).slice(0, 15).map(a => ({ code: a.iata_code, name: a.name, city: a.city_name, country: a.country }));
+  AIRPORTS.set(k, list); if (AIRPORTS.size > 500) AIRPORTS.delete(AIRPORTS.keys().next().value); return { list };
+};
+const FLIGHTS = new Map(); // search results kept 15 minutes, so a request can point at the flight that was shown
+const fmtFlight = (x, staff) => {
+  const mark = Number(db.settings.ticketMarkup || 0), gross = Math.round(Number(x.fare?.total_price || x.fare?.vendor_fare?.gross_fare || x.fare?.payable || 0));
+  const legs = (x.flights || []).map(f => ({ stops: f.stoppage ?? Math.max(0, (f.options || []).length - 1), minutes: f.elapsed_time || 0,
+    segs: (f.options || []).map(o => ({ from: o.departure?.airport_code, fromCity: (o.departure?.city || "").split(" - ")[0], dep: `${o.departure?.date || ""} ${String(o.departure?.time || "").slice(0, 5)}`,
+      to: o.arrival?.airport_code, toCity: (o.arrival?.city || "").split(" - ")[0], arr: `${o.arrival?.date || ""} ${String(o.arrival?.time || "").slice(0, 5)}`,
+      flight: `${o.carrier?.carrier_marketing_code || ""}${o.carrier?.carrier_marketing_flight_number || ""}`, aircraft: o.carrier?.carrier_aircraft_name || "" })) }));
+  const bag = x.availability?.[0]?.segments?.[0]?.passenger?.[0];
+  return { id: x.flight_id, airline: x.carrier_name, code: x.carrier_code, logo: x.carrier_logo ? `https://m360-trabill.s3.ap-south-1.amazonaws.com/wftt-storage/${x.carrier_logo}` : "",
+    refundable: !!x.refundable, baggage: bag ? `${bag.baggage_count} ${bag.baggage_unit}` : "", cabin: bag?.cabin_type || "", legs, price: gross + mark,
+    ...(staff ? { net: Math.round(Number(x.fare?.payable || 0)), gross, api: x.api } : {}) };
+};
+A["flight.search"] = async (d, u) => {
+  must(u && (u.role === "candidate" || (u.role === "agent" && u.status === "active") || can(u, "tickets")), "Sign in to search flights.", 401);
+  limit(u.id, "flight", u.role === "candidate" ? 30 : 120, 3600e3);
+  const code = v => { const c = String(v || "").toUpperCase().match(/\b([A-Z]{3})\b/g); return c ? c[c.length - 1] : ""; };
+  const from = code(d.from), to = code(d.to), dep = str(d.date, 10), ret = str(d.returnDate, 10);
+  must(from && to && from !== to, "Choose the From and To airports."); must(/^\d{4}-\d{2}-\d{2}$/.test(dep) && dep >= now().slice(0, 10), "Choose the travel date.");
+  must(!ret || (/^\d{4}-\d{2}-\d{2}$/.test(ret) && ret >= dep), "The return date must be after the travel date.");
+  const n = (v, a, b) => Math.max(a, Math.min(b, Math.floor(Number(v) || 0)));
+  const adults = n(d.adults || 1, 1, 9), children = n(d.children, 0, 8), infants = n(d.infants, 0, adults), cabin = { economy: "1", premium: "2", business: "3", first: "4" }[d.cabin] || "1";
+  const leg = (rph, a, b, day) => ({ RPH: rph, DepartureDateTime: `${day}T00:00:00`, OriginLocation: { LocationCode: a }, DestinationLocation: { LocationCode: b }, TPA_Extensions: { CabinPref: { Cabin: cabin, PreferLevel: "Preferred" } } });
+  const odi = [leg("1", from, to, dep), ...(ret ? [leg("2", to, from, ret)] : [])];
+  const ptq = [{ Code: "ADT", Quantity: adults }, ...Array.from({ length: children }, () => ({ Code: "C08", Quantity: 1 })), ...(infants ? [{ Code: "INF", Quantity: infants }] : [])];
+  const key = JSON.stringify([odi, ptq]), hit = FLIGHTS.get(key);
+  let raw = hit && Date.now() - hit.at < 10 * 60e3 ? hit.raw : null, info = hit?.info || null;
+  if (!raw) {
+    const token = await wfToken();
+    const q = `JourneyType=${ret ? 2 : 1}&airline_code=[]&PassengerTypeQuantity=${encodeURIComponent(JSON.stringify(ptq))}&OriginDestinationInformation=${encodeURIComponent(JSON.stringify(odi))}&token=${encodeURIComponent("Bearer " + token)}`;
+    const { r } = await wfReq(`/btob/multi-api/flight/search/sse?${q}`, { headers: { Accept: "text/event-stream" }, signal: AbortSignal.timeout(60000) });
+    must(r.ok, `WFTT search failed (${r.status}).`);
+    raw = []; const dec = new TextDecoder(); let buf = "", ended = false; const t0 = Date.now();
+    for await (const chunk of r.body) {
+      buf += dec.decode(chunk, { stream: true }); let i;
+      while ((i = buf.indexOf("\n\n")) >= 0) { const block = buf.slice(0, i); buf = buf.slice(i + 2);
+        const ev = (/^event:\s*(.*)$/m.exec(block) || [])[1] || "message", data = block.split("\n").filter(l => l.startsWith("data:")).map(l => l.slice(5).trimStart()).join("\n");
+        if (ev === "end") { ended = true; break; } if (!data) continue;
+        try { const j = JSON.parse(data); if (ev === "search_info") info = j; else if (ev === "message" && j.flight_id) raw.push(j); } catch {} }
+      if (ended || Date.now() - t0 > 55e3 || raw.length > 400) break;
+    }
+    try { r.body.cancel?.(); } catch {}
+    FLIGHTS.set(key, { at: Date.now(), raw, info }); if (FLIGHTS.size > 60) FLIGHTS.delete(FLIGHTS.keys().next().value);
+  }
+  const staff = u.role === "admin" || u.role === "staff";
+  const list = raw.filter(x => !x.booking_block).map(x => fmtFlight(x, staff)).sort((a, b) => a.price - b.price).slice(0, 80);
+  return { list, searchId: info?.search_id || "", q: { from, to, date: dep, returnDate: ret, adults, children, infants, cabin: d.cabin || "economy" }, total: raw.length };
+};
+const flightSnap = f => f && typeof f === "object" ? { id: str(f.id, 60), airline: str(f.airline, 80), code: str(f.code, 4), logo: /^https:\/\/m360-trabill\.s3\.[a-z0-9-]+\.amazonaws\.com\//.test(f.logo || "") ? String(f.logo).slice(0, 200) : "",
+  refundable: !!f.refundable, baggage: str(f.baggage, 30), cabin: str(f.cabin, 30), price: numv(f.price, 0, 1e8),
+  legs: (Array.isArray(f.legs) ? f.legs : []).slice(0, 4).map(l => ({ stops: numv(l.stops, 0, 9), minutes: numv(l.minutes, 0, 9999), segs: (Array.isArray(l.segs) ? l.segs : []).slice(0, 5).map(g => Object.fromEntries(["from", "fromCity", "dep", "to", "toCity", "arr", "flight", "aircraft"].map(k => [k, str(g[k], 60)]))) })) } : null;
+A["cand.ticket"] = async (d, u) => {
+  needRole(u, "candidate"); must(str(d.from) && str(d.to) && str(d.prefDate), "Fill in the route and date.");
+  const name = str(d.name, 120) || u.name, passport = ppNorm(d.passport || u.profile?.passportNo || "");
+  must(passport.length >= 6, "Enter your passport number."); limit(u.id, "candticket", 10, 3600e3);
+  const fl = flightSnap(d.flight);
+  db.tickets.push({ id: id("t"), candidateId: u.id, name, passport, phone: str(d.phone || u.profile?.phone, 30), from: str(d.from, 80), to: str(d.to, 80), prefDate: str(d.prefDate, 10), returnDate: str(d.returnDate, 10), pax: str(d.pax, 60), notes: str(d.notes, 500), ...(fl ? { flight: fl } : {}), status: "requested", fare: "", pnr: "", airline: "", flightDate: "", created: now() });
+  notifyAdmins(`Air ticket request from job seeker ${name}: ${str(d.from, 80)} → ${str(d.to, 80)}${fl ? ` (${fl.airline}, ৳ ${fl.price})` : ""}.`, "tickets");
+  return { msg: "Ticket request sent. The agency will confirm the fare and booking." };
+};
+A["cand.ticketCancel"] = async ({ id: tid }, u) => { const t = db.tickets.find(x => x.id === tid); must(u?.role === "candidate" && t && t.candidateId === u.id && t.status === "requested", "Not allowed.", 403); t.status = "cancelled"; return { msg: "Request cancelled." }; };
+A["admin.wftt"] = async (d, u) => {
+  needPerm(u, "tickets");
+  if (d.op === "save") {
+    must(u.role === "admin", "Only the admin can change the WFTT sign-in.", 403);
+    const email = str(d.email, 200).trim().toLowerCase(); must(/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email), "Enter the WFTT email."); must(d.password || db.wftt?.pass, "Enter the WFTT password.");
+    db.wftt = { email, pass: d.password ? seal(String(d.password).slice(0, 200)) : db.wftt.pass };
+    await wfLogin(); return { msg: "Signed in to WFTT. Flight search is on for agents and job seekers." };
+  }
+  if (d.op === "logout") { must(u.role === "admin", "Only the admin can do this.", 403); try { const t = unseal(db.wftt?.token || ""); if (t) await wfReq("/btob/profile/logout", { method: "POST", headers: { Authorization: `Bearer ${t}` } }); } catch {} delete db.wftt; return { msg: "Signed out of WFTT. Flight search is off." }; }
+  if (d.op === "markup") { must(u.role === "admin", "Only the admin can change this.", 403); db.settings.ticketMarkup = numv(d.markup, 0, 1e6); return { msg: `Service charge per ticket: ৳ ${db.settings.ticketMarkup}.` }; }
+  must(false, "Unknown request.");
 };
 A["agent.ticketCancel"] = async ({ id: tid }, u) => { const t = db.tickets.find(x => x.id === tid); must(u?.role === "agent" && t && t.agentId === u.id && t.status === "requested", "Not allowed.", 403); t.status = "cancelled"; return { msg: "Request cancelled." }; };
 A["agent.payment"] = async (d, u) => {
@@ -1549,10 +1664,10 @@ A["admin.ticketBook"] = async (d, u) => {
   Object.assign(t, { airline: str(d.airline, 80), pnr: str(d.pnr, 20).toUpperCase(), flightDate: str(d.flightDate, 10), fare: numv(d.fare, 0, 1e7), status: "booked" });
   const w = worker(t.workerId);
   if (d.charge && t.agentId && t.fare > 0) db.ledger.push({ id: id("l"), agentId: t.agentId, type: "charge", desc: `Air ticket ${t.from} → ${t.to}: ${w?.name}`, amount: t.fare, date: now().slice(0, 10), method: "", ref: t.pnr, status: "confirmed" });
-  notify(t.agentId, `Ticket booked for ${w?.name}: ${t.airline}, PNR ${t.pnr}, flight ${t.flightDate}.`);
+  notify(t.agentId || t.candidateId, `Ticket booked for ${w?.name || t.name}: ${t.airline}, PNR ${t.pnr}, flight ${t.flightDate}.`);
   return { msg: "Ticket marked as booked." };
 };
-A["admin.ticketCancel"] = async ({ id: tid }, u) => { needPerm(u, "tickets"); const t = db.tickets.find(x => x.id === tid); must(t && t.status === "requested", "Ticket not found."); t.status = "cancelled"; notify(t.agentId, `Ticket request for ${worker(t.workerId)?.name} was cancelled by the agency.`); return { msg: "Request cancelled." }; };
+A["admin.ticketCancel"] = async ({ id: tid }, u) => { needPerm(u, "tickets"); const t = db.tickets.find(x => x.id === tid); must(t && t.status === "requested", "Ticket not found."); t.status = "cancelled"; notify(t.agentId || t.candidateId, `Ticket request for ${worker(t.workerId)?.name || t.name} was cancelled by the agency.`); return { msg: "Request cancelled." }; };
 A["admin.ledgerAdd"] = async (d, u) => { // one entry, or several at once (d.rows)
   needPerm(u, "ledger"); const ag = user(d.agentId); must(ag?.role === "agent", "Choose an agent.");
   const list = Array.isArray(d.rows) ? d.rows.slice(0, 50) : [d]; must(list.length, "Add at least one entry.");

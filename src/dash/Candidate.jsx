@@ -1,9 +1,10 @@
 import React, { useState } from "react";
 import {
   LuLayoutDashboard, LuUser, LuFileText, LuBookmark, LuBell, LuMail, LuUpload, LuTrash2, LuStamp, LuSend, LuEye,
-  LuCamera, LuDownload, LuCircleCheck, LuCircle, LuArrowLeft, LuArrowRight, LuMapPin, LuBriefcase, LuSearch
+  LuCamera, LuDownload, LuCircleCheck, LuCircle, LuArrowLeft, LuArrowRight, LuMapPin, LuBriefcase, LuSearch, LuTicket, LuPlaneTakeoff
 } from "react-icons/lu";
-import { store, commit, job, live, company, money, isHourly, fdate, kb, completeness, unread, COUNTRIES, CATS } from "../store.js";
+import { store, commit, job, live, company, money, isHourly, fdate, kb, completeness, unread, bdtFmt, COUNTRIES, CATS } from "../store.js";
+import { FlightSearch, FlightRequest, TicketFlight } from "./Flights.jsx";
 import { toast, formData, withdraw, setTab, openModal, readUpload, downloadFile, fileExt, act, DOC_TYPES } from "../actions.js";
 import { Rail, Tiles, Pipe, ClPipe, Pill, Empty, JobCard, CardDownload, Avatar } from "../ui.jsx";
 import { NotifPanel, Field, Options, ClCountryOptions } from "./shared.jsx";
@@ -249,11 +250,44 @@ export function Candidate({ u }) {
     </>;
   }
 
+  if (t === "tickets") {
+    const T = (S.tickets || []).filter(x => x.candidateId === u.id).sort((a, b) => b.created.localeCompare(a.created));
+    const fp = ui.flightPick;
+    const send = async d => { if (await act("cand.ticket", d)) { ui.flightPick = null; commit(); } };
+    const manual = e => { e.preventDefault(); const d = Object.fromEntries(new FormData(e.currentTarget)); const form = e.currentTarget; act("cand.ticket", d).then(r => r && form.reset()); };
+    body = <>
+      <h2>Air tickets</h2>
+      <p className="muted">Search live fares and send the flight you want. The agency confirms the fare, books the ticket and sends you the PNR here.</p>
+      {fp ? <FlightRequest pick={fp.f} q={fp.q} onClose={() => { ui.flightPick = null; commit(); }} onSend={send}>
+        <Field label="Passenger name (as in passport)"><input type="text" name="name" required maxLength={120} defaultValue={u.name} /></Field>
+        <Field label="Passport number"><input type="text" name="passport" required maxLength={15} defaultValue={u.profile?.passportNo || ""} autoCapitalize="characters" /></Field>
+        <Field label="Mobile"><input type="tel" name="phone" maxLength={30} defaultValue={u.profile?.phone || ""} /></Field>
+      </FlightRequest> : <FlightSearch onPick={(f, q) => { ui.flightPick = { f, q }; commit(); window.scrollTo({ top: 0, behavior: "smooth" }); }} />}
+      <details className="vf-det mt14" open={!S.flightsReady}><summary>Or send a request without choosing a flight</summary>
+        <form className="card fgrid" onSubmit={manual}>
+          <Field label="Passenger name"><input type="text" name="name" required defaultValue={u.name} /></Field>
+          <Field label="Passport number"><input type="text" name="passport" required defaultValue={u.profile?.passportNo || ""} /></Field>
+          <Field label="From"><input type="text" name="from" defaultValue="Dhaka (DAC)" required /></Field>
+          <Field label="To (city / airport)"><input type="text" name="to" required placeholder="e.g. Riyadh (RUH)" /></Field>
+          <Field label="Preferred date"><input type="date" name="prefDate" required /></Field>
+          <Field label="Notes" full><input type="text" name="notes" placeholder="Airline preference, baggage, etc." /></Field>
+          <div className="full"><button className="btn pri" type="submit"><LuPlaneTakeoff /> Request ticket</button></div>
+        </form></details>
+      <h3 className="mt14">My ticket requests</h3>
+      <div className="tbl"><table><thead><tr><th>Route</th><th>Date</th><th>Booking</th><th>Status</th><th></th></tr></thead><tbody>
+        {T.length ? T.map(x => <tr key={x.id}><td>{x.from} → {x.to}<TicketFlight x={x} /></td><td>{fdate(x.prefDate)}</td>
+          <td>{x.status === "booked" ? <>{x.airline} · PNR <b>{x.pnr || "—"}</b><div className="muted small">Flight {fdate(x.flightDate)}{x.fare ? ` · ${bdtFmt(x.fare)}` : ""}</div></> : "—"}</td>
+          <td><Pill s={x.status} /></td><td>{x.status === "requested" && <button className="btn sm link danger" onClick={() => act("cand.ticketCancel", { id: x.id })}>Cancel</button>}</td></tr>)
+          : <tr><td colSpan={5}><Empty>No ticket requests yet.</Empty></td></tr>}
+      </tbody></table></div>
+    </>;
+  }
+
   if (t === "notifications") body = <NotifPanel u={u} />;
 
   return (
     <div className="wrap dash">
-      <Rail role="candidate" items={[["overview", "Overview", LuLayoutDashboard], ["profile", "Profile & CV", LuUser], ["applications", "Applications", LuFileText, apps.length], ["clearance", "BMET clearance", LuStamp, S.clearances.filter(c => c.candidateId === u.id && c.card).length], ["saved", "Saved jobs", LuBookmark, u.saved.length], ["alerts", "Job alerts", LuMail]]} />
+      <Rail role="candidate" items={[["overview", "Overview", LuLayoutDashboard], ["profile", "Profile & CV", LuUser], ["applications", "Applications", LuFileText, apps.length], ["clearance", "BMET clearance", LuStamp, S.clearances.filter(c => c.candidateId === u.id && c.card).length], ["tickets", "Air tickets", LuTicket, (S.tickets || []).filter(x => x.candidateId === u.id && x.status === "booked").length], ["saved", "Saved jobs", LuBookmark, u.saved.length], ["alerts", "Job alerts", LuMail]]} />
       <div className="panel">{body}</div>
     </div>
   );

@@ -24,6 +24,7 @@ import { BulkEcForm } from "./BulkClearance.jsx";
 import { AgentsPage } from "./AgentBook.jsx";
 import { PreEcCheck } from "./PreEc.jsx";
 import { ClearanceCheck } from "./ClearanceCheck.jsx";
+import { FlightSearch, FlightCard, TicketFlight } from "./Flights.jsx";
 import { agentRows } from "../statement.js";
 import { MFS, BANKS } from "../banks.js";
 import { LuReceipt, LuLandmark, LuBanknote, LuScrollText, LuBookUser, LuFileCheck2, LuHandCoins, LuPlaneTakeoff, LuCalendarCheck, LuSettings2, LuLogOut, LuMegaphone, LuCirclePlus, LuListPlus, LuContact, LuGlobe, LuRefreshCw, LuShieldCheck, LuLogIn, LuCircleCheck } from "react-icons/lu";
@@ -82,20 +83,24 @@ export function Admin({ u }) {
       if (r) { ui.bookTicket = null; commit(); }
     };
     body = <>
-      <h2>Air ticket requests</h2>
-      <div className="tbl"><table><thead><tr><th>Worker</th><th>Agent</th><th>Route</th><th>Preferred</th><th>Booking</th><th>Status</th><th></th></tr></thead><tbody>
-        {T.length ? T.map(x => { const w = worker(x.workerId) || { name: "Removed worker" }; const ag = user(x.agentId); return (
-          <tr key={x.id} className={sel?.id === x.id ? "sel" : ""}><td><b>{w.name}</b><div className="muted small">{w.passport}</div></td><td>{ag?.agent?.business || "—"}</td><td>{x.from} → {x.to}{x.notes && <div className="muted small">{x.notes}</div>}</td><td>{fdate(x.prefDate)}</td>
+      <h2>Air tickets</h2>
+      <WfttPanel />
+      <details className="vf-det mt10"><summary>Search flights (net and gross fares)</summary><FlightSearch staff /></details>
+      <h3 className="mt14">Ticket requests</h3>
+      <div className="tbl"><table><thead><tr><th>Passenger</th><th>From</th><th>Route / flight</th><th>Preferred</th><th>Booking</th><th>Status</th><th></th></tr></thead><tbody>
+        {T.length ? T.map(x => { const w = x.candidateId ? { name: x.name, passport: x.passport } : worker(x.workerId) || { name: "Removed worker" }; const ag = user(x.agentId); return (
+          <tr key={x.id} className={sel?.id === x.id ? "sel" : ""}><td><b>{w.name}</b><div className="muted small">{w.passport}{x.phone ? ` · ${x.phone}` : ""}</div></td><td>{ag ? ag.agent?.business || ag.name : x.candidateId ? <span className="muted">Job seeker</span> : "—"}</td><td>{x.from} → {x.to}<TicketFlight x={x} />{x.notes && <div className="muted small">{x.notes}</div>}</td><td>{fdate(x.prefDate)}{x.returnDate ? <div className="muted small">Return {fdate(x.returnDate)}</div> : null}</td>
             <td>{x.status === "booked" ? <>{x.airline} · <b>{x.pnr}</b><div className="muted small">{fdate(x.flightDate)}{x.fare ? ` · ${bdtFmt(x.fare)}` : ""}</div></> : "—"}</td><td><Pill s={x.status} /></td>
             <td><div className="row tight nowrap">{x.status === "requested" && <><button className="btn sm pri" onClick={() => { ui.bookTicket = x.id; commit(); }}><LuTicket /> Book</button><button className="btn sm danger" onClick={() => act("admin.ticketCancel", { id: x.id })}><LuX /> Cancel</button></>}</div></td></tr>); })
           : <tr><td colSpan={7}><Empty>No ticket requests.</Empty></td></tr>}
       </tbody></table></div>
       {sel && <form className="card fgrid" onSubmit={book} key={sel.id}>
-        <h3 className="full">Book ticket: {worker(sel.workerId)?.name} · {sel.from} → {sel.to}</h3>
-        <Field label="Airline"><input type="text" name="airline" required /></Field>
+        <h3 className="full">Book ticket: {worker(sel.workerId)?.name || sel.name} · {sel.from} → {sel.to}</h3>
+        {sel.flight && <div className="full"><FlightCard f={sel.flight} compact /><p className="muted small">Book this flight in WFTT (b2b.wfttbd.com), then fill in the PNR here.</p></div>}
+        <Field label="Airline"><input type="text" name="airline" required defaultValue={sel.flight?.airline || ""} /></Field>
         <Field label="PNR / booking reference"><input type="text" name="pnr" required /></Field>
         <Field label="Flight date"><input type="date" name="flightDate" defaultValue={sel.prefDate} required /></Field>
-        <Field label="Fare (BDT)"><input type="number" name="fare" min="0" /></Field>
+        <Field label="Fare (BDT)"><input type="number" name="fare" min="0" defaultValue={sel.flight?.price || ""} /></Field>
         {sel.agentId && <label className="check full"><input type="checkbox" name="charge" defaultChecked /> Add the fare to the agent's account statement</label>}
         <div className="full row"><button className="btn pri" type="submit"><LuCheck /> Mark as booked</button><button className="btn" type="button" onClick={() => { ui.bookTicket = null; commit(); }}>Close</button></div>
       </form>}
@@ -677,6 +682,24 @@ function DocMenu({ files }) {
   );
 }
 
+/* WFTT BD sign-in for live fares (the agency's B2B account); service charge added to every fare shown to agents and job seekers */
+function WfttPanel() {
+  const W = store.S.wftt, me = user(store.S.session), admin = me?.role === "admin";
+  const [f, setF] = React.useState({ email: W?.email || "", password: "" }), [mk, setMk] = React.useState(String(W?.markup ?? 0)), [busy, setBusy] = React.useState(false);
+  const save = async e => { e.preventDefault(); setBusy(true); const r = await act("admin.wftt", { op: "save", ...f }); setBusy(false); if (r) setF({ ...f, password: "" }); };
+  return <div className={`card raims-panel${W?.ready ? " raims-on" : ""}`}>
+    <h3 className="bulk-h"><LuPlaneTakeoff /> WFTT BD (live flight fares)</h3>
+    {W?.ready ? <p className="small">Signed in as <b data-notr>{W.email}</b>{W.since ? ` since ${fdate(W.since)}` : ""}. Agents and job seekers can search flights; the sign-in stays until the admin signs out.</p>
+      : <p className="muted small">Sign in with the agency's WFTT B2B account (b2b.wfttbd.com). Agents and job seekers then see live fares and send ticket requests here.</p>}
+    {admin && <form className="fgrid" onSubmit={save}>
+      <Field label="WFTT email"><input type="email" value={f.email} required autoComplete="off" onChange={e => setF({ ...f, email: e.target.value })} /></Field>
+      <Field label={W?.ready ? "Password (only to change it)" : "WFTT password"}><input type="password" value={f.password} autoComplete="new-password" onChange={e => setF({ ...f, password: e.target.value })} /></Field>
+      <div className="full row tight wrap"><button className="btn pri" disabled={busy}>{busy ? "Signing in…" : W?.ready ? "Sign in again" : "Sign in to WFTT"}</button>
+        {W?.ready && <button type="button" className="btn soft" onClick={() => confirmBox("Sign out of WFTT? Flight search stops for agents and job seekers.", () => act("admin.wftt", { op: "logout" }), "Sign out")}>Sign out of WFTT</button>}</div>
+    </form>}
+    {admin && <div className="row tight wrap mt10"><label className="f">Service charge per ticket (BDT), added to the fare agents and job seekers see<input type="number" min="0" value={mk} onChange={e => setMk(e.target.value)} /></label><button type="button" className="btn sm" onClick={() => act("admin.wftt", { op: "markup", markup: Number(mk || 0) })}>Save</button></div>}
+  </div>;
+}
 /* the file's agent (reference): admin/staff can change it — a registered agent, or a name such as Self */
 function AgentCell({ c, via }) {
   const [ed, setEd] = React.useState(false), [v, setV] = React.useState("");

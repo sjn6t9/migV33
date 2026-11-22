@@ -1,3 +1,4 @@
+import { FlightSearch, FlightRequest, TicketFlight } from "./Flights.jsx";
 import React from "react";
 import { Statement } from "./Statement.jsx";
 import { agentRows } from "../statement.js";
@@ -172,9 +173,15 @@ export function Agent({ u }) {
       const form = e.currentTarget; act("agent.ticket", d).then(r => { if (r) form.reset(); });
     };
     const cancel = x => confirmBox("Cancel this ticket request?", () => act("agent.ticketCancel", { id: x.id }), "Cancel request");
+    const fp = ui.flightPick;
+    const sendPick = async d => { if (!active) return toast("Your account must be approved first."); if (await act("agent.ticket", d)) { ui.flightPick = null; commit(); } };
     body = <>
-      <h2>Air ticket requests</h2>{banner}
-      <p className="muted">Request a flight for a worker whose visa and clearance are ready. The agency books the ticket and adds the fare to your account statement.</p>
+      <h2>Air tickets</h2>{banner}
+      <p className="muted">Search live fares, pick a flight and send it for a worker. The agency books the ticket and adds the fare to your account statement.</p>
+      {fp ? <FlightRequest pick={fp.f} q={fp.q} onClose={() => { ui.flightPick = null; commit(); }} onSend={sendPick}>
+        {W.length ? <Field label="Worker"><select name="workerId" required>{W.map(w => <option key={w.id} value={w.id}>{w.name} · {w.passport}</option>)}</select></Field> : <div className="notice full">Add a worker first.</div>}
+      </FlightRequest> : <FlightSearch onPick={(f, q) => { ui.flightPick = { f, q }; commit(); window.scrollTo({ top: 0, behavior: "smooth" }); }} />}
+      <details className="vf-det mt14" open={!S.flightsReady}><summary>Or send a request without choosing a flight</summary>
       {W.length ? (
         <form className="card fgrid" onSubmit={submit}>
           <h3 className="full">New ticket request</h3>
@@ -185,10 +192,11 @@ export function Agent({ u }) {
           <Field label="Notes" full><input type="text" name="notes" placeholder="Airline preference, baggage, etc." /></Field>
           <div className="full"><button className="btn pri" type="submit" disabled={!active}><LuPlaneTakeoff /> Request ticket</button></div>
         </form>
-      ) : <div className="notice">Add a worker first. <button className="btn link sm" onClick={() => setTab("agent", "workers")}>Add worker</button></div>}
+      ) : <div className="notice">Add a worker first. <button className="btn link sm" onClick={() => setTab("agent", "workers")}>Add worker</button></div>}</details>
+      <h3 className="mt14">My ticket requests</h3>
       <div className="tbl"><table><thead><tr><th>Worker</th><th>Route</th><th>Preferred date</th><th>Booking</th><th>Status</th><th></th></tr></thead><tbody>
         {T.length ? T.map(x => { const w = worker(x.workerId) || { name: "Removed worker" }; return (
-          <tr key={x.id}><td><b>{w.name}</b><div className="muted small">{w.passport}</div></td><td>{x.from} → {x.to}</td><td>{fdate(x.prefDate)}</td>
+          <tr key={x.id}><td><b>{w.name}</b><div className="muted small">{w.passport}</div></td><td>{x.from} → {x.to}<TicketFlight x={x} /></td><td>{fdate(x.prefDate)}</td>
             <td>{x.status === "booked" ? <>{x.airline} · PNR <b>{x.pnr || "—"}</b><div className="muted small">Flight {fdate(x.flightDate)}{x.fare ? ` · ${bdtFmt(x.fare)}` : ""}</div></> : "—"}</td>
             <td><Pill s={x.status} /></td><td>{x.status === "requested" && <button className="btn sm link danger" onClick={() => cancel(x)}>Cancel</button>}</td></tr>); })
           : <tr><td colSpan={6}><Empty>No ticket requests yet.</Empty></td></tr>}

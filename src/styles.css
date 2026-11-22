@@ -1442,3 +1442,25 @@ button.hold-tile{cursor:pointer}
 .cc-actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:16px}.cc-actions p{flex-basis:100%;margin:0}
 @media (max-width:720px){.cc-grid{grid-template-columns:1fr}}
 .cc-head{display:flex;gap:20px;align-items:center;flex-wrap:wrap}.cc-photo{border-radius:8px;object-fit:cover;border:1px solid var(--line)}
+/* ---------- air tickets: flight search ---------- */
+.fl-form{display:grid;gap:12px}
+.fl-trip{display:flex;gap:6px}
+.fl-route{display:grid;grid-template-columns:1fr auto 1fr;gap:8px;align-items:end}
+.fl-swap{height:42px;margin-bottom:2px}
+.fl-res{display:grid;gap:10px}
+.fl-card{display:grid;grid-template-columns:minmax(150px,1.1fr) 3fr minmax(150px,1fr);gap:16px;align-items:center;padding:14px 16px;border:1px solid var(--line);border-radius:14px;background:var(--surface);transition:border-color .15s,box-shadow .15s}
+.fl-card:hover{border-color:color-mix(in srgb,var(--brand) 45%,var(--line));box-shadow:0 6px 18px -12px rgba(0,0,0,.35)}
+.fl-card.on{border:2px solid var(--brand)}
+.fl-air{display:flex;gap:10px;align-items:center}.fl-air img{border-radius:8px;object-fit:contain;background:#fff}.fl-air>svg{width:30px;height:30px;color:var(--brand)}
+.fl-air div{display:flex;flex-direction:column;gap:2px}
+.fl-legs{display:grid;gap:10px}
+.fl-leg{display:grid;grid-template-columns:auto 1fr auto;gap:12px;align-items:center}
+.fl-pt{display:flex;flex-direction:column;align-items:center;line-height:1.15}.fl-pt b{font-size:1.15rem}.fl-pt span{font-weight:600}.fl-pt em{font-style:normal;font-size:12px;color:var(--muted)}
+.fl-mid{display:flex;flex-direction:column;align-items:center;gap:3px;min-width:0}.fl-mid i{display:block;width:100%;height:2px;background:linear-gradient(90deg,var(--line),var(--brand),var(--line));border-radius:2px}
+.fl-mid span{display:inline-flex;align-items:center;gap:4px;text-align:center}
+.fl-nos{grid-column:1/-1;text-align:center}
+.fl-buy{display:flex;flex-direction:column;align-items:flex-end;gap:5px;text-align:right}.fl-buy span{display:inline-flex;align-items:center;gap:4px}
+.fl-price{font-size:1.25rem;color:var(--brand)}
+.fl-req{border-left:4px solid var(--brand)}
+.spin{animation:spin 1s linear infinite}@keyframes spin{to{transform:rotate(360deg)}}
+@media (max-width:760px){.fl-card{grid-template-columns:1fr;gap:10px}.fl-buy{flex-direction:row;flex-wrap:wrap;align-items:center;justify-content:space-between}.fl-route{grid-template-columns:1fr}.fl-swap{justify-self:center;margin:0}}
