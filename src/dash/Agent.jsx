@@ -9,6 +9,7 @@ import { LuShieldCheck, LuDownload, LuMaximize2, LuMinimize2, LuRefreshCw, LuSea
 import { Rail, Tiles, Pill, Pipe, ClPipe, Empty, CardDownload, Avatar } from "../ui.jsx";
 import { AgentDatalist } from "./AgentBook.jsx";
 import { PreEcCheck } from "./PreEc.jsx";
+import { JobSlides } from "./JobSlides.jsx";
 import { NotifPanel, Field, Options, ClCountryOptions, AgentDocUploads, AGENT_DOCS } from "./shared.jsx";
 
 const ui = store.ui;
@@ -129,6 +130,7 @@ export function Agent({ u }) {
     };
     body = <>
       <h2>Apply workers to a job</h2>{banner}
+      <JobSlides workers={W} apps={A} active={active} />
       {L.length && W.length ? (
         <form className="card stack" onSubmit={submit} key={sel + A.length}>
           <Field label="Job"><select value={sel} onChange={e => { ui.agentJob = e.target.value; commit(); }}>{L.map(j => <option key={j.id} value={j.id}>{j.title} · {j.city}, {j.country} · {money(j.salaryMin, j.currency)}+{j.period === "hour" ? " /hr" : ""}</option>)}</select></Field>

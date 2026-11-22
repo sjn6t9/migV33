@@ -1486,3 +1486,23 @@ button.hold-tile{cursor:pointer}
 .ledger-agents{border-top:1px solid var(--line);padding-top:14px}.ledger-agents .ec-head h2{font-size:1.35rem}
 .raims-on{overflow-wrap:anywhere}
 .api-list{margin:4px 0 0 18px;padding:0}.api-list code{font-size:12px;overflow-wrap:anywhere}
+/* agent › job circulars slideshow */
+.js-wrap{overflow:hidden}
+.js-stage{position:relative;display:flex;align-items:center;gap:8px;margin-top:6px}
+.js-track{flex:1;display:grid;grid-template-columns:1fr;gap:14px;min-width:0}
+.js-track.two{grid-template-columns:1fr 1fr}
+@media (max-width:700px){.js-track.two{grid-template-columns:1fr}.js-track .js-second{display:none}}
+.js-card{display:block;width:100%;padding:0;border:1px solid var(--line,#d5e3dc);border-radius:14px;overflow:hidden;background:#f3f7f5;cursor:pointer;aspect-ratio:1080/1350;max-height:560px;margin:0 auto;animation:jsIn .45s ease}
+.js-card img{width:100%;height:100%;object-fit:contain;display:block}
+.js-card:hover{box-shadow:0 6px 20px rgba(0,0,0,.12)}
+@keyframes jsIn{from{opacity:.25;transform:translateX(12px)}to{opacity:1;transform:none}}
+.js-wait{display:flex;align-items:center;justify-content:center;width:100%;height:100%;min-height:200px;color:#6b7d74}
+.js-nav{flex:none;width:40px;height:40px;border-radius:50%;border:1px solid var(--line,#d5e3dc);background:var(--card,#fff);display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:20px;color:inherit}
+.js-dots{display:flex;justify-content:center;gap:6px;margin-top:10px;flex-wrap:wrap}
+.js-dots button{width:9px;height:9px;border-radius:50%;border:0;padding:0;background:#c7d6cf;cursor:pointer}
+.js-dots button.on{background:#006a4e;width:22px;border-radius:6px}
+.js-view{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.1fr);gap:20px;align-items:start}
+@media (max-width:760px){.js-view{grid-template-columns:1fr}}
+.js-img img{width:100%;border-radius:12px;display:block}
+.js-info table th{text-align:left;padding-right:12px;white-space:nowrap;font-weight:600}
+.js-info .sub{margin:14px 0 4px}
