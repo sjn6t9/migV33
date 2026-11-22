@@ -929,12 +929,13 @@ function preEcView(j, pp) {
   // the person's own names. RAIMS sends places, offices and relatives under "…name" keys too (e.g. an upazila {name: "Narsingdi Sadar"}),
   // so every value is judged by its whole path: nothing under a place / office / relative key is the person's name.
   const BN = /[ঀ-৿]/;
-  const NOT_PERSON = /father|mother|spouse|husband|wife|contact|nominee|guardian|relation|institut|center|centre|district|division|upazila|upazilla|thana|police|station|post|union|village|ward|city|area|address|zone|country|countr|nationality|file|user|bank|branch|company|agency|agent|employer|training|profession|occupation|trade|course|embassy|office|batch|religion|type|status|created|updated|by_|_by|place|location|permanent|present|_pa_|^pa_|_pr_|^pr_|recruit|sponsor|job|visa|demand/i;
+  const NOT_PERSON = /gender|sex|marital|blood|religion|father|mother|spouse|husband|wife|contact|nominee|guardian|relation|institut|center|centre|district|division|upazila|upazilla|thana|police|station|post|union|village|ward|city|area|address|zone|country|countr|nationality|file|user|bank|branch|company|agency|agent|employer|training|profession|occupation|trade|course|embassy|office|batch|religion|type|status|created|updated|by_|_by|place|location|permanent|present|_pa_|^pa_|_pr_|^pr_|recruit|sponsor|job|visa|demand/i;
   const PERSON_KEYS = /national_id|^nid|fathers?_name|date_of_birth|^dob$|passport_number|passport_no|name_bn|bn_name|bangla|mothers?_name/i;
   const cands = []; // [path, key, value, holder object]
   const scan = (v, path) => { if (Array.isArray(v)) return v.forEach(x => scan(x, path)); if (!v || typeof v !== "object") return;
     for (const [k, x] of Object.entries(v)) { if (x && typeof x === "object") { scan(x, [...path, k]); continue; }
       if (!/name/i.test(k) || x == null) continue; const t = String(x).trim(); if (!t || t === "null" || t.length > 120 || /\d{3,}|@/.test(t)) continue;
+      if (/^(male|female|other|third gender|hijra|yes|no|n\/?a|single|married|unmarried|divorced|widowed|islam|hindu|christian|buddhist|bangladeshi|bangladesh|active|inactive|pending|approved)$/i.test(t)) continue; // a value, not a name
       if ([...path, k].some(z => NOT_PERSON.test(z))) continue; cands.push({ path, k, t, o: v }); } };
   scan(j, []);
   const ownObj = o => Object.keys(o).some(k => PERSON_KEYS.test(k));
@@ -1164,6 +1165,12 @@ const syncSoon = () => { clearTimeout(soonT); soonT = setTimeout(autoSync, 20e3)
 const lastRaims = new Map(); // the last RAIMS page read, for the admin to download when a page is not read right
 /* Pre EC Check (RAIMS): admin/staff with the BMET clearance permission, and agents */
 /* ======================= agent history: what each agent did, from where (IP, place, device) ======================= */
+// repair: Pre EC entries saved with a gender word as the name ("Male") take the worker's real name
+setImmediate(() => { let fixed = 0; for (const p of db.passports || []) if (/^(male|female|other|third gender)$/i.test(String(p.name || "").trim())) {
+  const w = (db.workers || []).find(x => ppNorm(x.passport) === p.passport), c = db.clearances.find(x => ppNorm(x.passport || "") === p.passport && x.fullName);
+  const nm = w?.name || c?.fullName || (p.bmet?.nameBn && !/[\u0980-\u09FF]/.test(p.bmet.nameBn) ? p.bmet.nameBn : "");
+  if (nm && !/^(male|female)$/i.test(nm)) { p.name = nm; fixed++; }
+} if (fixed) { console.log(`repaired ${fixed} passport name(s)`); save(); } });
 if (!db.agentLog) db.agentLog = [];
 if (!db.ipGeo) db.ipGeo = {};
 const AG_TRAIL = { "auth.login": "Signed in", "auth.otp": "Signed in", "auth.handoff": "Signed in", "auth.logout": "Signed out", "auth.changePassword": "Changed password",
