@@ -1532,6 +1532,13 @@ A["admin.raims"] = async (d, u) => {
       const icLabel = valOf(/^(IC|EC|Clearance)\s*(No\.?|Number|Ref\.?)?\s*:?$/i).replace(/\s+/g, "").toUpperCase();
       const country2 = ctry || valOf(/^(Destination\s*)?Country\s*:?$/i);
       const nameRe = /^((emigrant|worker|candidate|applicant|migrant|passport\s*holder)('?s)?\s*)?(full\s*)?name(\s*\(.*\))?\s*:?$/i, notName = /father|mother|spouse|employer|company|owner|contact|agency|agent|nominee|user|bank|person/i;
+      // RAIMS cards: each "Employee Information - n" block has "Name" then its value, "Passport Number" then its value — read exactly those
+      { const starts = N.map((x, i) => /^Employee Information\b/i.test(x) ? i : -1).filter(i => i >= 0);
+        starts.forEach((st, bi) => { const B = N.slice(st, starts[bi + 1] ?? N.length);
+          const after = re => { const k = B.findIndex(x => re.test(x.trim())); return k >= 0 ? (B[k + 1] || "").trim() : ""; };
+          const nm = after(/^Name\s*:?$/i), pp = after(/^Passport\s*(No\.?|Number)\s*:?$/i).replace(/\s+/g, "").toUpperCase();
+          if (!/^[A-Z0-9]{6,15}$/.test(pp) || people.some(x => x.passport === pp)) return;
+          people.push({ ic: icLabel || icp, name: /^(N\/?A|-|—)$/i.test(nm) ? "" : nm, passport: pp, country: after(/^Visa Issue Country\s*:?$/i) || country2 }); }); }
       // a number is a passport only when its label says so: visa / work-permit / sticker numbers (e.g. Maldives ST00078814, WP00851002) look the same
       const ppLabelled = N.some(x => /^passport\s*(no\.?|number)?\s*:?$/i.test(x));
       const labelOf = i => { for (let j = i - 1; j >= Math.max(0, i - 3); j--) if (isLab(N[j])) return N[j]; return ""; };
