@@ -990,6 +990,7 @@ async function clStatusOne({ id: cid, status, text }, u) {
     return { msg: `Clearance status: ${t}.${c.agentId ? " Agent notified." : c.candidateId ? " Job seeker notified." : ""}` };
   }
   if (c.status === status) return {};
+  must(!(c.via === "agent" && !c.icNo && !["pending", "received", "rejected"].includes(status)), "Enter the IC number from RAIMS first, then Send to BMET.");
   c.status = status; delete c.statusText; c.history.push({ s: status, at: now() });
   const payNow = c.agentId && ["final", "approved"].includes(status) && !["submitted", "paid"].includes(c.payment?.status) ? " Send the payment receipt from BMET clearance (Unpaid)." : "";
   notify(c.agentId || c.candidateId, `BMET clearance for ${name}: ${LABEL[status]}.${status === "approved" ? " The clearance card will be sent to your portal." : ""}${payNow}`);

@@ -602,31 +602,23 @@ function RaimsPanel() {
 const clInApps = c => c.via === "agent" && ["pending", "received"].includes(c.status);
 /* Applications › Clearance applications: files agents submitted (e.g. from Pre EC Check). Received tells the agent the file arrived;
    Send to BMET moves it to BMET clearance, where RAIMS sync takes over its status. */
-function ClearanceApps() {
-  const S = store.S, rows = S.clearances.filter(clInApps).sort((a, b) => b.created.localeCompare(a.created)).map(c => ({ c, p: clPerson(c) }));
-  const set = (c, status) => act("admin.clStatus", { id: c.id, status });
-  return <>
-    <p className="muted small">Agents' BMET clearance applications. Received tells the agent the file has arrived; Send to BMET moves it to BMET clearance, and after that its status follows RAIMS.</p>
-    <div className="tbl ec-tbl grid mt8"><table><thead><tr><th>SL</th><th>Worker name</th><th>Passport No</th><th>Country</th><th>Agent</th><th>Documents</th><th>Status</th><th>Actions</th></tr></thead><tbody>
-      {rows.length ? rows.map(({ c, p }, i) => <tr key={c.id}>
-        <td>{i + 1}</td><td><b data-notr>{p.name}</b>{c.preEc && <div className="muted small">From Pre EC Check</div>}</td><td className="num" data-notr>{p.passport || "—"}</td><td>{c.country}</td>
-        <td><div className="ec-sub"><span data-notr>{p.via}</span><span className="num">{ecDay(c.created)}</span></div></td>
-        <td><DocButtons c={c} /></td>
-        <td><span className={`ec-badge s-${c.status}`}>{LABEL[c.status]}</span></td>
-        <td><div className="stack6">
-          {c.status === "pending" && <button className="btn sm" onClick={() => set(c, "received")}><LuCheck /> Received</button>}
-          <button className="btn sm pri" onClick={() => set(c, "sent_bmet")}><LuSend /> Send to BMET</button>
-          <button className="btn sm link danger" onClick={() => confirmBox(`Reject the clearance application of ${p.name}? The agent is told.`, () => set(c, "rejected"), "Reject")}><LuX /> Reject</button>
-        </div></td></tr>) : <tr><td colSpan={8}><Empty>No clearance applications waiting.</Empty></td></tr>}
-    </tbody></table></div>
-  </>;
+function ClearanceApps() { return <AdminClearanceList apps />; }
+/* IC number from RAIMS for an agent's application, then Send to BMET (both needed: the IC links the file to RAIMS status sync) */
+function AppIcCell({ c }) {
+  const [v, setV] = React.useState(c.icNo || ""), [busy, setBusy] = React.useState(false);
+  const send = async () => {
+    const ic = v.trim().toUpperCase().replace(/\s+/g, ""); if (!/^IC[-A-Z0-9]{6,}$/.test(ic)) return toast("Enter the IC number from RAIMS, e.g. IC-2026-RL1217-602390.");
+    setBusy(true); const ok = (ic === c.icNo || await act("admin.clRef", { id: c.id, ref: ic }, { quiet: true })) && await act("admin.clStatus", { id: c.id, status: "sent_bmet" }); setBusy(false);
+  };
+  return <div className="stack6 app-ic"><input type="text" value={v} onChange={e => setV(e.target.value.toUpperCase())} onKeyDown={e => { if (e.key === "Enter") send(); }} placeholder="IC number" aria-label="IC number" data-notr />
+    <button className="btn sm pri" disabled={busy} onClick={send}><LuSend /> Send to BMET</button></div>;
 }
-function AdminClearanceList() {
-  const S = store.S; const isAdmin = user(store.S.session)?.role === "admin"; const f = ui.clFilter || "all";
+function AdminClearanceList({ apps }) {
+  const S = store.S; const isAdmin = user(store.S.session)?.role === "admin"; const fk = apps ? "clAppFilter" : "clFilter", f = ui[fk] || "all";
   const [q, setQ] = React.useState(""); const [per, setPer] = React.useState(25); const [page, setPage] = React.useState(1);
   const match = (k, c) => k === "all" || (k === "open" ? clOpen(c) : k === "card" ? cardPending(c) : k === "sent" ? !!c.card : k === "pay" ? c.payment?.status === "submitted" : c.status === k);
   // agent applications stay in Applications › Clearance applications until the agency sends them to BMET
-  const ALL = S.clearances.filter(c => !clInApps(c));
+  const ALL = S.clearances.filter(c => apps ? clInApps(c) : !clInApps(c));
   const cnt = k => ALL.filter(c => match(k, c)).length;
   const rows = ALL.filter(c => match(f, c)).sort((a, b) => b.created.localeCompare(a.created))
     .map(c => ({ c, p: clPerson(c) }))
@@ -635,7 +627,7 @@ function AdminClearanceList() {
   const shown = rows.slice((pg - 1) * per, pg * per);
   const [form, setForm] = React.useState("");
   return <>
-    <div className="ec-head">
+    {apps ? <p className="muted small">Agents' BMET clearance applications. Received tells the agent the file has arrived. Enter the IC number from RAIMS and Send to BMET: the file moves to BMET clearance and its status then follows RAIMS.</p> : <div className="ec-head">
       <h2>BMET clearance applications</h2>
       <div className="ec-head-btns">
         <button className={`btn ${form === "one" ? "dark" : "soft"}`} onClick={() => setForm(x => x === "one" ? "" : "one")}>{form === "one" ? <LuX /> : <LuCirclePlus />} {form === "one" ? "Close the form" : "Create application"}</button>
@@ -644,27 +636,27 @@ function AdminClearanceList() {
         <button className={`btn ${form === "preec" ? "dark" : "soft"}`} onClick={() => setForm(x => x === "preec" ? "" : "preec")}>{form === "preec" ? <LuX /> : <LuShieldCheck />} Pre EC Check</button>
         <button className={`btn ${form === "cc" ? "dark" : "soft"}`} onClick={() => setForm(x => x === "cc" ? "" : "cc")}>{form === "cc" ? <LuX /> : <LuBadgeCheck />} Clearance Check</button>
       </div>
-    </div>
+    </div>}
     {form === "raims" && <RaimsPanel />}
     {form === "preec" && <PreEcCheck onClose={() => setForm("")} />}
     {form === "cc" && <ClearanceCheck onClose={() => setForm("")} />}
     {form === "one" && <GroupEcForm admin onDone={() => setForm("")} />}
     {form === "bulk" && <BulkEcForm onDone={() => setForm("")} />}
-    <FilterButtons cur={f} onPick={k => { ui.clFilter = k; setPage(1); commit(); }} items={[["all", "All"], ["pending", "New (Pending)"], ["open", "In progress"], ["card", "Card to upload"], ["pay", "Payments to check"], ["sent", "Card sent"], ["rejected", "Rejected"]].map(([k, l]) => [k, l, cnt(k)])} />
+    <FilterButtons cur={f} onPick={k => { ui[fk] = k; setPage(1); commit(); }} items={apps ? [["all", "All"], ["pending", "New (Pending)"], ["received", "Received"]].map(([k, l]) => [k, l, cnt(k)]) : [["all", "All"], ["pending", "New (Pending)"], ["open", "In progress"], ["card", "Card to upload"], ["pay", "Payments to check"], ["sent", "Card sent"], ["rejected", "Rejected"]].map(([k, l]) => [k, l, cnt(k)])} />
     <div className="ec-tools mt8">
       <label className="ec-show">Show <select value={per} onChange={e => { setPer(Number(e.target.value)); setPage(1); }}>{[10, 25, 50, 100].map(n => <option key={n} value={n}>{n}</option>)}</select></label>
       <span className="grow" />
       <label className="ec-search"><input type="text" value={q} onChange={e => { setQ(e.target.value); setPage(1); }} placeholder="EC Ref No, name or passport" /><LuSearch /></label>
     </div>
-    <div className="tbl ec-tbl grid"><table><thead><tr><th>SL</th><th>Worker name</th><th>Passport No</th><th>EC Ref No</th><th>Country</th><th>Status</th><th>Submission</th><th>Download Documents</th></tr></thead><tbody>
+    <div className="tbl ec-tbl grid"><table><thead><tr><th>SL</th><th>Worker name</th><th>Passport No</th><th>{apps ? "IC number · Send to BMET" : "EC Ref No"}</th><th>Country</th><th>Status</th><th>Submission</th><th>Download Documents</th></tr></thead><tbody>
       {shown.length ? shown.map(({ c, p }, i) => (
         <tr key={c.id}>
           <td>{(pg - 1) * per + i + 1}</td>
-          <td><b>{p.name}</b></td>
+          <td><b>{p.name}</b>{apps && c.preEc && <div className="muted small">From Pre EC Check</div>}</td>
           <td className="num" data-notr>{p.passport || "—"}</td>
-          <td><RefCell c={c} /></td>
+          <td>{apps ? <AppIcCell c={c} /> : <RefCell c={c} />}</td>
           <td>{c.country}</td>
-          <td><StatusCell c={c} /></td>
+          <td><StatusCell c={c} only={apps ? ["pending", "received", "rejected"] : null} /></td>
           <td><div className="ec-sub">{c.candidateId ? <b>{p.via}</b> : <AgentCell c={c} via={p.via} />}<span className="num">{ecDay(c.created)}</span></div></td>
           <td>{pastSent(c)
             ? <div className="stack6"><button className="btn sm" onClick={() => openModal("clearance", { cid: c.id, admin: true })}><LuEye /> Details</button>
@@ -758,15 +750,15 @@ function RefCell({ c }) {
     {!locked && <button className="btn sm link" title="Change EC Ref No" aria-label="Change EC Ref No" onClick={() => { setV(c.ref || ""); setEd(true); }}><LuPencil /></button>}</div>;
 }
 
-export function StatusCell({ c, wide }) {
+export function StatusCell({ c, wide, only }) {
   const [custom, setCustom] = React.useState(false); const [v, setV] = React.useState(c.status === "custom" ? c.statusText || "" : "");
   const pick = val => { if (val === "custom") { setV(c.status === "custom" ? c.statusText || "" : ""); setCustom(true); } else { setCustom(false); setClStatus(c.id, val); } };
   const saveCustom = async () => { if (await act("admin.clStatus", { id: c.id, status: "custom", text: v })) setCustom(false); };
   return (
     <div className={`stack6${wide ? "" : " ec-status"}`}>
       <select className="auto slim" value={custom ? "custom" : c.status} onChange={e => pick(e.target.value)} aria-label="Clearance status">
-        {[...CL_STAGES, "rejected"].map(x => <option key={x} value={x}>{LABEL[x]}</option>)}
-        <option value="custom">{c.status === "custom" && !custom ? `Custom: ${c.statusText}` : "Custom…"}</option>
+        {(only || [...CL_STAGES, "rejected"]).map(x => <option key={x} value={x}>{LABEL[x]}</option>)}
+        {!only && <option value="custom">{c.status === "custom" && !custom ? `Custom: ${c.statusText}` : "Custom…"}</option>}
       </select>
       {custom && <div className="ec-refedit"><input type="text" value={v} maxLength={80} placeholder="Write the status" onChange={e => setV(e.target.value)} onKeyDown={e => { if (e.key === "Enter") saveCustom(); if (e.key === "Escape") setCustom(false); }} autoFocus />
         <button className="btn sm pri" onClick={saveCustom} aria-label="Save status"><LuCheck /></button><button className="btn sm" onClick={() => setCustom(false)} aria-label="Cancel"><LuX /></button></div>}
