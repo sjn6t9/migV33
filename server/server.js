@@ -1226,7 +1226,11 @@ async function clearanceCheck({ q, by }) {
       const bm = /Bearer\s*["'`]?\s*\+?\s*["'`]?([A-Za-z0-9._|\-]{20,})/.exec(pg.text) || /(?:api_?token|access_?token|auth_?token|bearer_?token|jwt|token)["']?\s*[:=,]\s*["'`]([A-Za-z0-9._|\-]{20,})["'`]/i.exec(pg.text);
       const ck = Object.entries(J.c).find(([k, x]) => /token|jwt|auth/i.test(k) && !/xsrf|csrf/i.test(k) && x.length > 20), bearer = bm ? bm[1] : ck ? decodeURIComponent(ck[1]) : "";
       const xh = { "X-Requested-With": "XMLHttpRequest", Accept: "application/json, text/html, */*", "X-CSRF-TOKEN": tok, ...(xsrf ? { "X-XSRF-TOKEN": xsrf } : {}), ...(bearer ? { Authorization: `Bearer ${bearer}` } : {}), Referer: pg.url, Origin: origin };
-      const hints = dataHints(pg.text).filter(u => /clearance|check|passport|search|employee/i.test(u) && !/download\/card/i.test(u)).slice(0, 6);
+      // the page's own addresses first, then the RAIMS API addresses built like Pre EC Check's (/api/v1/agency/employee/pre-ec-check/details/…)
+      const T = isId ? ["clearance_id", "clearance", "2"] : ["passport", "1"];
+      const hints = [...new Set([...dataHints(pg.text).filter(u => /clearance|check|passport|search|employee/i.test(u) && !/download\/card/i.test(u)).slice(0, 6),
+        ...T.map(t => `/api/v1/agency/employee/clearance-check/details/${t}/${v}`), `/api/v1/agency/employee/clearance-check/details/${v}`, `/api/v1/agency/employee/clearance-check/${v}`,
+        `/api/v1/agency/employee/clearance-check?input_type=${T[0]}&search_value=${v}&passport_no=${v}&clearance_id=${v}`, `/agency/employee/clearance-check/search?input_type=${T[0]}&search_value=${v}`])].slice(0, 14);
       for (const h of hints) {
         const u = h.replace(/:([a-z_]+)/gi, (all, k) => /type|input/i.test(k) ? (isId ? "clearance" : "passport") : /^\d+$/.test(k) ? all : encodeURIComponent(v)).replace(/\{[^}]*\}|\$\{[^}]*\}/g, v);
         for (const m of ["GET", "POSTJSON"]) {
@@ -1243,7 +1247,7 @@ async function clearanceCheck({ q, by }) {
       if (!hints.length) tried.push("the page names no search address");
     }
     lastRaims.set("page", { url: "clearance-check", html: String(raw || pg.text).slice(0, 600000) });
-    if (!got) return { ok: false, problem: "RAIMS did not show a clearance for this number.", tried };
+    if (!got) return { ok: false, q: v, problem: "RAIMS did not show a clearance for this number.", tried };
     const pp = (got.fields.find(([k]) => k === "Passport Number") || [])[1] || (isId ? "" : v);
     // the file here with this passport takes the Clearance ID (for Download Card / Send Card)
     if (got.id && pp) for (const c of db.clearances) if (ppNorm(worker(c.workerId)?.passport || user(c.candidateId)?.profile?.passportNo || c.passport || "") === ppNorm(pp) && !c.cardNo) c.cardNo = got.id;
@@ -1380,19 +1384,24 @@ A["admin.card"] = async ({ id: cid, file, fee }, u) => {
 };
 /* the EC card PDF RAIMS gives at …/clearance-check/download/card/<Clearance ID> */
 async function raimsCardFile(no) {
-  let buf = null, type = "";
+  let buf = null, type = "", why = "";
+  // two addresses give the card: …/clearance-check/download/card/<ID> and …/ec/application/<ID>/card
+  const urls = [`/agency/employee/clearance-check/download/card/${encodeURIComponent(no)}`, `/agency/ec/application/${encodeURIComponent(no)}/card`];
   for (let attempt = 0; attempt < 2 && !buf; attempt++) {
-    const J = await raimsLogin(attempt > 0);
-    const r = await fetch(`${RAIMS}/agency/employee/clearance-check/download/card/${encodeURIComponent(no)}`, { redirect: "manual", headers: { "User-Agent": "Mozilla/5.0 (MAM Overseas portal)", Accept: "application/pdf,image/*,*/*", Cookie: J.get() }, signal: AbortSignal.timeout(45000) });
-    J.set(r); const b = Buffer.from(await r.arrayBuffer());
-    if (r.status >= 300 && r.status < 400) { raimsSess = null; continue; } // signed out: sign in again once
-    must(r.ok, `RAIMS did not give the card (${r.status}). Check the card number.`);
-    if (b.slice(0, 4).toString() === "%PDF") { buf = b; type = "application/pdf"; }
-    else if (b[0] === 0xff && b[1] === 0xd8) { buf = b; type = "image/jpeg"; }
-    else if (b.slice(1, 4).toString() === "PNG") { buf = b; type = "image/png"; }
-    else { if (/name="password"/i.test(b.toString("utf8", 0, 20000))) { raimsSess = null; continue; } must(false, "RAIMS did not send a card for this number. Check the number."); }
+    const J = await raimsLogin(attempt > 0); let signedOut = false;
+    for (const u of urls) {
+      const r = await fetch(RAIMS + u, { redirect: "manual", headers: { "User-Agent": "Mozilla/5.0 (MAM Overseas portal)", Accept: "application/pdf,image/*,*/*", Cookie: J.get() }, signal: AbortSignal.timeout(45000) });
+      J.set(r); const b = Buffer.from(await r.arrayBuffer());
+      if (r.status >= 300 && r.status < 400) { signedOut = /login/i.test(r.headers.get("location") || "login"); why = `${r.status}`; continue; }
+      if (!r.ok) { why = `${r.status}`; continue; }
+      if (b.slice(0, 4).toString() === "%PDF") { buf = b; type = "application/pdf"; break; }
+      if (b[0] === 0xff && b[1] === 0xd8) { buf = b; type = "image/jpeg"; break; }
+      if (b.slice(1, 4).toString() === "PNG") { buf = b; type = "image/png"; break; }
+      if (/name="password"/i.test(b.toString("utf8", 0, 20000))) signedOut = true; why = "not a card";
+    }
+    if (!buf && !signedOut) break; if (signedOut) raimsSess = null;
   }
-  must(buf, "RAIMS signed out. Sign in to RAIMS again from BMET clearance › RAIMS.");
+  must(buf, why === "not a card" || /^4/.test(why) ? `RAIMS did not give a card for ${no}. Check the Clearance ID.` : "RAIMS signed out. Sign in to RAIMS again from BMET clearance › RAIMS.");
   const ext = type === "application/pdf" ? "pdf" : type === "image/png" ? "png" : "jpg";
   const file = { name: `${no}.${ext}`, data: `data:${type};base64,${buf.toString("base64")}` };
   return file;

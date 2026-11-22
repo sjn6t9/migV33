@@ -20,7 +20,7 @@ export function ClearanceCheck({ onClose }) {
   };
   const val = k => (res?.fields || []).find(([x]) => x === k)?.[1] || "";
   const file = res?.ok && res.passport ? (store.S.clearances || []).find(c => ppOf(c).toUpperCase() === res.passport.toUpperCase()) : null;
-  const dl = async () => { setBusy("dl"); const r = await act("raims.ecCard", { no: res.id }, { quiet: true }); setBusy(""); if (r?.file) downloadFile(r.file.data, r.file.name); };
+  const dl = async () => { setBusy("dl"); const r = await act("raims.ecCard", { no: res.id || res.q }, { quiet: true }); setBusy(""); if (r?.file) downloadFile(r.file.data, r.file.name); };
   const send = async () => { setBusy("send"); await act("admin.clRaimsCard", { id: file.id, no: res.id, op: "send", fee: 0 }); setBusy(""); };
   return <div className="card preec cc">
     <div className="row between"><h3 className="bulk-h"><LuBadgeCheck /> Clearance Check</h3>{onClose && <button type="button" className="btn sm link" onClick={onClose} aria-label="Close"><LuX /></button>}</div>
@@ -42,6 +42,8 @@ export function ClearanceCheck({ onClose }) {
         {!file && <p className="muted small">No BMET clearance file here has this passport.</p>}
       </div> : <p className="muted small mt10">RAIMS shows no Clearance ID for this yet.</p>}
     </div> : <div className="mt10"><p className="vf-err small">{res.problem}</p>
-      {res.tried && <details className="vf-det small"><summary>What RAIMS showed</summary>{res.tried.map((t, i) => <p key={i} className="muted" data-notr>{t}</p>)}</details>}</div>)}
+      {/^[A-Z]{1,4}-[A-Z]{1,3}-\d{4}-\d{4,}$/.test(res.q || "") && <div className="cc-actions"><button type="button" className="btn pri" disabled={!!busy} onClick={dl}><LuDownload /> {busy === "dl" ? "Getting…" : "EC Card Download"}</button>
+        <a className="btn sm link" href={`https://raims.oep.gov.bd/agency/ec/application/${encodeURIComponent(res.q)}/card`} target="_blank" rel="noopener noreferrer">Open in RAIMS</a></div>}
+      {res.tried && <details className="vf-det small" open><summary>What RAIMS showed</summary>{res.tried.map((t, i) => <p key={i} className="muted" data-notr>{t}</p>)}</details>}</div>)}
   </div>;
 }
