@@ -1359,3 +1359,5 @@ button.hold-tile{cursor:pointer}
 .preec-f.ok{border:2px solid #4ade80}.preec-f.ok b{color:#16a34a}
 .preec-f.bad{border:2px solid #f87171}.preec-f.bad b{color:#dc2626}
 .raims-on{display:flex;align-items:center;gap:6px;flex-wrap:wrap;color:#15803d}.raims-on svg{flex:none}
+.preec-add{border:1px solid var(--line,#d9dee7);border-left:4px solid #0f9d58;border-radius:10px;padding:12px 14px;margin:12px 0;background:color-mix(in srgb,#0f9d58 6%,transparent)}
+.preec-add b{display:inline-flex;align-items:center;gap:6px}

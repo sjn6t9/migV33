@@ -1,7 +1,9 @@
 // Pre EC Check: the agency's RAIMS account checks a passport (BMET registration, finger, availability, alerts).
 // Admin/staff with the BMET clearance permission, and agents, can use it.
 import React from "react";
-import { LuSearch, LuTriangleAlert, LuShieldCheck, LuX, LuCircleCheck, LuCircleX } from "react-icons/lu";
+import { LuSearch, LuTriangleAlert, LuShieldCheck, LuX, LuCircleCheck, LuCircleX, LuListPlus } from "react-icons/lu";
+import { CountrySelect, agentsList } from "./Passports.jsx";
+import { AgentDatalist } from "./AgentBook.jsx";
 import { store } from "../store.js";
 import { act, toast } from "../actions.js";
 import { Field } from "./shared.jsx";
@@ -9,7 +11,32 @@ import { Field } from "./shared.jsx";
 const good = v => /^(success|available|yes|valid|verified|active|eligible|ok|passed)$/i.test(String(v).trim());
 const bad = v => /^(fail(ed)?|not available|unavailable|no|invalid|expired|blocked|ineligible|not found|pending)$/i.test(String(v).trim());
 
+/* Add to Entry List: the checked person goes to Passport Entry › BMET Passport Entry with the RAIMS details */
+function AddToEntry({ res }) {
+  const ags = agentsList();
+  const [v, setV] = React.useState({ country: "", ref: "", agentId: "", gender: res.entry.gender || "" });
+  const [busy, setBusy] = React.useState(false), [done, setDone] = React.useState(res.inList);
+  const add = async () => {
+    if (!v.country) return toast("Choose the country.");
+    if (!v.gender) return toast("Choose Male or Female.");
+    const row = { name: res.entry.name, passport: res.passport, country: v.country, gender: v.gender, ref: v.ref, agentId: v.agentId, bmet: res.entry.bmet };
+    setBusy(true);
+    const old = (store.S.passports || []).find(p => p.passport === res.passport && (p.lists || []).includes("bmet"));
+    const r = old ? await act("admin.passport", { op: "update", id: old.id, ...row }) : await act("admin.passport", { op: "add", list: "bmet", rows: [row] });
+    setBusy(false); if (r) setDone(true);
+  };
+  return <div className="preec-add">
+    <b><LuListPlus /> Add to Entry List</b> <span className="muted small">{done ? "In Passport Entry › BMET Passport Entry. Adding again updates the details." : "Goes to Passport Entry › BMET Passport Entry with these details."}</span>
+    <div className="fgrid mt8">
+      <Field label="Country *"><CountrySelect value={v.country} onChange={c => setV({ ...v, country: c })} /></Field>
+      {!res.entry.gender && <Field label="Male/Female *"><select value={v.gender} onChange={e => setV({ ...v, gender: e.target.value })}><option value="">Select</option><option>Male</option><option>Female</option></select></Field>}
+      <Field label="Ref. / Agent"><input type="text" list="preec-agents" value={v.ref} maxLength={120} placeholder="Agent or reference" onChange={e => { const a = ags.find(x => x.name === e.target.value); setV({ ...v, ref: e.target.value, agentId: a ? a.id : "" }); }} /><AgentDatalist id="preec-agents" /></Field>
+    </div>
+    <button type="button" className="btn pri mt8" disabled={busy} onClick={add}><LuListPlus /> {busy ? "Adding…" : done ? "Update in Entry List" : "Add to Entry List"}</button>
+  </div>;
+}
 export function PreEcCheck({ onClose }) {
+  const me = (store.S.users || []).find(x => x.id === store.S.session), canAdd = me && me.role !== "agent" && store.S.passports !== undefined;
   const [f, setF] = React.useState({ returnee: "no", other: "", passport: "" });
   const [busy, setBusy] = React.useState(false), [res, setRes] = React.useState(null);
   const ready = store.S.raimsReady ?? !!store.S.raims?.saved;
@@ -31,6 +58,7 @@ export function PreEcCheck({ onClose }) {
     {res && (res.ok ? <div className="preec-res">
       <h4 className="mt14 mb6">Employee information</h4>
       {res.alerts.map((a, i) => <div key={i} className="preec-alert"><LuTriangleAlert /> <span data-notr>{a}</span></div>)}
+      {canAdd && res.entry?.name && <AddToEntry res={res} />}
       <div className="preec-grid">{res.fields.map(([k, v], i) => <div key={i} className={`preec-f${good(v) ? " ok" : bad(v) ? " bad" : ""}`}><span>{k}</span><b data-notr dir="auto">{good(v) ? <LuCircleCheck /> : bad(v) ? <LuCircleX /> : null}{v}</b></div>)}</div>
     </div> : <div className="mt10"><p className="vf-err small">{res.problem}</p>
       {(res.page || res.tried) && <details className="vf-det small" open><summary>What RAIMS showed</summary>{(res.tried || []).map((t, i) => <p key={i} className="muted" data-notr>{t}</p>)}<p className="muted" data-notr>{res.page}</p></details>}</div>)}

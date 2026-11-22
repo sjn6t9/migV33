@@ -1,7 +1,7 @@
 // BMET Clearance › Passport entry: the office's list of passports (full name, passport number, country, gender, reference).
 // The same list is offered when making money receipts, account entries and BMET clearance applications.
 import React from "react";
-import { LuPlus, LuX, LuSearch, LuPencil, LuTrash2, LuCheck, LuReceipt, LuBookUser, LuFileSpreadsheet } from "react-icons/lu";
+import { LuPlus, LuX, LuSearch, LuPencil, LuTrash2, LuCheck, LuReceipt, LuBookUser, LuFileSpreadsheet, LuShieldCheck } from "react-icons/lu";
 import { store } from "../store.js";
 import { act, openModal, toast, confirmBox } from "../actions.js";
 import { Field } from "./shared.jsx";
@@ -13,7 +13,7 @@ import { AgentDatalist } from "./AgentBook.jsx";
 export const passports = () => store.S.passports || [];
 /* the passports of one entry list: "bmet", "ksa" or "fiji" */
 export const inList = k => p => (p.lists || [p.fiji && "fiji", p.info && "ksa", !p.fiji && !p.info && "bmet"].filter(Boolean)).includes(k);
-const agentsList = () => store.S.users.filter(u => u.role === "agent").map(u => ({ id: u.id, name: u.agent?.business || u.name })).sort((a, b) => a.name.localeCompare(b.name));
+export const agentsList = () => store.S.users.filter(u => u.role === "agent").map(u => ({ id: u.id, name: u.agent?.business || u.name })).sort((a, b) => a.name.localeCompare(b.name));
 const countries = () => [...new Set([...Object.keys(COUNTRIES), ...passports().map(p => p.country)])];
 /* our destination countries first, then every country of the Middle East and Asia */
 export function CountrySelect({ value, onChange, placeholder = "— Choose —", label }) {
@@ -23,7 +23,7 @@ export function CountrySelect({ value, onChange, placeholder = "— Choose —",
     {me.length > 0 && <optgroup label="Middle East">{me.map(c => <option key={c}>{c}</option>)}</optgroup>}
     {as.length > 0 && <optgroup label="Asia">{as.map(c => <option key={c}>{c}</option>)}</optgroup>}</select>;
 }
-export const ppMatch = q => { const s = q.trim().toLowerCase(), n = s.replace(/\s+/g, ""); return p => !s || p.passport.toLowerCase().includes(n) || p.name.toLowerCase().includes(s) || (p.ref || "").toLowerCase().includes(s) || p.country.toLowerCase().includes(s); };
+export const ppMatch = q => { const s = q.trim().toLowerCase(), n = s.replace(/\s+/g, ""); return p => !s || p.passport.toLowerCase().includes(n) || p.name.toLowerCase().includes(s) || String(p.bmet?.regNo || "").toLowerCase().includes(n) || String(p.bmet?.nid || "").includes(n) || (p.ref || "").toLowerCase().includes(s) || p.country.toLowerCase().includes(s); };
 /** text for an account line, like the office sheet: "1 FIJI PP (A0123456) · Name" */
 export const ppLine = p => `1 ${p.country.toUpperCase()} PP (${p.passport}) · ${p.name}`;
 const fdate = iso => new Date(iso).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
@@ -31,7 +31,7 @@ const fdate = iso => new Date(iso).toLocaleDateString("en-GB", { day: "2-digit",
 export function PassportEntry({ title } = {}) {
   const [q, setQ] = React.useState(""); const [edit, setEdit] = React.useState(null); const [n, setN] = React.useState(50);
   const mine = passports().filter(inList("bmet")), list = mine.filter(ppMatch(q));
-  const exportXlsx = () => xlsx("Passports", [["Full name", "Passport No.", "Country", "Gender", "Ref.", "Added"].map(v => ({ v, s: 1 })), ...list.map(p => [p.name, p.passport, p.country, p.gender, p.ref, p.at.slice(0, 10)])], [28, 15, 16, 10, 26, 12], `passports-${new Date().toISOString().slice(0, 10)}.xlsx`);
+  const exportXlsx = () => xlsx("Passports", [["Full name", "Bangali Name", "Passport No.", "BMET Reg. No", "BIO Finger", "Availability", "NID", "Date of Birth", "Father's Name", "Mother's Name", "Mobile", "Country", "Gender", "Ref.", "Added"].map(v => ({ v, s: 1 })), ...list.map(p => [p.name, p.bmet?.nameBn || "", p.passport, p.bmet?.regNo || "", p.bmet?.finger || "", p.bmet?.available || "", p.bmet?.nid || "", p.bmet?.dob || "", p.bmet?.father || "", p.bmet?.mother || "", p.bmet?.mobile || "", p.country, p.gender, p.ref, p.at.slice(0, 10)])], [28, 22, 15, 18, 12, 14, 15, 12, 22, 22, 15, 16, 10, 26, 12], `passports-${new Date().toISOString().slice(0, 10)}.xlsx`);
   return <>
     <div className="ec-head"><div><h2>{title || "Passport entry"}</h2><p className="muted small">Enter passports once; use them in BMET clearance applications, money receipts and account entries. A Ref. that is one of our agents lets that agent use the passport too.</p></div></div>
     <PassportForm />
@@ -40,9 +40,13 @@ export function PassportEntry({ title } = {}) {
       <label className="ec-search mr-search"><input type="text" value={q} onChange={e => { setQ(e.target.value); setN(50); }} placeholder="Search name, passport number, country or Ref." aria-label="Search passports" /><LuSearch /></label>
       <button className="btn" disabled={!list.length} onClick={exportXlsx}><LuFileSpreadsheet /> Excel</button>
     </div>
-    {list.length ? <div className="tbl ec-tbl grid"><table><thead><tr><th>SL</th><th>Full name</th><th>Passport No.</th><th>Country</th><th>Male/Female</th><th>Ref.</th><th>Added</th><th>Actions</th></tr></thead><tbody>
+    {list.length ? <div className="tbl ec-tbl grid"><table><thead><tr><th>SL</th><th>Full name</th><th>Passport No.</th><th>BMET Reg. No</th><th>BIO Finger</th><th>Availability</th><th>NID</th><th>Date of Birth</th><th>Country</th><th>Male/Female</th><th>Ref.</th><th>Added</th><th>Actions</th></tr></thead><tbody>
       {list.slice(0, n).map((p, i) => edit === p.id ? <EditRow key={p.id} p={p} onDone={() => setEdit(null)} /> : <tr key={p.id}>
-        <td>{i + 1}</td><td className="b" data-notr>{p.name}</td><td className="num ec-ref" data-notr>{p.passport}</td><td>{p.country}</td><td>{p.gender}</td><td data-notr>{p.ref || "—"}</td>
+        <td>{i + 1}</td><td className="b" data-notr>{p.name}{p.bmet?.nameBn && p.bmet.nameBn !== p.name && <div className="muted small">{p.bmet.nameBn}</div>}</td><td className="num ec-ref" data-notr>{p.passport}</td>
+        <td className="num" data-notr>{p.bmet?.regNo || "—"}</td>
+        <td>{p.bmet?.finger ? <span className={`ec-badge ${/success/i.test(p.bmet.finger) ? "s-approved" : "s-rejected"}`}>{p.bmet.finger}</span> : "—"}</td>
+        <td>{p.bmet?.available ? <span className={`ec-badge ${/^available/i.test(p.bmet.available) ? "s-approved" : "s-rejected"}`}>{p.bmet.available}</span> : "—"}</td>
+        <td className="num" data-notr>{p.bmet?.nid || "—"}</td><td className="num nowrap" data-notr>{p.bmet?.dob || "—"}</td><td>{p.country}</td><td>{p.gender}</td><td data-notr>{p.ref || "—"}</td>
         <td className="num small">{fdate(p.at)}<div className="muted">{p.by}</div></td>
         <td><div className="row6 nowrap">
           <button className="btn sm" title="Money receipt for this passport" onClick={() => openModal("mrEntry", { pp: p.id })}><LuReceipt /> Receipt</button>
@@ -55,18 +59,38 @@ export function PassportEntry({ title } = {}) {
   </>;
 }
 
+/* BMET details, laid out as RAIMS Pre EC Check shows them */
+export const BMET_FIELDS = [["regNo", "BMET Registration No"], ["finger", "BIO Finger"], ["available", "Availability"], ["nameBn", "Bangali Name"], ["nid", "NID Number"], ["dob", "Date of Birth"], ["father", "Father's Name"], ["mother", "Mother's Name"], ["mobile", "Mobile"], ["profession", "Profession"], ["address", "Permanent Address"], ["training", "Training"], ["pdo", "PDO Completed"], ["issueDate", "Passport Issue Date"], ["expiryDate", "Passport Expire Date"]];
 function Fields({ v, set, idx }) {
   const ags = agentsList(), refAgent = v.agentId && ags.find(a => a.id === v.agentId);
+  const [busy, setBusy] = React.useState(false);
+  const B = v.bmet || {}, setB = x => set({ bmet: { ...B, ...x } });
+  const fill = async () => { // the passport's details from RAIMS (Pre EC Check)
+    const pp = String(v.passport || "").replace(/\s+/g, ""); if (pp.length < 6) return toast("Enter the passport number first.");
+    setBusy(true); const r = await act("raims.preEc", { passport: pp, returnee: "no" }, { quiet: true }); setBusy(false);
+    if (!r?.ok) return toast(r?.problem || "RAIMS did not show a result for this passport.");
+    const e = r.entry || {}; set({ ...(e.name && !v.name.trim() ? { name: e.name } : {}), ...(e.gender && !v.gender ? { gender: e.gender } : {}), bmet: { ...B, ...Object.fromEntries(Object.entries(e.bmet || {}).filter(([, x]) => x)) } });
+    toast("Filled from RAIMS Pre EC Check.");
+  };
   return <>
     <Field label="Full name"><input type="text" value={v.name} onChange={e => set({ name: e.target.value })} maxLength={120} placeholder="As in the passport" aria-label={`Full name${idx ? ` ${idx}` : ""}`} /></Field>
-    <Field label="Passport number"><input type="text" value={v.passport} onChange={e => set({ passport: e.target.value.toUpperCase() })} maxLength={20} placeholder="A01234567" style={{ textTransform: "uppercase" }} /></Field>
+    <Field label="Passport number"><div className="preec-pp"><input type="text" value={v.passport} onChange={e => set({ passport: e.target.value.toUpperCase() })} maxLength={20} placeholder="A01234567" style={{ textTransform: "uppercase" }} />
+      {store.S.raimsReady && <button type="button" className="btn sm" disabled={busy} title="Fill from RAIMS Pre EC Check" onClick={fill}><LuShieldCheck /> {busy ? "…" : "Pre EC"}</button>}</div></Field>
     <Field label="Country"><CountrySelect value={v.country} onChange={c => set({ country: c })} /></Field>
     <Field label="Male/Female"><div className="seg2" role="radiogroup">{["Male", "Female"].map(g => <button key={g} type="button" role="radio" aria-checked={v.gender === g} className={v.gender === g ? "on" : ""} onClick={() => set({ gender: g })}>{g}</button>)}</div></Field>
+    <Field label="BMET Registration No"><input type="text" value={B.regNo || ""} maxLength={40} onChange={e => setB({ regNo: e.target.value.toUpperCase() })} placeholder="RBM2026…" /></Field>
+    <Field label="NID Number"><input type="text" inputMode="numeric" value={B.nid || ""} maxLength={20} onChange={e => setB({ nid: e.target.value })} /></Field>
+    <Field label="Date of Birth"><input type="text" value={B.dob || ""} maxLength={12} onChange={e => setB({ dob: e.target.value })} placeholder="DD-MM-YYYY" /></Field>
+    <Field label="Bangali Name"><input type="text" value={B.nameBn || ""} maxLength={120} onChange={e => setB({ nameBn: e.target.value })} /></Field>
+    <Field label="Father's Name"><input type="text" value={B.father || ""} maxLength={120} onChange={e => setB({ father: e.target.value })} /></Field>
+    <Field label="Mother's Name"><input type="text" value={B.mother || ""} maxLength={120} onChange={e => setB({ mother: e.target.value })} /></Field>
+    <Field label="Mobile"><input type="tel" value={B.mobile || ""} maxLength={20} onChange={e => setB({ mobile: e.target.value })} /></Field>
+    {(B.finger || B.available) && <Field label="BIO Finger · Availability"><div className="row6"><span className={`ec-badge ${/success/i.test(B.finger) ? "s-approved" : "s-rejected"}`}>{B.finger || "—"}</span><span className={`ec-badge ${/^available/i.test(B.available) ? "s-approved" : "s-rejected"}`}>{B.available || "—"}</span></div></Field>}
     <Field label="Ref." hint={refAgent ? `${refAgent.name} can use this passport in the agent panel.` : "An agent, or who referred the person"}>
       <input type="text" value={v.ref} list="pp-ref-agents" onChange={e => { const a = ags.find(x => x.name === e.target.value); set({ ref: e.target.value, agentId: a ? a.id : "" }); }} maxLength={120} placeholder="Agent or reference" /></Field>
   </>;
 }
-const blank = (k = Math.random().toString(36).slice(2), country = "") => ({ k, name: "", passport: "", country, gender: "", ref: "", agentId: "" });
+const blank = (k = Math.random().toString(36).slice(2), country = "") => ({ k, name: "", passport: "", country, gender: "", ref: "", agentId: "", bmet: {} });
 function PassportForm() {
   const [rows, setRows] = React.useState(() => [blank()]); const [busy, setBusy] = React.useState(false);
   const set = (i, v) => setRows(rows.map((r, j) => (j === i ? { ...r, ...v } : r)));
@@ -94,9 +118,9 @@ function PassportForm() {
   </form>;
 }
 function EditRow({ p, onDone }) {
-  const [v, setV] = React.useState({ name: p.name, passport: p.passport, country: p.country, gender: p.gender, ref: p.ref || "", agentId: p.agentId || "" });
+  const [v, setV] = React.useState({ name: p.name, passport: p.passport, country: p.country, gender: p.gender, ref: p.ref || "", agentId: p.agentId || "", bmet: { ...(p.bmet || {}) } });
   const save = async () => { if (await act("admin.passport", { op: "update", id: p.id, ...v })) onDone(); };
-  return <tr className="sel"><td colSpan={8}><div className="fgrid pp-edit"><Fields v={v} set={x => setV({ ...v, ...x })} />
+  return <tr className="sel"><td colSpan={13}><div className="fgrid pp-edit"><Fields v={v} set={x => setV({ ...v, ...x })} />
     <AgentDatalist id="pp-ref-agents" />
     <div className="full row6"><button type="button" className="btn sm pri" onClick={save}><LuCheck /> Save</button><button type="button" className="btn sm" onClick={onDone}><LuX /> Cancel</button></div></div></td></tr>;
 }

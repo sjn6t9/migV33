@@ -932,7 +932,7 @@ function preEcView(j, pp) {
     ["BIO Finger", finger === "" ? "" : yes(finger) ? "Success" : "Not Found"],
     ["Availability", avail === "" ? "" : yes(avail) || /^available$/i.test(avail) ? "Available" : "Not Available"],
     ["Name", person || g("name_en", "full_name", "employee_name", "applicant_name")],
-    ["Bangali Name", g("name_bn", "bangla_name", "name_bangla")],
+    ["Bangali Name", g("name_bn", "bangla_name", "name_bangla") || person || g("name_en", "full_name")],
     ["NID Number", g("national_id", "nid", "nid_number", "nid_no")],
     ["Date of Birth", day(g("date_of_birth", "dob", "birth_date"))],
     ["Father's Name", g("fathers_name", "father_name")],
@@ -948,7 +948,10 @@ function preEcView(j, pp) {
     ["Training", g("name_of_institution", "training_center", "institute_name")],
     ["PDO Completed", g("pdo_completed") === "" ? "" : yes(g("pdo_completed")) ? `Yes${g("pdo_completed_at") ? ` (${day(g("pdo_completed_at"))})` : ""}` : "No"],
   ].filter(([, v]) => v);
-  return { fields: F, alerts: [...new Set(alerts)] };
+  const val = l => (F.find(([k]) => k === l) || [])[1] || "";
+  const entry = { name: val("Name"), gender: gender === "Female" ? "Female" : gender === "Male" ? "Male" : "", bmet: { regNo: val("BMET Registration No"), finger: val("BIO Finger"), available: val("Availability"), nameBn: g("name_bn", "bangla_name"), nid: val("NID Number"), dob: val("Date of Birth"),
+    father: val("Father's Name"), mother: val("Mother's Name"), mobile: val("Mobile"), profession: val("Profession"), address: val("Permanent Address"), training: val("Training"), pdo: val("PDO Completed"), issueDate: val("Passport Issue Date"), expiryDate: val("Passport Expire Date"), checked: true } };
+  return { fields: F, alerts: [...new Set(alerts)], entry };
 }
 async function preEcCheck({ passport, returnee, otherPassport }) {
   const pp = ppNorm(passport); must(/^[A-Z0-9]{6,15}$/.test(pp), "Enter the passport number.");
@@ -1017,9 +1020,12 @@ async function preEcCheck({ passport, returnee, otherPassport }) {
     }
     lastRaims.set("page", { url: res?.url || pg.url, html: (res?.text || pg.text).slice(0, 600000) });
     const fields = fx.fields.filter(([k, v]) => v && !/^(type passport|has returnee|ami probashi|returnee other passport|_token)/i.test(k));
+    { const nm = fields.find(([k]) => /^name$/i.test(k)), bi = fields.findIndex(([k]) => /^bang(a|la)li? name$/i.test(k)); if (nm && bi < 0) fields.splice(fields.indexOf(nm) + 1, 0, ["Bangali Name", nm[1]]); }
     if (fields.length <= 2 && fields.some(([k, v]) => /^(message|error)$/i.test(k) && /unauth|login|expired|forbidden|csrf/i.test(v))) return { ok: false, problem: `RAIMS answered: ${fields.map(([, v]) => v).join(" ")}`, tried, page: htmlText(pg.text).slice(0, 600) };
     if (!fields.length && !fx.alerts.length) return { ok: false, problem: "RAIMS did not show a result for this passport.", tried, page: htmlText(res?.text || pg.text).slice(0, 800) };
-    return { ok: true, passport: pp, alerts: fx.alerts, fields };
+    const entry = fx.entry || (() => { const v = l => (fields.find(([k]) => new RegExp(`^${l}`, "i").test(k)) || [])[1] || ""; return { name: v("Name"), gender: /female/i.test(v("Gender")) ? "Female" : /male/i.test(v("Gender")) ? "Male" : "", bmet: { regNo: v("BMET Registration"), finger: v("BIO Finger"), available: v("Availability"), nameBn: v("Bangali Name"), nid: v("NID"), dob: v("Date of Birth"), checked: true } }; })();
+    const have = db.passports.find(p => p.passport === pp);
+    return { ok: true, passport: pp, alerts: fx.alerts, fields, entry, inList: !!(have && ppLists(have).includes("bmet")) };
   }
   must(false, "RAIMS signed out. Try again.");
 }
@@ -2513,6 +2519,7 @@ const PP_PERMS = ["clearance", "receipts", "ledger", "office", "visa"];
 // which entry lists a passport belongs to: BMET, KSA, Fiji (one passport can be in several)
 const ppLists = p => p.lists || (p.lists = [p.fiji && "fiji", p.info && "ksa", !p.fiji && !p.info && "bmet"].filter(Boolean));
 for (const p of db.passports || []) ppLists(p);
+const PP_BMET = ["regNo", "finger", "available", "nameBn", "nid", "dob", "father", "mother", "mobile", "profession", "address", "training", "pdo", "issueDate", "expiryDate"];
 const PP_INFO = ["fatherName", "motherName", "dob", "birthPlace", "prevNationality", "nationality", "marital", "sect", "religion", "address", "mofaId", "oldMofaId", "issuePlace", "issueDate", "expiryDate", "validity"];
 A["admin.passport"] = async (d, u) => {
   must(can(u, "clearance") || can(u, "visa"), "You do not have permission for this.", 403);
@@ -2522,7 +2529,9 @@ A["admin.passport"] = async (d, u) => {
     must(country, "Choose the country."); must(gender, "Choose Male or Female.");
     const ag = x.agentId ? user(x.agentId) : null; must(!x.agentId || ag?.role === "agent", "Agent not found.");
     const info = x.info && typeof x.info === "object" ? Object.fromEntries(PP_INFO.map(k => [k, VISA_DATES.includes(k) ? okDay(x.info[k]) : str(x.info[k], k === "address" ? 1000 : 160)]).filter(([, v]) => v)) : undefined;
-    return { name, passport, country, gender, ref: ag ? agentName(ag) : str(x.ref, 120), agentId: ag ? ag.id : null, ...(info ? { info } : {}) };
+    // BMET details (from Pre EC Check, or typed): registration, finger, availability, Bangla name, NID, parents, mobile …
+    const bm = x.bmet && typeof x.bmet === "object" ? Object.fromEntries(PP_BMET.map(k => [k, str(x.bmet[k], k === "address" ? 600 : 160)]).filter(([, v]) => v)) : undefined;
+    return { name, passport, country, gender, ref: ag ? agentName(ag) : str(x.ref, 120), agentId: ag ? ag.id : null, ...(info ? { info } : {}), ...(bm && Object.keys(bm).length ? { bmet: { ...bm, ...(x.bmet.checked ? { checked: now() } : {}) } } : {}) };
   };
   if (d.op === "add") {
     const list = (Array.isArray(d.rows) ? d.rows : [d]).slice(0, 100); must(list.length, "Add at least one passport.");
@@ -2535,7 +2544,7 @@ A["admin.passport"] = async (d, u) => {
     let merged = 0;
     for (const v of made) {
       const old = db.passports.find(p => p.passport === v.passport);
-      if (old) { Object.assign(old, v, { info: { ...(old.info || {}), ...(v.info || {}) }, lists: [...new Set([...ppLists(old), tag])], updated: now() }); merged++; }
+      if (old) { Object.assign(old, v, { info: { ...(old.info || {}), ...(v.info || {}) }, ...(v.bmet || old.bmet ? { bmet: { ...(old.bmet || {}), ...(v.bmet || {}) } } : {}), lists: [...new Set([...ppLists(old), tag])], updated: now() }); merged++; }
       else db.passports.unshift({ id: id("pp"), ...v, lists: [tag], by: u.name, at: now() });
     }
     return { msg: made.length > 1 ? `${made.length} passports added.` : merged ? `Passport ${made[0].passport} was already entered elsewhere; it is now in this list too.` : `Passport ${made[0].passport} added.` };
