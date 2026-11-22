@@ -86,29 +86,22 @@ export const Options = ({ list, blank }) => <>{blank !== undefined && <option va
 /* The clearance card from RAIMS by its card number (IT-I-2026-6009034): the server takes it from
    raims.oep.gov.bd/agency/employee/clearance-check/download/card/<number> with the agency's RAIMS sign-in */
 function RaimsCard({ c, who }) {
-  const [no, setNo] = React.useState(c.cardNo || `IT-I-${new Date().getFullYear()}-`), [fee, setFee] = React.useState("0"), [busy, setBusy] = React.useState("");
-  const ok = /^[A-Z]{1,4}(-[A-Z0-9]{1,12}){2,4}$/.test(no.trim());
+  // no Clearance ID to type: the server checks RAIMS Clearance Check with the file's passport and takes the card from there
+  const [fee, setFee] = React.useState("0"), [busy, setBusy] = React.useState("");
   const run = async op => {
-    if (!ok) return toast("Enter the card number, e.g. IT-I-2026-6009034.");
-    setBusy(op); const r = await act("admin.clRaimsCard", { id: c.id, no: no.trim(), op, fee: Number(fee || 0) }, op === "download" ? { quiet: true } : undefined); setBusy("");
+    setBusy(op); const r = await act("admin.clRaimsCard", { id: c.id, no: c.cardNo || "", op, fee: Number(fee || 0) }, op === "download" ? { quiet: true } : undefined); setBusy("");
     if (op === "download" && r?.file) downloadFile(r.file.data, r.file.name);
   };
-  // RAIMS Clearance Check by the file's passport number gives the Clearance ID
-  const find = async () => { setBusy("find"); const r = await act("admin.clRaimsCard", { id: c.id, op: "find" }); setBusy(""); if (r?.no) setNo(r.no); };
   return <div className="raims-card">
     <b><LuShieldCheck /> Clearance card from RAIMS</b>
-    <div className="raims-card-row">
-      <label className="f">Clearance ID (card number)<input type="text" value={no} maxLength={40} placeholder="IT-I-2026-6009034" autoCapitalize="characters" spellCheck={false}
-        onChange={e => setNo(e.target.value.toUpperCase().replace(/\s+/g, ""))} onKeyDown={e => { if (e.key === "Enter") run("download"); }} /></label>
-      {!c.card && <label className="f">Card fee (BDT)<input type="number" min="0" value={fee} onChange={e => setFee(e.target.value)} /></label>}
-    </div>
+    <p className="muted small">{c.cardNo ? <>Clearance ID <b data-notr>{c.cardNo}</b> (from RAIMS Clearance Check).</> : "The card is found in RAIMS Clearance Check by the worker's passport number."}</p>
+    {!c.card && <div className="raims-card-row"><label className="f">Card fee (BDT)<input type="number" min="0" value={fee} onChange={e => setFee(e.target.value)} /></label></div>}
     <div className="row tight wrap">
-      <button type="button" className="btn soft" disabled={!!busy} onClick={find}><LuSearch /> {busy === "find" ? "Checking…" : "Find from RAIMS"}</button>
-      <button type="button" className="btn" disabled={!!busy || !ok} onClick={() => run("download")}><LuDownload /> {busy === "download" ? "Getting…" : "Download Card"}</button>
-      <button type="button" className="btn pri" disabled={!!busy || !ok} onClick={() => run("send")}><LuSend /> {busy === "send" ? "Sending…" : c.card ? "Send Card again" : "Send Card"}</button>
-      {ok && <a className="btn sm link" href={`https://raims.oep.gov.bd/agency/employee/clearance-check/download/card/${encodeURIComponent(no.trim())}`} target="_blank" rel="noopener noreferrer">Open in RAIMS</a>}
+      <button type="button" className="btn" disabled={!!busy} onClick={() => run("download")}><LuDownload /> {busy === "download" ? "Getting…" : "Download Card"}</button>
+      <button type="button" className="btn pri" disabled={!!busy} onClick={() => run("send")}><LuSend /> {busy === "send" ? "Sending…" : c.card ? "Send Card again" : "Send Card"}</button>
+      {c.cardNo && <a className="btn sm link" href={`https://raims.oep.gov.bd/agency/employee/clearance-check/download/card/${encodeURIComponent(c.cardNo)}`} target="_blank" rel="noopener noreferrer">Open in RAIMS</a>}
     </div>
-    <p className="muted small">Send Card puts the card in the {who}'s portal to download. RAIMS must be signed in (BMET clearance › RAIMS).</p>
+    <p className="muted small">Send Card puts the card in the {who}'s portal to download.</p>
   </div>;
 }
 
