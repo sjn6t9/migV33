@@ -62,7 +62,7 @@ function ApplyClearance({ res, onDone }) {
       if (r) { setOpen(false); onDone?.(); }
     } catch (err) { toast(err.message); } finally { setBusy(false); }
   };
-  if (!open) return <div className="preec-apply mt10"><p className="small preec-ok"><LuCircleCheck /> Nothing to fix on RAIMS. You can apply for BMET clearance.</p>
+  if (!open) return <div className="preec-apply mt10"><p className="small preec-ok"><LuCircleCheck /> Nothing to fix on BMET. You can apply for BMET clearance.</p>
     <button type="button" className="btn pri" onClick={() => setOpen(true)}><LuSend /> Apply BMET Clearance</button></div>;
   return <form className="card fgrid mt10 preec-apply-form" onSubmit={submit} noValidate>
     <h4 className="full">{`Apply BMET Clearance · ${name || pp}`}</h4>
@@ -88,8 +88,8 @@ export function PreEcCheck({ onClose }) {
     if (r) setRes(r);
   };
   return <div className="card preec">
-    <div className="row between"><h3 className="bulk-h"><LuShieldCheck /> Pre EC Check</h3>{onClose && <button type="button" className="btn sm link" onClick={onClose} aria-label="Close"><LuX /></button>}</div>
-    {!ready ? <p className="muted small">The admin has not signed in to RAIMS yet (BMET clearance › RAIMS).</p> : <form className="fgrid" onSubmit={go} noValidate>
+    <div className="row between"><h3 className="bulk-h"><LuShieldCheck /> {me?.role === "agent" ? "Check & Application" : "Pre EC Check"}</h3>{onClose && <button type="button" className="btn sm link" onClick={onClose} aria-label="Close"><LuX /></button>}</div>
+    {!ready ? <p className="muted small">{me?.role === "agent" ? "BMET could not be checked right now. Please try again in a few minutes." : "The admin has not signed in to RAIMS yet (BMET clearance › RAIMS)."}</p> : <form className="fgrid" onSubmit={go} noValidate>
       <Field label="Has returnee? *" full><select value={f.returnee} onChange={e => setF({ ...f, returnee: e.target.value })}><option value="no">No</option><option value="same">Returnee with same passport</option><option value="other">Returnee with other passport</option></select></Field>
       {f.returnee === "other" && <Field label="Returnee other passport no. *" full><input type="text" value={f.other} maxLength={15} autoCapitalize="characters" autoCorrect="off" spellCheck={false} onChange={e => setF({ ...f, other: e.target.value.toUpperCase() })} placeholder="Passport no" /></Field>}
       <Field label="Passport number *" full><div className="preec-pp"><input type="text" value={f.passport} maxLength={15} autoCapitalize="characters" autoCorrect="off" spellCheck={false} onChange={e => setF({ ...f, passport: e.target.value.toUpperCase() })} placeholder="A12345678" />

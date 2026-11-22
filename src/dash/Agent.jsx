@@ -254,7 +254,7 @@ function ClearanceList({ C, W, active }) {
   return <>
     <div className="ec-head">
       <div><h2>BMET clearance applications</h2><div className="crumbs"><a href="#dashboard" onClick={e => { e.preventDefault(); setTab("agent", "overview"); }}>Home</a> <span>›</span> <b>EC Application List</b></div></div>
-      <div className="ec-head-btns"><button className={`btn ${form === "preec" ? "dark" : "soft"}`} onClick={() => setForm(f => f === "preec" ? false : "preec")}>{form === "preec" ? <LuX /> : <LuShieldCheck />} Pre EC Check</button>
+      <div className="ec-head-btns"><button className={`btn ${form === "preec" ? "dark" : "soft"}`} onClick={() => setForm(f => f === "preec" ? false : "preec")}>{form === "preec" ? <LuX /> : <LuShieldCheck />} Check &amp; Application</button>
       <button className="btn dark" onClick={() => setForm(f => f === true ? false : true)}>{form === true ? <LuX /> : <LuCirclePlus />} {form === true ? "Close the form" : "Create New Application"}</button></div>
     </div>
     {form === "preec" && <PreEcCheck onClose={() => setForm(false)} />}

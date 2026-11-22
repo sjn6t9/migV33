@@ -1215,7 +1215,7 @@ async function preEcCheck({ passport, returnee, otherPassport }) {
       }
       if (!hints.length) tried.push("the page names no search address");
     }
-    if (notFound) return { ok: false, notFound: true, passport: pp, problem: "No information on RAIMS for this passport. Check the passport number.", tried };
+    if (notFound) return { ok: false, notFound: true, passport: pp, problem: "No information on BMET for this passport. Check the passport number.", tried };
     if (apiFirst && fx.fields.filter(([, v]) => v).length < 3) { await sendForm(); if (res) { tried.push(`form ${method} ${action} → ${res.r.status}`); const f2 = raimsFields(res.text); if (f2.fields.filter(([, v]) => v).length >= 3) fx = f2; } }
     lastRaims.set("page", { url: res?.url || pg.url, html: (res?.text || pg.text).slice(0, 600000) });
     const fields = fx.fields.filter(([k, v]) => v && !/^(type passport|has returnee|ami probashi|returnee other passport|_token)/i.test(k));
@@ -1517,7 +1517,7 @@ A["raims.preEc"] = async (d, u, ctx) => { // uses the admin's RAIMS sign-in
   limit(u.id, "preec", u.role === "agent" ? 40 : 200, 3600e3);
   const r = await preEcCheck(d);
   if (u.role !== "admin" && !r.ok) { // agents and staff see a plain message, not what the agency's RAIMS session read
-    return { ok: false, passport: r.passport, problem: r.notFound || /did not show a result|not found/i.test(r.problem || "") ? "No information on RAIMS for this passport. Check the passport number." : "RAIMS could not be checked right now. Please try again in a few minutes." };
+    return { ok: false, passport: r.passport, problem: r.notFound || /did not show a result|not found/i.test(r.problem || "") ? "No information on BMET for this passport. Check the passport number." : "BMET could not be checked right now. Please try again in a few minutes." };
   }
   return r;
 };
