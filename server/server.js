@@ -1077,12 +1077,14 @@ function preEcView(j, pp) {
     for (const [k, x] of Object.entries(v)) { if (x && typeof x === "object") { scan(x, [...path, k]); continue; }
       if (!/name/i.test(k) || x == null) continue; const t = String(x).trim(); if (!t || t === "null" || t.length > 120 || /\d{3,}|@/.test(t)) continue;
       if (/^(male|female|other|third gender|hijra|yes|no|n\/?a|single|married|unmarried|divorced|widowed|islam|hindu|christian|buddhist|bangladeshi|bangladesh|active|inactive|pending|approved)$/i.test(t)) continue; // a value, not a name
-      if ([...path, k].some(z => NOT_PERSON.test(z))) continue; cands.push({ path, k, t, o: v }); } };
+      const P2 = [...path, k]; if (P2.some(z => NOT_PERSON.test(z))) { if (!P2.some(z => HARD_NOT.test(z))) weak.push({ path, k, t, o: v }); continue; } cands.push({ path, k, t, o: v }); } };
+  // HARD_NOT: relatives, places and organisations — never the person. Words like file / user / type / status / post can be in the key of the person's own record (e.g. profile), so those are a fallback
+  const HARD_NOT = /gender|sex|marital|blood|religion|father|mother|spouse|husband|wife|contact|nominee|guardian|relation|institut|center|centre|district|division|upazila|upazilla|thana|police|station|union|village|ward|city|area|address|zone|country|countr|nationality|bank|branch|company|agency|agent|employer|training|profession|occupation|trade|course|embassy|office|batch|place|location|permanent|present|_pa_|^pa_|_pr_|^pr_|recruit|sponsor|job|visa|demand|created|updated|by_|_by/i, weak = [];
   scan(j, []);
   const ownObj = o => Object.keys(o).some(k => PERSON_KEYS.test(k));
   const stem = k => k.toLowerCase().replace(/(^|_)(bn|bangla|bengali|bangali|en|english|eng)(_|$)/g, "$1$3").replace(/^_+|_+$/g, "");
   const rank = c => (ownObj(c.o) ? 0 : 10) + (/^(name|name_en|full_name|employee_name|applicant_name|name_english|en_name)$/i.test(c.k) ? 0 : 3) + c.path.length;
-  const bnC = cands.filter(c => BN.test(c.t)).sort((x, y) => rank(x) - rank(y))[0];
+  const bnC = cands.filter(c => BN.test(c.t)).sort((x, y) => rank(x) - rank(y))[0] || weak.filter(c => BN.test(c.t) && !/type|status|file$/i.test(c.k)).sort((x, y) => rank(x) - rank(y))[0];
   const enAll = cands.filter(c => !BN.test(c.t) && /^[A-Za-z][A-Za-z .'-]*$/.test(c.t));
   // English name: first next to the Bangla name (same object, same key stem), then in the person's own object
   // a value RAIMS also gives as a place (under an upazila / district / thana … key) is a place, not the person
@@ -1091,7 +1093,10 @@ function preEcView(j, pp) {
   pl(j, []);
   const enOk = enAll.filter(c => !places.has(c.t.toLowerCase()) && !/(^|_)(ps|po|upz|dist|div)(_|$)/i.test(c.k));
   const best = L => L.sort((x, y) => rank(x) - rank(y))[0];
-  const enC = (bnC && (enOk.find(c => c.o === bnC.o && stem(c.k) === stem(bnC.k)) || best(enOk.filter(c => c.o === bnC.o)))) || best(enOk);
+  let enC = (bnC && (enOk.find(c => c.o === bnC.o && stem(c.k) === stem(bnC.k)) || best(enOk.filter(c => c.o === bnC.o)))) || best(enOk);
+  if (!enC) { const W = weak.filter(c => !BN.test(c.t) && /^[A-Za-z][A-Za-z .'-]*\s[A-Za-z .'-]+$/.test(c.t) && !places.has(c.t.toLowerCase()) && !/(^|_)(ps|po|upz|dist|div)(_|$)|type|status|user_?name|file/i.test(c.k));
+    if (!W.length && bnC) for (const [k, x] of Object.entries(bnC.o)) if (typeof x === "string" && /^[A-Z][A-Za-z.'-]*(\s+[A-Za-z.'-]+){1,5}$/.test(x.trim()) && !HARD_NOT.test(k) && !/date|type|status|code|no$|number|id$/i.test(k) && !places.has(x.trim().toLowerCase())) W.push({ path: bnC.path, k, t: x.trim(), o: bnC.o });
+    enC = (bnC && (W.find(c => c.o === bnC.o) || W.find(c => stem(c.k) === stem(bnC.k)))) || best(W.filter(c => ownObj(c.o))) || best(W.filter(c => /^(name|name_en|full_name|employee_name|applicant_name|name_english|en_name)$/i.test(c.k))) || null; }
   let person = enC ? enC.t : "";
   const names = { en: person, bn: bnC ? bnC.t : "" };
   if (!person) { const fp = /passport_([A-Z_]+?)_\d{6,}/.exec(String(m.file_path || "")); if (fp) person = fp[1].replace(/_/g, " ").trim(); }
@@ -1128,7 +1133,7 @@ function preEcView(j, pp) {
     ["Passport No", g("passport_number", "passport_no") || pp],
     ["Permanent Address", addr],
     ["Profession", g("profession", "occupation")],
-  ].filter(([, v]) => v);
+  ].filter(([k, v]) => v || k === "Name"); // RAIMS always shows Name and Bangali Name
   const val = l => (F.find(([k]) => k === l) || [])[1] || "";
   const entry = { name: val("Name") || val("Bangali Name"), gender: gender === "Female" ? "Female" : gender === "Male" ? "Male" : "", bmet: { regNo: val("BMET Registration No"), finger: val("BIO Finger"), available: val("Availability"), nameBn: val("Bangali Name"), nid: val("NID Number"), dob: day(val("Date of Birth")),
     father: val("Father's Name"), mother: val("Mother's Name"), mobile: val("Phone Number"), profession: val("Profession"), address: val("Permanent Address"), training: g("name_of_institution", "training_center", "institute_name"), pdo: (/PDO: ([^·]+)/.exec(val("Training Info")) || [])[1]?.trim() || "", issueDate: day(val("Passport Issue Date")), expiryDate: day(val("Passport Expire Date")), checked: true } };
