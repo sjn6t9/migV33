@@ -768,15 +768,35 @@ A["flight.airports"] = async (d, u) => {
 };
 const FLIGHTS = new Map(); // search results kept 15 minutes, so a request can point at the flight that was shown
 const fmtFlight = (x, staff) => {
-  const mark = Number(db.settings.ticketMarkup || 0), gross = Math.round(Number(x.fare?.total_price || x.fare?.vendor_fare?.gross_fare || x.fare?.payable || 0));
-  const legs = (x.flights || []).map(f => ({ stops: f.stoppage ?? Math.max(0, (f.options || []).length - 1), minutes: f.elapsed_time || 0,
-    segs: (f.options || []).map(o => ({ from: o.departure?.airport_code, fromCity: (o.departure?.city || "").split(" - ")[0], dep: `${o.departure?.date || ""} ${String(o.departure?.time || "").slice(0, 5)}`,
-      to: o.arrival?.airport_code, toCity: (o.arrival?.city || "").split(" - ")[0], arr: `${o.arrival?.date || ""} ${String(o.arrival?.time || "").slice(0, 5)}`,
-      flight: `${o.carrier?.carrier_marketing_code || ""}${o.carrier?.carrier_marketing_flight_number || ""}`, aircraft: o.carrier?.carrier_aircraft_name || "" })) }));
-  const bag = x.availability?.[0]?.segments?.[0]?.passenger?.[0];
+  const pax = (x.passengers || []).reduce((t, p) => t + Number(p.number || 0), 0) || 1;
+  const mark = Number(db.settings.ticketMarkup || 0) * pax, gross = Math.round(Number(x.fare?.total_price || x.fare?.vendor_fare?.gross_fare || x.fare?.payable || 0));
+  const avail = x.availability || [];
+  const legs = (x.flights || []).map((f, li) => ({ stops: f.stoppage ?? Math.max(0, (f.options || []).length - 1), minutes: f.elapsed_time || 0, layovers: (f.layover_time || []).slice(0, Math.max(0, (f.options || []).length - 1)),
+    segs: (f.options || []).map((o, si) => { const pa = avail[li]?.segments?.[si]?.passenger?.[0] || {}; return {
+      from: o.departure?.airport_code, fromCity: String(o.departure?.city || "").split(" - ")[0], fromAirport: o.departure?.airport || "", fromTerm: o.departure?.terminal || "", dep: `${o.departure?.date || ""} ${String(o.departure?.time || "").slice(0, 5)}`,
+      to: o.arrival?.airport_code, toCity: String(o.arrival?.city || "").split(" - ")[0], toAirport: o.arrival?.airport || "", toTerm: o.arrival?.terminal || "", arr: `${o.arrival?.date || ""} ${String(o.arrival?.time || "").slice(0, 5)}`,
+      flight: `${o.carrier?.carrier_marketing_code || ""}${o.carrier?.carrier_marketing_flight_number || ""}`, flightNo: `${o.carrier?.carrier_marketing_code || ""}-${o.carrier?.carrier_marketing_flight_number || ""}`,
+      airline: o.carrier?.carrier_marketing_airline || x.carrier_name, operator: o.carrier?.carrier_operating_airline && o.carrier.carrier_operating_airline !== o.carrier?.carrier_marketing_airline ? o.carrier.carrier_operating_airline : "",
+      aircraft: o.carrier?.carrier_aircraft_name || o.carrier?.carrier_aircraft_code || "", minutes: o.elapsedTime || 0,
+      cabin: pa.cabin_type || "", rbd: pa.booking_code || "", bag: pa.baggage_count != null ? `${pa.baggage_count} ${String(pa.baggage_unit || "").toUpperCase()}` : "" }; }) }));
+  const pa0 = avail[0]?.segments?.[0]?.passenger?.[0];
+  const seats = Math.min(...avail.flatMap(a => (a.segments || []).flatMap(g => (g.passenger || []).map(p => Number(p.available_seat)).filter(n => n > 0))), 99);
+  // fare per traveller type: the price the customer sees (gross), with the service charge on top
+  const fares = (x.passengers || []).map(p => ({ type: p.type, n: Number(p.number || 1), base: Math.round(Number(p.fare?.base_fare || 0)), tax: Math.round(Number(p.fare?.tax || 0)), total: Math.round(Number(p.fare?.total_fare || 0)) }));
   return { id: x.flight_id, airline: x.carrier_name, code: x.carrier_code, logo: x.carrier_logo ? `https://m360-trabill.s3.ap-south-1.amazonaws.com/wftt-storage/${x.carrier_logo}` : "",
-    refundable: !!x.refundable, baggage: bag ? `${bag.baggage_count} ${bag.baggage_unit}` : "", cabin: bag?.cabin_type || "", legs, price: gross + mark,
-    ...(staff ? { net: Math.round(Number(x.fare?.payable || 0)), gross, api: x.api } : {}) };
+    refundable: !!x.refundable, baggage: pa0?.baggage_count != null ? `${pa0.baggage_count} ${String(pa0.baggage_unit || "").toUpperCase()}` : "", cabin: pa0?.cabin_type || "", rbd: pa0?.booking_code || "", seats: seats < 99 ? seats : null, legs, price: gross + mark, pax,
+    fare: { base: Math.round(Number(x.fare?.base_fare || 0)), tax: Math.round(Number(x.fare?.total_tax || 0)), service: mark, total: gross + mark, perPax: fares },
+    ...(staff ? { net: Math.round(Number(x.fare?.payable || 0)), gross, discount: Math.round(Number(x.fare?.discount || 0)), ait: Math.round(Number(x.fare?.ait || 0)), api: x.api } : {}) };
+};
+A["flight.rules"] = async (d, u) => { // the refund / re-issue policy of one flight (WFTT fare rules)
+  must(u, "Sign in first.", 401); const fid = str(d.flightId, 60), sid = str(d.searchId, 60); must(/^[\w-]{2,80}$/.test(fid) && /^[\w-]{2,80}$/.test(sid), "Search again.");
+  const token = await wfToken();
+  const { r } = await wfReq(`/btoc/multi-api/flight/fare-rules?flight_id=${encodeURIComponent(fid)}&search_id=${encodeURIComponent(sid)}`, { headers: { Authorization: `Bearer ${token}` } });
+  const j = await r.json().catch(() => ({})); must(r.ok && j.success !== false, j.message || "The policy is not available for this flight.");
+  const t = typeof j.data === "string" ? j.data : JSON.stringify(j.data || "");
+  const text = t.replace(/<br\s*\/?>/gi, "\n").replace(/<\/(p|li|div|h\d|tr)>/gi, "\n").replace(/<[^>]+>/g, " ").replace(/&nbsp;/g, " ").replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&#0?39;|&apos;/g, "'").replace(/&quot;/g, '"')
+    .split("\n").map(l => l.replace(/[ \t]+/g, " ").trim()).join("\n").replace(/\n{3,}/g, "\n\n").trim();
+  return { text: text.slice(0, 6000) };
 };
 A["flight.search"] = async (d, u) => {
   must(u && (u.role === "candidate" || (u.role === "agent" && u.status === "active") || can(u, "tickets")), "Sign in to search flights.", 401);
@@ -814,8 +834,8 @@ A["flight.search"] = async (d, u) => {
   return { list, searchId: info?.search_id || "", q: { from, to, date: dep, returnDate: ret, adults, children, infants, cabin: d.cabin || "economy" }, total: raw.length };
 };
 const flightSnap = f => f && typeof f === "object" ? { id: str(f.id, 60), airline: str(f.airline, 80), code: str(f.code, 4), logo: /^https:\/\/m360-trabill\.s3\.[a-z0-9-]+\.amazonaws\.com\//.test(f.logo || "") ? String(f.logo).slice(0, 200) : "",
-  refundable: !!f.refundable, baggage: str(f.baggage, 30), cabin: str(f.cabin, 30), price: numv(f.price, 0, 1e8),
-  legs: (Array.isArray(f.legs) ? f.legs : []).slice(0, 4).map(l => ({ stops: numv(l.stops, 0, 9), minutes: numv(l.minutes, 0, 9999), segs: (Array.isArray(l.segs) ? l.segs : []).slice(0, 5).map(g => Object.fromEntries(["from", "fromCity", "dep", "to", "toCity", "arr", "flight", "aircraft"].map(k => [k, str(g[k], 60)]))) })) } : null;
+  refundable: !!f.refundable, baggage: str(f.baggage, 30), cabin: str(f.cabin, 30), rbd: str(f.rbd, 4), price: numv(f.price, 0, 1e8), searchId: str(f.searchId, 60),
+  legs: (Array.isArray(f.legs) ? f.legs : []).slice(0, 4).map(l => ({ stops: numv(l.stops, 0, 9), minutes: numv(l.minutes, 0, 9999), segs: (Array.isArray(l.segs) ? l.segs : []).slice(0, 5).map(g => Object.fromEntries(["from", "fromCity", "fromAirport", "dep", "to", "toCity", "toAirport", "arr", "flight", "flightNo", "airline", "aircraft", "cabin", "bag"].map(k => [k, str(g[k], 80)]))) })) } : null;
 A["cand.ticket"] = async (d, u) => {
   needRole(u, "candidate"); must(str(d.from) && str(d.to) && str(d.prefDate), "Fill in the route and date.");
   const name = str(d.name, 120) || u.name, passport = ppNorm(d.passport || u.profile?.passportNo || "");
