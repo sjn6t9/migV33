@@ -2454,3 +2454,5 @@ P110|+{0} के साथ WhatsApp चैट खोलता है
 2420|RAIMS API पते
 2421|RAIMS के पेज जिन API पतों का उपयोग करते हैं
 2422|RAIMS डेटा (जाँच के लिए)
+2423|RAIMS से भरें (
+2424|RAIMS Pre EC Check से BMET Reg. No, BIO Finger, Availability, NID और जन्म तिथि पढ़ता है

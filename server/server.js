@@ -3058,6 +3058,33 @@ const PP_PERMS = ["clearance", "receipts", "ledger", "office", "visa"];
 // which entry lists a passport belongs to: BMET, KSA, Fiji (one passport can be in several)
 const ppLists = p => p.lists || (p.lists = [p.fiji && "fiji", p.info && "ksa", !p.fiji && !p.info && "bmet"].filter(Boolean));
 for (const p of db.passports || []) ppLists(p);
+/* BMET Passport Entry: fill a passport's BMET details (Reg. No, finger, availability, NID, birth date …) from RAIMS Pre EC Check,
+   one passport at a time in the background — for rows added from Add bulk, which bring only the name and passport number */
+const ppFillQ = new Set(); let ppFilling = false;
+const ppNeedsFill = p => ppLists(p).includes("bmet") && !p.bmet?.regNo && !(p.bmet?.tried && Date.now() - Date.parse(p.bmet.tried) < 6 * 3600e3);
+const raimsReady = () => !!(db.raims && (db.raims.pass || db.raims.cookies));
+function ppFillQueue(list) { if (!raimsReady()) return 0; let n = 0; for (const p of list) if (ppNeedsFill(p)) { ppFillQ.add(p.passport); n++; } ppFillRun(); return n; }
+async function ppFillRun() {
+  if (ppFilling) return; ppFilling = true;
+  try {
+    while (ppFillQ.size) {
+      const pp = ppFillQ.values().next().value; ppFillQ.delete(pp);
+      const p = db.passports.find(x => x.passport === pp); if (!p || p.bmet?.regNo) continue;
+      try {
+        const r = await preEcCheck({ passport: pp, returnee: "no" });
+        if (r.ok && r.entry && (r.entry.bmet?.regNo || r.entry.bmet?.nid)) {
+          const b = r.entry.bmet || {}, bm = Object.fromEntries(PP_BMET.map(k => [k, str(b[k], k === "address" ? 600 : 160)]).filter(([, v]) => v));
+          const { tried, ...old } = p.bmet || {}; p.bmet = { ...old, ...bm, checked: now() };
+          const nm = String(r.entry.name || "").trim(); if (nm && /^[A-Za-z]/.test(nm) && (!p.name || /[\u0980-\u09FF]/.test(p.name))) p.name = nm.slice(0, 120);
+          if (!p.gender && /^(Male|Female)$/.test(r.entry.gender || "")) p.gender = r.entry.gender;
+          p.updated = now();
+        } else p.bmet = { ...(p.bmet || {}), tried: now() };
+        save();
+      } catch (e) { if (/sign|log ?in|password|signed out/i.test(e.message)) { ppFillQ.clear(); break; } p.bmet = { ...(p.bmet || {}), tried: now() }; }
+      await new Promise(res => setTimeout(res, 1200));
+    }
+  } finally { ppFilling = false; }
+}
 const PP_BMET = ["regNo", "finger", "available", "nameBn", "nid", "dob", "father", "mother", "mobile", "profession", "address", "training", "pdo", "issueDate", "expiryDate"];
 const PP_INFO = ["fatherName", "motherName", "dob", "birthPlace", "prevNationality", "nationality", "marital", "sect", "religion", "address", "mofaId", "oldMofaId", "issuePlace", "issueDate", "expiryDate", "validity"];
 A["admin.passport"] = async (d, u) => {
@@ -3088,7 +3115,13 @@ A["admin.passport"] = async (d, u) => {
       if (old) { Object.assign(old, v, { info: { ...(old.info || {}), ...(v.info || {}) }, ...(v.bmet || old.bmet ? { bmet: { ...(old.bmet || {}), ...(v.bmet || {}) } } : {}), lists: [...new Set([...ppLists(old), tag])], updated: now() }); merged++; }
       else db.passports.unshift({ id: id("pp"), ...v, lists: [tag], by: u.name, at: now() });
     }
+    if (tag === "bmet") ppFillQueue(made.map(v => db.passports.find(p => p.passport === v.passport)).filter(Boolean));
     return { msg: made.length > 1 ? `${made.length} passports added.` : merged ? `Passport ${made[0].passport} was already entered elsewhere; it is now in this list too.` : `Passport ${made[0].passport} added.` };
+  }
+  if (d.op === "raimsFill") { // fill BMET details from RAIMS for every passport in the list that has none yet
+    must(raimsReady(), "RAIMS is not signed in. The admin signs in under BMET clearance › RAIMS.");
+    const all = db.passports.filter(p => ppLists(p).includes("bmet") && !p.bmet?.regNo); all.forEach(p => { if (p.bmet?.tried) { const { tried, ...rest } = p.bmet; p.bmet = rest; } });
+    const n = ppFillQueue(all); return { msg: n ? `Reading ${n} passport(s) from RAIMS. The rows fill in one by one.` : "Every passport already has its BMET details." };
   }
   if (d.op === "update") {
     const p = db.passports.find(x => x.id === d.id); must(p, "Passport not found."); const v = read(d);

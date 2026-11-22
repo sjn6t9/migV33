@@ -1,7 +1,7 @@
 // BMET Clearance › Passport entry: the office's list of passports (full name, passport number, country, gender, reference).
 // The same list is offered when making money receipts, account entries and BMET clearance applications.
 import React from "react";
-import { LuPlus, LuX, LuSearch, LuPencil, LuTrash2, LuCheck, LuReceipt, LuBookUser, LuFileSpreadsheet, LuShieldCheck } from "react-icons/lu";
+import { LuPlus, LuX, LuSearch, LuPencil, LuTrash2, LuCheck, LuReceipt, LuBookUser, LuFileSpreadsheet, LuShieldCheck, LuRefreshCw } from "react-icons/lu";
 import { store } from "../store.js";
 import { act, openModal, toast, confirmBox } from "../actions.js";
 import { Field } from "./shared.jsx";
@@ -31,6 +31,8 @@ const fdate = iso => new Date(iso).toLocaleDateString("en-GB", { day: "2-digit",
 export function PassportEntry({ title } = {}) {
   const [q, setQ] = React.useState(""); const [edit, setEdit] = React.useState(null); const [n, setN] = React.useState(50);
   const mine = passports().filter(inList("bmet")), list = mine.filter(ppMatch(q));
+  const miss = mine.filter(p => !p.bmet?.regNo).length; const [filling, setFilling] = React.useState(false);
+  const fill = async () => { setFilling(true); await act("admin.passport", { op: "raimsFill" }); setTimeout(() => setFilling(false), 4000); };
   const exportXlsx = () => xlsx("Passports", [["Full name", "Bangali Name", "Passport No.", "BMET Reg. No", "BIO Finger", "Availability", "NID", "Date of Birth", "Father's Name", "Mother's Name", "Mobile", "Country", "Gender", "Ref.", "Added"].map(v => ({ v, s: 1 })), ...list.map(p => [p.name, p.bmet?.nameBn || "", p.passport, p.bmet?.regNo || "", p.bmet?.finger || "", p.bmet?.available || "", p.bmet?.nid || "", p.bmet?.dob || "", p.bmet?.father || "", p.bmet?.mother || "", p.bmet?.mobile || "", p.country, p.gender, p.ref, p.at.slice(0, 10)])], [28, 22, 15, 18, 12, 14, 15, 12, 22, 22, 15, 16, 10, 26, 12], `passports-${new Date().toISOString().slice(0, 10)}.xlsx`);
   return <>
     <div className="ec-head"><div><h2>{title || "Passport entry"}</h2><p className="muted small">Enter passports once; use them in BMET clearance applications, money receipts and account entries. A Ref. that is one of our agents lets that agent use the passport too.</p></div></div>
@@ -38,6 +40,7 @@ export function PassportEntry({ title } = {}) {
     <div className="ec-tools mt14">
       <b>{`Passports (${mine.length})`}</b><span className="grow" />
       <label className="ec-search mr-search"><input type="text" value={q} onChange={e => { setQ(e.target.value); setN(50); }} placeholder="Search name, passport number, country or Ref." aria-label="Search passports" /><LuSearch /></label>
+      {miss > 0 && store.S.raims?.saved && <button className="btn soft" disabled={filling} onClick={fill} title="Reads BMET Reg. No, BIO Finger, Availability, NID and Date of Birth from RAIMS Pre EC Check"><LuRefreshCw /> {`Fill from RAIMS (${miss})`}</button>}
       <button className="btn" disabled={!list.length} onClick={exportXlsx}><LuFileSpreadsheet /> Excel</button>
     </div>
     {list.length ? <div className="tbl ec-tbl grid"><table><thead><tr><th>SL</th><th>Full name</th><th>Passport No.</th><th>BMET Reg. No</th><th>BIO Finger</th><th>Availability</th><th>NID</th><th>Date of Birth</th><th>Country</th><th>Male/Female</th><th>Ref.</th><th>Added</th><th>Actions</th></tr></thead><tbody>
