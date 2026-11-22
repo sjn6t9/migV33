@@ -1713,10 +1713,10 @@ A["admin.ledgerAdd"] = async (d, u) => { // one entry, or several at once (d.row
     const charge = x.type !== "payment", qty = charge && x.qty != null && x.qty !== "" ? numv(x.qty, 1, 10000) : 1;
     const rate = x.rate != null && x.rate !== "" ? numv(x.rate, 0, 1e8) : numv(x.amount, 0, 1e8);
     const amount = Math.round(qty * rate * 100) / 100; must(amount >= 1 && amount <= 1e9 && str(x.desc), `Enter the amount and description${at}.`);
-    return { id: id("l"), at: now(), agentId: ag.id, type: charge ? "charge" : "payment", desc: str(x.desc, 200), amount, ...(charge ? { qty, rate } : {}), date: /^\d{4}-\d{2}-\d{2}$/.test(x.date || "") ? x.date : now().slice(0, 10), method: charge ? "" : str(x.method, 120), ref: charge ? "" : str(x.ref, 80), status: "confirmed" };
+    return { id: id("l"), at: now(), agentId: ag.id, type: charge ? "charge" : "payment", desc: str(x.desc, 200), amount, ...(charge ? { qty, rate } : {}), date: /^\d{4}-\d{2}-\d{2}$/.test(x.date || "") ? x.date : now().slice(0, 10), method: charge || x.opening ? "" : str(x.method, 120), ref: charge ? "" : str(x.ref, 80), status: "confirmed", ...(x.opening ? { opening: true } : {}) };
   });
   db.ledger.push(...made);
-  for (const l of made) notify(ag.id, l.type === "charge" ? `New charge on your account: ${l.desc.slice(0, 100)} (${bdt(l.amount)}).` : `Payment of ${bdt(l.amount)} recorded.`);
+  for (const l of made) if (!l.opening) notify(ag.id, l.type === "charge" ? `New charge on your account: ${l.desc.slice(0, 100)} (${bdt(l.amount)}).` : `Payment of ${bdt(l.amount)} recorded.`);
   return { msg: made.length > 1 ? `${made.length} entries added.` : "Entry added." };
 };
 A["admin.ledgerEdit"] = async (d, u) => { // change rate × quantity (and details/date) of a charge
@@ -2552,7 +2552,7 @@ function officeAuto() {
   const out = [];
   for (const r of db.mr.receipts) if (r.status === "approved" && !r.void)
     out.push({ id: "a-" + r.id, auto: "receipt", date: r.date, type: "in", desc: `Money receipt ${r.no}${r.payer.name ? " · " + r.payer.name : r.payer.passport ? " · " + r.payer.passport : ""}${r.purpose ? " · " + r.purpose : ""}`, amount: r.amount, method: [r.method, r.channel].filter(Boolean).join(" · "), ref: r.ref, at: r.approved?.at || r.created || null });
-  for (const l of db.ledger) if (l.type === "payment" && l.status === "confirmed" && !l.mr) {
+  for (const l of db.ledger) if (l.type === "payment" && l.status === "confirmed" && !l.mr && !l.opening) { // opening balances (previous due / advance) stay out of the Main account
     const ag = user(l.agentId);
     out.push({ id: "a-" + l.id, auto: "agent", date: l.date, type: "in", desc: `Agent payment · ${agentName(ag) || "Agent"}${l.desc ? " · " + l.desc : ""}`, amount: Number(l.amount), method: l.method, ref: l.ref, at: l.confirmedAt || l.at || null });
   }
@@ -3116,7 +3116,7 @@ function linkBookAgent(b, x) {
     if (r.status === "approved" && !r.void && !r.ledgerId) { const l = { id: id("l"), agentId: x.id, type: "payment", desc: `Money receipt ${r.no}${r.payer.name ? ": " + r.payer.name : ""}`, amount: r.amount, date: r.date, method: [r.method, r.channel].filter(Boolean).join(" · "), ref: r.ref || "", status: "confirmed", mr: r.id }; db.ledger.push(l); r.ledgerId = l.id; }
   }
   for (const a of db.mr.accounts || []) if (!a.agentId && bookKey(a.agent) === k) { a.agentId = x.id; a.agent = agentName(x); }
-  for (const e of b.entries || []) { db.ledger.push({ id: id("l"), at: e.at, agentId: x.id, type: e.type, desc: e.desc, amount: e.amount, ...(e.type === "charge" ? { qty: e.qty, rate: e.rate } : {}), date: e.date, method: e.method || "", ref: e.ref || "", status: "confirmed" }); n.entries++; }
+  for (const e of b.entries || []) { db.ledger.push({ id: id("l"), at: e.at, agentId: x.id, type: e.type, desc: e.desc, amount: e.amount, ...(e.type === "charge" ? { qty: e.qty, rate: e.rate } : {}), date: e.date, method: e.method || "", ref: e.ref || "", status: "confirmed", ...(e.opening ? { opening: true } : {}) }); n.entries++; }
   // keep the details the office wrote, where the account has none
   x.agent = x.agent || {}; if (!x.agent.phone && b.mobile) x.agent.phone = b.mobile; if (!x.agent.address && b.address) x.agent.address = b.address;
   x.linkedBook = [...(x.linkedBook || []), { name: b.name, at: now(), ...n }];
@@ -3148,7 +3148,7 @@ A["admin.agentBook"] = async (d, u) => {
       const at = rows.length > 1 ? ` (row ${i + 1})` : "", type = r.type === "payment" ? "payment" : "charge";
       const rate = Math.round(Number(r.rate) * 100) / 100, qty = type === "charge" ? Math.max(1, Math.min(10000, Math.round(Number(r.qty) || 1))) : 1;
       must(rate > 0 && rate < 1e9 && str(r.desc), `Enter the amount and description${at}.`);
-      return { id: id("ae"), type, date: /^\d{4}-\d{2}-\d{2}$/.test(r.date || "") ? r.date : now().slice(0, 10), desc: str(r.desc, 200), rate, qty, amount: Math.round(rate * qty * 100) / 100, method: type === "payment" ? str(r.method, 40) : "", ref: str(r.ref, 80), by: u.name, at: now() };
+      return { id: id("ae"), type, date: /^\d{4}-\d{2}-\d{2}$/.test(r.date || "") ? r.date : now().slice(0, 10), desc: str(r.desc, 200), rate, qty, amount: Math.round(rate * qty * 100) / 100, method: type === "payment" && !r.opening ? str(r.method, 40) : "", ref: str(r.ref, 80), by: u.name, at: now(), ...(r.opening ? { opening: true } : {}) };
     });
     a.entries = [...(a.entries || []), ...made]; return { msg: made.length > 1 ? `${made.length} entries added.` : "Added to the account." };
   }

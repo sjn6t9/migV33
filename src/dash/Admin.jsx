@@ -915,24 +915,27 @@ function LedgerAddForm({ sel, book, title = "Add to payment history" }) {
   const blankRow = (type = "charge", date = day()) => ({ k: Math.random().toString(36).slice(2), type, date, rate: "", qty: "1", method: "Cash", ref: "", desc: "" });
   const [rows, setRows] = React.useState(() => [blankRow()]); const [busy, setBusy] = React.useState(false);
   const set = (i, v) => setRows(rows.map((r, j) => (j === i ? { ...r, ...v } : r)));
-  // "due": an amount the agent already owed before (opening balance) — saved as a charge of that amount
+  // opening balances, kept out of the Main account: "due" = owed from before (a charge), "advance" = advance money paid before (a credit)
+  const OPEN = { due: ["charge", "Previous due"], advance: ["payment", "Advance money"] };
   const total = r => (r.type === "charge" ? Number(r.qty) || 0 : 1) * (Number(r.rate) || 0);
   const add = async e => {
     e.preventDefault();
-    for (const [i, r] of rows.entries()) if (!(total(r) >= 1) || (!r.desc.trim() && r.type !== "due")) { toast(`Enter the amount and description${rows.length > 1 ? ` (row ${i + 1})` : ""}.`); return; }
+    for (const [i, r] of rows.entries()) if (!(total(r) >= 1) || (!r.desc.trim() && !OPEN[r.type])) { toast(`Enter the amount and description${rows.length > 1 ? ` (row ${i + 1})` : ""}.`); return; }
     setBusy(true);
-    const res = await act(book ? "admin.agentBook" : "admin.ledgerAdd", { ...(book ? { op: "entries", id: sel.id } : { agentId: sel.id }), rows: rows.map(r => ({ type: r.type === "due" ? "charge" : r.type, date: r.date, desc: r.type === "due" ? `Previous due${r.desc.trim() ? `: ${r.desc.trim()}` : ""}` : r.desc, rate: r.rate, qty: r.type === "charge" ? r.qty : 1, method: r.method, ref: r.ref })) });
+    const res = await act(book ? "admin.agentBook" : "admin.ledgerAdd", { ...(book ? { op: "entries", id: sel.id } : { agentId: sel.id }), rows: rows.map(r => { const o = OPEN[r.type]; return o ? { type: o[0], opening: true, date: r.date, desc: `${o[1]}${r.desc.trim() ? `: ${r.desc.trim()}` : ""}`, rate: r.rate, qty: 1, method: "", ref: r.ref } : { type: r.type, date: r.date, desc: r.desc, rate: r.rate, qty: r.type === "charge" ? r.qty : 1, method: r.method, ref: r.ref }; }) });
     setBusy(false); if (res) setRows([blankRow(rows[rows.length - 1].type, rows[rows.length - 1].date)]);
   };
-  const sum = rows.reduce((t, r) => t + (r.type === "payment" ? -1 : 1) * total(r), 0);
+  const sum = rows.reduce((t, r) => t + (r.type === "payment" || r.type === "advance" ? -1 : 1) * total(r), 0);
   return <form className="divider ledger-add" onSubmit={add} noValidate key={sel.id}>
     <h4>{title}</h4>
     {rows.map((r, i) => <div key={r.k} className={`fgrid${rows.length > 1 ? " mr-line" : ""}`}>
       {rows.length > 1 && <div className="mr-line-head full"><b>{`Entry ${i + 1}`}</b><button type="button" className="btn sm link danger" onClick={() => setRows(rows.filter((_, j) => j !== i))} aria-label={`Remove entry ${i + 1}`}><LuX /> Remove</button></div>}
-      <Field label="Type"><select value={r.type} onChange={e => set(i, { type: e.target.value })}><option value="charge">Debit: charge (agent owes)</option><option value="payment">Credit: money received</option><option value="due">Previous due (owed from before)</option></select></Field>
+      <Field label="Type"><select value={r.type} onChange={e => set(i, { type: e.target.value })}><option value="charge">Debit: charge (agent owes)</option><option value="payment">Credit: money received</option><optgroup label="Opening balance (not added to the Main account)"><option value="due">Previous due (owed from before)</option><option value="advance">Advance money (paid before)</option></optgroup></select></Field>
       <Field label="Date"><input type="date" value={r.date} onChange={e => set(i, { date: e.target.value })} required /></Field>
       {r.type === "due" ? <>
-        <Field label="Previous due (BDT)" hint="The amount the agent already owed before this account"><input type="number" min="1" value={r.rate} onChange={e => set(i, { rate: e.target.value })} placeholder="e.g. 25000" /></Field>
+        <Field label="Previous due (BDT)" hint="The amount the agent already owed before this account. Not added to the Main account."><input type="number" min="1" value={r.rate} onChange={e => set(i, { rate: e.target.value })} placeholder="e.g. 25000" /></Field>
+      </> : r.type === "advance" ? <>
+        <Field label="Advance money (BDT)" hint="Money the agent paid in advance before this account. Not added to the Main account."><input type="number" min="1" value={r.rate} onChange={e => set(i, { rate: e.target.value })} placeholder="e.g. 10000" /></Field>
       </> : r.type === "charge" ? <>
         <Field label="Rate (BDT) × Quantity" hint={total(r) ? `Debit: ${num(r.rate)} × ${r.qty || 0} = ${num(total(r))} BDT` : "e.g. 6000 × 1"}><div className="st-rq">
           <input type="number" min="1" value={r.rate} onChange={e => set(i, { rate: e.target.value })} placeholder="6000" aria-label="Rate (BDT)" /><span>X</span>
@@ -942,7 +945,7 @@ function LedgerAddForm({ sel, book, title = "Add to payment history" }) {
         <Field label="Received by"><select value={r.method} onChange={e => set(i, { method: e.target.value })}><option>Cash</option><optgroup label="Mobile banking">{MFS.map(x => <option key={x} value={`Mobile banking · ${x}`}>{x}</option>)}</optgroup><optgroup label="Bank">{BANKS.map(x => <option key={x} value={`Bank transfer · ${x}`}>{x}</option>)}</optgroup><option value="Cheque">Cheque</option><optgroup label="Given to (counted with them, not in office cash)">{(store.S.leaders || store.S.office?.leaders || []).map(l => <option key={l.k} value={`Person · ${l.k}`}>{`${l.name} · ${l.title}`}</option>)}</optgroup></select></Field>
         <Field label="Reference no."><input type="text" value={r.ref} onChange={e => set(i, { ref: e.target.value })} /></Field>
       </>}
-      <Field label={<span className="field-head">Details<PassportPick onPick={pp => set(i, { desc: ppLine(pp) })} /></span>} full><input type="text" value={r.desc} onChange={e => set(i, { desc: e.target.value })} placeholder={r.type === "due" ? "Optional, e.g. Old account up to Oct 2026" : r.type === "charge" ? "e.g. 1 QATAR (NON) (FC) PP (A16406219)" : "e.g. Money Received"} /></Field>
+      <Field label={<span className="field-head">Details<PassportPick onPick={pp => set(i, { desc: ppLine(pp) })} /></span>} full><input type="text" value={r.desc} onChange={e => set(i, { desc: e.target.value })} placeholder={OPEN[r.type] ? "Optional, e.g. Old account up to Oct 2026" : r.type === "charge" ? "e.g. 1 QATAR (NON) (FC) PP (A16406219)" : "e.g. Money Received"} /></Field>
     </div>)}
     <div className="row6 mt8"><button type="button" className="btn sm" onClick={() => { const l = rows[rows.length - 1]; setRows([...rows, blankRow(l.type, l.date)]); }}><LuPlus /> Add another entry</button>
       {rows.length > 1 && <span className="muted small">{`${rows.length} entries · balance change ${sum >= 0 ? "+" : "−"}${num(Math.abs(sum))} BDT`}</span>}</div>

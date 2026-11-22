@@ -26,7 +26,7 @@ export function bookRows(a) {
     if (c.fee > 0) rows.push({ id: `${c.id}f`, date: d, at: c.created, details: `BMET clearance processing: ${nm} (${c.ref})`, rate: `${amt(c.fee)}X1`, debit: c.fee, credit: 0 });
     if (c.due > 0) rows.push({ id: `${c.id}d`, date: d, at: c.created, details: `Previous due: ${nm} (${c.ref})`, rate: `${amt(c.due)}X1`, debit: c.due, credit: 0 });
   }
-  for (const e of a.entries || []) rows.push({ id: e.id, date: e.date, at: e.at, details: e.desc, ref: e.ref, rate: e.type === "charge" ? `${amt(e.rate)}X${e.qty}` : (e.method || "Cash").toUpperCase(), debit: e.type === "charge" ? e.amount : 0, credit: e.type === "payment" ? e.amount : 0, entry: e });
+  for (const e of a.entries || []) rows.push({ id: e.id, date: e.date, at: e.at, details: e.desc, ref: e.ref, rate: e.type === "charge" ? `${amt(e.rate)}X${e.qty}` : e.opening ? "ADVANCE" : (e.method || "Cash").toUpperCase(), debit: e.type === "charge" ? e.amount : 0, credit: e.type === "payment" ? e.amount : 0, entry: e });
   for (const r of (S.mr?.receipts || []).filter(r => !r.agentId && key(r.payer?.agent) === k && !r.void))
     rows.push({ id: r.id, date: r.date, at: r.created, details: `Money receipt ${r.no}${r.payer?.name && key(r.payer.name) !== k ? ": " + r.payer.name : ""}${r.purpose ? ` · ${r.purpose}` : ""}`, ref: r.ref, rate: [r.method, r.channel].filter(Boolean).join(" · ").toUpperCase(), debit: 0, credit: r.amount, pending: r.status !== "approved", receipt: r });
   return rows;

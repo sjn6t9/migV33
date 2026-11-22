@@ -19,7 +19,7 @@ const payWay = (method, channel) => {
 export function agentRows(ledger, agentId) {
   return ledger.filter(l => l.agentId === agentId && l.status !== "rejected").map(l => ({
     id: l.id, date: l.date, details: l.desc, ref: l.ref, pending: l.status !== "confirmed", src: l,
-    rate: l.type === "charge" ? `${amt(l.rate || l.amount)}X${l.qty || 1}` : payWay(l.method), rq: l.type === "charge" && !l.mr ? { rate: l.rate || l.amount, qty: l.qty || 1 } : null,
+    rate: l.type === "charge" ? `${amt(l.rate || l.amount)}X${l.qty || 1}` : l.opening ? "ADVANCE" : payWay(l.method), rq: l.type === "charge" && !l.mr ? { rate: l.rate || l.amount, qty: l.qty || 1 } : null,
     debit: l.type === "charge" ? Number(l.amount) : 0, credit: l.type === "payment" ? Number(l.amount) : 0
   }));
 }
