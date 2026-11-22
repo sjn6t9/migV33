@@ -1157,7 +1157,10 @@ async function preEcCheck({ passport, returnee, otherPassport }) {
     const method = form && /method\s*=\s*"?post/i.test(form[1]) ? "POST" : "GET";
     const action = form ? ((/action="([^"]*)"/i.exec(form[1]) || [])[1] || "/agency/employee/pre-ec-check").replace(/&amp;/g, "&") : "";
     let res = null, tried = [];
-    if (action) { res = method === "POST" ? await rq(J, action, { method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded", Referer: pg.url, "X-CSRF-TOKEN": tok }, body: body.toString() }) : await rq(J, action + (action.includes("?") ? "&" : "?") + body.toString()); }
+    // RAIMS checks with its API (api/v1/agency/employee/pre-ec-check/details/:passport_no/…, Bearer = the page's apiKey): ask it first, the form only if that fails
+    const apiFirst = !!raimsApiKey(pg.text) && /pre-ec-check\/details\//.test(pg.text);
+    const sendForm = async () => { if (action) { res = method === "POST" ? await rq(J, action, { method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded", Referer: pg.url, "X-CSRF-TOKEN": tok }, body: body.toString() }) : await rq(J, action + (action.includes("?") ? "&" : "?") + body.toString()); } };
+    if (!apiFirst) await sendForm();
     // a page that searches with its own script: ask the same address the script asks
     if (res) tried.push(`form ${method} ${action} → ${res.r.status} ${htmlText(res.text).replace(/\s+/g, " ").slice(0, 60)}`);
     let fx = res ? raimsFields(res.text) : { fields: [], alerts: [] };
@@ -1172,7 +1175,7 @@ async function preEcCheck({ passport, returnee, otherPassport }) {
       tried.push(bearer ? `token for the API: found (${bearer.from})` : "token for the API: not found on the page");
       for (const m of pg.text.matchAll(/.{0,80}(?:Authorization|Bearer|localStorage|sessionStorage|api_token|access_token).{0,80}/gi)) tried.push(`page script: ${m[0].replace(/[A-Za-z0-9._|\-]{24,}/g, x => x.slice(0, 6) + "…").trim()}`);
       const xh = extra => ({ "X-Requested-With": "XMLHttpRequest", Accept: "application/json, text/html, */*", "X-CSRF-TOKEN": tok, ...(xsrf ? { "X-XSRF-TOKEN": xsrf } : {}), ...(bearer ? { Authorization: `Bearer ${bearer.v}` } : {}), Referer: pg.url, Origin: origin, ...extra });
-      const hints = dataHints(pg.text).filter(u => /pre|ec|check|passport|employee|search|emigrant|worker/i.test(u)).slice(0, 6);
+      const hints = [...new Set([...raimsApis(pg.text).filter(u => /pre-ec-check\/details/i.test(u)), ...dataHints(pg.text).filter(u => /pre|ec|check|passport|employee|search|emigrant|worker/i.test(u))])].slice(0, 6);
       const rtCode = rtName ? body.get(rtName) : "no", oldPp = returnee === "other" ? ppNorm(otherPassport) : "null";
       for (const h of hints) {
         tried.push(`address: ${h}`);
@@ -1199,6 +1202,7 @@ async function preEcCheck({ passport, returnee, otherPassport }) {
       }
       if (!hints.length) tried.push("the page names no search address");
     }
+    if (apiFirst && fx.fields.filter(([, v]) => v).length < 3) { await sendForm(); if (res) { tried.push(`form ${method} ${action} → ${res.r.status}`); const f2 = raimsFields(res.text); if (f2.fields.filter(([, v]) => v).length >= 3) fx = f2; } }
     lastRaims.set("page", { url: res?.url || pg.url, html: (res?.text || pg.text).slice(0, 600000) });
     const fields = fx.fields.filter(([k, v]) => v && !/^(type passport|has returnee|ami probashi|returnee other passport|_token)/i.test(k));
     { const nm = fields.find(([k]) => /^name$/i.test(k)), bi = fields.findIndex(([k]) => /^bang(a|la)li? name$/i.test(k)); if (nm && bi < 0) fields.splice(fields.indexOf(nm) + 1, 0, ["Bangali Name", nm[1]]);
@@ -1232,6 +1236,27 @@ async function raimsOpen(search = "") {
   } catch (e) { if (e instanceof Fail) throw e; must(false, `Could not reach RAIMS: ${e.message}`); }
 }
 /* the RAIMS EC application list from its API: rows [EC Ref No (IC), status name, RID:<application id>] */
+const raimsApis = t => [...new Set([...String(t || "").matchAll(/["'`]((?:https?:\/\/raims\.oep\.gov\.bd)?\/?api\/v\d\/[^"'`\s$]{3,160})["'`]/gi)].map(m => m[1]))];
+/* workers of one EC application from the RAIMS API (api/v1/agency/ec/application/individual/<id>…, as the RAIMS page asks) */
+let raimsAppTpl = "";
+async function raimsAppApi(J, rid, key, referer) {
+  const T = [...new Set([raimsAppTpl, "/api/v1/agency/ec/application/individual/{id}", "/api/v1/agency/ec/application/individual/{id}/show", "/api/v1/agency/ec/application/{id}", "/api/v1/agency/ec/application/{id}/show", "/api/v1/agency/ec/application/individual/{id}/details"].filter(Boolean))];
+  for (const t of T) {
+    let x; try { x = await rq(J, t.replace("{id}", rid), { headers: { Authorization: `Bearer ${key}`, Accept: "application/json", "X-Requested-With": "XMLHttpRequest", Referer: referer } }); } catch { continue; }
+    if (x.r.status >= 400) continue; let j; try { j = JSON.parse(x.text); } catch { continue; }
+    const out = [], walk = (v, up) => { if (Array.isArray(v)) return v.forEach(z => walk(z, up)); if (!v || typeof v !== "object") return;
+      const E = Object.entries(v), pv = E.find(([k, z]) => /passport/i.test(k) && !/old|other|prev|return|issue|expir|date|place|type/i.test(k) && typeof z === "string" && /^[A-Z]{1,2}\d{7,8}$/.test(z.trim()));
+      if (pv) { const nm = (E.find(([k, z]) => /^(full_?)?name(_?en(glish)?)?$|^(employee|emigrant|worker)_?name$/i.test(k) && typeof z === "string") || [])[1] || "";
+        const ct = (E.find(([k, z]) => /country/i.test(k) && typeof z === "string") || [])[1] || (E.find(([k, z]) => /country/i.test(k) && z && typeof z === "object" && z.name) || [])[1]?.name || up || "";
+        out.push({ name: String(nm).trim(), passport: pv[1].trim(), country: String(ct).trim() }); }
+      const c2 = (E.find(([k, z]) => /country/i.test(k) && typeof z === "string") || [])[1] || (E.find(([k, z]) => /country/i.test(k) && z && typeof z === "object" && z.name) || [])[1]?.name || up;
+      for (const [, z] of E) if (z && typeof z === "object") walk(z, c2); };
+    walk(j, "");
+    const seen = new Set(), people = out.filter(p => !seen.has(p.passport) && seen.add(p.passport));
+    if (people.length) { raimsAppTpl = t; return { people, json: j }; }
+  }
+  return { people: [] };
+}
 const raimsApiKey = t => { const k = [...String(t || "").matchAll(/jsUtlt\[['"]apiKey['"]\]\s*=\s*['"]([^'"]{20,})['"]/g)].map(m => m[1]); return k[k.length - 1] || ""; };
 async function raimsApiList(search = "") {
   for (let attempt = 0; attempt < 2; attempt++) {
@@ -1501,7 +1526,7 @@ A["admin.raims"] = async (d, u) => {
     const raw = str(d.q, 300).trim(), q = raw.replace(/\s+/g, "").toUpperCase(); must(q.length >= 3, "Enter the IC number, the RAIMS link or its number.");
     const norm = v => String(v || "").replace(/\s+/g, "").toUpperCase(), PPR = /\b([A-Z]{1,2}\d{7,8})\b/;
     // the RAIMS page of one application (…/agency/ec/application/individual/1705123/show): its workers
-    const showPage = async (J, link, ic0, country0) => {
+    const showPage = async (J, link, ic0, country0, key0) => {
       const pg = await rq(J, link), txt = htmlText(pg.text), title = htmlText((/<title>([\s\S]*?)<\/title>/i.exec(pg.text) || [])[1] || ""), tables = (pg.text.match(/<table/gi) || []).length;
       must(!/name="password"/i.test(pg.text), "RAIMS signed out. Try again.");
       // the application's IC number; an IC-… number written after an employer / company registration label is not it
@@ -1514,7 +1539,9 @@ A["admin.raims"] = async (d, u) => {
       const ctry = country0 || (() => { const i = txt.search(/country/i); if (i < 0) return ""; const seg = txt.slice(i, i + 80).toLowerCase(); let best = ""; let at = 1e9;
         for (const c of [...Object.keys(COUNTRIES), ...CL_REGIONS.flatMap(([, L]) => L)]) { const j = seg.indexOf(c.toLowerCase()); if (j >= 0 && (j < at || (j === at && c.length > best.length))) { at = j; best = c; } } return best; })();
       const people = [];
-      for (const m of pg.text.matchAll(/<table[\s\S]*?<\/table>/gi)) {
+      { const rid = (/individual\/(\d+)/.exec(link) || [])[1], ak = raimsApiKey(pg.text) || key0;
+        if (rid && ak) { const a = await raimsAppApi(J, rid, ak, pg.url).catch(() => ({ people: [] })); for (const x of a.people) people.push({ ic: icp, name: x.name, passport: x.passport, country: x.country || ctry }); } }
+      if (!people.length) for (const m of pg.text.matchAll(/<table[\s\S]*?<\/table>/gi)) {
         const t = raimsRows(m[0]); if (!t.rows.some(r => PPR.test(r.join(" ")))) continue;
         const H = t.head.map(h => h.toLowerCase()), c = re => H.findIndex(h => re.test(h)), ci = { name: c(/name/), pp: c(/passport/), country: c(/country|destination/), ic: c(/\bic\b|clearance/) };
         for (const r of t.rows) { const pp = (PPR.exec(r.join(" ")) || [])[1]; if (!pp) continue;
@@ -1545,7 +1572,8 @@ A["admin.raims"] = async (d, u) => {
         starts.forEach((st, bi) => { const B = N.slice(st, starts[bi + 1] ?? N.length);
           const after = re => { const k = B.findIndex(x => re.test(x.trim())); return k >= 0 ? (B[k + 1] || "").trim() : ""; };
           const nm = after(/^Name\s*:?$/i), pp = after(/^Passport\s*(No\.?|Number)\s*:?$/i).replace(/\s+/g, "").toUpperCase();
-          if (!/^[A-Z0-9]{6,15}$/.test(pp) || people.some(x => x.passport === pp)) return;
+          if (!/^[A-Z0-9]{6,15}$/.test(pp)) return; const ex = people.find(x => x.passport === pp);
+          if (ex) { if (!ex.name && nm && !/^(N\/?A|-|—)$/i.test(nm)) ex.name = nm; return; }
           people.push({ ic: icLabel || icp, name: /^(N\/?A|-|—)$/i.test(nm) ? "" : nm, passport: pp, country: after(/^Visa Issue Country\s*:?$/i) || country2 }); }); }
       // a number is a passport only when its label says so: visa / work-permit / sticker numbers (e.g. Maldives ST00078814, WP00851002) look the same
       const ppLabelled = N.some(x => /^passport\s*(no\.?|number)?\s*:?$/i.test(x));
@@ -1578,7 +1606,7 @@ A["admin.raims"] = async (d, u) => {
         const ic = norm(String(r.ref_no || "")), ct = r.country?.name || "";
         const objs = []; const walk = v => { if (Array.isArray(v)) v.forEach(walk); else if (v && typeof v === "object") { const pv = Object.entries(v).find(([k, x]) => /passport/i.test(k) && typeof x === "string" && /^[A-Z]{1,2}\d{7,8}$/.test(x.trim())); if (pv) objs.push([v, pv[1].trim()]); else Object.values(v).forEach(walk); } }; walk(r);
         if (objs.length) { for (const [o, pp] of objs) people.push({ ic, name: String((Object.entries(o).find(([k, x]) => /name/i.test(k) && !/father|mother|spouse|agency|agent|employer|company|file|user|country|bn|bangla/i.test(k) && typeof x === "string") || [])[1] || "").trim(), passport: pp, country: ct }); continue; }
-        if (r.id) { const x = await showPage(A2.J, `/agency/ec/application/individual/${r.id}/show`, ic, ct); people.push(...x.people); }
+        if (r.id) { const x = await showPage(A2.J, `/agency/ec/application/individual/${r.id}/show`, ic, ct, A2.key); people.push(...x.people); }
       }
       const seen = new Set(); people = people.filter(x => x.passport && !seen.has(x.passport) && seen.add(x.passport));
       if (people.length) return { people: people.slice(0, 100), via: "api" };
@@ -1601,7 +1629,7 @@ A["admin.raims"] = async (d, u) => {
   if (d.op === "api") { // which RAIMS API addresses its own pages use (read only): helps move each task to the API
     must(u.role === "admin", "Only the admin can do this.");
     const J = await raimsLogin(), out = { pages: [] }, jsSeen = new Map();
-    const apis = t => [...new Set([...String(t || "").matchAll(/["'`]((?:https?:\/\/raims\.oep\.gov\.bd)?\/?api\/v\d\/[^"'`\s]{3,160})["'`]/gi)].map(m => m[1]))];
+    const apis = raimsApis;
     for (const path of ["/agency/dashboard", "/agency/ec/application/list", "/agency/employee/pre-ec-check", "/agency/employee/clearance-check", ...(d.page && /^\/agency\/[\w\/-]{3,120}$/.test(d.page) ? [d.page] : [])]) {
       try { const pg = await rq(J, path); if (/name="password"/i.test(pg.text) && /login/i.test(pg.url)) { out.pages.push({ path, error: "signed out" }); continue; }
         const found = new Set([...apis(pg.text), ...dataHints(pg.text)]);
