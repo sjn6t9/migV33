@@ -6,8 +6,8 @@ import { FaWhatsapp, FaFacebookF, FaYoutube, FaLinkedinIn, FaTiktok } from "reac
 import { ChatWidget } from "./Chat.jsx";
 import { TeamChatWidget } from "./TeamChat.jsx";
 import { ShareJob } from "./Share.jsx";
-import { store, subscribe, getVersion, touch, me, user, job, unread, PAGES, fdate, kb, candOf, worker, clPerson, LABEL, CL_STAGES, CL_DOCS , findMember, bdtFmt } from "./store.js";
-import { openModal, closeModal, signOut, toast, formData, setClStatus, downloadFile, fileExt, act, afterLogin, readUpload, DOC_TYPES, confirmBox, dashHash } from "./actions.js";
+import { store, subscribe, getVersion, touch, me, user, job, unread, PAGES, fdate, kb, candOf, worker, clPerson, LABEL, CL_STAGES, CL_DOCS , findMember, bdtFmt, balanceOf } from "./store.js";
+import { openModal, closeModal, signOut, toast, formData, setClStatus, downloadFile, fileExt, act, afterLogin, readUpload, DOC_TYPES, confirmBox, dashHash, setTab } from "./actions.js";
 import { Logo, Toast, ModalFrame, Pill, ClPipe, CardDownload, Avatar, Drawer } from "./ui.jsx";
 import { CardAdmin, AgentDocsView } from "./dash/shared.jsx";
 import { Home, Jobs, JobDetail, Services, About, Blog, Post, Contact, Track, Setup, Team, waLink } from "./pages/Public.jsx";
@@ -132,7 +132,7 @@ function Header({ navOn }) {
     <div className="utilbar"><div className="wrap"><div className="util-l">
       {store.S.settings.phone ? <a href={`tel:${store.S.settings.phone.replace(/[^\d+]/g, "")}`}><LuPhone /> <span className="num">{store.S.settings.phone}</span></a> : null}
       {store.S.settings.email ? <a className="util-mail" href={`mailto:${store.S.settings.email}`}><LuMail /> {store.S.settings.email}</a> : null}
-      <span className="util-lic">Government licensed recruiting agency · RL 1217</span></div><Prefs /></div></div>
+      <span className="util-lic">Government licensed recruiting agency · RL 1217</span></div><div className="util-r"><AgentBalanceChip /><Prefs /></div></div></div>
     <div className="wrap topbar">
       <button className="btn menu-btn" onClick={() => { ui.navOpen = true; touch(); }} aria-label="Open menu" aria-expanded={!!ui.navOpen}><LuMenu /></button>
       <a className="logo" href="#home" aria-label="Mam & Mam Overseas Ltd. home"><Logo /><div><b>MAM &amp; MAM OVERSEAS LTD.</b><span>Recruiting Licence RL 1217</span></div></a>
@@ -282,6 +282,14 @@ function PanelSignIn({ kind }) {
 function ThemeBtn() {
   const [, setN] = useState(0); const dark = currentTheme() === "dark";
   return <button className="btn sm icon" onClick={() => { toggleTheme(); setN(n => n + 1); }} aria-label={dark ? "Day mode" : "Night mode"} title={dark ? "Day mode" : "Night mode"}>{dark ? <LuSun /> : <LuMoon />}</button>;
+}
+/* agent: what they owe the agency (Due) or their advance (Balance), next to the language button; opens Payment history */
+function AgentBalanceChip() {
+  const u = me(); if (u?.role !== "agent" || !store.S.ledger) return null;
+  const bal = balanceOf(u.id); if (!bal) return null;
+  const due = bal > 0;
+  return <button type="button" className={`bal-chip ${due ? "due" : "adv"}`} onClick={() => setTab("agent", "account")} title="Payment history">
+    <span>{due ? "Due" : "Balance"}</span><b className="num" data-notr>{`৳ ${Math.abs(bal).toLocaleString("en-US")}`}</b></button>;
 }
 function Prefs() {
   const [, setN] = useState(0); const dark = currentTheme() === "dark"; const l = getLang();

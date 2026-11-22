@@ -1508,3 +1508,10 @@ button.hold-tile{cursor:pointer}
 .js-img img{width:100%;border-radius:12px;display:block}
 .js-info table th{text-align:left;padding-right:12px;white-space:nowrap;font-weight:600}
 .js-info .sub{margin:14px 0 4px}
+.util-r{display:flex;align-items:center;gap:8px;flex:none}
+.bal-chip{display:inline-flex;align-items:center;gap:6px;border:0;border-radius:999px;padding:4px 11px;font-size:12.5px;font-weight:600;cursor:pointer;line-height:1.3;white-space:nowrap}
+.bal-chip b{font-weight:800}
+.bal-chip.due{background:#d01c32;color:#fff}
+.bal-chip.adv{background:#d9f2e6;color:#00563f}
+.bal-chip:hover{filter:brightness(1.07)}
+@media (max-width:560px){.bal-chip{padding:3px 8px;font-size:12px;gap:4px}.util-r{gap:5px}}
