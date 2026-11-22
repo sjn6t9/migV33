@@ -949,7 +949,7 @@ function preEcView(j, pp) {
     ["PDO Completed", g("pdo_completed") === "" ? "" : yes(g("pdo_completed")) ? `Yes${g("pdo_completed_at") ? ` (${day(g("pdo_completed_at"))})` : ""}` : "No"],
   ].filter(([, v]) => v);
   const val = l => (F.find(([k]) => k === l) || [])[1] || "";
-  const entry = { name: val("Name"), gender: gender === "Female" ? "Female" : gender === "Male" ? "Male" : "", bmet: { regNo: val("BMET Registration No"), finger: val("BIO Finger"), available: val("Availability"), nameBn: g("name_bn", "bangla_name"), nid: val("NID Number"), dob: val("Date of Birth"),
+  const entry = { name: val("Name") || val("Bangali Name"), gender: gender === "Female" ? "Female" : gender === "Male" ? "Male" : "", bmet: { regNo: val("BMET Registration No"), finger: val("BIO Finger"), available: val("Availability"), nameBn: g("name_bn", "bangla_name"), nid: val("NID Number"), dob: val("Date of Birth"),
     father: val("Father's Name"), mother: val("Mother's Name"), mobile: val("Mobile"), profession: val("Profession"), address: val("Permanent Address"), training: val("Training"), pdo: val("PDO Completed"), issueDate: val("Passport Issue Date"), expiryDate: val("Passport Expire Date"), checked: true } };
   return { fields: F, alerts: [...new Set(alerts)], entry };
 }
@@ -1023,7 +1023,7 @@ async function preEcCheck({ passport, returnee, otherPassport }) {
     { const nm = fields.find(([k]) => /^name$/i.test(k)), bi = fields.findIndex(([k]) => /^bang(a|la)li? name$/i.test(k)); if (nm && bi < 0) fields.splice(fields.indexOf(nm) + 1, 0, ["Bangali Name", nm[1]]); }
     if (fields.length <= 2 && fields.some(([k, v]) => /^(message|error)$/i.test(k) && /unauth|login|expired|forbidden|csrf/i.test(v))) return { ok: false, problem: `RAIMS answered: ${fields.map(([, v]) => v).join(" ")}`, tried, page: htmlText(pg.text).slice(0, 600) };
     if (!fields.length && !fx.alerts.length) return { ok: false, problem: "RAIMS did not show a result for this passport.", tried, page: htmlText(res?.text || pg.text).slice(0, 800) };
-    const entry = fx.entry || (() => { const v = l => (fields.find(([k]) => new RegExp(`^${l}`, "i").test(k)) || [])[1] || ""; return { name: v("Name"), gender: /female/i.test(v("Gender")) ? "Female" : /male/i.test(v("Gender")) ? "Male" : "", bmet: { regNo: v("BMET Registration"), finger: v("BIO Finger"), available: v("Availability"), nameBn: v("Bangali Name"), nid: v("NID"), dob: v("Date of Birth"), checked: true } }; })();
+    const entry = fx.entry || (() => { const v = l => (fields.find(([k]) => new RegExp(`^${l}`, "i").test(k)) || [])[1] || ""; return { name: v("Name") || v("Bang") || v("Employee Name") || v("Full Name"), gender: /female/i.test(v("Gender")) ? "Female" : /male/i.test(v("Gender")) ? "Male" : "", bmet: { regNo: v("BMET Registration"), finger: v("BIO Finger"), available: v("Availability"), nameBn: v("Bangali Name"), nid: v("NID"), dob: v("Date of Birth"), checked: true } }; })();
     const have = db.passports.find(p => p.passport === pp);
     return { ok: true, passport: pp, alerts: fx.alerts, fields, entry, inList: !!(have && ppLists(have).includes("bmet")) };
   }

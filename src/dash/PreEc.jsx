@@ -11,6 +11,8 @@ import { Field } from "./shared.jsx";
 const good = v => /^(success|available|yes|valid|verified|active|eligible|ok|passed)$/i.test(String(v).trim());
 const bad = v => /^(fail(ed)?|not available|unavailable|no|invalid|expired|blocked|ineligible|not found|pending)$/i.test(String(v).trim());
 
+/* the worker's name: Name, or Bangali Name when RAIMS shows only that */
+const entryName = res => res?.entry?.name || ((res?.fields || []).find(([k, v]) => /^(name|bangali name|bangla name|employee name|full name)$/i.test(k) && v) || [])[1] || "";
 /* Add to Entry List: the checked person goes to Passport Entry › BMET Passport Entry with the RAIMS details */
 function AddToEntry({ res }) {
   const ags = agentsList();
@@ -58,7 +60,7 @@ export function PreEcCheck({ onClose }) {
     {res && (res.ok ? <div className="preec-res">
       <h4 className="mt14 mb6">Employee information</h4>
       {res.alerts.map((a, i) => <div key={i} className="preec-alert"><LuTriangleAlert /> <span data-notr>{a}</span></div>)}
-      {canAdd && res.entry?.name && <AddToEntry res={res} />}
+      {canAdd && entryName(res) && <AddToEntry res={{ ...res, entry: { ...(res.entry || {}), name: entryName(res), bmet: res.entry?.bmet || {} } }} />}
       <div className="preec-grid">{res.fields.map(([k, v], i) => <div key={i} className={`preec-f${good(v) ? " ok" : bad(v) ? " bad" : ""}`}><span>{k}</span><b data-notr dir="auto">{good(v) ? <LuCircleCheck /> : bad(v) ? <LuCircleX /> : null}{v}</b></div>)}</div>
     </div> : <div className="mt10"><p className="vf-err small">{res.problem}</p>
       {(res.page || res.tried) && <details className="vf-det small" open><summary>What RAIMS showed</summary>{(res.tried || []).map((t, i) => <p key={i} className="muted" data-notr>{t}</p>)}<p className="muted" data-notr>{res.page}</p></details>}</div>)}
