@@ -21,7 +21,7 @@ import { LANGS, getLang, setLang, t, onLang } from "./i18n.js";
 import { VisitingCard, VerifyMember, VerifyBody } from "./VCard.jsx";
 import { currentTheme, toggleTheme } from "./theme.js";
 import { SITE } from "./site.js";
-import { LuExternalLink, LuShieldCheck, LuUpload, LuTrash2 } from "react-icons/lu";
+import { LuExternalLink, LuShieldCheck, LuUpload, LuTrash2, LuLock, LuEye, LuEyeOff, LuStamp, LuPlaneTakeoff, LuWallet, LuUsers, LuFileCheck2, LuBadgeCheck } from "react-icons/lu";
 import { AgentBookEdit } from "./dash/AgentBook.jsx";
 
 let navSeq = 0, dashSeq = -1, dashFromAddr = false; // navSeq counts address changes (link, Back/Forward); dashSeq is the last one applied to the dashboard
@@ -88,6 +88,8 @@ export default function App() {
   if (page === "receipt") return <><VerifyReceipt token={arg} /><Toast /></>;
   if (page === "salary") return <><VerifySalary token={arg} /><Toast /></>;
   if (page === "statement") return <><VerifyStatement token={arg} /><Toast /></>;
+  // until the server has answered, we do not know who is signed in: show a short loading screen, not the sign-in form
+  if (!store.loaded && !store.offline && page !== "handoff") return <div className="boot-splash" role="status" aria-live="polite"><Logo size={72} /><span className="boot-dots"><i /><i /><i /></span><span className="sr-only">Loading…</span></div>;
   if (panelSite) return (
     <>
       <PanelHeader kind={panelSite} dash={!!me() && !["handoff", "setup", "job", "post"].includes(page)} />
@@ -239,24 +241,39 @@ async function agentSignOut() {
 
 function PanelSignIn({ kind }) {
   const busy = store.ui.busy; const agent = kind === "agent";
+  const [show, setShow] = useState(false), [caps, setCaps] = useState(false);
   const login = async e => {
     const [d] = formData(e);
     const r = await act("auth.login", { email: d.email, pass: d.pass });
     if (r?.otp) { openModal("otp", { otp: r.otp, email: r.email, code: r.code }); return; }
     if (r && !r.verify) afterLogin(r);
   };
+  const points = agent
+    ? [[LuStamp, "BMET clearance applications and Pre EC Check"], [LuUsers, "Your workers, files and job applications"], [LuWallet, "Payments, account balance and money receipts"]]
+    : [[LuFileCheck2, "BMET clearance, passports and visa files"], [LuUsers, "Agents, staff and office work"], [LuWallet, "Payments, receipts and statements"]];
+  const capsKey = e => setCaps(!!e.getModifierState?.("CapsLock"));
   return (
-    <section className="sec"><div className="wrap admin-signin">
-      <form className="card stack12" onSubmit={login}>
-        <div className="modal-brand"><Logo size={56} /></div>
-        <h1 className="h1s">{agent ? "Agent panel" : "Admin panel"}</h1>
-        <p className="muted">{agent ? "For the agency's registered agents." : "For the agency's admin and staff only."}</p>
-        <label className="f">Email<input type="email" name="email" required autoComplete="username" autoFocus /></label>
-        <label className="f">Password<input type="password" name="pass" required autoComplete="current-password" /></label>
-        <button className="btn pri" type="submit" disabled={busy}><LuLogIn /> Sign in</button>
+    <section className="signin-wrap"><div className="signin">
+      <aside className="signin-side">
+        <div className="signin-brand"><span className="signin-logo"><Logo size={52} /></span><div><b>MAM &amp; MAM OVERSEAS LTD.</b><span>Government licensed recruiting agency · RL 1217</span></div></div>
+        <div className="signin-pitch"><span className="signin-tag">{agent ? <><LuPlaneTakeoff /> Agent panel</> : <><LuShieldCheck /> Admin panel</>}</span>
+          <h2>{agent ? "Everything for your workers, in one place." : "Run the agency's work from one place."}</h2>
+          <ul>{points.map(([I, l]) => <li key={l}><span><I /></span>{l}</li>)}</ul></div>
+        <p className="signin-foot"><LuBadgeCheck /> Licensed by the Government of Bangladesh · RL 1217</p>
+      </aside>
+      <form className="signin-form" onSubmit={login}>
+        <div className="signin-mlogo"><Logo size={56} /></div>
+        <h1>{agent ? "Agent sign in" : "Welcome back"}</h1>
+        <p className="muted">{agent ? "Sign in with your registered agent account." : "For the agency's admin and staff only."}</p>
+        <label className="signin-f"><span>Email</span><div className="signin-in"><LuMail aria-hidden="true" /><input type="email" name="email" required autoComplete="username" autoFocus placeholder="name@example.com" inputMode="email" /></div></label>
+        <label className="signin-f"><span>Password</span><div className="signin-in"><LuLock aria-hidden="true" /><input type={show ? "text" : "password"} name="pass" required autoComplete="current-password" placeholder="Your password" onKeyUp={capsKey} onKeyDown={capsKey} />
+          <button type="button" className="signin-eye" onClick={() => setShow(x => !x)} aria-label={show ? "Hide password" : "Show password"} title={show ? "Hide password" : "Show password"}>{show ? <LuEyeOff /> : <LuEye />}</button></div>
+          {caps && <em className="signin-caps">Caps Lock is on.</em>}</label>
+        <button className="btn pri signin-btn" type="submit" disabled={busy}>{busy ? <span className="boot-dots sm"><i /><i /><i /></span> : <><LuLogIn /> Sign in</>}</button>
+        <p className="signin-safe"><LuShieldCheck /> You stay signed in on this device for 30 days, or until you sign out.</p>
         {SITE.main && (agent
-          ? <p className="muted small">New agent? <a href={`${SITE.main}/#home`}>Register on the website</a></p>
-          : <p className="muted small">Job seeker, employer or agent? <a href={SITE.main}>Go to the website</a></p>)}
+          ? <p className="muted small signin-alt">New agent? <a href={`${SITE.main}/#home`}>Register on the website</a></p>
+          : <p className="muted small signin-alt">Job seeker, employer or agent? <a href={SITE.main}>Go to the website</a></p>)}
       </form>
     </div></section>
   );
