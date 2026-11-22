@@ -20,7 +20,7 @@ export const LABEL = {
   applied: "Applied", shortlisted: "Shortlisted", interview: "Interview", medical: "Medical", visa: "Visa processing", clearance: "BMET clearance", flight: "Flight booked", hired: "Hired", rejected: "Rejected",
   requested: "Requested", booked: "Booked", cancelled: "Cancelled",
   unverified: "Email not verified",
-  received: "Received", sent_bmet: "Send to BMET", section: "Section", ad: "AD", dd: "DD", director: "Director", adg: "ADG", final: "Final Approval", approved: "Approved",
+  received: "Received", sent_bmet: "Send to BMET", section: "Pending Section Approval", ad: "Pending AD Approval", dd: "Pending DD Approval", director: "Pending Director Approval", adg: "Pending ADG Approval", final: "Pending Final Approval", approved: "Approved",
   submitted: "Submitted", docs: "Documents verified", finger: "Fingerprint done", processing: "Processing at BMET", issued: "Clearance issued", confirmed: "Confirmed",
   active: "Active", pending: "Pending", paused: "Paused", closed: "Closed", suspended: "Suspended", verified: "Verified", paid: "Paid"
 };

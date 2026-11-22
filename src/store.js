@@ -84,7 +84,8 @@ export function clPerson(c) {
 }
 // a custom status (written by the agency) keeps the file at its last real stage
 export const clStage = c => (c.status === "custom" ? c.baseStage || "pending" : c.status);
-export const clLabel = c => (c.status === "custom" ? c.statusText || "Custom" : LABEL[c.status] || c.status);
+// the status as RAIMS words it (when RAIMS set it), else ours
+export const clLabel = c => (c.status === "custom" ? c.statusText || "Custom" : c.raims?.status && c.raims.stage === c.status ? c.raims.status : LABEL[c.status] || c.status);
 export const clOpen = c => !["approved", "rejected"].includes(c.status);
 export const cardPending = c => c.status === "approved" && !c.card;
 

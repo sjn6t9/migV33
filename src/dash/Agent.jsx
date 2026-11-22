@@ -213,7 +213,8 @@ const EC_STATUS = {
   dd: "Pending DD Approval", director: "Pending Director Approval", adg: "Pending ADG Approval", final: "Pending Final Approval", approved: "Final Approved", rejected: "Rejected"
 };
 // "Approved" only once the agency has uploaded the clearance card; before that a finally approved file shows "Final Approved"
-const ecStatus = c => c.status === "custom" ? [c.statusText || "Custom", "s-custom"] : c.status === "approved" && c.card ? ["Approved", "s-approved"] : [EC_STATUS[c.status] || c.status, `s-${c.status === "approved" ? "final" : c.status}`];
+// after the file is sent to BMET the status is the one RAIMS shows (it can go back, e.g. Director → Section, and up again until Approved)
+const ecStatus = c => c.status === "custom" ? [c.statusText || "Custom", "s-custom"] : c.status === "approved" ? ["Approved", "s-approved"] : [(c.raims?.stage === c.status && c.raims.status) || EC_STATUS[c.status] || c.status, `s-${c.status}`];
 const ecPay = c => {
   if (!["final", "approved"].includes(c.status === "custom" ? c.baseStage : c.status)) return "na";
   if (c.payment?.status === "paid" || c.card?.feePaid) return "paid";

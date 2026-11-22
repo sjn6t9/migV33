@@ -1088,13 +1088,21 @@ async function raimsSync(by = "auto") {
       const files = byPp ? [byPp] : ic ? db.clearances.filter(x => String(x.ref || "").toUpperCase() === ic || String(x.icNo || "").replace(/\s+/g, "").toUpperCase() === ic) : [];
       if (!files.length) continue; out.matched += files.length;
       const stage = raimsStage(st); if (!stage) continue;
+      const cardNo = (/\b(IT-[A-Z]-\d{4}-\d{4,})\b/i.exec(line) || [])[1]?.toUpperCase();
       for (const c of files) {
-      const cur = c.status === "custom" ? c.baseStage : c.status, ci = CL_STAGES.indexOf(cur), ni = CL_STAGES.indexOf(stage);
-      if (c.status === "approved" || c.card) continue; // done here already
-      if (stage !== "rejected" && ni <= ci) continue; // RAIMS behind or equal: keep ours
-      await A["admin.clStatus"]({ id: c.id, status: stage }, { role: "admin", id: "raims", name: "RAIMS" });
-      c.history[c.history.length - 1].by = "RAIMS"; c.raims = { status: st, at: now() };
-      out.updated.push({ ref: c.ref, name: worker(c.workerId)?.name || c.fullName || "", from: LABEL[cur] || cur, to: LABEL[stage], raims: st });
+        if (cardNo && !c.cardNo) c.cardNo = cardNo;
+        // RAIMS decides the status only after we sent the file to BMET; before that (Pending / Received) it stays ours
+        const cur = c.status === "custom" ? c.baseStage : c.status, ci = CL_STAGES.indexOf(cur);
+        if (c.status === "approved" || c.card || c.status === "rejected") continue; // done here already
+        if (ci < CL_STAGES.indexOf("sent_bmet")) continue;
+        // the same as RAIMS, step by step: a file can go back (Director → Section …) and up again until Approved
+        if (c.status === stage && c.raims?.status === st) continue;
+        const name = worker(c.workerId)?.name || c.fullName || user(c.candidateId)?.name || "the worker";
+        c.status = stage; delete c.statusText; delete c.baseStage;
+        c.history.push({ s: stage, t: st, at: now(), by: "RAIMS" }); c.raims = { status: st, stage, at: now() };
+        const payNow = c.agentId && ["final", "approved"].includes(stage) && !["submitted", "paid"].includes(c.payment?.status) ? " Send the payment receipt from BMET clearance (Unpaid)." : "";
+        notify(c.agentId || c.candidateId, `BMET clearance for ${name}: ${st}.${stage === "approved" ? " The clearance card will be sent to your portal." : ""}${payNow}`);
+        out.updated.push({ ref: c.ref, name, from: c.history.length > 1 ? (c.history[c.history.length - 2].t || LABEL[cur] || cur) : LABEL[cur] || cur, to: st, raims: st });
       }
     }
     out.ok = true;
@@ -1284,6 +1292,32 @@ A["admin.card"] = async ({ id: cid, file, fee }, u) => {
   if (!replacing && f > 0 && c.agentId) db.ledger.push({ id: id("l"), agentId: c.agentId, type: "charge", desc: `BMET clearance card fee: ${name}`, amount: f, date: now().slice(0, 10), method: "", ref: "", status: "confirmed" });
   notify(owner, `${replacing ? "Updated clearance card" : "Clearance card"} for ${name} is ready. Download it from your portal${f > 0 && !replacing ? `. Card fee: ${bdt(f)}` : ""}.`);
   return { msg: c.agentId ? "Clearance card sent to the agent." : c.candidateId ? "Clearance card sent to the job seeker." : "Clearance card saved." };
+};
+/* the clearance card from RAIMS (…/agency/employee/clearance-check/download/card/IT-I-2026-6009034):
+   download it here, or send it to the agent's portal (as the file's clearance card) */
+A["admin.clRaimsCard"] = async (d, u) => {
+  needPerm(u, "clearance"); const c = db.clearances.find(x => x.id === d.id); must(c, "File not found.");
+  const no = str(d.no, 40).toUpperCase().replace(/\s+/g, ""); must(/^[A-Z]{1,4}(-[A-Z0-9]{1,12}){2,4}$/.test(no), "Enter the card number, e.g. IT-I-2026-6009034.");
+  c.cardNo = no;
+  if (d.op === "save") return { msg: `Card number saved: ${no}` };
+  must(c.status === "approved", "The card can be taken after the file is Approved.");
+  let buf = null, type = "";
+  for (let attempt = 0; attempt < 2 && !buf; attempt++) {
+    const J = await raimsLogin(attempt > 0);
+    const r = await fetch(`${RAIMS}/agency/employee/clearance-check/download/card/${encodeURIComponent(no)}`, { redirect: "manual", headers: { "User-Agent": "Mozilla/5.0 (MAM Overseas portal)", Accept: "application/pdf,image/*,*/*", Cookie: J.get() }, signal: AbortSignal.timeout(45000) });
+    J.set(r); const b = Buffer.from(await r.arrayBuffer());
+    if (r.status >= 300 && r.status < 400) { raimsSess = null; continue; } // signed out: sign in again once
+    must(r.ok, `RAIMS did not give the card (${r.status}). Check the card number.`);
+    if (b.slice(0, 4).toString() === "%PDF") { buf = b; type = "application/pdf"; }
+    else if (b[0] === 0xff && b[1] === 0xd8) { buf = b; type = "image/jpeg"; }
+    else if (b.slice(1, 4).toString() === "PNG") { buf = b; type = "image/png"; }
+    else { if (/name="password"/i.test(b.toString("utf8", 0, 20000))) { raimsSess = null; continue; } must(false, "RAIMS did not send a card for this number. Check the number."); }
+  }
+  must(buf, "RAIMS signed out. Sign in to RAIMS again from BMET clearance › RAIMS.");
+  const ext = type === "application/pdf" ? "pdf" : type === "image/png" ? "png" : "jpg";
+  const file = { name: `${no}.${ext}`, data: `data:${type};base64,${buf.toString("base64")}` };
+  if (d.op === "send") { const r = await A["admin.card"]({ id: c.id, file, fee: d.fee }, u); return { ...r, msg: `${r.msg} (${no})` }; }
+  return { file };
 };
 /* clearance fee: after Final Approval the agent sends a payment receipt; the agency approves it and the file shows Paid */
 const CL_PAYABLE = ["final", "approved"];

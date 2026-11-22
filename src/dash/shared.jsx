@@ -1,5 +1,5 @@
 import React from "react";
-import { LuPlus, LuPencil, LuRotateCcw, LuEye, LuCheck, LuX, LuTrash2, LuUpload, LuSend, LuDownload, LuCamera, LuFileText, LuIdCard, LuFileBadge } from "react-icons/lu";
+import { LuPlus, LuPencil, LuRotateCcw, LuEye, LuCheck, LuX, LuTrash2, LuUpload, LuSend, LuDownload, LuCamera, LuFileText, LuIdCard, LuFileBadge, LuShieldCheck } from "react-icons/lu";
 import { store, num, fdate, kb, bdtFmt, candOf, clPerson, job, STAGES, LABEL, CARD_TYPES, COUNTRIES, CATS, TYPES, BENEFITS, HOURLY } from "../store.js";
 import { openModal, setAppStatus, confirmPayment, confirmBox, toast, downloadFile, cardFileName, formData, act } from "../actions.js";
 import { Pill, Empty, Avatar } from "../ui.jsx";
@@ -83,6 +83,32 @@ export const ClCountryOptions = () => { const ours = Object.keys(COUNTRIES); ret
   {CL_REGIONS.map(([g, L]) => <optgroup key={g} label={g}>{L.filter(c => !ours.includes(c)).map(c => <option key={c}>{c}</option>)}</optgroup>)}</>; };
 export const Options = ({ list, blank }) => <>{blank !== undefined && <option value="">{blank}</option>}{list.map(v => Array.isArray(v) ? <option key={v[0]} value={v[0]}>{v[1]}</option> : <option key={v}>{v}</option>)}</>;
 
+/* The clearance card from RAIMS by its card number (IT-I-2026-6009034): the server takes it from
+   raims.oep.gov.bd/agency/employee/clearance-check/download/card/<number> with the agency's RAIMS sign-in */
+function RaimsCard({ c, who }) {
+  const [no, setNo] = React.useState(c.cardNo || `IT-I-${new Date().getFullYear()}-`), [fee, setFee] = React.useState("0"), [busy, setBusy] = React.useState("");
+  const ok = /^[A-Z]{1,4}(-[A-Z0-9]{1,12}){2,4}$/.test(no.trim());
+  const run = async op => {
+    if (!ok) return toast("Enter the card number, e.g. IT-I-2026-6009034.");
+    setBusy(op); const r = await act("admin.clRaimsCard", { id: c.id, no: no.trim(), op, fee: Number(fee || 0) }, op === "download" ? { quiet: true } : undefined); setBusy("");
+    if (op === "download" && r?.file) downloadFile(r.file.data, r.file.name);
+  };
+  return <div className="raims-card">
+    <b><LuShieldCheck /> Clearance card from RAIMS</b>
+    <div className="raims-card-row">
+      <label className="f">Card number<input type="text" value={no} maxLength={40} placeholder="IT-I-2026-6009034" autoCapitalize="characters" spellCheck={false}
+        onChange={e => setNo(e.target.value.toUpperCase().replace(/\s+/g, ""))} onKeyDown={e => { if (e.key === "Enter") run("download"); }} /></label>
+      {!c.card && <label className="f">Card fee (BDT)<input type="number" min="0" value={fee} onChange={e => setFee(e.target.value)} /></label>}
+    </div>
+    <div className="row tight wrap">
+      <button type="button" className="btn" disabled={!!busy || !ok} onClick={() => run("download")}><LuDownload /> {busy === "download" ? "Getting…" : "Download Card"}</button>
+      <button type="button" className="btn pri" disabled={!!busy || !ok} onClick={() => run("send")}><LuSend /> {busy === "send" ? "Sending…" : c.card ? "Send Card again" : "Send Card"}</button>
+      {ok && <a className="btn sm link" href={`https://raims.oep.gov.bd/agency/employee/clearance-check/download/card/${encodeURIComponent(no.trim())}`} target="_blank" rel="noopener noreferrer">Open in RAIMS</a>}
+    </div>
+    <p className="muted small">Send Card puts the card in the {who}'s portal to download. RAIMS must be signed in (BMET clearance › RAIMS).</p>
+  </div>;
+}
+
 /* Admin: upload the BMET clearance card for an approved file, set the card fee and send it to the agent or job seeker */
 export function CardAdmin({ c }) {
   const p = clPerson(c); const who = p.kind === "agent" ? `agent (${p.via})` : "job seeker";
@@ -104,6 +130,7 @@ export function CardAdmin({ c }) {
           </div>
         </div>
       ) : <div className="notice">Approved. Upload the clearance card and send it to the {who}.</div>}
+      <RaimsCard c={c} who={p.kind === "agent" ? "agent" : "job seeker"} />
       <form className="fgrid" onSubmit={send}>
         <Field label={c.card ? "Replace card file" : "Upload Clearance Card"} hint="PDF, JPG or WebP, up to 1.5 MB"><input type="file" name="card" accept={CARD_TYPES} required /></Field>
         {!c.card && <Field label="Card fee (BDT)" hint={p.kind === "agent" ? "Added to the agent's account statement" : "Shown to the job seeker; mark it received when paid"}><input type="number" name="fee" min="0" defaultValue="0" /></Field>}

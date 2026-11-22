@@ -609,7 +609,7 @@ function AdminClearanceList() {
     {form === "preec" && <PreEcCheck onClose={() => setForm("")} />}
     {form === "one" && <GroupEcForm admin onDone={() => setForm("")} />}
     {form === "bulk" && <BulkEcForm onDone={() => setForm("")} />}
-    <p className="muted small">{`Status flow: ${CL_STAGES.map(x => LABEL[x]).join(" › ")}. Choose “Custom…” in Status to write your own status. The EC Ref No can be changed until the file is Approved. When a file reaches Final Approval, the agent sends a payment receipt (Payments to check). When a file is Approved, upload the clearance card in Details: the agent then sees Approved and can download it.`}</p>
+    <p className="muted small">{`Status flow: Pending › Received › Send to BMET, then the status RAIMS shows (Pending Section / AD / DD / Director / Final Approval … Approved; a file can go back to Section and up again). Once a file is Sent to BMET, RAIMS sync sets its status; before that it stays ours. Choose “Custom…” in Status to write your own status. The EC Ref No can be changed until the file is Approved. When a file reaches Final Approval, the agent sends a payment receipt (Payments to check). When a file is Approved, open Details: get the card from RAIMS with its card number (Download Card / Send Card), or upload it; the agent then downloads it.`}</p>
     <FilterButtons cur={f} onPick={k => { ui.clFilter = k; setPage(1); commit(); }} items={[["all", "All"], ["pending", "New (Pending)"], ["open", "In progress"], ["card", "Card to upload"], ["pay", "Payments to check"], ["sent", "Card sent"], ["rejected", "Rejected"]].map(([k, l]) => [k, l, cnt(k)])} />
     <div className="ec-tools mt8">
       <label className="ec-show">Show <select value={per} onChange={e => { setPer(Number(e.target.value)); setPage(1); }}>{[10, 25, 50, 100].map(n => <option key={n} value={n}>{n}</option>)}</select></label>
@@ -697,6 +697,7 @@ export function StatusCell({ c, wide }) {
       </select>
       {custom && <div className="ec-refedit"><input type="text" value={v} maxLength={80} placeholder="Write the status" onChange={e => setV(e.target.value)} onKeyDown={e => { if (e.key === "Enter") saveCustom(); if (e.key === "Escape") setCustom(false); }} autoFocus />
         <button className="btn sm pri" onClick={saveCustom} aria-label="Save status"><LuCheck /></button><button className="btn sm" onClick={() => setCustom(false)} aria-label="Cancel"><LuX /></button></div>}
+      {c.raims?.status && c.raims.stage === c.status && <span className="muted small raims-st" title={`RAIMS · ${fdate(c.raims.at)}`}><LuRefreshCw /> RAIMS: {c.raims.status}</span>}
     </div>
   );
 }

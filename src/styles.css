@@ -1430,3 +1430,8 @@ button.hold-tile{cursor:pointer}
 @media (max-width:560px){.vf-cap img{height:64px;min-width:0;max-width:100%}.vf-cap .cap-in{flex:1 1 140px}}
 .bulk-submit{display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:flex-end}
 .bulk-g select{height:42px;min-width:96px}
+.raims-card{border:1px solid var(--line);border-left:4px solid var(--brand);border-radius:10px;padding:12px 14px;display:grid;gap:10px;background:color-mix(in srgb,var(--brand) 5%,transparent)}
+.raims-card>b{display:inline-flex;align-items:center;gap:6px}
+.raims-card-row{display:flex;gap:10px;flex-wrap:wrap}.raims-card-row .f{flex:1 1 200px}
+.raims-st{display:inline-flex;align-items:center;gap:5px}
+.raims-card .row{justify-content:flex-start;flex-wrap:wrap;gap:8px}
