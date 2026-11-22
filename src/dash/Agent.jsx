@@ -4,9 +4,10 @@ import { agentRows } from "../statement.js";
 import { LuLayoutDashboard, LuUser, LuUsers, LuStamp, LuBriefcase, LuWallet, LuBell, LuPencil, LuTrash2, LuSend, LuPlus, LuEye, LuTicket, LuPlaneTakeoff } from "react-icons/lu";
 import { store, commit, worker, job, live, money, fdate, bdtFmt, balanceOf, unread, now, COUNTRIES, CL_DOCS, PAY_METHODS, loadState } from "../store.js";
 import { toast, formData, setTab, openModal, closeModal, confirmBox, withdraw, readUpload, act, DOC_TYPES, downloadFile, cardFileName } from "../actions.js";
-import { LuDownload, LuMaximize2, LuMinimize2, LuRefreshCw, LuSearch, LuFileText, LuBanknote, LuCirclePlus, LuX } from "react-icons/lu";
+import { LuShieldCheck, LuDownload, LuMaximize2, LuMinimize2, LuRefreshCw, LuSearch, LuFileText, LuBanknote, LuCirclePlus, LuX } from "react-icons/lu";
 import { Rail, Tiles, Pill, Pipe, ClPipe, Empty, CardDownload, Avatar } from "../ui.jsx";
 import { AgentDatalist } from "./AgentBook.jsx";
+import { PreEcCheck } from "./PreEc.jsx";
 import { NotifPanel, Field, Options, ClCountryOptions, AgentDocUploads, AGENT_DOCS } from "./shared.jsx";
 
 const ui = store.ui;
@@ -243,9 +244,11 @@ function ClearanceList({ C, W, active }) {
   return <>
     <div className="ec-head">
       <div><h2>BMET clearance applications</h2><div className="crumbs"><a href="#dashboard" onClick={e => { e.preventDefault(); setTab("agent", "overview"); }}>Home</a> <span>›</span> <b>EC Application List</b></div></div>
-      <button className="btn dark" onClick={() => setForm(f => !f)}>{form ? <LuX /> : <LuCirclePlus />} {form ? "Close the form" : "Create New Application"}</button>
+      <div className="ec-head-btns"><button className={`btn ${form === "preec" ? "dark" : "soft"}`} onClick={() => setForm(f => f === "preec" ? false : "preec")}>{form === "preec" ? <LuX /> : <LuShieldCheck />} Pre EC Check</button>
+      <button className="btn dark" onClick={() => setForm(f => f === true ? false : true)}>{form === true ? <LuX /> : <LuCirclePlus />} {form === true ? "Close the form" : "Create New Application"}</button></div>
     </div>
-    {form && <GroupEcForm C={C} W={W} active={active} onDone={() => setForm(false)} />}
+    {form === "preec" && <PreEcCheck onClose={() => setForm(false)} />}
+    {form === true && <GroupEcForm C={C} W={W} active={active} onDone={() => setForm(false)} />}
     <div className={`card ec-card${full ? " ec-full" : ""}`}>
       <div className="ec-tools">
         <button className="btn sm" onClick={exportCsv} disabled={!rows.length}><LuDownload /> Export</button>

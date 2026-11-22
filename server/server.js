@@ -230,7 +230,7 @@ function viewFor(u) {
     pub.workers = db.workers.filter(w => pub.applications.some(a => a.workerId === w.id)).map(w => ({ id: w.id, agentId: w.agentId, name: w.name, trade: w.trade, experience: w.experience, district: w.district }));
     pub.orders = db.orders.filter(o => o.uid === u.id);
   } else if (u.role === "agent") {
-    pub.workers = db.workers.filter(w => w.agentId === u.id);
+    pub.workers = db.workers.filter(w => w.agentId === u.id); pub.raimsReady = !!db.raims?.pass;
     pub.clearances = db.clearances.filter(c => c.agentId === u.id).map(cleanCl);
     pub.applications = db.applications.filter(a => a.agentId === u.id);
     pub.jobs = db.jobs.filter(j => j.status === "active" || pub.applications.some(a => a.jobId === j.id));
@@ -245,6 +245,7 @@ function viewFor(u) {
     if (can(u, "jobs")) pub.jobTemplates = db.jobTemplates;
     if (can(u, "office")) pub.office = { entries: db.office.entries, auto: officeAuto(), leaders: leaders() };
     { const me = leaders().find(x => x.uid === u.id); if (me) pub.myMoney = { entries: db.office.entries.filter(e => e.people?.includes(me.k)), me }; }
+    if (can(u, "clearance") || u.role === "agent") pub.raimsReady = !!db.raims?.pass;
     if (can(u, "clearance")) pub.raims = db.raims ? { email: db.raims.email, auto: db.raims.auto, saved: !!db.raims.pass, last: db.raims.last || null } : null;
     if (PP_PERMS.some(k => can(u, k))) { pub.passports = db.passports; pub.agentBook = db.agentBook; pub.bookMatch = Object.fromEntries(db.users.filter(x => x.role === "agent" && x.status !== "active").map(x => [x.id, bookMatches(x).map(b => b.name)]).filter(([, v]) => v.length)); }
     if (can(u, "visa")) pub.visa = db.visa;
@@ -868,6 +869,77 @@ function raimsRows(html, json) {
   for (const tr of trs.slice(1)) { const c = cells(tr); if (c.length > 1) { rows.push(c); links.push(hrefs(tr)); } }
   return { head, rows, links };
 }
+/* a signed-in RAIMS session, kept for 15 minutes so several checks in a row do not sign in each time */
+let raimsSess = null;
+async function raimsLogin(fresh = false) {
+  const R = db.raims; must(R?.email && R?.pass, "The agency has not set up RAIMS yet (BMET clearance › RAIMS).");
+  if (!fresh && raimsSess && Date.now() - raimsSess.at < 15 * 60e3 && raimsSess.email === R.email) return raimsSess.J;
+  const J = jar();
+  try {
+    const lp = await rq(J, "/agency/login");
+    const tok = (/name="_token"[^>]*value="([^"]+)"/.exec(lp.text) || /name="csrf-token"[^>]*content="([^"]+)"/.exec(lp.text) || [])[1];
+    const action = (/<form[^>]*action="([^"]*login[^"]*)"/i.exec(lp.text) || [])[1] || "/agency/login";
+    must(tok, "The RAIMS sign-in page did not load. The site may be down or blocking this server.");
+    const li = await rq(J, action.replace(/&amp;/g, "&"), { method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded", Referer: lp.url }, body: new URLSearchParams({ _token: tok, email: R.email, password: unseal(R.pass), remember: "on" }).toString() });
+    must(!(/name="password"/i.test(li.text) && /login/i.test(li.url)), "RAIMS did not accept the sign-in. Check the RAIMS email and password.");
+    raimsSess = { J, at: Date.now(), email: R.email }; return J;
+  } catch (e) { if (e instanceof Fail) throw e; must(false, `Could not reach RAIMS: ${e.message}`); }
+}
+/* label → value pairs of a RAIMS page (labels with inputs, or label / value boxes), and its alert messages */
+function raimsFields(html) {
+  const h = String(html || "").replace(/<script[\s\S]*?<\/script>|<style[\s\S]*?<\/style>/gi, " "), out = [], seen = new Set();
+  const val = tag => { const v = (/\bvalue\s*=\s*"([^"]*)"/i.exec(tag) || /\bvalue\s*=\s*'([^']*)'/i.exec(tag) || [])[1]; return v == null ? null : htmlText(v).trim(); };
+  for (const m of h.matchAll(/<label[^>]*>([\s\S]*?)<\/label>([\s\S]{0,1500}?)(?=<label|$)/gi)) {
+    const lab = htmlText(m[1]).replace(/\s*\*\s*$/, "").trim(); if (!lab || lab.length > 80 || seen.has(lab)) continue;
+    const rest = m[2]; let v = null;
+    const inp = /<input\b[^>]*>/i.exec(rest); if (inp && !/type\s*=\s*["']?(hidden|submit|button|file)/i.test(inp[0])) v = val(inp[0]);
+    if (v == null) { const ta = /<textarea[^>]*>([\s\S]*?)<\/textarea>/i.exec(rest); if (ta) v = htmlText(ta[1]).trim(); }
+    if (v == null) { const sel = /<select[\s\S]*?<\/select>/i.exec(rest); if (sel) { const o = /<option[^>]*selected[^>]*>([\s\S]*?)<\/option>/i.exec(sel[0]); v = o ? htmlText(o[1]).trim() : ""; } }
+    if (v == null) { const t = htmlText(rest.split(/<label/i)[0]).trim(); if (t && t.length < 200) v = t; }
+    if (v != null) { seen.add(lab); out.push([lab, v]); }
+  }
+  const alerts = [...h.matchAll(/<div[^>]*class="[^"]*\b(alert|alert-danger|alert-warning|alert-success|text-danger)\b[^"]*"[^>]*>([\s\S]*?)<\/div>/gi)].map(m => htmlText(m[2]).replace(/\s+/g, " ").trim()).filter(t => t && t.length < 400);
+  return { fields: out, alerts: [...new Set(alerts)] };
+}
+async function preEcCheck({ passport, returnee, asn }) {
+  const pp = ppNorm(passport); must(/^[A-Z0-9]{6,15}$/.test(pp), "Enter the passport number.");
+  for (let attempt = 0; attempt < 2; attempt++) {
+    const J = await raimsLogin(attempt > 0);
+    const pg = await rq(J, "/agency/employee/pre-ec-check");
+    if (/name="password"/i.test(pg.text) && /login/i.test(pg.url)) { raimsSess = null; continue; }
+    const tok = (/name="_token"[^>]*value="([^"]+)"/.exec(pg.text) || /name="csrf-token"[^>]*content="([^"]+)"/.exec(pg.text) || [])[1] || "";
+    // the form on the page: its address and the names of its fields
+    const form = [...pg.text.matchAll(/<form\b([^>]*)>([\s\S]*?)<\/form>/gi)].find(f => /passport/i.test(f[2])) || null;
+    const names = form ? [...form[2].matchAll(/<(?:input|select|textarea)\b[^>]*name="([^"]+)"[^>]*>/gi)].map(m => [m[1], m[0]]) : [];
+    const pick = re => (names.find(([n]) => re.test(n)) || [])[0];
+    const ppName = pick(/passport/i) || "passport", rtName = pick(/return/i), asnName = pick(/asn|probashi/i);
+    const body = new URLSearchParams(); if (tok) body.set("_token", tok);
+    for (const [n, tag] of names) if (/type="hidden"/i.test(tag) && n !== "_token") body.set(n, (/value="([^"]*)"/.exec(tag) || [])[1] || "");
+    body.set(ppName, pp); if (rtName) body.set(rtName, returnee ? (/value="(yes|1|true)"/i.exec(form[2]) || [, "1"])[1] : (/value="(no|0|false)"/i.exec(form[2]) || [, "0"])[1]); if (asnName && asn) body.set(asnName, str(asn, 40));
+    const method = form && /method\s*=\s*"?post/i.test(form[1]) ? "POST" : "GET";
+    const action = form ? ((/action="([^"]*)"/i.exec(form[1]) || [])[1] || "/agency/employee/pre-ec-check").replace(/&amp;/g, "&") : "";
+    let res = null, tried = [];
+    if (action) { tried.push(`${method} ${action}`); res = method === "POST" ? await rq(J, action, { method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded", Referer: pg.url, "X-CSRF-TOKEN": tok }, body: body.toString() }) : await rq(J, action + (action.includes("?") ? "&" : "?") + body.toString()); }
+    // a page that searches with its own script: ask the same address the script asks
+    let fx = res ? raimsFields(res.text) : { fields: [], alerts: [] };
+    if (fx.fields.filter(([, v]) => v).length < 3) {
+      for (const h of dataHints(pg.text).filter(u => /pre|ec|check|passport|employee|search/i.test(u)).slice(0, 4)) {
+        const u = h.replace(/\{[^}]*\}|:passport\b/gi, pp);
+        for (const m of ["GET", "POST"]) { tried.push(`${m} ${u}`);
+          const x = m === "GET" ? await rq(J, u + (u.includes(pp) ? "" : (u.includes("?") ? "&" : "?") + `${ppName}=${pp}`), { headers: { "X-Requested-With": "XMLHttpRequest", Accept: "application/json, text/html", "X-CSRF-TOKEN": tok } })
+            : await rq(J, u, { method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded", "X-Requested-With": "XMLHttpRequest", Accept: "application/json, text/html", "X-CSRF-TOKEN": tok }, body: body.toString() });
+          let got = null; try { const j = JSON.parse(x.text); const flat = []; const walk = (v, k) => { if (v && typeof v === "object") Object.entries(v).forEach(([a, b]) => walk(b, a)); else if (k && v != null && String(v).trim()) flat.push([k.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase()), htmlText(String(v)).trim()]); }; walk(j); if (flat.length) got = { fields: flat.slice(0, 80), alerts: raimsFields(typeof j.html === "string" ? j.html : "").alerts }; if (typeof j.html === "string") { const f = raimsFields(j.html); if (f.fields.length) got = f; } } catch { const f = raimsFields(x.text); if (f.fields.filter(([, v]) => v).length >= 3) got = f; }
+          if (got) { fx = got; res = x; break; } }
+        if (res && fx.fields.length >= 3) break;
+      }
+    }
+    lastRaims.set("page", { url: res?.url || pg.url, html: (res?.text || pg.text).slice(0, 600000) });
+    const fields = fx.fields.filter(([k, v]) => v && !/^(type passport|has returnee|ami probashi|_token)/i.test(k));
+    if (!fields.length && !fx.alerts.length) return { ok: false, problem: "RAIMS did not show a result for this passport.", tried, page: htmlText(res?.text || pg.text).slice(0, 800) };
+    return { ok: true, passport: pp, alerts: fx.alerts, fields };
+  }
+  must(false, "RAIMS signed out. Try again.");
+}
 /* signs in and reads the EC application list; throws a Fail with a plain message when something is wrong */
 async function raimsOpen(search = "") {
   const R = db.raims; must(R?.email && R?.pass, "Save the RAIMS email and password first (BMET clearance › RAIMS).");
@@ -921,6 +993,12 @@ async function raimsSync(by = "auto") {
 }
 setInterval(() => { if (db.raims?.auto && db.raims.pass) raimsSync("auto").catch(() => {}); }, 30 * 60e3).unref();
 const lastRaims = new Map(); // the last RAIMS page read, for the admin to download when a page is not read right
+/* Pre EC Check (RAIMS): admin/staff with the BMET clearance permission, and agents */
+A["raims.preEc"] = async (d, u, ctx) => {
+  must(u && (u.role === "agent" ? u.status === "active" : can(u, "clearance")), "You do not have permission for this.", 403);
+  limit(u.id, "preec", u.role === "agent" ? 40 : 200, 3600e3);
+  return await preEcCheck(d);
+};
 A["admin.raims"] = async (d, u) => {
   needPerm(u, "clearance");
   if (d.op === "save") {

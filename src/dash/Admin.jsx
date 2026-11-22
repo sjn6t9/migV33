@@ -22,9 +22,10 @@ import { Statement } from "./Statement.jsx";
 import { GroupEcForm } from "./Agent.jsx";
 import { BulkEcForm } from "./BulkClearance.jsx";
 import { AgentsPage } from "./AgentBook.jsx";
+import { PreEcCheck } from "./PreEc.jsx";
 import { agentRows } from "../statement.js";
 import { MFS, BANKS } from "../banks.js";
-import { LuReceipt, LuLandmark, LuBanknote, LuScrollText, LuBookUser, LuFileCheck2, LuHandCoins, LuPlaneTakeoff, LuCalendarCheck, LuSettings2, LuLogOut, LuMegaphone, LuCirclePlus, LuListPlus, LuContact, LuGlobe, LuRefreshCw } from "react-icons/lu";
+import { LuReceipt, LuLandmark, LuBanknote, LuScrollText, LuBookUser, LuFileCheck2, LuHandCoins, LuPlaneTakeoff, LuCalendarCheck, LuSettings2, LuLogOut, LuMegaphone, LuCirclePlus, LuListPlus, LuContact, LuGlobe, LuRefreshCw, LuShieldCheck } from "react-icons/lu";
 import { ShareButton, storeCard } from "../Share.jsx";
 import { ChatInbox, useInboxUnread } from "../LiveChat.jsx";
 
@@ -601,9 +602,11 @@ function AdminClearanceList() {
         <button className={`btn ${form === "one" ? "dark" : "soft"}`} onClick={() => setForm(x => x === "one" ? "" : "one")}>{form === "one" ? <LuX /> : <LuCirclePlus />} {form === "one" ? "Close the form" : "Create application"}</button>
         <button className={`btn ${form === "bulk" ? "dark" : "soft"}`} onClick={() => setForm(x => x === "bulk" ? "" : "bulk")}>{form === "bulk" ? <LuX /> : <LuListPlus />} {form === "bulk" ? "Close bulk entry" : "Add bulk"}</button>
         <button className={`btn ${form === "raims" ? "dark" : "soft"}`} onClick={() => setForm(x => x === "raims" ? "" : "raims")}>{form === "raims" ? <LuX /> : <LuRefreshCw />} RAIMS</button>
+        <button className={`btn ${form === "preec" ? "dark" : "soft"}`} onClick={() => setForm(x => x === "preec" ? "" : "preec")}>{form === "preec" ? <LuX /> : <LuShieldCheck />} Pre EC Check</button>
       </div>
     </div>
     {form === "raims" && <RaimsPanel />}
+    {form === "preec" && <PreEcCheck onClose={() => setForm("")} />}
     {form === "one" && <GroupEcForm admin onDone={() => setForm("")} />}
     {form === "bulk" && <BulkEcForm onDone={() => setForm("")} />}
     <p className="muted small">{`Status flow: ${CL_STAGES.map(x => LABEL[x]).join(" › ")}. Choose “Custom…” in Status to write your own status. The EC Ref No can be changed until the file is Approved. When a file reaches Final Approval, the agent sends a payment receipt (Payments to check). When a file is Approved, upload the clearance card in Details: the agent then sees Approved and can download it.`}</p>
