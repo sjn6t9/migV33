@@ -1,5 +1,5 @@
 import React from "react";
-import { LuPlus, LuTrash2, LuSend, LuX, LuUsers, LuGlobe, LuSearch } from "react-icons/lu";
+import { LuPlus, LuTrash2, LuSend, LuX, LuUsers, LuGlobe, LuSearch, LuListPlus } from "react-icons/lu";
 import { CL_REGIONS } from "../constants.js";
 import { store, balanceOf, bdtFmt, COUNTRIES } from "../store.js";
 import { toast, act } from "../actions.js";
@@ -80,6 +80,18 @@ export function BulkEcForm({ onDone }) {
   const lastAuto = React.useRef("");
   React.useEffect(() => { const v = ric.trim(); if (!/^\d{6,10}$/.test(v) || v === lastAuto.current || rbusy) return; const t = setTimeout(() => { lastAuto.current = v; raimsSearch(); }, 900); return () => clearTimeout(t); }, [ric]);
   const used = rows.filter(filled);
+  // Add to Entry List: the rows go to Passport Entry › BMET Passport Entry (before or without submitting the clearance files)
+  const [gAll, setGAll] = React.useState("Male");
+  const toEntry = async () => {
+    if (!used.length) return toast("Fill in at least one row.");
+    for (const [i, r] of rows.entries()) if (filled(r) && (!r.passport.trim() || r.name.trim().length < 2)) return toast(`Row ${i + 1}: enter the passport number and candidate name.`);
+    if (!common.country) return toast("Choose the destination country.");
+    const seen = new Set(), list = used.filter(r => { const k = r.passport.trim().toUpperCase(); if (seen.has(k)) return false; seen.add(k); return true; });
+    setBusy(true);
+    const r = await act("admin.passport", { op: "add", list: "bmet", upsert: true, rows: list.map(r => { const a = findAg(r.agent); return { name: r.name.trim(), passport: r.passport.trim(), country: common.country, gender: gAll, ...(a ? { agentId: a.id } : { ref: r.agent.trim() }) }; }) });
+    setBusy(false);
+    if (r) toast(`${list.length} passport(s) are in Passport Entry › BMET Passport Entry.`);
+  };
   const submit = async () => {
     if (!used.length) return toast("Fill in at least one row.");
     for (const [i, r] of rows.entries()) {
@@ -146,7 +158,11 @@ export function BulkEcForm({ onDone }) {
             <button type="button" className="btn sm" onClick={() => setRows(L => [...L, ...Array.from({ length: 5 }, blank)])}><LuPlus /><LuPlus /> Add 5 rows</button>
             <button type="button" className="btn sm danger" onClick={() => setRows(Array.from({ length: 5 }, blank))}><LuTrash2 /> Clear all</button>
           </div>
-          <button type="button" className="btn pri" disabled={busy || !used.length} onClick={submit}><LuSend /> {busy ? "Saving…" : `Submit all (${used.length})`}</button>
+          <div className="bulk-submit">
+            <label className="bulk-g" title="Male/Female for the passports added to the entry list"><select value={gAll} onChange={e => setGAll(e.target.value)} aria-label="Male/Female"><option>Male</option><option>Female</option></select></label>
+            <button type="button" className="btn soft" disabled={busy || !used.length} onClick={toEntry}><LuListPlus /> {`Add to Entry (${used.length})`}</button>
+            <button type="button" className="btn pri" disabled={busy || !used.length} onClick={submit}><LuSend /> {busy ? "Saving…" : `Submit all (${used.length})`}</button>
+          </div>
         </div>
       </div>
     </div>

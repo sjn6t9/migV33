@@ -2629,10 +2629,12 @@ A["admin.passport"] = async (d, u) => {
     must(!made.find((v, i) => made.findIndex(w => w.passport === v.passport) !== i), "The same passport is twice in the list.");
     // a passport already in another list is added to this one (its details updated), not entered twice
     const dup = made.find(v => db.passports.some(p => p.passport === v.passport && ppLists(p).includes(tag)));
-    must(!dup, `Passport ${dup?.passport} is already in the list.`);
+    must(!dup || d.upsert, `Passport ${dup?.passport} is already in the list.`);
     let merged = 0;
     for (const v of made) {
       const old = db.passports.find(p => p.passport === v.passport);
+      // Add bulk › Add to Entry List: a passport already entered keeps its Male/Female and gets the new name, country and Ref.
+      if (old && d.upsert) { const { gender, ...rest } = v; Object.assign(old, rest, old.gender ? {} : { gender }, { lists: [...new Set([...ppLists(old), tag])], updated: now() }); merged++; continue; }
       if (old) { Object.assign(old, v, { info: { ...(old.info || {}), ...(v.info || {}) }, ...(v.bmet || old.bmet ? { bmet: { ...(old.bmet || {}), ...(v.bmet || {}) } } : {}), lists: [...new Set([...ppLists(old), tag])], updated: now() }); merged++; }
       else db.passports.unshift({ id: id("pp"), ...v, lists: [tag], by: u.name, at: now() });
     }

@@ -1428,3 +1428,5 @@ button.hold-tile{cursor:pointer}
 .vf-cap .cap-in{width:150px;height:52px;font-size:1.45rem;font-weight:700;letter-spacing:6px;text-align:center;font-variant-numeric:tabular-nums}
 .vf-cap .cap-in:focus{border-color:var(--brand);box-shadow:0 0 0 4px color-mix(in srgb,var(--brand) 18%,transparent)}
 @media (max-width:560px){.vf-cap img{height:64px;min-width:0;max-width:100%}.vf-cap .cap-in{flex:1 1 140px}}
+.bulk-submit{display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:flex-end}
+.bulk-g select{height:42px;min-width:96px}
