@@ -10,7 +10,8 @@ import { AgentDatalist, bookAgents, bookByName, bookAccount } from "./AgentBook.
    each row is one candidate with their own agent (registered or a typed name), processing fee and previous due. */
 let seq = 1;
 const blank = () => ({ k: seq++, passport: "", name: "", icNo: "", raimsId: "", phone: "", agent: "", fee: "", due: "" });
-const filled = r => [r.passport, r.name, r.icNo, r.phone, r.agent, r.fee, r.due].some(v => String(v).trim());
+// a row counts once it has a person in it (an IC number alone, e.g. from the IC box, does not make it a row)
+const filled = r => [r.passport, r.name, r.phone, r.agent, r.fee, r.due].some(v => String(v).trim());
 
 export function BulkEcForm({ onDone }) {
   const S = store.S; const defFee = Number(S.settings.clearanceFee || 0);
@@ -54,7 +55,7 @@ export function BulkEcForm({ onDone }) {
   const [lic, setLic] = React.useState(""); // IC number: one number for the workers of one list
   // a new IC number goes to every row that has the old one or none
   // the IC number box: every row in the list takes it (a row whose IC No. was typed by hand keeps its own)
-  const changeLic = v => { setLic(v); setRows(L => L.map(r => r.auto?.icNo === false && r.icNo.trim() ? r : { ...r, icNo: v })); };
+  const changeLic = v => { setLic(v); setRows(L => L.map(r => !filled(r) ? { ...r, icNo: "" } : r.auto?.icNo === false && r.icNo.trim() ? r : { ...r, icNo: v })); };
   const [ric, setRic] = React.useState(""), [rbusy, setRbusy] = React.useState(false), [rdiag, setRdiag] = React.useState(null), [rgot, setRgot] = React.useState(0);
   const rawDl = async () => { const r = await act("admin.raims", { op: "rawPage" }); if (!r?.html) return; const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([`<!-- ${r.url} -->\n${r.html}`], { type: "text/html" })); a.download = "raims-page.html"; document.body.appendChild(a); a.click(); a.remove(); };
   const allCountries = [...Object.keys(COUNTRIES), ...CL_REGIONS.flatMap(([, L]) => L)];
@@ -70,7 +71,7 @@ export function BulkEcForm({ onDone }) {
     const fresh = r.people.filter(x => !have.has(String(x.passport || "").toUpperCase()));
     const made = fresh.map(x => { const b = blank(); const pp = pps.find(y => y.passport === x.passport), w = (S.workers || []).find(y => String(y.passport).toUpperCase() === x.passport);
       const wAg = w?.agentId ? agents.find(a => a.id === w.agentId) : null;
-      return { ...b, raimsId: /^\d{4,10}$/.test(ric.trim()) ? ric.trim() : rid, passport: x.passport || "", name: x.name || pp?.name || w?.name || "", icNo: x.ic || "", phone: w?.phone || "", agent: wAg ? agName(wAg) : w?.agentName || pp?.ref || "", auto: { name: !x.name, agent: true, phone: true } }; });
+      return { ...b, raimsId: /^\d{4,10}$/.test(ric.trim()) ? ric.trim() : rid, passport: x.passport || "", name: x.name || pp?.name || w?.name || "", icNo: x.ic || ic0 || lic || "", phone: w?.phone || "", agent: wAg ? agName(wAg) : w?.agentName || pp?.ref || "", auto: { name: !x.name, agent: true, phone: true } }; });
     setRows(L => { const keep = L.filter(filled); const out = [...keep, ...made]; while (out.length < 5) out.push(blank()); return out; });
     const c = [...new Set(r.people.map(x => findCountry(x.country)).filter(Boolean))];
     if (c.length === 1) setCommon(v => ({ ...v, country: c[0] }));
