@@ -634,24 +634,31 @@ A["agent.workerDelete"] = async ({ id: wid }, u) => {
 };
 A["agent.clearance"] = async (d, u) => {
   needRole(u, "agent");
+  const pre = d.preEc && typeof d.preEc === "object" ? d.preEc : null; // filed from Pre EC Check: the employer is not asked
+  if (!d.workerId && d.newWorker) { const own = db.workers.find(x => x.agentId === u.id && x.passport.replace(/\s+/g, "").toUpperCase() === str(d.newWorker.passport, 30).replace(/\s+/g, "").toUpperCase()); if (own) d.workerId = own.id; }
   if (!d.workerId && d.newWorker) { // a worker typed into the application form is added to "My workers" first
     const nw = d.newWorker, pass = str(nw.passport, 30).toUpperCase();
     must(str(nw.name).length >= 2 && pass, "Enter the worker's name and passport number.");
     must(!db.workers.some(x => x.passport.toUpperCase() === pass), `A worker with passport ${pass} is already registered. Choose them from your workers.`);
-    must(clCountryOk(d.country), "Select a country."); must(d.files?.passport && d.files?.visa, "Upload the passport copy and visa copy."); must(str(d.employer), "Enter the employer / sponsor name.");
+    must(clCountryOk(d.country), "Select a country."); must(d.files?.passport && d.files?.visa, "Upload the passport copy and visa copy."); must(pre || str(d.employer), "Enter the employer / sponsor name.");
     const nwr = { id: id("w"), agentId: u.id, name: str(nw.name, 120), father: "", passport: pass, passportExpiry: "", dob: "", phone: str(nw.phone, 30), district: "", trade: str(nw.trade, 80), experience: 0, created: now() };
     db.workers.push(nwr); d.workerId = nwr.id;
   }
   const w = worker(d.workerId); must(w && w.agentId === u.id, "Choose one of your workers."); must(clCountryOk(d.country), "Select a country.");
   must(!db.clearances.some(c => c.workerId === w.id && c.status !== "rejected"), "This worker already has an open clearance file.");
-  must(d.files?.passport && d.files?.visa, "Upload the passport copy and visa copy."); must(str(d.employer), "Enter the employer / sponsor name.");
-  const files = { passport: storeFile(d.files.passport, u.id), visa: storeFile(d.files.visa, u.id), contract: d.files.contract ? storeFile(d.files.contract, u.id) : null, others: [] };
-  const docs = ["Passport copy", "Visa copy", ...(files.contract ? ["Employment contract"] : [])];
-  db.clearances.push({ id: id("c"), agentId: u.id, workerId: w.id, candidateId: null, country: d.country, employer: str(d.employer, 150), visaNo: str(d.visaNo, 40), visaType: str(d.visaType, 40), flightDate: str(d.flightDate, 10), docs, files, notes: str(d.notes, 2000), status: "pending", history: [{ s: "pending", at: now() }], created: now() });
+  must(d.files?.passport && d.files?.visa, "Upload the passport copy and visa copy."); must(pre || str(d.employer), "Enter the employer / sponsor name.");
+  const others = Array.isArray(d.files.others) ? d.files.others.filter(Boolean).slice(0, 3) : [];
+  const files = { passport: storeFile(d.files.passport, u.id), visa: storeFile(d.files.visa, u.id), contract: d.files.contract ? storeFile(d.files.contract, u.id) : null, others: others.map(f => storeFile(f, u.id)) };
+  const docs = ["Passport copy", "Visa copy", ...(files.contract ? ["Employment contract"] : []), ...(files.others.length ? ["Other documents"] : [])];
+  if (pre) { // the RAIMS details from Pre EC Check go with the worker
+    const b = pre.bmet && typeof pre.bmet === "object" ? pre.bmet : {};
+    if (!w.father && b.father) w.father = str(b.father, 120); if (!w.dob && b.dob) w.dob = str(b.dob, 20); if (!w.phone && b.mobile) w.phone = str(b.mobile, 30);
+  }
+  db.clearances.push({ id: id("c"), via: "agent", ...(pre ? { preEc: true } : {}), agentId: u.id, workerId: w.id, candidateId: null, country: d.country, employer: str(d.employer, 150), visaNo: str(d.visaNo, 40), visaType: str(d.visaType, 40), flightDate: str(d.flightDate, 10), docs, files, notes: str(d.notes, 2000), status: "pending", history: [{ s: "pending", at: now() }], created: now() });
   { const c = db.clearances[db.clearances.length - 1]; c.ref = ecRef(c); }
   const fee = Number(db.settings.clearanceFee || 0);
   if (fee > 0) db.ledger.push({ id: id("l"), agentId: u.id, type: "charge", desc: `BMET clearance processing: ${w.name}`, amount: fee, date: now().slice(0, 10), method: "", ref: "", status: "confirmed" });
-  notifyAdmins(`New BMET clearance file: ${w.name} (${d.country}) from ${u.agent.business}.`, "clearance");
+  notifyAdmins(`New BMET clearance application: ${w.name} (${d.country}) from ${u.agent.business}. See Applications › Clearance applications.`, "clearance");
   return { msg: "Clearance application submitted." };
 };
 /* the agency creates a clearance file itself: for a registered agent (the agent sees it in their portal) or for a custom agent / reference name typed in */

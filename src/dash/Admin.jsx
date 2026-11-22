@@ -1,6 +1,6 @@
 import React from "react";
 import {
-  LuLayoutDashboard, LuUsers, LuBriefcase, LuFileText, LuStamp, LuWallet, LuPackage, LuNewspaper, LuSearch, LuSettings, LuMessageSquare,
+  LuLayoutDashboard, LuSend, LuUsers, LuBriefcase, LuFileText, LuStamp, LuWallet, LuPackage, LuNewspaper, LuSearch, LuSettings, LuMessageSquare,
   LuCheck, LuX, LuTrash2, LuPencil, LuEye, LuEyeOff, LuBadgeCheck, LuRotateCcw, LuBan, LuTicket, LuUpload, LuImage, LuUserCog, LuImagePlus, LuQuote, LuGalleryHorizontal, LuArrowUp, LuArrowDown, LuTimer, LuPlus, LuDownload, LuMessagesSquare, LuInfo
 } from "react-icons/lu";
 import { FaWhatsapp, FaFacebookF, FaYoutube, FaLinkedinIn, FaTiktok } from "react-icons/fa6";
@@ -68,7 +68,7 @@ export function Admin({ u }) {
   const pendJ = S.jobs.filter(j => j.status === "pending").length;
   const newMsg = S.messages.filter(m => !m.read).length;
   const pendO = S.orders.filter(o => o.status === "pending").length;
-  const pendC = S.clearances.filter(c => c.status === "pending" || cardPending(c)).length;
+  const pendC = S.clearances.filter(c => !clInApps(c) && (c.status === "pending" || cardPending(c))).length, pendA = can0("clearance") ? S.clearances.filter(c => clInApps(c) && c.status === "pending").length : 0;
   const pendP = S.ledger.filter(l => l.status === "pending").length;
   const pendT = S.tickets.filter(x => x.status === "requested").length;
   const pendR = (S.mr?.receipts || []).filter(r => r.status === "pending" && !r.void).length;
@@ -182,7 +182,7 @@ export function Admin({ u }) {
   if (t === "overview") {
     const byStatus = [...STAGES, "rejected"].map(s => [LABEL[s], S.applications.filter(a => a.status === s).length]);
     const byCountry = Object.keys(COUNTRIES).map(c => [c, live().filter(j => j.country === c).length]).filter(x => x[1]);
-    const queue = [[pendC, "Clearance files to act on (new / card to upload)", "clearance"], [pendT, "Air ticket requests", "tickets"], [pendP, "Agent payments to confirm", "ledger"], [pendJ, "Jobs awaiting review", "jobs"], [pendU, "Accounts to approve / verify", "users"], [pendO, "Package orders", "packages"], [newMsg, "New messages", "messages"]].filter(q => q[0] && can(q[2]));
+    const queue = [[pendA, "Clearance applications from agents", "apps"], [pendC, "Clearance files to act on (new / card to upload)", "clearance"], [pendT, "Air ticket requests", "tickets"], [pendP, "Agent payments to confirm", "ledger"], [pendJ, "Jobs awaiting review", "jobs"], [pendU, "Accounts to approve / verify", "users"], [pendO, "Package orders", "packages"], [newMsg, "New messages", "messages"]].filter(q => q[0] && can(q[2]));
     body = <>
       <h2>System overview</h2>
       <Tiles items={[[S.users.filter(x => x.role === "candidate").length, "Candidates"], [S.users.filter(x => x.role === "employer").length, "Employers"], [agents.length, "Agents"], [live().length, "Live jobs"], [S.applications.length, "Applications"], [S.applications.filter(a => a.status === "hired").length, "Hired"], [S.clearances.filter(openCl).length, "Clearances in progress"]]} />
@@ -246,13 +246,15 @@ export function Admin({ u }) {
     </>;
   }
 
-  if (t === "apps") body = <>
-    <h2>All applications</h2>
-    {S.applications.length ? <div className="tbl"><table><thead><tr><th>Candidate</th><th>Job</th><th>Employer</th><th>Applied</th><th>Status</th></tr></thead><tbody>
+  if (t === "apps") { const nCl = can("clearance") ? S.clearances.filter(clInApps).length : 0, sub = can("clearance") && (ui.appsSub || (nCl ? "cl" : "jobs")) === "cl" ? "cl" : "jobs"; body = <>
+    <h2>Applications</h2>
+    {can("clearance") && <nav className="pay-tabs" aria-label="Applications"><button className={sub === "jobs" ? "on" : ""} onClick={() => { ui.appsSub = "jobs"; commit(); }}><LuBriefcase /> Job applications</button>
+      <button className={sub === "cl" ? "on" : ""} onClick={() => { ui.appsSub = "cl"; commit(); }}><LuStamp /> {`Clearance applications${nCl ? ` (${nCl})` : ""}`}</button></nav>}
+    {sub === "cl" ? <ClearanceApps /> : S.applications.length ? <div className="tbl"><table><thead><tr><th>Candidate</th><th>Job</th><th>Employer</th><th>Applied</th><th>Status</th></tr></thead><tbody>
       {[...S.applications].reverse().map(a => { const j = job(a.jobId); const c = candOf(a); return (
         <tr key={a.id}><td>{c.name}{c.via && <div className="muted small">via {c.via}</div>}</td><td>{j?.title || "—"}</td><td>{j ? company(j) : "—"}</td><td>{fdate(a.appliedAt)}</td><td><StatusSelect a={a} /></td></tr>); })}
     </tbody></table></div> : <Empty>No applications.</Empty>}
-  </>;
+  </>; }
 
   if (t === "visa") body = <VisaAdmin />;
   if (t === "clearance") body = <AdminClearanceList />;
@@ -417,7 +419,7 @@ export function Admin({ u }) {
 
   return (
     <div className="wrap dash">
-      <Rail role={R} items={TABS.filter(([k]) => can(k)).map(([k, l, I]) => [k, l, I, { users: pendU, jobs: pendJ, clearance: pendC, tickets: pendT, mysalary: (S.mySalary?.pays || []).filter(p => !p.void && p.status === "pending").length, mymoney: (S.myMoney?.entries || []).filter(e => e.status === "pending" && !e.accepted?.includes(S.myMoney.me?.k)).length, attendance: S.attendance && !S.attendance.marks?.[u.id]?.[S.attendance.today] && new Date(S.attendance.today + "T00:00:00Z").getUTCDay() !== 5 && !(S.attendance.holidays || []).some(h => h.date === S.attendance.today) ? 1 : 0, pay: (can("ledger") ? pendP : 0) + (can("packages") ? pendO : 0) + (can("receipts") ? pendR : 0), messages: newMsg, chat: chatUnread }[k]])}
+      <Rail role={R} items={TABS.filter(([k]) => can(k)).map(([k, l, I]) => [k, l, I, { users: pendU, jobs: pendJ, apps: pendA, clearance: pendC, tickets: pendT, mysalary: (S.mySalary?.pays || []).filter(p => !p.void && p.status === "pending").length, mymoney: (S.myMoney?.entries || []).filter(e => e.status === "pending" && !e.accepted?.includes(S.myMoney.me?.k)).length, attendance: S.attendance && !S.attendance.marks?.[u.id]?.[S.attendance.today] && new Date(S.attendance.today + "T00:00:00Z").getUTCDay() !== 5 && !(S.attendance.holidays || []).some(h => h.date === S.attendance.today) ? 1 : 0, pay: (can("ledger") ? pendP : 0) + (can("packages") ? pendO : 0) + (can("receipts") ? pendR : 0), messages: newMsg, chat: chatUnread }[k]])}
         foot={[["mysettings", "Settings", LuSettings2], ["logout", "Log out", LuLogOut, 0, signOut]]} />
       <div className="panel">{top === "pay" && <nav className="pay-tabs" aria-label="Payments & receipts">
         {paySubs.map(([k, l, I]) => { const n = { ledger: pendP, packages: pendO, receipts: pendR }[k]; return <button key={k} className={t === k ? "on" : ""} aria-current={t === k ? "page" : undefined} onClick={() => { ui.paySub = k; commit(); }}><I /> {l}{n > 0 && <span className="count">{n}</span>}</button>; })}
@@ -597,12 +599,36 @@ function RaimsPanel() {
     </div>}
   </div>;
 }
+const clInApps = c => c.via === "agent" && ["pending", "received"].includes(c.status);
+/* Applications › Clearance applications: files agents submitted (e.g. from Pre EC Check). Received tells the agent the file arrived;
+   Send to BMET moves it to BMET clearance, where RAIMS sync takes over its status. */
+function ClearanceApps() {
+  const S = store.S, rows = S.clearances.filter(clInApps).sort((a, b) => b.created.localeCompare(a.created)).map(c => ({ c, p: clPerson(c) }));
+  const set = (c, status) => act("admin.clStatus", { id: c.id, status });
+  return <>
+    <p className="muted small">Agents' BMET clearance applications. Received tells the agent the file has arrived; Send to BMET moves it to BMET clearance, and after that its status follows RAIMS.</p>
+    <div className="tbl ec-tbl grid mt8"><table><thead><tr><th>SL</th><th>Worker name</th><th>Passport No</th><th>Country</th><th>Agent</th><th>Documents</th><th>Status</th><th>Actions</th></tr></thead><tbody>
+      {rows.length ? rows.map(({ c, p }, i) => <tr key={c.id}>
+        <td>{i + 1}</td><td><b data-notr>{p.name}</b>{c.preEc && <div className="muted small">From Pre EC Check</div>}</td><td className="num" data-notr>{p.passport || "—"}</td><td>{c.country}</td>
+        <td><div className="ec-sub"><span data-notr>{p.via}</span><span className="num">{ecDay(c.created)}</span></div></td>
+        <td><DocButtons c={c} /></td>
+        <td><span className={`ec-badge s-${c.status}`}>{LABEL[c.status]}</span></td>
+        <td><div className="stack6">
+          {c.status === "pending" && <button className="btn sm" onClick={() => set(c, "received")}><LuCheck /> Received</button>}
+          <button className="btn sm pri" onClick={() => set(c, "sent_bmet")}><LuSend /> Send to BMET</button>
+          <button className="btn sm link danger" onClick={() => confirmBox(`Reject the clearance application of ${p.name}? The agent is told.`, () => set(c, "rejected"), "Reject")}><LuX /> Reject</button>
+        </div></td></tr>) : <tr><td colSpan={8}><Empty>No clearance applications waiting.</Empty></td></tr>}
+    </tbody></table></div>
+  </>;
+}
 function AdminClearanceList() {
   const S = store.S; const isAdmin = user(store.S.session)?.role === "admin"; const f = ui.clFilter || "all";
   const [q, setQ] = React.useState(""); const [per, setPer] = React.useState(25); const [page, setPage] = React.useState(1);
   const match = (k, c) => k === "all" || (k === "open" ? clOpen(c) : k === "card" ? cardPending(c) : k === "sent" ? !!c.card : k === "pay" ? c.payment?.status === "submitted" : c.status === k);
-  const cnt = k => S.clearances.filter(c => match(k, c)).length;
-  const rows = S.clearances.filter(c => match(f, c)).sort((a, b) => b.created.localeCompare(a.created))
+  // agent applications stay in Applications › Clearance applications until the agency sends them to BMET
+  const ALL = S.clearances.filter(c => !clInApps(c));
+  const cnt = k => ALL.filter(c => match(k, c)).length;
+  const rows = ALL.filter(c => match(f, c)).sort((a, b) => b.created.localeCompare(a.created))
     .map(c => ({ c, p: clPerson(c) }))
     .filter(({ c, p }) => { const k = q.trim().toLowerCase(); return !k || [c.ref, p.name, p.passport, c.country].some(v => String(v || "").toLowerCase().includes(k)); });
   const pages = Math.max(1, Math.ceil(rows.length / per)); const pg = Math.min(page, pages);
