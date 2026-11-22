@@ -1169,7 +1169,7 @@ async function preEcCheck({ passport, returnee, otherPassport }) {
     if (returnee === "other") { const op = ppNorm(otherPassport); must(/^[A-Z0-9]{6,15}$/.test(op), "Enter the returnee's other passport number."); if (otherName) body.set(otherName, op); }
     const method = form && /method\s*=\s*"?post/i.test(form[1]) ? "POST" : "GET";
     const action = form ? ((/action="([^"]*)"/i.exec(form[1]) || [])[1] || "/agency/employee/pre-ec-check").replace(/&amp;/g, "&") : "";
-    let res = null, tried = [];
+    let res = null, tried = [], notFound = false;
     // RAIMS checks with its API (api/v1/agency/employee/pre-ec-check/details/:passport_no/…, Bearer = the page's apiKey): ask it first, the form only if that fails
     const apiFirst = !!raimsApiKey(pg.text) && /pre-ec-check\/details\//.test(pg.text);
     const sendForm = async () => { if (action) { res = method === "POST" ? await rq(J, action, { method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded", Referer: pg.url, "X-CSRF-TOKEN": tok }, body: body.toString() }) : await rq(J, action + (action.includes("?") ? "&" : "?") + body.toString()); } };
@@ -1190,7 +1190,7 @@ async function preEcCheck({ passport, returnee, otherPassport }) {
       const xh = extra => ({ "X-Requested-With": "XMLHttpRequest", Accept: "application/json, text/html, */*", "X-CSRF-TOKEN": tok, ...(xsrf ? { "X-XSRF-TOKEN": xsrf } : {}), ...(bearer ? { Authorization: `Bearer ${bearer.v}` } : {}), Referer: pg.url, Origin: origin, ...extra });
       const hints = [...new Set([...raimsApis(pg.text).filter(u => /pre-ec-check\/details/i.test(u)), ...dataHints(pg.text).filter(u => /pre|ec|check|passport|employee|search|emigrant|worker/i.test(u))])].slice(0, 6);
       const rtCode = rtName ? body.get(rtName) : "no", oldPp = returnee === "other" ? ppNorm(otherPassport) : "null";
-      for (const h of hints) {
+      for (const h of hints) { if (notFound) break;
         tried.push(`address: ${h}`);
         // fill the route's own parts (…/details/:passport_no/:returnee/:old_passport/:ap_house_…)
         const u = h.replace(/:([a-z_]+)/gi, (all, k) => /^passport/i.test(k) ? pp : /returnee|return/i.test(k) ? encodeURIComponent(rtCode || "no") : /old|other/i.test(k) ? encodeURIComponent(oldPp || "null") : /^\d+$/.test(k) ? all : "null").replace(/\{[^}]*\}|\$\{[^}]*\}/g, pp);
@@ -1201,7 +1201,7 @@ async function preEcCheck({ passport, returnee, otherPassport }) {
               : await rq(J, u, { method: "POST", headers: xh({ "Content-Type": "application/json" }), body: JSON.stringify({ ...Object.fromEntries(body), passport: pp, passport_no: pp, passport_number: pp }) });
           } catch (e) { tried.push(`${m} ${u} → ${e.message}`); continue; }
           tried.push(`${m === "POSTJSON" ? "POST(json)" : m} ${u} → ${x.r.status} ${htmlText(x.text).replace(/\s+/g, " ").slice(0, 90)}`);
-          if (x.r.status >= 400) continue;
+          if (x.r.status >= 400) { if (/not ?found/i.test(x.text) && /pre-ec-check\/details/i.test(u)) { notFound = true; break; } continue; }
           let got = null;
           try { const j = JSON.parse(x.text);
             if (typeof j?.html === "string") { const f = raimsFields(j.html); if (f.fields.length) got = f; }
@@ -1215,6 +1215,7 @@ async function preEcCheck({ passport, returnee, otherPassport }) {
       }
       if (!hints.length) tried.push("the page names no search address");
     }
+    if (notFound) return { ok: false, notFound: true, passport: pp, problem: "No information on RAIMS for this passport. Check the passport number.", tried };
     if (apiFirst && fx.fields.filter(([, v]) => v).length < 3) { await sendForm(); if (res) { tried.push(`form ${method} ${action} → ${res.r.status}`); const f2 = raimsFields(res.text); if (f2.fields.filter(([, v]) => v).length >= 3) fx = f2; } }
     lastRaims.set("page", { url: res?.url || pg.url, html: (res?.text || pg.text).slice(0, 600000) });
     const fields = fx.fields.filter(([k, v]) => v && !/^(type passport|has returnee|ami probashi|returnee other passport|_token)/i.test(k));
@@ -1514,7 +1515,11 @@ A["raims.clearanceCheck"] = async (d, u) => { needPerm(u, "clearance"); limit(u.
 A["raims.preEc"] = async (d, u, ctx) => { // uses the admin's RAIMS sign-in
   must(u && (u.role === "agent" ? u.status === "active" : can(u, "clearance")), "You do not have permission for this.", 403);
   limit(u.id, "preec", u.role === "agent" ? 40 : 200, 3600e3);
-  return await preEcCheck(d);
+  const r = await preEcCheck(d);
+  if (u.role !== "admin" && !r.ok) { // agents and staff see a plain message, not what the agency's RAIMS session read
+    return { ok: false, passport: r.passport, problem: r.notFound || /did not show a result|not found/i.test(r.problem || "") ? "No information on RAIMS for this passport. Check the passport number." : "RAIMS could not be checked right now. Please try again in a few minutes." };
+  }
+  return r;
 };
 A["admin.raims"] = async (d, u) => {
   needPerm(u, "clearance");
