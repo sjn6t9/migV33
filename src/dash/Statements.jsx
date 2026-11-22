@@ -1,5 +1,6 @@
 // Payments & receipts › Statements: find any account (agent, customer, staff, the office) by mobile, name or email,
 // then print, download or email its statement. Each issued statement has a number and a QR code to check it.
+import { officeRows } from "./Accounts.jsx";
 import React from "react";
 import { LuSearch, LuPrinter, LuFileText, LuFileSpreadsheet, LuMail, LuX, LuLandmark, LuUserRound, LuBriefcase, LuBadgeCheck, LuBan } from "react-icons/lu";
 import { store, user, balanceOf } from "../store.js";
@@ -27,8 +28,8 @@ function rowsOf(a) {
   if (a.kind === "payer") { const acc = S.mr.accounts.find(x => x.id === a.ref); return acc ? accountRows(acc, S.mr.charges || [], S.mr.receipts) : []; }
   if (a.kind === "staff") return (S.salary?.pays || []).filter(p => p.uid === a.ref && !p.void).map(p => ({ id: p.id, date: p.date, details: `Salary ${monthName(p.month)} (${p.no})`, rate: way(p.method, p.channel), debit: p.net, credit: p.paid }));
   const O = S.office || { entries: [], auto: [] };
-  const who = m => { const P = /^Person · [a-z]+(?: \| (.+))?$/.exec(String(m || "")); return P ? way(P[1] || "Cash") : way(m); };
-  return [...O.entries.filter(e => (e.status || "accepted") === "accepted" && e.type !== "transfer"), ...O.auto].map(e => ({ id: e.id, date: e.date, details: e.desc, rate: who(e.method), debit: e.type === "in" ? e.amount : 0, credit: e.type === "out" ? e.amount : 0 }));
+  // the main account without the money with the MD / Directors / Chairman (that is kept apart)
+  return officeRows([...O.entries.filter(e => (e.status || "accepted") === "accepted"), ...O.auto], "", false).map(({ id, date, details, rate, debit, credit }) => ({ id, date, details, rate, debit, credit }));
 }
 const VIEW = { office: { cash: true, heads: ["Money in", "Money out"] }, staff: { heads: ["Salary (net)", "Paid"], balText: b => (b > 0 ? "Still to pay" : b < 0 ? "Paid in advance" : "All paid") } };
 
