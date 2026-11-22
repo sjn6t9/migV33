@@ -904,6 +904,52 @@ function raimsFields(html) {
   const alerts = [...h.matchAll(/<div[^>]*class="[^"]*\b(alert|alert-danger|alert-warning|alert-success|text-danger)\b[^"]*"[^>]*>([\s\S]*?)<\/div>/gi)].map(m => htmlText(m[2]).replace(/\s+/g, " ").trim()).filter(t => t && t.length < 400);
   return { fields: out, alerts: [...new Set(alerts)] };
 }
+/* the RAIMS Pre EC answer (JSON) shown the way the RAIMS page shows it: its alerts, then Employee Information */
+function preEcView(j, pp) {
+  const m = {}; const walk = (v, k) => { if (Array.isArray(v)) v.forEach(x => walk(x, k)); else if (v && typeof v === "object") Object.entries(v).forEach(([a, b]) => walk(b, a)); else if (k && !(k.toLowerCase() in m) && v != null && String(v).trim() !== "") m[k.toLowerCase()] = v; };
+  walk(j);
+  if (!Object.keys(m).some(k => /registration_no|passport_number|national_id|bmet_bio_finger|is_available_for_job/.test(k))) return null;
+  // the person's own name: "name" in the object that also holds the person's details (not a district's or a centre's name)
+  let person = ""; const look = v => { if (person || !v || typeof v !== "object") return; if (Array.isArray(v)) return v.forEach(look);
+    const ks = Object.keys(v).map(k => k.toLowerCase()); if (ks.some(k => /national_id|fathers?_name|date_of_birth|passport_number|name_bn/.test(k))) { const nk = Object.keys(v).find(k => /^(name|name_en|full_name|employee_name|applicant_name|name_english)$/i.test(k) && v[k]); if (nk) { person = String(v[nk]).trim(); return; } }
+    Object.values(v).forEach(look); };
+  look(j);
+  if (!person) { const fp = /passport_([A-Z_]+?)_\d{6,}/.exec(String(m.file_path || "")); if (fp) person = fp[1].replace(/_/g, " ").trim(); }
+  const g = (...ks) => { for (const k of ks) if (m[k] != null && String(m[k]).trim() !== "" && String(m[k]) !== "null") return String(m[k]).trim(); return ""; };
+  const yes = v => ["1", "true", "yes"].includes(String(v).toLowerCase());
+  const day = v => { const x = String(v || ""); const d = /^(\d{4})-(\d{2})-(\d{2})/.exec(x); return d ? `${d[3]}-${d[2]}-${d[1]}` : x; };
+  const alerts = [];
+  for (const k of ["message", "msg", "alert", "warning"]) if (m[k] && !/success/i.test(m[k])) alerts.push(String(m[k]));
+  if (Array.isArray(j?.alerts)) alerts.push(...j.alerts.map(String));
+  const exp = g("expire_date", "expiry_date", "passport_expiry_date", "date_of_expiry");
+  if (exp && /^\d{4}-\d{2}-\d{2}/.test(exp)) { const t = new Date(exp.slice(0, 10)); const lim = new Date(); lim.setMonth(lim.getMonth() + 3); if (t < lim) alerts.push("Alert: Passport expired date must be at least 3 months from today."); }
+  const finger = g("bmet_bio_finger", "bio_finger", "is_bio_finger", "finger_status");
+  const avail = g("is_available_for_job", "availability", "is_available");
+  const gender = { 1: "Male", 2: "Female", 3: "Third gender" }[g("gender_id")] || g("gender");
+  const addr = [g("pa_house_no_road_village", "house_no_road_village"), g("pa_post_office_name_code", "post_office_name_code"), g("pa_police_station", "police_station")].filter(Boolean).join(", ");
+  const F = [
+    ["BMET Registration No", g("registration_no", "bmet_registration_no", "reg_no")],
+    ["BIO Finger", finger === "" ? "" : yes(finger) ? "Success" : "Not Found"],
+    ["Availability", avail === "" ? "" : yes(avail) || /^available$/i.test(avail) ? "Available" : "Not Available"],
+    ["Name", person || g("name_en", "full_name", "employee_name", "applicant_name")],
+    ["Bangali Name", g("name_bn", "bangla_name", "name_bangla")],
+    ["NID Number", g("national_id", "nid", "nid_number", "nid_no")],
+    ["Date of Birth", day(g("date_of_birth", "dob", "birth_date"))],
+    ["Father's Name", g("fathers_name", "father_name")],
+    ["Mother's Name", g("mothers_name", "mother_name")],
+    ["Gender", gender],
+    ["Passport No", g("passport_number", "passport_no") || pp],
+    ["Passport Issue Date", day(g("issue_date", "passport_issue_date"))],
+    ["Passport Expire Date", day(exp)],
+    ["Mobile", g("mobile", "mobile_no", "phone", "contact_number")],
+    ["Profession", g("profession", "occupation")],
+    ["Permanent Address", addr],
+    ["Contact Person", [g("contact_person_name"), g("contact_person_mobile")].filter(Boolean).join(" · ")],
+    ["Training", g("name_of_institution", "training_center", "institute_name")],
+    ["PDO Completed", g("pdo_completed") === "" ? "" : yes(g("pdo_completed")) ? `Yes${g("pdo_completed_at") ? ` (${day(g("pdo_completed_at"))})` : ""}` : "No"],
+  ].filter(([, v]) => v);
+  return { fields: F, alerts: [...new Set(alerts)] };
+}
 async function preEcCheck({ passport, returnee, otherPassport }) {
   const pp = ppNorm(passport); must(/^[A-Z0-9]{6,15}$/.test(pp), "Enter the passport number.");
   for (let attempt = 0; attempt < 2; attempt++) {
@@ -959,6 +1005,7 @@ async function preEcCheck({ passport, returnee, otherPassport }) {
           let got = null;
           try { const j = JSON.parse(x.text);
             if (typeof j?.html === "string") { const f = raimsFields(j.html); if (f.fields.length) got = f; }
+            if (!got) { const v = preEcView(j, pp); if (v) got = v; }
             if (!got) { const flat = []; const walk = (v, k) => { if (v && typeof v === "object") Object.entries(v).forEach(([a2, b2]) => walk(b2, a2)); else if (k && v != null && String(v).trim()) flat.push([k.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase()), htmlText(String(v)).trim()]); }; walk(j);
               if (flat.length >= 3 || flat.some(([, v]) => v.toUpperCase() === pp)) got = { fields: flat.slice(0, 80), alerts: [] }; }
           } catch { const f = raimsFields(x.text); if (f.fields.filter(([, v]) => v).length >= 3 && f.fields.some(([, v]) => v && v.toUpperCase() !== pp)) got = f; }
