@@ -8,6 +8,7 @@ import { agentRows } from "../statement.js";
 import { act, openModal, closeModal, confirmBox, toast } from "../actions.js";
 import { Field } from "./shared.jsx";
 import { Empty } from "../ui.jsx";
+import { AgentHistory } from "./AgentHistory.jsx";
 
 export const bookAgents = () => store.S.agentBook || [];
 const key = v => String(v || "").trim().replace(/\s+/g, " ").toLowerCase();
@@ -119,6 +120,7 @@ function AgentDetail({ reg, book, AddForm, canLedger, canMr }) {
           : r.pending ? <span className="ec-badge pay-pending">Waiting for approval</span> : null} />
       {AddForm && (reg ? canLedger : true) && <AddForm sel={reg || book} book={!!book} title="Balance update" />}
     </div>
+    {reg && <AgentHistory key={reg.id} agentId={reg.id} />}
   </>;
 }
 

@@ -1077,6 +1077,61 @@ async function raimsSync(by = "auto") {
 setInterval(() => { if (db.raims?.auto && db.raims.pass) raimsSync("auto").catch(() => {}); }, 30 * 60e3).unref();
 const lastRaims = new Map(); // the last RAIMS page read, for the admin to download when a page is not read right
 /* Pre EC Check (RAIMS): admin/staff with the BMET clearance permission, and agents */
+/* ======================= agent history: what each agent did, from where (IP, place, device) ======================= */
+if (!db.agentLog) db.agentLog = [];
+if (!db.ipGeo) db.ipGeo = {};
+const AG_TRAIL = { "auth.login": "Signed in", "auth.otp": "Signed in", "auth.handoff": "Signed in", "auth.logout": "Signed out", "auth.changePassword": "Changed password",
+  "raims.preEc": "Pre EC Check", "agent.payment": "Payment sent", "agent.clPayment": "Clearance payment sent", "agent.clearance": "BMET clearance application",
+  "agent.workerSave": "Worker saved", "agent.workerDelete": "Worker deleted", "agent.applyJob": "Job application", "agent.ticket": "Air ticket request",
+  "agent.ticketCancel": "Air ticket cancelled", "agent.profile": "Profile updated", "agent.upload": "Document uploaded", "agent.removeDoc": "Document removed" };
+const device = ua => { const s = String(ua || "");
+  const os = /iPhone/.test(s) ? "iPhone" : /iPad/.test(s) ? "iPad" : /Android/.test(s) ? "Android" : /Windows/.test(s) ? "Windows" : /Mac OS X|Macintosh/.test(s) ? "Mac" : /Linux/.test(s) ? "Linux" : "";
+  const br = /Edg\//.test(s) ? "Edge" : /OPR\/|Opera/.test(s) ? "Opera" : /SamsungBrowser/.test(s) ? "Samsung Internet" : /CriOS|Chrome\//.test(s) ? "Chrome" : /FxiOS|Firefox\//.test(s) ? "Firefox" : /Safari\//.test(s) ? "Safari" : "";
+  return [os, br].filter(Boolean).join(" · ") || s.slice(0, 60); };
+const privateIp = ip => !ip || /^(127\.|10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.|::1$|fc|fd|fe80|::ffff:127\.|::ffff:10\.|::ffff:192\.168\.)/i.test(ip);
+const geoBusy = new Set();
+async function ipPlace(ip) { // the place an address belongs to (city, region, country · network); cached for 30 days
+  const c = db.ipGeo[ip]; if (c && Date.now() - Date.parse(c.at) < 30 * 864e5) return c.loc;
+  if (process.env.GEO_OFF || privateIp(ip) || geoBusy.has(ip)) return "";
+  geoBusy.add(ip);
+  try {
+    const r = await fetch(`http://ip-api.com/json/${encodeURIComponent(ip.replace(/^::ffff:/, ""))}?fields=status,country,regionName,city,isp`, { signal: AbortSignal.timeout(4000) });
+    const j = await r.json(); if (j.status !== "success") return "";
+    const loc = [[j.city, j.regionName, j.country].filter((x, i, a) => x && a.indexOf(x) === i).join(", "), j.isp].filter(Boolean).join(" · ");
+    db.ipGeo[ip] = { loc, at: now() }; const ks = Object.keys(db.ipGeo); if (ks.length > 3000) ks.slice(0, 500).forEach(k => delete db.ipGeo[k]);
+    return loc;
+  } catch { return ""; } finally { geoBusy.delete(ip); }
+}
+function agentTrail(type, d, out, who, ip, ua) {
+  try {
+    if (!AG_TRAIL[type] || !who || who.role !== "agent" || (type !== "raims.preEc" && out?.error)) return;
+    if ((type === "auth.login" || type === "auth.otp") && out?.otp) return; // waiting for the code: not signed in yet
+    let detail = "", passport = "", ref = "";
+    const amt = v => `৳ ${Number(v || 0).toLocaleString("en-IN")}`;
+    if (type === "raims.preEc") { passport = ppNorm(d.passport); detail = out?.ok ? (out.entry?.name || (out.fields || []).find(([k, v]) => /name/i.test(k) && v)?.[1] || (out.alerts || [])[0] || "Checked") : (out?.problem || out?.error || "No result"); }
+    else if (type === "agent.payment") { detail = [amt(d.amount), str(d.method, 40), str(d.ref, 80)].filter(Boolean).join(" · "); const l = [...db.ledger].reverse().find(x => x.agentId === who.id && x.type === "payment"); ref = l?.id || ""; }
+    else if (type === "agent.clPayment") { const c = db.clearances.find(x => x.id === d.id); passport = c?.passport || ""; detail = [amt(d.amount), c?.ref, c?.name].filter(Boolean).join(" · "); }
+    else if (type === "agent.clearance") { const w = d.workerId ? worker(d.workerId) : null; passport = (w?.passport || str(d.newWorker?.passport, 30)).toUpperCase(); detail = [w?.name || str(d.newWorker?.name, 120), str(d.country, 60)].filter(Boolean).join(" · "); }
+    else if (type === "agent.workerSave") { passport = str(d.passport, 30).toUpperCase(); detail = str(d.name, 120); }
+    else if (type === "agent.applyJob") { detail = `${job(d.jobId)?.title || "Job"} · ${(d.workerIds || []).length} worker(s)`; }
+    else if (type === "agent.ticket") { detail = `${str(d.from, 80)} → ${str(d.to, 80)}`; }
+    const e = { id: id("h"), at: now(), agentId: who.id, type, what: AG_TRAIL[type], detail: str(detail, 200), passport, ...(ref ? { ref } : {}), ip: String(ip || "").replace(/^::ffff:/, ""), device: device(ua), loc: db.ipGeo[ip]?.loc || "" };
+    db.agentLog.push(e); if (db.agentLog.length > 20000) db.agentLog.splice(0, db.agentLog.length - 20000);
+    if (!e.loc) ipPlace(ip).then(loc => { if (loc) { e.loc = loc; save(); } });
+  } catch (err) { console.error("agentTrail", err); }
+}
+A["admin.agentLog"] = async (d, u) => {
+  must(u && isStaffRole(u) && (u.role === "admin" || PP_PERMS.some(k => can(u, k))), "You do not have permission for this.", 403);
+  const nm = id => { const x = db.users.find(y => y.id === id); return x ? agentName(x) : "—"; };
+  if (d.preEc) return { log: db.agentLog.filter(x => x.type === "raims.preEc").slice(-500).reverse().map(x => ({ ...x, agent: nm(x.agentId) })) };
+  must(db.users.some(x => x.id === d.agentId && x.role === "agent"), "Agent not found.");
+  const log = db.agentLog.filter(x => x.agentId === d.agentId);
+  // payments from before the history began (no address recorded)
+  const seen = new Set(log.map(x => x.ref).filter(Boolean));
+  const older = db.ledger.filter(l => l.agentId === d.agentId && l.type === "payment" && !seen.has(l.id) && !log.some(x => x.type === "agent.payment" && Math.abs(Date.parse(x.at) - Date.parse(l.at)) < 5000))
+    .map(l => ({ id: "old" + l.id, at: l.at, type: "agent.payment", what: "Payment", detail: [`৳ ${Number(l.amount || 0).toLocaleString("en-IN")}`, l.method, l.ref, l.desc].filter(Boolean).join(" · "), ip: "", device: "", loc: "" }));
+  return { log: [...log, ...older].sort((a, b) => b.at.localeCompare(a.at)).slice(0, 1000) };
+};
 A["raims.preEc"] = async (d, u, ctx) => { // uses the admin's RAIMS sign-in
   must(u && (u.role === "agent" ? u.status === "active" : can(u, "clearance")), "You do not have permission for this.", 403);
   limit(u.id, "preec", u.role === "agent" ? 40 : 200, 3600e3);
@@ -1485,12 +1540,15 @@ async function handleApi(req, res, url) {
     };
     try {
       const out = (await fn(body.payload || {}, u, ctx)) || {};
+      agentTrail(body.type, body.payload || {}, out, ctx.user || u, ctx.ip, req.headers["user-agent"]);
       for (const [t, s] of Object.entries(db.sessions)) if (Date.parse(s.exp) < Date.now()) delete db.sessions[t];
       save();
       if (ctx.redirect) out.redirect = ctx.redirect;
       return send(res, out.error ? 400 : 200, { ...out, state: { ...viewFor(ctx.user), rev: REV } }, setCookie.length ? { "Set-Cookie": setCookie } : {});
     } catch (e) {
-      if (!(e instanceof Fail)) { console.error(body.type, e); try { save(); } catch { /* ignore */ } }
+      if (!(e instanceof Fail)) console.error(body.type, e);
+      if (body.type === "raims.preEc" && e instanceof Fail) agentTrail(body.type, body.payload || {}, { problem: e.message }, u, ctx.ip, req.headers["user-agent"]);
+      try { save(); } catch { /* ignore */ }
       return send(res, e.code || 500, { error: e instanceof Fail ? e.message : "Something went wrong. Please try again.", state: { ...viewFor(ctx.user), rev: REV } }, setCookie.length ? { "Set-Cookie": setCookie } : {});
     }
   }
