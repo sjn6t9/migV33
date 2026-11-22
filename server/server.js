@@ -1532,8 +1532,12 @@ A["admin.raims"] = async (d, u) => {
       const icLabel = valOf(/^(IC|EC|Clearance)\s*(No\.?|Number|Ref\.?)?\s*:?$/i).replace(/\s+/g, "").toUpperCase();
       const country2 = ctry || valOf(/^(Destination\s*)?Country\s*:?$/i);
       const nameRe = /^((emigrant|worker|candidate|applicant|migrant|passport\s*holder)('?s)?\s*)?(full\s*)?name(\s*\(.*\))?\s*:?$/i, notName = /father|mother|spouse|employer|company|owner|contact|agency|agent|nominee|user|bank|person/i;
+      // a number is a passport only when its label says so: visa / work-permit / sticker numbers (e.g. Maldives ST00078814, WP00851002) look the same
+      const ppLabelled = N.some(x => /^passport\s*(no\.?|number)?\s*:?$/i.test(x));
+      const labelOf = i => { for (let j = i - 1; j >= Math.max(0, i - 3); j--) if (isLab(N[j])) return N[j]; return ""; };
       for (let i = 0; i < N.length; i++) {
         const pp = (/^\s*([A-Z]{1,2}\d{7,8})\s*$/.exec(N[i]) || [])[1]; if (!pp || people.some(x => x.passport === pp)) continue;
+        const lab = labelOf(i); if (/visa|sticker|permit|referral|sponsor|returnee|demand|job/i.test(lab) || (ppLabelled && !/passport/i.test(lab))) continue;
         // the value after a "Name" label (names can be "RAJU AHMED" or "Raju Ahmed"; the next label is not a name)
         const nameVal = v => !!v && v.length <= 80 && !/:\s*$/.test(v) && !PPR.test(v) && !/\d{3,}/.test(v) && !/\b(name|number|date|gender|address|type|country|place|passport|phone|mobile|nid|visa|sponsor|father|mother|issue|expire|referral|sticker|returnee|employee|information|documents?)\b/i.test(v);
         let nm = ""; for (let j = i - 1; j >= Math.max(0, i - 40); j--) { if (nameRe.test(N[j]) && !notName.test(N[j]) && nameVal(N[j + 1])) { nm = N[j + 1]; break; } if (/^\s*[A-Z]{1,2}\d{7,8}\s*$/.test(N[j])) break; }
