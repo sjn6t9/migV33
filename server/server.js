@@ -1098,7 +1098,9 @@ async function raimsApiList() {
     const keys = [...pg.text.matchAll(/jsUtlt\[['"]apiKey['"]\]\s*=\s*['"]([^'"]{20,})['"]/g)].map(m => m[1]); const key = keys[keys.length - 1];
     must(key, "RAIMS list page gave no API key.");
     const rows = []; let total = Infinity;
-    for (let start = 0, draw = 1; start < Math.min(total, 2000); start += 100, draw++) {
+    // newest first; stop once every IC number of our open files is seen (RAIMS holds thousands of older applications)
+    const want = new Set(db.clearances.filter(c => c.status !== "approved" && c.status !== "rejected" && !c.card).map(icOf).filter(Boolean));
+    for (let start = 0, draw = 1; start < Math.min(total, 6000); start += 100, draw++) {
       const q = new URLSearchParams({ draw: String(draw), start: String(start), length: "100", status: "1", ap_type: "", "search[value]": "", "search[regex]": "false", "order[0][column]": "0", "order[0][dir]": "desc", "columns[0][data]": "id" });
       const x = await rq(J, `/api/v1/agency/ec/apllication/list?${q}`, { headers: { Authorization: `Bearer ${key}`, Accept: "application/json", "X-Requested-With": "XMLHttpRequest", Referer: pg.url } });
       must(x.r.status < 400, `RAIMS list API answered ${x.r.status}.`);
@@ -1106,6 +1108,7 @@ async function raimsApiList() {
       total = Number(P.recordsFiltered ?? P.recordsTotal ?? data.length) || data.length;
       for (const r of data) if (!r.is_draft) rows.push([String(r.ref_no || ""), String(r.status?.name || ""), `RID:${r.id}`, r.country?.name || "", `approved ${r.approval_summary?.approved_count ?? 0}/${r.apply_qty ?? ""}`]);
       if (data.length < 100) break;
+      if (!want.size || [...want].every(ic => rows.some(r => r[0].toUpperCase() === ic))) break;
     }
     return { head: ["EC Ref No", "Status", "ID", "Country", "Approved"], rows };
   }
