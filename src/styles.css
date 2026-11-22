@@ -301,7 +301,7 @@ tr.sel td{background:var(--soft)}
 .sub{margin:22px 0 8px}
 .search .btn{gap:8px}
 .demo-strip span{display:inline-flex;align-items:center;gap:6px;flex-wrap:wrap}
-.wrap.dash{padding-top:28px;padding-bottom:50px}
+.wrap.dash{padding:28px clamp(12px,3vw,48px) 50px}
 .rail .count{align-self:center;line-height:1.55;min-width:20px;text-align:center}
 
 /* ---- v2: chat assistant, WhatsApp, testimonials, team, gallery, track ---- */
@@ -1484,3 +1484,5 @@ button.hold-tile{cursor:pointer}
 @media (max-width:760px){.fl-seg{grid-template-columns:1fr auto 1fr;gap:10px}.fl-seg-air,.fl-seg-tags{grid-column:1/-1}.fl-seg-tags{flex-direction:row;align-items:center;justify-content:flex-start;flex-wrap:wrap}.fl-seg-mid{min-width:64px}.fl-card,.fl-det,.fl-seg{min-width:0}.fl-tabs button{padding:7px 10px}}
 .hold-sep{border-style:dashed;opacity:.9}.hold-tile .muted.small+b+.muted.small{font-size:11.5px}
 .ledger-agents{border-top:1px solid var(--line);padding-top:14px}.ledger-agents .ec-head h2{font-size:1.35rem}
+.raims-on{overflow-wrap:anywhere}
+.api-list{margin:4px 0 0 18px;padding:0}.api-list code{font-size:12px;overflow-wrap:anywhere}

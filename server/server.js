@@ -1165,7 +1165,7 @@ async function preEcCheck({ passport, returnee, otherPassport }) {
       // the search runs in the page's script: ask its addresses the way a browser does (session cookie, XSRF token, same-site Referer/Origin)
       const xsrf = decodeURIComponent(J.c["XSRF-TOKEN"] || ""), origin = new URL(pg.url).origin;
       // the RAIMS API (/api/v1/…) wants a token the page holds for its script (meta tag, script value, or a cookie)
-      const bearer = (() => { const t = pg.text;
+      const bearer = (() => { const t = pg.text; const ak = raimsApiKey(t); if (ak) return { v: ak, from: "page apiKey" };
         const m = /Bearer\s*["'`]?\s*\+?\s*["'`]?([A-Za-z0-9._|\-]{20,})/.exec(t) || /(?:api_?token|access_?token|auth_?token|bearer_?token|jwt|token)["']?\s*[:=,]\s*["'`]([A-Za-z0-9._|\-]{20,})["'`]/i.exec(t) || /<meta[^>]*name=["'](?:api-token|access-token|token|jwt)["'][^>]*content=["']([^"']{20,})["']/i.exec(t);
         if (m) return { v: m[1], from: "page" };
         const ck = Object.entries(J.c).find(([k, v]) => /token|jwt|auth/i.test(k) && !/xsrf|csrf/i.test(k) && v.length > 20); return ck ? { v: decodeURIComponent(ck[1]), from: `cookie ${ck[0]}` } : null; })();
@@ -1232,27 +1232,29 @@ async function raimsOpen(search = "") {
   } catch (e) { if (e instanceof Fail) throw e; must(false, `Could not reach RAIMS: ${e.message}`); }
 }
 /* the RAIMS EC application list from its API: rows [EC Ref No (IC), status name, RID:<application id>] */
-async function raimsApiList() {
+const raimsApiKey = t => { const k = [...String(t || "").matchAll(/jsUtlt\[['"]apiKey['"]\]\s*=\s*['"]([^'"]{20,})['"]/g)].map(m => m[1]); return k[k.length - 1] || ""; };
+async function raimsApiList(search = "") {
   for (let attempt = 0; attempt < 2; attempt++) {
     const J = await raimsLogin(attempt > 0);
     const pg = await rq(J, "/agency/ec/application/list");
     if (/name="password"/i.test(pg.text) && /login/i.test(pg.url)) { raimsSess = null; continue; }
-    const keys = [...pg.text.matchAll(/jsUtlt\[['"]apiKey['"]\]\s*=\s*['"]([^'"]{20,})['"]/g)].map(m => m[1]); const key = keys[keys.length - 1];
+    const key = raimsApiKey(pg.text);
     must(key, "RAIMS list page gave no API key.");
-    const rows = []; let total = Infinity;
+    const rows = [], raw = []; let total = Infinity;
     // newest first; stop once every IC number of our open files is seen (RAIMS holds thousands of older applications)
     const want = new Set(db.clearances.filter(c => c.status !== "approved" && c.status !== "rejected" && !c.card).map(icOf).filter(Boolean));
     for (let start = 0, draw = 1; start < Math.min(total, 6000); start += 100, draw++) {
-      const q = new URLSearchParams({ draw: String(draw), start: String(start), length: "100", status: "1", ap_type: "", "search[value]": "", "search[regex]": "false", "order[0][column]": "0", "order[0][dir]": "desc", "columns[0][data]": "id" });
+      const q = new URLSearchParams({ draw: String(draw), start: String(start), length: "100", status: "1", ap_type: "", "search[value]": search, "search[regex]": "false", "order[0][column]": "0", "order[0][dir]": "desc", "columns[0][data]": "id" });
       const x = await rq(J, `/api/v1/agency/ec/apllication/list?${q}`, { headers: { Authorization: `Bearer ${key}`, Accept: "application/json", "X-Requested-With": "XMLHttpRequest", Referer: pg.url } });
       must(x.r.status < 400, `RAIMS list API answered ${x.r.status}.`);
       const j = JSON.parse(x.text), P = j.payload || j; const data = P.data || [];
       total = Number(P.recordsFiltered ?? P.recordsTotal ?? data.length) || data.length;
+      for (const r of data) if (!r.is_draft) raw.push(r);
       for (const r of data) if (!r.is_draft) rows.push([String(r.ref_no || ""), String(r.status?.name || ""), `RID:${r.id}`, r.country?.name || "", `approved ${r.approval_summary?.approved_count ?? 0}/${r.apply_qty ?? ""}`]);
-      if (data.length < 100) break;
+      if (data.length < 100 || search) break;
       if (!want.size || [...want].every(ic => rows.some(r => r[0].toUpperCase() === ic))) break;
     }
-    return { head: ["EC Ref No", "Status", "ID", "Country", "Approved"], rows };
+    return { head: ["EC Ref No", "Status", "ID", "Country", "Approved"], rows, raw, J, key };
   }
   must(false, "RAIMS signed out.");
 }
@@ -1522,7 +1524,7 @@ A["admin.raims"] = async (d, u) => {
         const xsrf = (/name="csrf-token"[^>]*content="([^"]+)"/.exec(pg.text) || [])[1] || "";
         const objs = []; const walk = v => { if (Array.isArray(v)) v.forEach(walk); else if (v && typeof v === "object") { if (Object.values(v).some(x => typeof x === "string" && /^[A-Z]{1,2}\d{7,8}$/.test(x.trim()))) objs.push(v); else Object.values(v).forEach(walk); } };
         for (const h of dataHints(pg.text).filter(u => /ec|worker|emigrant|applica|passport|individual|candidate/i.test(u)).slice(0, 5)) {
-          try { const x = await rq(J, h, { headers: { "X-Requested-With": "XMLHttpRequest", Accept: "application/json, text/html", "X-CSRF-TOKEN": xsrf } });
+          try { const ak = raimsApiKey(pg.text), x = await rq(J, h, { headers: { "X-Requested-With": "XMLHttpRequest", Accept: "application/json, text/html", "X-CSRF-TOKEN": xsrf, ...(ak && /api\/v\d/.test(h) ? { Authorization: `Bearer ${ak}` } : {}) } });
             try { walk(JSON.parse(x.text)); } catch { for (const m of x.text.matchAll(/<table[\s\S]*?<\/table>/gi)) { const t = raimsRows(m[0]), H = t.head.map(z => z.toLowerCase()), ni = H.findIndex(z => /name/.test(z)); for (const r of t.rows) { const pp = (PPR.exec(r.join(" ")) || [])[1]; if (pp) people.push({ ic: icp, name: ni >= 0 ? r[ni] : "", passport: pp, country: ctry }); } } }
           } catch {}
         }
@@ -1568,6 +1570,19 @@ A["admin.raims"] = async (d, u) => {
       if (!r.people.length) return { problem: "That RAIMS page has no workers that this site can read.", seen: { page: link, title: r.title, url: r.url, text: r.txt.slice(0, 1500), tables: r.tables, hints: r.hints } };
       return { people: r.people.slice(0, 100) };
     }
+    // the RAIMS list API (the same one the RAIMS list page uses) finds the application; its own page gives the workers
+    try {
+      const A2 = await raimsApiList(q), hits = A2.raw.filter(r => norm(String(r.ref_no || "")).includes(q) || JSON.stringify(r).toUpperCase().includes(q)).slice(0, 20);
+      let people = [];
+      for (const r of hits) {
+        const ic = norm(String(r.ref_no || "")), ct = r.country?.name || "";
+        const objs = []; const walk = v => { if (Array.isArray(v)) v.forEach(walk); else if (v && typeof v === "object") { const pv = Object.entries(v).find(([k, x]) => /passport/i.test(k) && typeof x === "string" && /^[A-Z]{1,2}\d{7,8}$/.test(x.trim())); if (pv) objs.push([v, pv[1].trim()]); else Object.values(v).forEach(walk); } }; walk(r);
+        if (objs.length) { for (const [o, pp] of objs) people.push({ ic, name: String((Object.entries(o).find(([k, x]) => /name/i.test(k) && !/father|mother|spouse|agency|agent|employer|company|file|user|country|bn|bangla/i.test(k) && typeof x === "string") || [])[1] || "").trim(), passport: pp, country: ct }); continue; }
+        if (r.id) { const x = await showPage(A2.J, `/agency/ec/application/individual/${r.id}/show`, ic, ct); people.push(...x.people); }
+      }
+      const seen = new Set(); people = people.filter(x => x.passport && !seen.has(x.passport) && seen.add(x.passport));
+      if (people.length) return { people: people.slice(0, 100), via: "api" };
+    } catch {}
     const { J, parsed, ajax, pages } = await raimsOpen(q), H = parsed.head.map(h => h.toLowerCase());
     const col = re => H.findIndex(h => re.test(h));
     const ci = { ic: col(/\bic\b|ic no|clearance no|ref/), name: col(/name/), country: col(/country|destination/) };
@@ -1582,6 +1597,21 @@ A["admin.raims"] = async (d, u) => {
     const seen = new Set(); people = people.filter(x => x.passport && !seen.has(x.passport) && seen.add(x.passport));
     if (!people.length) return { problem: `Nothing on RAIMS matches ${q}.`, seen: { rows: parsed.rows.length, pages, head: parsed.head.slice(0, 12), ajax, first: (parsed.rows[0] || []).slice(0, 10), links: (parsed.links?.[0] || []).slice(0, 5), hits: hit.length, list: parsed.page } };
     return { people: people.slice(0, 100) };
+  }
+  if (d.op === "api") { // which RAIMS API addresses its own pages use (read only): helps move each task to the API
+    must(u.role === "admin", "Only the admin can do this.");
+    const J = await raimsLogin(), out = { pages: [] }, jsSeen = new Map();
+    const apis = t => [...new Set([...String(t || "").matchAll(/["'`]((?:https?:\/\/raims\.oep\.gov\.bd)?\/?api\/v\d\/[^"'`\s]{3,160})["'`]/gi)].map(m => m[1]))];
+    for (const path of ["/agency/dashboard", "/agency/ec/application/list", "/agency/employee/pre-ec-check", "/agency/employee/clearance-check", ...(d.page && /^\/agency\/[\w\/-]{3,120}$/.test(d.page) ? [d.page] : [])]) {
+      try { const pg = await rq(J, path); if (/name="password"/i.test(pg.text) && /login/i.test(pg.url)) { out.pages.push({ path, error: "signed out" }); continue; }
+        const found = new Set([...apis(pg.text), ...dataHints(pg.text)]);
+        for (const src of [...pg.text.matchAll(/<script[^>]*src="([^"]+)"/gi)].map(m => m[1].replace(/&amp;/g, "&")).filter(x => !/jquery|bootstrap|cdn|select2|datatables|moment|sweetalert|toastr|chart/i.test(x) && (/^\//.test(x) || /raims\.oep\.gov\.bd/i.test(x))).slice(0, 12)) {
+          if (!jsSeen.has(src)) { try { const x = await rq(J, src); jsSeen.set(src, apis(x.text)); } catch { jsSeen.set(src, []); } }
+          for (const a of jsSeen.get(src)) found.add(a);
+        }
+        out.pages.push({ path, key: !!raimsApiKey(pg.text), apis: [...found].slice(0, 40) }); } catch (e) { out.pages.push({ path, error: e.message }); }
+    }
+    return out;
   }
   if (d.op === "sync") { const r = await raimsSync(u.name); return r.ok ? { msg: `RAIMS: ${r.rows} files read, ${r.matched} matched, ${r.updated.length} updated.` } : { problem: r.error }; }
   must(false, "Unknown request.");

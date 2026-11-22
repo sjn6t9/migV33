@@ -570,19 +570,24 @@ function RaimsPanel() {
   const [edit, setEdit] = React.useState(!R?.saved); React.useEffect(() => { if (!R?.saved) setEdit(true); }, [R?.saved]); const [busy, setBusy] = React.useState(false);
   const save = async e => { e.preventDefault(); const [d] = formData(e); setBusy(true); const r = await act("admin.raims", { op: "save", email: d.email, password: d.password, auto: !!d.auto }); setBusy(false); if (r) setEdit(false); };
   const sync = async () => { setBusy(true); const r = await act("admin.raims", { op: "sync" }); setBusy(false); if (r?.problem) toast(r.problem); };
-  const L = R?.last;
+  const L = R?.last; const [api, setApi] = React.useState(null);
+  const scan = async () => { setBusy(true); const r = await act("admin.raims", { op: "api" }); setBusy(false); if (r?.pages) setApi(r.pages); };
   return <div className="card raims">
     <div className="row between"><div><h3 className="bulk-h"><LuRefreshCw /> RAIMS status sync</h3>
-      <p className="muted small">Signs in to raims.oep.gov.bd with the agency's RAIMS account, reads the EC application list, and sets each file here with the same IC number (or passport no.) to the RAIMS status — Section, AD, DD, Director, ADG, Final Approval, Approved. A file never moves back, and Approved files are left as they are.</p></div>
+      <p className="muted small">Reads the EC application list from RAIMS and sets each file here that was Sent to BMET to the same status (files with the same IC number change together).</p></div>
       {R?.saved && <button className="btn pri" disabled={busy} onClick={sync}><LuRefreshCw /> {busy ? "Reading RAIMS…" : "Sync now"}</button>}</div>
-    {R?.saved && !edit && <p className="small mt8 raims-on" data-notr><LuCircleCheck /> {`Signed in to RAIMS as ${R.email}${R.since ? ` since ${new Date(R.since).toLocaleString("en-GB")}` : ""} · Pre EC Check, Add bulk and status sync use this sign-in until the admin logs out · ${R.auto ? "status checked every 30 minutes" : "status only with Sync now"}`}
+    {R?.saved && !edit && <p className="small mt8 raims-on" data-notr><LuCircleCheck /> {`Signed in to RAIMS as ${R.email}${R.since ? ` since ${new Date(R.since).toLocaleString("en-GB")}` : ""} · Pre EC Check, Add bulk and status sync use this sign-in until the admin logs out · ${R.auto ? "status checked every 15 minutes" : "status only with Sync now"}`}
+      {isAdmin && <button className="btn sm link" disabled={busy} onClick={scan}><LuSearch /> RAIMS API addresses</button>}
       {isAdmin && <button className="btn sm link danger" onClick={() => confirmBox("Log out of RAIMS? Pre EC Check, Add bulk search and status sync stop until the admin signs in again.", () => act("admin.raims", { op: "logout" }), "Log out")}><LuLogOut /> Log out of RAIMS</button>}</p>}
     {edit && (isAdmin ? <form className="fgrid mt8" onSubmit={save} noValidate autoComplete="off">
       <Field label="RAIMS email"><input type="email" name="email" defaultValue={R?.email || ""} autoComplete="off" /></Field>
       <Field label="RAIMS password" hint="Kept encrypted on this server; never shown again"><input type="password" name="password" autoComplete="new-password" /></Field>
-      <label className="check full"><input type="checkbox" name="auto" defaultChecked={R ? R.auto : true} /> Check RAIMS every 30 minutes</label>
+      <label className="check full"><input type="checkbox" name="auto" defaultChecked={R ? R.auto : true} /> Check RAIMS every 15 minutes</label>
       <div className="row full"><button className="btn pri" disabled={busy}><LuLogIn /> {busy ? "Signing in…" : "Sign in to RAIMS"}</button>{R?.saved && <button type="button" className="btn" onClick={() => setEdit(false)}>Cancel</button>}</div>
     </form> : <p className="muted small mt8">The admin sets the RAIMS sign-in.</p>)}
+    {api && <details className="vf-det mt8" open><summary>RAIMS API addresses its pages use</summary>
+      {api.map(x => <div key={x.path} className="mt8 small" data-notr><b>{x.path}</b>{x.error ? <span className="vf-err">{` · ${x.error}`}</span> : <span className="muted">{` · API key ${x.key ? "found" : "not found"} · ${x.apis.length} addresses`}</span>}
+        {x.apis?.length > 0 && <ul className="api-list">{x.apis.map(a => <li key={a}><code>{a}</code></li>)}</ul>}</div>)}</details>}
     {L && <div className="mt10 small">
       {L.ok ? <p>{`Last check ${new Date(L.at).toLocaleString("en-GB")} (${L.by}): ${L.rows} files on RAIMS, ${L.matched} matched here, ${L.updated.length} updated.`}</p> : <p className="vf-err">{`Last check ${new Date(L.at).toLocaleString("en-GB")}: ${L.error}`}</p>}
       {L.updated?.length > 0 && <div className="tbl mt8"><table><thead><tr><th>IC No</th><th>Name</th><th>Was</th><th>Now</th><th>RAIMS status</th></tr></thead><tbody>
@@ -619,7 +624,6 @@ function AdminClearanceList() {
     {form === "cc" && <ClearanceCheck onClose={() => setForm("")} />}
     {form === "one" && <GroupEcForm admin onDone={() => setForm("")} />}
     {form === "bulk" && <BulkEcForm onDone={() => setForm("")} />}
-    <p className="muted small">{`Status flow: Pending › Received › Send to BMET, then the status RAIMS shows (Pending Section / AD / DD / Director / Final Approval … Approved; a file can go back to Section and up again). Once a file is Sent to BMET, RAIMS sync sets its status; before that it stays ours. Choose “Custom…” in Status to write your own status. The EC Ref No can be changed until the file is Approved. When a file reaches Final Approval, the agent sends a payment receipt (Payments to check). When a file is Approved, open Details: get the card from RAIMS with its card number (Download Card / Send Card), or upload it; the agent then downloads it.`}</p>
     <FilterButtons cur={f} onPick={k => { ui.clFilter = k; setPage(1); commit(); }} items={[["all", "All"], ["pending", "New (Pending)"], ["open", "In progress"], ["card", "Card to upload"], ["pay", "Payments to check"], ["sent", "Card sent"], ["rejected", "Rejected"]].map(([k, l]) => [k, l, cnt(k)])} />
     <div className="ec-tools mt8">
       <label className="ec-show">Show <select value={per} onChange={e => { setPer(Number(e.target.value)); setPage(1); }}>{[10, 25, 50, 100].map(n => <option key={n} value={n}>{n}</option>)}</select></label>
