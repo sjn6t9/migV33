@@ -1434,6 +1434,27 @@ A["admin.raims"] = async (d, u) => {
   if (d.op === "sync") { const r = await raimsSync(u.name); return r.ok ? { msg: `RAIMS: ${r.rows} files read, ${r.matched} matched, ${r.updated.length} updated.` } : { problem: r.error }; }
   must(false, "Unknown request.");
 };
+/* change the agent (reference) of a clearance file: a registered agent, or a name (Self, a book agent …).
+   The file's worker, its Passport Entry Ref. and the charges the file added to the agent account move with it. */
+A["admin.clAgent"] = async (d, u) => {
+  needPerm(u, "clearance"); const c = db.clearances.find(x => x.id === d.id); must(c, "File not found.");
+  must(!c.candidateId, "This file belongs to a job seeker, not an agent.");
+  const ag = d.agentId ? db.users.find(x => x.id === d.agentId && x.role === "agent") : null; must(!d.agentId || ag, "Agent not found.");
+  const name = ag ? "" : str(d.agentName, 120); must(ag || name.length >= 2, "Choose the agent or write a name.");
+  const oldId = c.agentId || null, oldName = oldId ? agentName(user(oldId)) : c.agentName || "—", newName = ag ? agentName(ag) : name;
+  if ((ag && oldId === ag.id) || (!ag && !oldId && c.agentName === name)) return { msg: "The agent is the same." };
+  const w = c.workerId ? worker(c.workerId) : null, wname = w?.name || c.fullName || "";
+  c.agentId = ag ? ag.id : null; if (ag) delete c.agentName; else c.agentName = name;
+  if (w) { w.agentId = ag ? ag.id : null; if (ag) delete w.agentName; else w.agentName = name; }
+  // the processing fee / previous due this file charged move to the new registered agent
+  let moved = 0, left = 0;
+  if (oldId && c.ref) for (const l of db.ledger) if (l.agentId === oldId && l.type === "charge" && String(l.desc || "").includes(`${wname} (${c.ref})`)) { if (ag) { l.agentId = ag.id; moved++; } else left++; }
+  const pp = w ? db.passports.find(x => x.passport === ppNorm(w.passport)) : null; if (pp) { pp.agentId = ag ? ag.id : null; pp.ref = newName; }
+  c.history.push({ s: c.status, t: `Agent changed: ${oldName} → ${newName}`, at: now(), by: u.name });
+  if (ag) notify(ag.id, `BMET clearance file ${c.ref} (${wname}) is now under your account.`);
+  if (oldId && oldId !== ag?.id) notify(oldId, `BMET clearance file ${c.ref} (${wname}) was moved to another agent.`);
+  return { msg: `Agent changed to ${newName}.${moved ? ` ${moved} charge(s) moved to the new agent's account.` : ""}${left ? ` ${left} charge(s) stay on ${oldName}'s account: adjust it in Agent accounts.` : ""}` };
+};
 /* the EC reference number can be set or changed by the agency until the file is Approved */
 A["admin.clRef"] = async ({ id: cid, ref }, u) => {
   needPerm(u, "clearance"); const c = db.clearances.find(x => x.id === cid); must(c, "File not found.");

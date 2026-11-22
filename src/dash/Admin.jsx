@@ -628,7 +628,7 @@ function AdminClearanceList() {
           <td><RefCell c={c} /></td>
           <td>{c.country}</td>
           <td><StatusCell c={c} /></td>
-          <td><div className="ec-sub"><b>{p.via}</b><span className="num">{ecDay(c.created)}</span></div></td>
+          <td><div className="ec-sub">{c.candidateId ? <b>{p.via}</b> : <AgentCell c={c} via={p.via} />}<span className="num">{ecDay(c.created)}</span></div></td>
           <td>{pastSent(c)
             ? <div className="stack6"><button className="btn sm" onClick={() => openModal("clearance", { cid: c.id, admin: true })}><LuEye /> Details</button>
                 {c.payment?.status === "submitted" && <span className="ec-badge pay-pending">Payment to check</span>}
@@ -677,6 +677,21 @@ function DocMenu({ files }) {
   );
 }
 
+/* the file's agent (reference): admin/staff can change it — a registered agent, or a name such as Self */
+function AgentCell({ c, via }) {
+  const [ed, setEd] = React.useState(false), [v, setV] = React.useState("");
+  const ags = (store.S.users || []).filter(x => x.role === "agent" && x.status === "active");
+  const nm = a => a.agent?.business || a.name;
+  const save = async () => {
+    const t = v.trim(); if (t.length < 2) return toast("Choose the agent or write a name.");
+    const a = ags.find(x => nm(x).trim().toLowerCase() === t.toLowerCase() || x.agent?.phone === t || x.email === t.toLowerCase());
+    if (await act("admin.clAgent", { id: c.id, ...(a ? { agentId: a.id } : { agentName: t }) })) setEd(false);
+  };
+  if (ed) return <div className="ec-refedit"><input type="text" list={`ag-${c.id}`} value={v} maxLength={120} placeholder="Agent or Self" onChange={e => setV(e.target.value)} onKeyDown={e => { if (e.key === "Enter") save(); if (e.key === "Escape") setEd(false); }} autoFocus aria-label="Agent" data-notr />
+    <datalist id={`ag-${c.id}`}><option value="Self" />{ags.map(a => <option key={a.id} value={nm(a)}>{[a.name !== nm(a) ? a.name : "", a.agent?.phone].filter(Boolean).join(" · ")}</option>)}</datalist>
+    <button className="btn sm pri" onClick={save} aria-label="Save"><LuCheck /></button><button className="btn sm" onClick={() => setEd(false)} aria-label="Cancel"><LuX /></button></div>;
+  return <div className="ec-refcell"><b data-notr>{via}</b><button className="btn sm link" title="Change agent" aria-label="Change agent" onClick={() => { setV(""); setEd(true); }}><LuPencil /></button></div>;
+}
 function RefCell({ c }) {
   const [ed, setEd] = React.useState(false); const [v, setV] = React.useState(c.ref || "");
   const locked = c.status === "approved" || !!c.card;

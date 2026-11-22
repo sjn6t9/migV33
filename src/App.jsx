@@ -505,7 +505,7 @@ function ClearanceCard({ cid, admin }) {
       {admin && <ClDocUpload c={c} />}
       <h4 className="mt16 mb6">Documents ({c.docs.length}/{CL_DOCS.length})</h4>
       <div className="row tight">{CL_DOCS.map(d => <span key={d} className={`chip${c.docs.includes(d) ? "" : " missing"}`}>{c.docs.includes(d) ? "✓ " : ""}{d}</span>)}</div>
-      <h4 className="mt16 mb6">History</h4>{c.history.map((h, i) => <div key={i} className="small">{fdate(h.at)} — {h.s === "custom" ? h.t : LABEL[h.s]}</div>)}
+      <h4 className="mt16 mb6">History</h4>{c.history.map((h, i) => <div key={i} className="small">{fdate(h.at)} — {h.t || LABEL[h.s]}{h.by && h.by !== "RAIMS" && h.t && /^Agent changed/.test(h.t) ? ` · ${h.by}` : ""}</div>)}
       {admin ? <div className="stack mt16">
         <label className="f">Update status</label><StatusCell c={c} wide />
         {c.agentId && <><h4 className="mb6">Payment</h4><ClPayCell c={c} /></>}
