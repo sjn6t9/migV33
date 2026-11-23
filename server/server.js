@@ -996,6 +996,14 @@ A["admin.clStatus"] = async (d, u) => {
   }
   return r;
 };
+/* a file is Approved: tell the agent (or job seeker) and the admin / clearance staff, with name, passport, country and IC number */
+function clApprovedNotice(c, extra = "") {
+  const name = worker(c.workerId)?.name || user(c.candidateId)?.name || c.fullName || c.name || "Worker";
+  const pp = worker(c.workerId)?.passport || user(c.candidateId)?.profile?.passportNo || c.passport || "—";
+  const line = `BMET clearance Approved ✓ ${name} · Passport ${pp} · ${c.country || "—"} · IC No: ${c.icNo || c.ref}`;
+  if (c.agentId || c.candidateId) notify(c.agentId || c.candidateId, `${line}. The clearance card will be sent to your portal.${extra}`);
+  notifyAdmins(`${line}${c.agentId ? ` · Agent: ${agentName(user(c.agentId)) || "—"}` : ""}.`, "clearance");
+}
 async function clStatusOne({ id: cid, status, text }, u) {
   needPerm(u, "clearance"); const c = db.clearances.find(x => x.id === cid); must(c, "File not found."); must([...CL_STAGES, "rejected", "custom"].includes(status), "Unknown status.");
   const name = c.workerId ? worker(c.workerId)?.name : c.fullName || user(c.candidateId)?.name;
@@ -1011,7 +1019,7 @@ async function clStatusOne({ id: cid, status, text }, u) {
   must(!(c.via === "agent" && !c.icNo && !["pending", "received", "rejected"].includes(status)), "Enter the IC number from RAIMS first, then Send to BMET.");
   c.status = status; delete c.statusText; c.history.push({ s: status, at: now() });
   const payNow = c.agentId && ["final", "approved"].includes(status) && !["submitted", "paid"].includes(c.payment?.status) ? " Send the payment receipt from BMET clearance (Unpaid)." : "";
-  notify(c.agentId || c.candidateId, `BMET clearance for ${name}: ${LABEL[status]}.${status === "approved" ? " The clearance card will be sent to your portal." : ""}${payNow}`);
+  if (status === "approved") clApprovedNotice(c, payNow); else notify(c.agentId || c.candidateId, `BMET clearance for ${name}: ${LABEL[status]}.${payNow}`);
   return { msg: `Clearance status: ${LABEL[status]}.${c.agentId ? " Agent notified." : c.candidateId ? " Job seeker notified." : ""}` };
 };
 /* ---- RAIMS (raims.oep.gov.bd): the agency's own RAIMS sign-in, kept on this server; the EC application list
@@ -1348,7 +1356,7 @@ async function raimsSync(by = "auto") {
         c.status = stage; delete c.statusText; delete c.baseStage;
         c.history.push({ s: stage, t: st, at: now(), by: "RAIMS" }); c.raims = { status: st, stage, at: now() };
         const payNow = c.agentId && ["final", "approved"].includes(stage) && !["submitted", "paid"].includes(c.payment?.status) ? " Send the payment receipt from BMET clearance (Unpaid)." : "";
-        notify(c.agentId || c.candidateId, `BMET clearance for ${name}: ${st}.${stage === "approved" ? " The clearance card will be sent to your portal." : ""}${payNow}`);
+        if (stage === "approved") clApprovedNotice(c, payNow); else notify(c.agentId || c.candidateId, `BMET clearance for ${name}: ${st}.${payNow}`);
         if (stage === "approved" && !c.cardNo) { const pp = worker(c.workerId)?.passport || user(c.candidateId)?.profile?.passportNo || c.passport; if (pp) try { await clearanceCheck({ q: pp }); } catch {} }
         out.updated.push({ ref: c.ref, name, passport: worker(c.workerId)?.passport || user(c.candidateId)?.profile?.passportNo || c.passport || "", from: c.history.length > 1 ? (c.history[c.history.length - 2].t || LABEL[cur] || cur) : LABEL[cur] || cur, to: st, raims: st });
       }
