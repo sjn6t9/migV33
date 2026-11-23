@@ -18,7 +18,7 @@ export const TEAM_DEPTS = ["Management", "Recruitment", "BMET section", "Visa se
 export const STAFF_PERMS = [["users", "Accounts"], ["jobs", "Job moderation"], ["apps", "Applications"], ["clearance", "BMET clearance"], ["visa", "Visa applications"], ["tickets", "Air tickets"], ["ledger", "Agent accounts"], ["packages", "Employer packages"], ["receipts", "Money receipts"], ["office", "Main account"], ["salary", "Salary accounts"], ["content", "Website content"], ["headlines", "Headlines"], ["blog", "Blog"], ["seo", "SEO"], ["settings", "Site settings"], ["messages", "Messages"], ["chat", "Live chat"]];
 export const LABEL = {
   applied: "Applied", shortlisted: "Shortlisted", interview: "Interview", medical: "Medical", visa: "Visa processing", clearance: "BMET clearance", flight: "Flight booked", hired: "Hired", rejected: "Rejected",
-  requested: "Requested", booked: "Booked", cancelled: "Cancelled",
+  requested: "Requested", booked: "Confirmed", cancelled: "Cancelled",
   unverified: "Email not verified",
   received: "Received", sent_bmet: "Send to BMET", section: "Pending Section Approval", ad: "Pending AD Approval", dd: "Pending DD Approval", director: "Pending Director Approval", adg: "Pending ADG Approval", final: "Pending Final Approval", approved: "Approved",
   submitted: "Submitted", docs: "Documents verified", finger: "Fingerprint done", processing: "Processing at BMET", issued: "Clearance issued", confirmed: "Confirmed",

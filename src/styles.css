@@ -1528,3 +1528,7 @@ button.hold-tile{cursor:pointer}
 .inp-ic>input,.inp-ic>select{padding-left:34px;width:100%}
 .up-btn{display:flex;align-items:center;justify-content:center;gap:8px;border:1px solid var(--line,#d5e3dc);border-radius:10px;padding:10px;cursor:pointer;background:var(--card,#fff);font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .up-btn:hover{border-color:#006a4e}
+/* iPad / iPhone Safari: date and time inputs have a wide built-in size and spill into the next field; keep them in their own cell */
+.fgrid>*,.field,label{min-width:0}
+input[type=date],input[type=time],input[type=datetime-local],input[type=month]{min-width:0;max-width:100%;width:100%;display:block;-webkit-appearance:none;appearance:none;min-height:44px;text-align:left}
+input[type=date]::-webkit-date-and-time-value,input[type=time]::-webkit-date-and-time-value{text-align:left;min-height:1.3em}

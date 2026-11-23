@@ -277,7 +277,7 @@ export function Candidate({ u }) {
       <div className="tbl"><table><thead><tr><th>Route</th><th>Date</th><th>Booking</th><th>Status</th><th></th></tr></thead><tbody>
         {T.length ? T.map(x => <tr key={x.id}><td>{x.from} → {x.to}<TicketFlight x={x} /></td><td>{fdate(x.prefDate)}</td>
           <td>{x.status === "booked" ? <>{x.airline} · PNR <b>{x.pnr || "—"}</b><div className="muted small">Flight {fdate(x.flightDate)}{x.fare ? ` · ${bdtFmt(x.fare)}` : ""}</div></> : "—"}</td>
-          <td><Pill s={x.status} /></td><td>{x.status === "requested" && <button className="btn sm link danger" onClick={() => act("cand.ticketCancel", { id: x.id })}>Cancel</button>}</td></tr>)
+          <td><Pill s={x.status} /></td><td>{x.status === "booked" && x.ticketFile && <button className="btn sm pri" onClick={() => downloadFile(`/api/files/${x.ticketFile.id}`, x.ticketFile.name || "ticket")}><LuDownload /> Download Ticket</button>}{x.status === "requested" && <button className="btn sm link danger" onClick={() => act("cand.ticketCancel", { id: x.id })}>Cancel</button>}</td></tr>)
           : <tr><td colSpan={5}><Empty>No ticket requests yet.</Empty></td></tr>}
       </tbody></table></div>
     </>;

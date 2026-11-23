@@ -1792,11 +1792,13 @@ A["admin.clPayment"] = async ({ id: cid, op, note }, u) => {
 A["admin.cardFeePaid"] = async ({ id: cid, v }, u) => { needPerm(u, "clearance"); const c = db.clearances.find(x => x.id === cid); must(c?.card, "No card."); c.card.feePaid = !!v; c.card.feeNote = v ? "paid" : "pay at the office"; return { msg: v ? "Card fee marked as received." : "Card fee marked as unpaid." }; };
 A["admin.ticketBook"] = async (d, u) => {
   needPerm(u, "tickets"); const t = db.tickets.find(x => x.id === d.id); must(t && t.status === "requested", "Ticket not found.");
-  Object.assign(t, { airline: str(d.airline, 80), pnr: str(d.pnr, 20).toUpperCase(), flightDate: str(d.flightDate, 10), fare: numv(d.fare, 0, 1e7), status: "booked" });
+  must(d.ticketFile?.data, "Add the ticket copy.");
+  const tf = storeFile(d.ticketFile, t.agentId || t.candidateId); // the agent / job seeker who asked can download it
+  Object.assign(t, { airline: str(d.airline, 80), pnr: str(d.pnr, 20).toUpperCase(), flightDate: str(d.flightDate, 10), fare: numv(d.fare, 0, 1e7), status: "booked", ticketFile: tf, bookedAt: now() });
   const w = worker(t.workerId);
   if (d.charge && t.agentId && t.fare > 0) db.ledger.push({ id: id("l"), agentId: t.agentId, type: "charge", desc: `Air ticket ${t.from} → ${t.to}: ${w?.name}`, amount: t.fare, date: now().slice(0, 10), method: "", ref: t.pnr, status: "confirmed" });
-  notify(t.agentId || t.candidateId, `Ticket booked for ${w?.name || t.name}: ${t.airline}, PNR ${t.pnr}, flight ${t.flightDate}.`);
-  return { msg: "Ticket marked as booked." };
+  notify(t.agentId || t.candidateId, `Ticket confirmed for ${w?.name || t.name}: ${t.airline}, PNR ${t.pnr}, flight ${t.flightDate}. Download the ticket from Air tickets.`);
+  return { msg: "Booking confirmed. The ticket is ready to download." };
 };
 A["admin.ticketCancel"] = async ({ id: tid }, u) => { needPerm(u, "tickets"); const t = db.tickets.find(x => x.id === tid); must(t && t.status === "requested", "Ticket not found."); t.status = "cancelled"; notify(t.agentId || t.candidateId, `Ticket request for ${worker(t.workerId)?.name || t.name} was cancelled by the agency.`); return { msg: "Request cancelled." }; };
 A["admin.ledgerAdd"] = async (d, u) => { // one entry, or several at once (d.rows)

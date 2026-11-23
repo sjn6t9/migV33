@@ -78,8 +78,10 @@ export function Admin({ u }) {
     const T = [...S.tickets].sort((a, b) => (a.status === "requested" ? -1 : 0) - (b.status === "requested" ? -1 : 0) || b.created.localeCompare(a.created));
     const sel = ui.bookTicket ? S.tickets.find(x => x.id === ui.bookTicket) : null;
     const book = async e => {
-      const [d] = formData(e);
-      const r = await act("admin.ticketBook", { id: sel.id, airline: d.airline, pnr: d.pnr, flightDate: d.flightDate, fare: d.fare, charge: !!d.charge });
+      const [d, fd] = formData(e); const f = fd.get("ticketFile");
+      if (!f || !f.size) return toast("Add the ticket copy.");
+      let ticketFile; try { ticketFile = await readUpload(f, { imageMax: 2000 }); } catch (err) { return toast(err.message); }
+      const r = await act("admin.ticketBook", { id: sel.id, airline: d.airline, pnr: d.pnr, flightDate: d.flightDate, fare: d.fare, charge: !!d.charge, ticketFile });
       if (r) { ui.bookTicket = null; commit(); }
     };
     body = <>
@@ -90,7 +92,7 @@ export function Admin({ u }) {
       <div className="tbl"><table><thead><tr><th>Passenger</th><th>From</th><th>Route / flight</th><th>Preferred</th><th>Booking</th><th>Status</th><th></th></tr></thead><tbody>
         {T.length ? T.map(x => { const w = x.candidateId || x.travellers ? { name: x.name, passport: x.passport } : worker(x.workerId) || { name: "Removed worker" }; const ag = user(x.agentId); return (
           <tr key={x.id} className={sel?.id === x.id ? "sel" : ""}><td><b>{w.name}</b><div className="muted small">{w.passport}{x.phone ? ` · ${x.phone}` : ""}</div></td><td>{ag ? ag.agent?.business || ag.name : x.candidateId ? <span className="muted">Job seeker</span> : "—"}</td><td>{x.from} → {x.to}<TicketFlight x={x} />{x.notes && <div className="muted small">{x.notes}</div>}</td><td>{fdate(x.prefDate)}{x.returnDate ? <div className="muted small">Return {fdate(x.returnDate)}</div> : null}</td>
-            <td>{x.status === "booked" ? <>{x.airline} · <b>{x.pnr}</b><div className="muted small">{fdate(x.flightDate)}{x.fare ? ` · ${bdtFmt(x.fare)}` : ""}</div></> : "—"}</td><td><Pill s={x.status} /></td>
+            <td>{x.status === "booked" ? <>{x.airline} · <b>{x.pnr}</b><div className="muted small">{fdate(x.flightDate)}{x.fare ? ` · ${bdtFmt(x.fare)}` : ""}</div>{x.ticketFile && <button className="btn sm link" onClick={() => dlFile(`/api/files/${x.ticketFile.id}`, x.ticketFile.name)}><LuDownload /> Ticket</button>}</> : "—"}</td><td><Pill s={x.status} /></td>
             <td><div className="row tight nowrap">{x.status === "requested" && <><button className="btn sm pri" onClick={() => { ui.bookTicket = x.id; commit(); }}><LuTicket /> Book</button><button className="btn sm danger" onClick={() => act("admin.ticketCancel", { id: x.id })}><LuX /> Cancel</button></>}</div></td></tr>); })
           : <tr><td colSpan={7}><Empty>No ticket requests.</Empty></td></tr>}
       </tbody></table></div>
@@ -104,8 +106,9 @@ export function Admin({ u }) {
         <Field label="PNR / booking reference"><input type="text" name="pnr" required /></Field>
         <Field label="Flight date"><input type="date" name="flightDate" defaultValue={sel.prefDate} required /></Field>
         <Field label="Fare (BDT)"><input type="number" name="fare" min="0" defaultValue={sel.flight?.price || ""} /></Field>
+        <Field label="Ticket copy *" hint="The e-ticket from WFTT: PDF or JPG. The agent / job seeker downloads it." full><input type="file" name="ticketFile" accept=".pdf,image/*" /></Field>
         {sel.agentId && <label className="check full"><input type="checkbox" name="charge" defaultChecked /> Add the fare to the agent's account statement</label>}
-        <div className="full row"><button className="btn pri" type="submit"><LuCheck /> Mark as booked</button><button className="btn" type="button" onClick={() => { ui.bookTicket = null; commit(); }}>Close</button></div>
+        <div className="full row"><button className="btn pri" type="submit"><LuCheck /> Booking Confirm</button><button className="btn" type="button" onClick={() => { ui.bookTicket = null; commit(); }}>Close</button></div>
       </form>}
     </>;
   }

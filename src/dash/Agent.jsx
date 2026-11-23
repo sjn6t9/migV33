@@ -199,7 +199,7 @@ export function Agent({ u }) {
         {T.length ? T.map(x => { const w = worker(x.workerId) || (x.name ? { name: x.name, passport: x.passport } : { name: "Removed worker" }); return (
           <tr key={x.id}><td><b>{w.name}</b><div className="muted small">{w.passport}</div></td><td>{x.from} → {x.to}<TicketFlight x={x} /></td><td>{fdate(x.prefDate)}</td>
             <td>{x.status === "booked" ? <>{x.airline} · PNR <b>{x.pnr || "—"}</b><div className="muted small">Flight {fdate(x.flightDate)}{x.fare ? ` · ${bdtFmt(x.fare)}` : ""}</div></> : "—"}</td>
-            <td><Pill s={x.status} /></td><td>{x.status === "requested" && <button className="btn sm link danger" onClick={() => cancel(x)}>Cancel</button>}</td></tr>); })
+            <td><Pill s={x.status} /></td><td>{x.status === "booked" && x.ticketFile && <button className="btn sm pri" onClick={() => downloadFile(`/api/files/${x.ticketFile.id}`, x.ticketFile.name || "ticket")}><LuDownload /> Download Ticket</button>}{x.status === "requested" && <button className="btn sm link danger" onClick={() => cancel(x)}>Cancel</button>}</td></tr>); })
           : <tr><td colSpan={6}><Empty>No ticket requests yet.</Empty></td></tr>}
       </tbody></table></div>
     </>;
