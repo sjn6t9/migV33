@@ -148,14 +148,14 @@ export function Rail({ role, items, foot = [] }) {
   const setOpen = v => { if (inPanel) { store.ui.railOpen = v; touch(); } else setOpen0(v); };
   const pick = k => { store.ui.tab[role] = k; if (k !== "post") store.ui.editJob = null; setOpen(false); go("dashboard"); touch(); window.scrollTo({ top: 0, behavior: "smooth" }); };
   const now = [...items, ...foot].find(x => x[0] === cur) || items[0]; const total = items.reduce((s, x) => s + (Number(x[3]) || 0), 0);
-  const btn = ([k, label, Icon, c, onClick]) => (
-    <button key={k} className={cur === k && !onClick ? "on" : ""} aria-current={cur === k && !onClick ? "page" : undefined} onClick={() => (onClick ? (setOpen(false), onClick()) : pick(k))}>
+  const btn = ([k, label, Icon, c, onClick], foot) => (
+    <button key={k} className={`${cur === k && !onClick ? "on" : ""}${foot === true ? " rail-foot-item" : ""}`.trim() || undefined} aria-current={cur === k && !onClick ? "page" : undefined} onClick={() => (onClick ? (setOpen(false), onClick()) : pick(k))}>
       <span className="rail-l">{Icon && <Icon />}{label}</span><Count n={c} />
     </button>);
   // foot: Settings and Log out sit at the bottom of the menu
-  const list = cls => <nav className={cls} aria-label="Dashboard sections">{items.map(btn)}{foot.length > 0 && <><hr className="rail-sep" />{foot.map(btn)}</>}</nav>;
+  const list = cls => <nav className={cls} aria-label="Dashboard sections">{items.map(btn)}{foot.length > 0 && <><hr className="rail-sep rail-foot-item" />{foot.map(x => btn(x, true))}</>}</nav>;
   return <>
-    {list("rail rail-desk")}
+    {list(`rail rail-desk${inPanel ? " in-panel" : ""}`)}
     {!inPanel && <button type="button" className="rail-mob" onClick={() => setOpen(true)} aria-label="Open dashboard menu" aria-expanded={open}>
       <LuMenu className="rail-mob-ic" /><span className="rail-l">{now?.[2] && React.createElement(now[2])}{now?.[1]}</span>{total > 0 && <span className="count">{total}</span>}<LuChevronDown className="rail-mob-down" />
     </button>}

@@ -1,7 +1,7 @@
 import { VisaFileForm, WafidImport, WafidBookmarkHelp } from "./dash/Visa.jsx";
 import { Headlines } from "./Headlines.jsx";
 import React, { useState, useEffect, useSyncExternalStore } from "react";
-import { LuMenu, LuBell, LuCheck, LuMoon, LuSun, LuLanguages, LuLogOut, LuLayoutDashboard, LuLogIn, LuUserPlus, LuSend, LuMailCheck, LuRefreshCw, LuDownload, LuFileText, LuKeyRound, LuWifiOff, LuPhone, LuMail, LuMegaphone } from "react-icons/lu";
+import { LuMenu, LuBell, LuCheck, LuMoon, LuSun, LuLanguages, LuLogOut, LuLayoutDashboard, LuLogIn, LuUserPlus, LuSend, LuMailCheck, LuRefreshCw, LuDownload, LuFileText, LuKeyRound, LuWifiOff, LuPhone, LuMail, LuMegaphone, LuCamera, LuSettings2 } from "react-icons/lu";
 import { FaWhatsapp, FaFacebookF, FaYoutube, FaLinkedinIn, FaTiktok } from "react-icons/fa6";
 import { ChatWidget } from "./Chat.jsx";
 import { TeamChatWidget } from "./TeamChat.jsx";
@@ -224,15 +224,43 @@ function PanelHeader({ kind, dash }) {
           {u && <>
             <NotifBell key={u.id} u={u} />
             {kind === "agent" && <>{/* admin and staff change the password and log out from Settings, at the bottom of the menu */}
-              <button className="btn sm" onClick={() => openModal("password")} aria-label="Change password" title="Change password"><LuKeyRound /></button>
-              <button className="btn sm" onClick={SITE.main ? agentSignOut : signOut} aria-label="Sign out" title="Sign out"><LuLogOut /><span className="hide-lg">Sign out</span></button></>}
+              <button className="btn sm mob-only" onClick={() => openModal("password")} aria-label="Change password" title="Change password"><LuKeyRound /></button>
+              <button className="btn sm mob-only" onClick={SITE.main ? agentSignOut : signOut} aria-label="Sign out" title="Sign out"><LuLogOut /><span className="hide-lg">Sign out</span></button></>}
+            <ProfileMenu u={u} kind={kind} />
           </>}
         </div>}
+        {kind !== "agent" && u && <div className="acct"><ProfileMenu u={u} kind={kind} /></div>}
       </div>
     </header>
   );
 }
 
+/* panel header, right: the profile button. Picture, change picture; on a computer also Settings and Log out
+   (on a phone those stay in the menu / header as before) */
+function ProfileMenu({ u, kind }) {
+  const [open, setOpen] = React.useState(false), [busy, setBusy] = React.useState(false), ref = React.useRef(null);
+  React.useEffect(() => { if (!open) return; const f = e => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); }; const k = e => { if (e.key === "Escape") setOpen(false); };
+    document.addEventListener("pointerdown", f); document.addEventListener("keydown", k); return () => { document.removeEventListener("pointerdown", f); document.removeEventListener("keydown", k); }; }, [open]);
+  const src = u.photo?.id ? `/api/files/${u.photo.id}` : "";
+  const pick = async e => { const f = e.target.files[0]; e.target.value = ""; if (!f) return; if (!/^image\//.test(f.type)) return toast("Choose a photo (JPG or PNG).");
+    setBusy(true); try { await act("me.photo", { file: await readUpload(f, { imageMax: 600 }) }); } catch (err) { toast(err.message); } setBusy(false); };
+  const sub = kind === "agent" ? u.agent?.business || "Agent" : u.role === "admin" ? "Admin" : u.title || "Staff";
+  const out = kind === "agent" ? (SITE.main ? agentSignOut : signOut) : signOut;
+  return <div className="prof" ref={ref}>
+    <button className="prof-btn" onClick={() => setOpen(o => !o)} aria-haspopup="menu" aria-expanded={open} aria-label="Profile" title="Profile"><Avatar name={u.name} src={src} size={36} /></button>
+    {open && <div className="prof-pop" role="menu">
+      <div className="prof-head"><Avatar name={u.name} src={src} size={72} /><div><b data-notr>{u.name}</b><span className="muted small" data-notr>{sub}</span></div></div>
+      <label className={`btn sm prof-item${busy ? " disabled" : ""}`}><LuCamera /> {busy ? "Saving…" : "Change Profile Picture"}<input type="file" accept="image/*" hidden onChange={pick} disabled={busy} /></label>
+      {src && <button className="btn sm link danger prof-item" onClick={() => act("me.photo", { remove: true })}><LuTrash2 /> Remove picture</button>}
+      <div className="prof-desk">
+        <hr />
+        {kind === "agent" ? <button className="btn sm prof-item" onClick={() => { setOpen(false); openModal("password"); }}><LuSettings2 /> Settings · change password</button>
+          : <button className="btn sm prof-item" onClick={() => { setOpen(false); setTab(u.role, "mysettings"); }}><LuSettings2 /> Settings</button>}
+        <button className="btn sm prof-item" onClick={() => { setOpen(false); out(); }}><LuLogOut /> Log out</button>
+      </div>
+    </div>}
+  </div>;
+}
 /* agents came from the public site, so signing out of the agent panel takes them back to its home page */
 async function agentSignOut() {
   const r = await act("auth.logout", {}, { quiet: true });

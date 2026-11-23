@@ -196,6 +196,7 @@ const fileRef = r => (r && r.id ? { id: r.id, name: r.name, size: r.size, data: 
 /* ======================= state sent to the browser ======================= */
 const cleanUser = (u, full) => {
   if (!u) return u; const { pass, verify, ...x } = u;
+  if (x.photo) x.photo = fileRef(x.photo);
   if (x.profile) x.profile = { ...x.profile, photo: fileRef(x.profile.photo), passportFile: fileRef(x.profile.passportFile), cv: fileRef(x.profile.cv) };
   if (x.agent?.docs) x.agent = { ...x.agent, docs: Object.fromEntries(Object.entries(x.agent.docs).map(([k, v]) => [k, fileRef(v)])) };
   if (!full) { delete x.email; if (x.profile) delete x.profile.passportFile; if (x.agent) x.agent = { business: x.agent.business, phone: x.agent.phone }; delete x.perms; }
@@ -2555,6 +2556,13 @@ A["staff.signature"] = async (d, u) => {
   x.signature = storeFile(d.file, x.id, { pdf: false }); return { msg: "Signature saved. It appears on money receipts you sign." };
 };
 
+/* profile picture of a panel user (admin, staff, agent): shown in the panel header */
+A["me.photo"] = async (d, u) => {
+  must(u && ["admin", "staff", "agent"].includes(u.role), "Not allowed.", 403);
+  if (d.remove) { u.photo = null; return { msg: "Profile picture removed." }; }
+  must(d.file?.data && /^data:image\//.test(d.file.data), "Choose a photo (JPG or PNG).");
+  u.photo = storeFile(d.file, u.id, { pdf: false }); return { msg: "Profile picture saved." };
+};
 
 /* ======================= office main account & staff salaries ======================= */
 // Main account: the office cash book. Money in (debit) and money out (credit), entered by hand; approved money receipts,
