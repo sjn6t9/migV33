@@ -2701,6 +2701,9 @@ function officeAuto() {
     const ag = user(l.agentId);
     out.push({ id: "a-" + l.id, auto: "agent", date: l.date, type: "in", desc: `Agent payment · ${agentName(ag) || "Agent"}${l.desc ? " · " + l.desc : ""}`, amount: Number(l.amount), method: l.method, ref: l.ref, at: l.confirmedAt || l.at || null });
   }
+  // agents kept in the office's own agent list (no account of their own): money received from them counts the same way
+  for (const b of db.agentBook || []) for (const e of b.entries || []) if (e.type === "payment" && !e.opening)
+    out.push({ id: "a-" + e.id, auto: "agent", date: e.date, type: "in", desc: `Agent payment · ${b.name}${e.desc ? " · " + e.desc : ""}`, amount: Number(e.amount), method: e.method || "Cash", ref: e.ref, at: e.at || null });
   for (const p of db.salary.pays) if (salaryDone(p) && p.paid > 0)
     out.push({ id: "a-" + p.id, auto: "salary", date: p.date, type: "out", desc: `Salary ${p.no} · ${p.name} · ${monthName(p.month)}`, amount: p.paid, method: [p.method, p.channel].filter(Boolean).join(" · "), ref: p.ref, at: p.recv?.at || p.created || null });
   return out.filter(keep); // books started again on db.office.from: older automatic entries stay out
@@ -3353,7 +3356,7 @@ A["admin.agentBook"] = async (d, u) => {
       const at = rows.length > 1 ? ` (row ${i + 1})` : "", type = r.type === "payment" ? "payment" : "charge";
       const rate = Math.round(Number(r.rate) * 100) / 100, qty = type === "charge" ? Math.max(1, Math.min(10000, Math.round(Number(r.qty) || 1))) : 1;
       must(rate > 0 && rate < 1e9 && str(r.desc), `Enter the amount and description${at}.`);
-      return { id: id("ae"), type, date: /^\d{4}-\d{2}-\d{2}$/.test(r.date || "") ? r.date : now().slice(0, 10), desc: str(r.desc, 200), rate, qty, amount: Math.round(rate * qty * 100) / 100, method: type === "payment" && !r.opening ? str(r.method, 40) : "", ref: str(r.ref, 80), by: u.name, at: now(), ...(r.opening ? { opening: true } : {}) };
+      return { id: id("ae"), type, date: /^\d{4}-\d{2}-\d{2}$/.test(r.date || "") ? r.date : now().slice(0, 10), desc: str(r.desc, 200), rate, qty, amount: Math.round(rate * qty * 100) / 100, method: type === "payment" && !r.opening ? str(r.method, 120) : "", ref: str(r.ref, 80), by: u.name, at: now(), ...(r.opening ? { opening: true } : {}) };
     });
     a.entries = [...(a.entries || []), ...made]; return { msg: made.length > 1 ? `${made.length} entries added.` : "Added to the account." };
   }
