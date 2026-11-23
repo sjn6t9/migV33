@@ -249,8 +249,8 @@ function viewFor(u) {
     { const me = leaders().find(x => x.uid === u.id); if (me) pub.myMoney = { entries: [...db.office.entries.filter(e => e.people?.includes(me.k)), ...officeAuto().filter(e => personOf(e.method) === me.k)], me }; }
     if (can(u, "ledger") || can(u, "office")) pub.leaders = leaders().map(({ k, name, title }) => ({ k, name, title }));
     if (can(u, "clearance") || u.role === "agent") pub.raimsReady = !!db.raims?.pass;
-    if (can(u, "tickets")) { pub.wftt = db.wftt ? { email: db.wftt.email, since: db.wftt.since || null, ready: !!db.wftt.token, markup: Number(db.settings.ticketMarkup || 0) } : null; pub.flightsReady = !!db.wftt?.token; }
-    if (can(u, "clearance")) pub.raims = db.raims ? { email: db.raims.email, auto: db.raims.auto, saved: !!db.raims.pass, since: db.raims.since || null, last: db.raims.last || null } : null;
+    if (can(u, "tickets")) { pub.wftt = db.wftt ? { ...(u.role === "admin" ? { email: db.wftt.email } : {}), since: db.wftt.since || null, ready: !!db.wftt.token, markup: Number(db.settings.ticketMarkup || 0) } : null; pub.flightsReady = !!db.wftt?.token; }
+    if (can(u, "clearance")) pub.raims = db.raims ? { ...(u.role === "admin" ? { email: db.raims.email } : {}), auto: db.raims.auto, saved: !!db.raims.pass, since: db.raims.since || null, last: db.raims.last || null } : null;
     if (PP_PERMS.some(k => can(u, k))) { pub.passports = db.passports; pub.agentBook = db.agentBook; pub.bookMatch = Object.fromEntries(db.users.filter(x => x.role === "agent" && x.status !== "active").map(x => [x.id, bookMatches(x).map(b => b.name)]).filter(([, v]) => v.length)); }
     if (can(u, "visa")) pub.visa = db.visa;
     if (isStaffRole(u)) pub.attendance = attView(u, u.role === "admin");

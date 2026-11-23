@@ -582,10 +582,10 @@ function RaimsPanel() {
   const L = R?.last; const [api, setApi] = React.useState(null);
   const scan = async () => { setBusy(true); const r = await act("admin.raims", { op: "api" }); setBusy(false); if (r?.pages) setApi(r.pages); };
   return <div className="card raims">
-    <div className="row between"><div><h3 className="bulk-h"><LuRefreshCw /> RAIMS status sync</h3>
-      <p className="muted small">Reads the EC application list from RAIMS and sets each file here that was Sent to BMET to the same status (files with the same IC number change together).</p></div>
+    <div className="row between"><div>{isAdmin ? <><h3 className="bulk-h"><LuRefreshCw /> RAIMS status sync</h3>
+      <p className="muted small">Reads the EC application list from RAIMS and sets each file here that was Sent to BMET to the same status (files with the same IC number change together).</p></> : <h3 className="bulk-h"><LuRefreshCw /> Emigration Clearance status</h3>}</div>
       {R?.saved && <button className="btn pri" disabled={busy} onClick={sync}><LuRefreshCw /> {busy ? "Reading RAIMS…" : "Sync now"}</button>}</div>
-    {R?.saved && !edit && <p className="small mt8 raims-on" data-notr><LuCircleCheck /> {`Signed in to RAIMS as ${R.email}${R.since ? ` since ${new Date(R.since).toLocaleString("en-GB")}` : ""} · Pre EC Check, Add bulk and status sync use this sign-in until the admin logs out · ${R.auto ? "status checked every 15 minutes" : "status only with Sync now"}`}
+    {isAdmin && R?.saved && !edit && <p className="small mt8 raims-on" data-notr><LuCircleCheck /> {`Signed in to RAIMS as ${R.email}${R.since ? ` since ${new Date(R.since).toLocaleString("en-GB")}` : ""} · Pre EC Check, Add bulk and status sync use this sign-in until the admin logs out · ${R.auto ? "status checked every 15 minutes" : "status only with Sync now"}`}
       {isAdmin && <button className="btn sm link" disabled={busy} onClick={scan}><LuSearch /> RAIMS API addresses</button>}
       {isAdmin && <button className="btn sm link danger" onClick={() => confirmBox("Log out of RAIMS? Pre EC Check, Add bulk search and status sync stop until the admin signs in again.", () => act("admin.raims", { op: "logout" }), "Log out")}><LuLogOut /> Log out of RAIMS</button>}</p>}
     {edit && (isAdmin ? <form className="fgrid mt8" onSubmit={save} noValidate autoComplete="off">
@@ -639,7 +639,7 @@ function AdminClearanceList({ apps }) {
       <div className="ec-head-btns">
         <button className={`btn ${form === "one" ? "dark" : "soft"}`} onClick={() => setForm(x => x === "one" ? "" : "one")}>{form === "one" ? <LuX /> : <LuCirclePlus />} {form === "one" ? "Close the form" : "Create application"}</button>
         <button className={`btn ${form === "bulk" ? "dark" : "soft"}`} onClick={() => setForm(x => x === "bulk" ? "" : "bulk")}>{form === "bulk" ? <LuX /> : <LuListPlus />} {form === "bulk" ? "Close bulk entry" : "Add bulk"}</button>
-        <button className={`btn ${form === "raims" ? "dark" : "soft"}`} onClick={() => setForm(x => x === "raims" ? "" : "raims")}>{form === "raims" ? <LuX /> : <LuRefreshCw />} RAIMS</button>
+        <button className={`btn ${form === "raims" ? "dark" : "soft"}`} onClick={() => setForm(x => x === "raims" ? "" : "raims")}>{form === "raims" ? <LuX /> : <LuRefreshCw />} Emigration Clearance</button>
         <button className={`btn ${form === "preec" ? "dark" : "soft"}`} onClick={() => setForm(x => x === "preec" ? "" : "preec")}>{form === "preec" ? <LuX /> : <LuShieldCheck />} Pre EC Check</button>
         <button className={`btn ${form === "cc" ? "dark" : "soft"}`} onClick={() => setForm(x => x === "cc" ? "" : "cc")}>{form === "cc" ? <LuX /> : <LuBadgeCheck />} Clearance Check</button>
       </div>
