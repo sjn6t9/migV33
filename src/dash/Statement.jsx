@@ -25,7 +25,7 @@ const stime = iso => { try { return new Date(iso).toLocaleTimeString("en-US", { 
 export function Statement({ title, sub, kind = "PAYMENT HISTORY", rows, actions, onRate, cash, heads, balText, tools, times, day, rateHead, empty = "No entries yet." }) {
   const [from0, setFrom] = React.useState(""); const [to0, setTo] = React.useState("");
   const from = day || from0, to = day || to0; // day: one day only (the main account's daily view)
-  const calc = withBalance(rows, from, to); const st = { title, sub, kind, from, to, calc, cash, times, heads, rateHead };
+  const calc = withBalance(rows, from, to); const st = { title, sub, kind, from, to, calc, cash, times, heads, rateHead, balText };
   const run = f => Promise.resolve(f(st)).catch(e => toast(e.message || "The file could not be made."));
   const b = calc.balance;
   const acts = actions ? calc.rows.map(r => (r.opening ? null : actions(r))) : [], hasActs = acts.some(Boolean); // no empty column when no row has a button
@@ -33,7 +33,7 @@ export function Statement({ title, sub, kind = "PAYMENT HISTORY", rows, actions,
     <div className="st-sum">
       <div><span>{heads?.[0] || (cash ? "Money in" : "Total debit")}</span><b className="num">{amt(calc.debit)}</b></div>
       <div><span>{heads?.[1] || (cash ? "Money out" : "Total credit")}</span><b className="num">{amt(calc.credit)}</b></div>
-      <div className={(cash ? b < 0 : b > 0) ? "due" : "ok"}><span>{balText ? balText(b) : balWord(b, cash)}</span><b className="num">{amt(cash ? b : Math.abs(b))}</b></div>
+      <div className={(cash ? b < 0 : b > 0) ? "due" : "ok"}><span>{balText ? balText(b) : balWord(b, cash)}</span><b className="num">{amt(cash && !balText ? b : Math.abs(b))}</b></div>
     </div>
     <div className="st-tools">
       {!day && <><label className="st-date">From <input type="date" value={from} onChange={e => setFrom(e.target.value)} /></label>

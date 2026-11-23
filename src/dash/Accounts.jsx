@@ -48,6 +48,10 @@ export function holderOf(method) {
   return { key: "cash", kind: "cash", name: "Cash in office" };
 }
 const personName = k => { const l = leadersList().find(x => x.k === k) || LEAD0.find(x => x.k === k); return l ? `${l.name} · ${l.title}` : "Director"; };
+/* a boss's account (MD / Director / Chairman) is one running balance with the office:
+   below 0 = the boss gave the office more than the office money they hold (the office owes them — an advance);
+   above 0 = they hold office money (e.g. agents paid them). Agent money paid to a boss first pays back the office's debt to them. */
+export const bossWord = (b, you) => (b < -0.004 ? (you ? "The office owes you (your advance)" : "Advance to the office · office owes") : b > 0.004 ? (you ? "Office money with you" : "Office money with them") : "Settled");
 const holderName = h => (h.kind === "person" ? personName(h.k) : h.name);
 const methodText = m => { const P = splitP(m); return P ? `${personName(P.k)} (${holderOf(m).via})` : m || "Cash"; };
 const okEntry = e => (e.status || "accepted") === "accepted";
@@ -112,7 +116,7 @@ export function OfficeAccount() {
             <span className="grow" />{day !== today && <button className="btn sm link" onClick={() => setDay(today)}>Today</button>}
             <button className="btn sm pri" onClick={() => setFull(true)}><LuFileText /> Statement</button></>}
       </div>
-      <Statement key={full ? "all" : day} day={full ? "" : day} title={`Mam & Mam Overseas Ltd. · ${sel ? `Main account · ${holderName(sel)}` : "Main account"}`} kind="MAIN ACCOUNT" cash times heads={["Money in", "Money out"]} rows={rows}
+      <Statement key={full ? "all" : day} day={full ? "" : day} title={`Mam & Mam Overseas Ltd. · ${sel ? `Main account · ${holderName(sel)}` : "Main account"}`} kind="MAIN ACCOUNT" cash times heads={["Money in", "Money out"]} rows={rows} balText={sel?.kind === "person" ? b => bossWord(b) : undefined}
         empty={sel ? "No entries for this one yet." : "No entries yet. Add money in or money out below."}
         actions={r => r.manual ? <button className="btn sm link danger" aria-label="Delete entry" onClick={() => confirmBox("Delete this entry from the main account?", () => act("admin.office", { op: "delete", id: r.id }), "Delete")}><LuTrash2 /></button> : null} />
       <OfficeForm />
@@ -137,7 +141,7 @@ function Holdings({ H, waiting, sel, onPick }) {
   const people = [...L.map(l => H.find(h => h.key === `p:${l.k}`) || { key: `p:${l.k}`, kind: "person", k: l.k, in: 0, out: 0, bal: 0, vias: {} }), ...H.filter(h => h.kind === "person" && !L.some(l => `p:${l.k}` === h.key))];
   const wait = k => waiting.filter(e => e.people?.includes(k) && !e.accepted?.includes(k));
   const total = H.filter(h => h.kind !== "person").reduce((t, h) => t + h.bal, 0), sum = l => l.reduce((t, h) => t + h.bal, 0); // the MD / Directors / Chairman keep their own accounts
-  const Row = ({ h, extra }) => <><tr className={`hold-row${sel === h.key ? " on" : ""}`} onClick={() => onPick(h.key)} title="Show these entries"><td className="b">{holderName(h)}{extra}</td><td className="num">{tk(h.in)}</td><td className="num">{tk(h.out)}</td><td className={`num b${h.bal < 0 ? " neg" : ""}`}>{tk(h.bal)}</td></tr>
+  const Row = ({ h, extra }) => <><tr className={`hold-row${sel === h.key ? " on" : ""}`} onClick={() => onPick(h.key)} title="Show these entries"><td className="b">{holderName(h)}{extra}</td><td className="num">{tk(h.in)}</td><td className="num">{tk(h.out)}</td><td className={`num b${h.bal < 0 && h.kind !== "person" ? " neg" : ""}`}>{h.kind === "person" ? <>{tk(Math.abs(h.bal))}<span className={`hold-word ${h.bal < -0.004 ? "adv" : h.bal > 0.004 ? "with" : ""}`}>{bossWord(h.bal)}</span></> : tk(h.bal)}</td></tr>
     {Object.entries(h.vias || {}).sort((a, b) => (b[1].in - b[1].out) - (a[1].in - a[1].out)).map(([n, v]) => <tr key={n} className="hold-sub"><td>{`↳ ${n}`}</td><td className="num">{tk(v.in)}</td><td className="num">{tk(v.out)}</td><td className="num">{tk(v.in - v.out)}</td></tr>)}</>;
   const Group = ({ title, list, none }) => <div className="hold-group"><h4>{title}<span className="muted small ms6">{`${tk(sum(list))} BDT`}</span></h4>
     {list.length ? <div className="tbl hold-tbl"><table><thead><tr><th>Name</th><th className="r">Money in</th><th className="r">Money out</th><th className="r">Balance</th></tr></thead><tbody>{list.map(h => <Row key={h.key} h={h} extra={h.kind === "person" && <>{wait(h.k).length > 0 && <span className="ec-badge mr-wait ms6">{`${wait(h.k).length} waiting`}</span>}{L.find(l => l.k === h.k && !l.uid) && <span className="muted small ms6">No admin ID chosen</span>}</>} />)}</tbody></table></div> : <p className="muted small">{none}</p>}</div>;
@@ -147,11 +151,12 @@ function Holdings({ H, waiting, sel, onPick }) {
       <div className="hold-tile"><span className="muted small">In banks</span><b>{`${tk(sum(banks))} BDT`}</b></div>
       <div className="hold-tile"><span className="muted small">In mobile wallets</span><b>{`${tk(sum(wallets))} BDT`}</b></div>
       <div className="hold-tile tot"><span className="muted small">Main account total</span><b>{`${tk(total)} BDT`}</b></div>
-      <div className="hold-tile sep"><span className="muted small">With MD / Directors / Chairman (separate)</span><b>{`${tk(sum(people))} BDT`}</b></div>
+      <div className="hold-tile sep"><span className="muted small">MD / Directors / Chairman (separate)</span><b>{`${tk(Math.abs(sum(people)))} BDT`}</b><span className={`hold-word ${sum(people) < -0.004 ? "adv" : sum(people) > 0.004 ? "with" : ""}`}>{bossWord(sum(people))}</span></div>
     </div>
     <Group title="Banks" list={banks} none="No money in any bank yet." />
     <Group title="Mobile wallets" list={wallets} none="No money in any mobile wallet yet." />
     <Group title="Managing Director, Directors and Chairman (their own accounts, not in the main account)" list={people} none="" />
+    <p className="muted small">Each of them has one running account with the office. Money they give the office while they hold no office money is an advance: the office owes it to them. Agent money paid to them then lowers what the office owes; once the office owes nothing, agent money paid to them is office money with them and adds to their account.</p>
     <LeaderIds L={L} />
     {waiting.length > 0 && <p className="muted small mt8">{`${waiting.length} ${waiting.length > 1 ? "entries are" : "entry is"} waiting for confirmation. They are shown dimmed and are not counted until confirmed.`}</p>}
     <p className="muted small mt8">Click a row to see only its entries.</p>
@@ -174,6 +179,7 @@ export function TransactionHistory() {
   const today = dhakaToday(), [day, setDay] = React.useState(today), [full, setFull] = React.useState(false);
   const lab = m => { const h = holderOf(m); return h.kind === "person" ? `${personName(h.k)} · ${h.via}` : h.kind === "cash" ? "Office cash" : h.name; };
   const all = [...O.entries.filter(e => e.status !== "rejected"), ...O.auto];
+  const boss = holdings([...O.entries, ...O.auto].filter(okEntry).filter(e => full || String(e.date) <= day)); // each boss's account up to the day shown
   const rows = all.map(e => {
     const wait = e.status === "pending" ? " (waiting for confirmation)" : "";
     if (e.type === "transfer") return { id: e.id, date: e.date, at: e.at, details: `${e.desc || "Transfer"} — ${tk(e.amount)} BDT: ${lab(e.from)} → ${lab(e.to)}${wait}`, rate: "TRANSFER", debit: 0, credit: 0, e };
@@ -201,6 +207,8 @@ export function TransactionHistory() {
       <div className="hold-tile"><span className="muted small">Of that, from agents</span><b>{`${tk(agents)} BDT`}</b></div>
       <div className="hold-tile"><span className="muted small">Money out (main account)</span><b>{`${tk(out)} BDT`}</b></div>
     </div>
+    <div className="hold-top mt8">{leadersList().map(l => { const h = boss.find(x => x.key === `p:${l.k}`), b = h ? h.bal : 0;
+      return <div key={l.k} className="hold-tile"><span className="muted small">{`${l.name} · ${l.title}`}</span><b>{`${tk(Math.abs(b))} BDT`}</b><span className={`hold-word ${b < -0.004 ? "adv" : b > 0.004 ? "with" : ""}`}>{bossWord(b)}</span></div>; })}</div>
     <div className="card"><Statement key={full ? "all" : day} day={full ? "" : day} title="Mam & Mam Overseas Ltd. · Transaction history" kind="TRANSACTION HISTORY" rateHead="Received by" cash times heads={["Money in", "Money out"]} rows={rows} empty="No transactions." /></div>
   </>;
 }
@@ -211,13 +219,13 @@ export function MoneyWithMe() {
   const ok = M.entries.filter(okEntry), bal = ok.reduce((t, e) => t + moves(e).filter(m => m.h.key === key).reduce((s, m) => s + m.amount, 0), 0);
   return <>
     <div className="ec-head"><div><h2>Money with me</h2><p className="muted small">Your own account: money agents paid to you, and money the office gave you or you gave the office. The Account Manager's entries about you count after you confirm them. Use Give money to the office to put money into the main account.</p></div></div>
-    <div className="card hold"><div className="hold-top"><div className="hold-tile tot"><span className="muted small">{`With ${M.me?.name || me.name}${M.me?.title ? ` · ${M.me.title}` : ""}`}</span><b>{`${tk(bal)} BDT`}</b></div><div className="hold-tile"><span className="muted small">Waiting for you</span><b>{pend.length}</b></div></div>
+    <div className="card hold"><div className="hold-top"><div className="hold-tile tot"><span className="muted small">{`${M.me?.name || me.name}${M.me?.title ? ` · ${M.me.title}` : ""} · ${bossWord(bal, true)}`}</span><b>{`${tk(Math.abs(bal))} BDT`}</b></div><div className="hold-tile"><span className="muted small">Waiting for you</span><b>{pend.length}</b></div></div>
       {mine && Object.keys(mine.vias).length > 0 && <div className="tbl hold-tbl"><table><thead><tr><th>Account</th><th className="r">Money in</th><th className="r">Money out</th><th className="r">Balance</th></tr></thead><tbody>
         {Object.entries(mine.vias).map(([n, v]) => <tr key={n}><td className="b">{n}</td><td className="num">{tk(v.in)}</td><td className="num">{tk(v.out)}</td><td className="num b">{tk(v.in - v.out)}</td></tr>)}</tbody></table></div>}</div>
     <GiveToOffice />
     {pend.length > 0 && <div className="card"><h3>Please confirm</h3>
       {pend.map(e => <MoneyReq key={e.id} e={e} mk={mk} />)}</div>}
-    <div className="card"><Statement title={`Mam & Mam Overseas Ltd. · Money with ${M.me?.name || me.name}`} kind="MONEY WITH ME" cash times heads={["Money in", "Money out"]} rows={officeRows(M.entries, key, true)} empty="Nothing yet." /></div>
+    <div className="card"><Statement title={`Mam & Mam Overseas Ltd. · Money with ${M.me?.name || me.name}`} kind="MONEY WITH ME" cash times heads={["Money in", "Money out"]} balText={b => bossWord(b, true)} rows={officeRows(M.entries, key, true)} empty="Nothing yet." /></div>
   </>;
 }
 /* the MD / a Director / the Chairman gives money to the office: a transfer from their account into the main account */

@@ -82,7 +82,7 @@ export async function statementCanvases(st) {
       g.fillText(`${st.no ? "Issued" : "Printed"}: ${new Date(st.at || Date.now()).toLocaleString("en-GB", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })}`, qx - 18, 304);
       // totals
       const bad = isBad(balance, st.cash);
-      const bx = [[st.cash ? "Money in" : "Total debit", amt(debit), INK], [st.cash ? "Money out" : "Total credit", amt(credit), INK], [balWord(balance, st.cash), amt(Math.abs(balance)), bad ? RED : GREEN]];
+      const bx = [[st.cash ? "Money in" : "Total debit", amt(debit), INK], [st.cash ? "Money out" : "Total credit", amt(credit), INK], [st.balText ? st.balText(balance) : balWord(balance, st.cash), amt(Math.abs(balance)), bad ? RED : GREEN]];
       bx.forEach(([l, v, col], k) => { const w = (PW - 2 * M - 40) / 3, x = M + k * (w + 20); rr(g, x, 330, w, 84, 12); g.fillStyle = k === 2 ? (bad ? "#fdecee" : "#e6f6ea") : TINT; g.fill();
         g.textAlign = "left"; g.fillStyle = MUTED; g.font = `600 17px ${F}`; g.fillText(l + " (BDT)", x + 18, 362); g.fillStyle = col; g.font = `800 28px ${F}`; g.fillText(v, x + 18, 400); });
       y = 446;
@@ -142,6 +142,6 @@ export function statementXlsx(st) {
     [`Period: ${st.from ? sdate(st.from) : "start"} to ${sdate(st.to || localDay())}`], [],
     ["DATE", "Details", st.rateHead || "RATE", st.heads?.[0] || "Debit", st.heads?.[1] || "Credit", "Balance"].map(v => ({ v, s: 1 })),
     ...rows.map(r => [sdate(r.date) + (st.times && r.at && !r.opening ? " " + stime(r.at) : ""), r.details + (r.pending ? " (pending)" : ""), r.rate, r.debit ? { v: r.debit, s: 2 } : "", r.credit ? { v: r.credit, s: 2 } : "", r.balance == null ? "" : { v: r.balance, s: 2 }]),
-    [], ["", { v: "Total", s: 1 }, "", { v: debit, s: 4 }, { v: credit, s: 4 }, { v: balance, s: 4 }], ["", { v: balWord(balance, st.cash), s: 1 }, "", "", "", { v: st.cash ? balance : Math.abs(balance), s: 4 }]
+    [], ["", { v: "Total", s: 1 }, "", { v: debit, s: 4 }, { v: credit, s: 4 }, { v: balance, s: 4 }], ["", { v: st.balText ? st.balText(balance) : balWord(balance, st.cash), s: 1 }, "", "", "", { v: st.cash && !st.balText ? balance : Math.abs(balance), s: 4 }]
   ], [11, 46, 14, 14, 14, 14], `${fileName(st)}.xlsx`);
 }
