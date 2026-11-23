@@ -1,7 +1,7 @@
 // Pre EC Check: the agency's RAIMS account checks a passport (BMET registration, finger, availability, alerts).
 // Admin/staff with the BMET clearance permission, and agents, can use it.
 import React from "react";
-import { LuSearch, LuTriangleAlert, LuShieldCheck, LuX, LuCircleCheck, LuCircleX, LuListPlus, LuDownload, LuSend, LuFileCheck } from "react-icons/lu";
+import { LuSearch, LuTriangleAlert, LuShieldCheck, LuX, LuCircleCheck, LuCircleX, LuListPlus, LuDownload, LuSend, LuFileCheck, LuCirclePlus } from "react-icons/lu";
 import { CountrySelect, agentsList } from "./Passports.jsx";
 import { AgentDatalist } from "./AgentBook.jsx";
 import { AgentPreEcLog } from "./AgentHistory.jsx";
@@ -75,17 +75,17 @@ function ApplyClearance({ res, onDone }) {
   </form>;
 }
 
-export function PreEcCheck({ onClose }) {
+export function PreEcCheck({ onClose, onManual }) {
   const me = (store.S.users || []).find(x => x.id === store.S.session), canAdd = me && me.role !== "agent" && store.S.passports !== undefined;
   const [f, setF] = React.useState({ returnee: "no", other: "", passport: "" });
-  const [busy, setBusy] = React.useState(false), [res, setRes] = React.useState(null);
+  const [busy, setBusy] = React.useState(false), [res, setRes] = React.useState(null), [failed, setFailed] = React.useState(false);
   const ready = store.S.raimsReady ?? !!store.S.raims?.saved;
   const go = async e => {
     e?.preventDefault(); const pp = f.passport.replace(/\s+/g, "").toUpperCase();
     if (pp.length < 6) return toast("Enter the passport number.");
     if (f.returnee === "other" && f.other.replace(/\s+/g, "").length < 6) return toast("Enter the returnee's other passport number.");
-    setBusy(true); setRes(null); const r = await act("raims.preEc", { passport: pp, returnee: f.returnee, otherPassport: f.other.replace(/\s+/g, "").toUpperCase() }, { quiet: true }); setBusy(false);
-    if (r) setRes(r);
+    setBusy(true); setRes(null); setFailed(false); const r = await act("raims.preEc", { passport: pp, returnee: f.returnee, otherPassport: f.other.replace(/\s+/g, "").toUpperCase() }, { quiet: true }); setBusy(false);
+    if (r) setRes(r); else setFailed(true);
   };
   return <div className="card preec">
     <div className="row between"><h3 className="bulk-h"><LuShieldCheck /> {me?.role === "agent" ? "Check & Application" : "Pre EC Check"}</h3>{onClose && <button type="button" className="btn sm link" onClick={onClose} aria-label="Close"><LuX /></button>}</div>
@@ -104,6 +104,11 @@ export function PreEcCheck({ onClose }) {
       {store.S.users?.find(x => x.id === store.S.session)?.role === "admin" && <button type="button" className="btn sm link mt8" onClick={rawDl}><LuDownload /> RAIMS data (for checking)</button>}
     </div> : <div className="mt10"><p className="vf-err small">{res.problem}</p>
       {(res.page || res.tried) && <details className="vf-det small" open><summary>What RAIMS showed</summary>{(res.tried || []).map((t, i) => <p key={i} className="muted" data-notr>{t}</p>)}<p className="muted" data-notr>{res.page}</p></details>}</div>)}
+    {/* agents: when BMET (RAIMS) cannot be checked or reached, they apply by hand */}
+    {onManual && me?.role === "agent" && (!ready || failed || (res && !res.ok && res.canManual)) && <div className="preec-manual mt10">
+      {failed && <p className="vf-err small">BMET could not be checked right now. Please try again in a few minutes.</p>}
+      <p className="muted small">You can still apply: fill in the worker and documents yourself.</p>
+      <button type="button" className="btn dark" onClick={onManual}><LuCirclePlus /> Create New Application Manually</button></div>}
     {canAdd && <AgentPreEcLog />}
   </div>;
 }

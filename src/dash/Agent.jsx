@@ -257,9 +257,9 @@ function ClearanceList({ C, W, active }) {
     <div className="ec-head">
       <div><h2>BMET clearance applications</h2><div className="crumbs"><a href="#dashboard" onClick={e => { e.preventDefault(); setTab("agent", "overview"); }}>Home</a> <span>›</span> <b>EC Application List</b></div></div>
       <div className="ec-head-btns"><button className={`btn ${form === "preec" ? "dark" : "soft"}`} onClick={() => setForm(f => f === "preec" ? false : "preec")}>{form === "preec" ? <LuX /> : <LuShieldCheck />} Check &amp; Application</button>
-      <button className="btn dark" onClick={() => setForm(f => f === true ? false : true)}>{form === true ? <LuX /> : <LuCirclePlus />} {form === true ? "Close the form" : "Create New Application"}</button></div>
+      {form === true && <button className="btn dark" onClick={() => setForm(false)}><LuX /> Close the form</button>}</div>
     </div>
-    {form === "preec" && <PreEcCheck onClose={() => setForm(false)} />}
+    {form === "preec" && <PreEcCheck onClose={() => setForm(false)} onManual={() => setForm(true)} />}
     {form === true && <GroupEcForm C={C} W={W} active={active} onDone={() => setForm(false)} />}
     <div className={`card ec-card${full ? " ec-full" : ""}`}>
       <div className="ec-tools">
@@ -343,7 +343,7 @@ export function GroupEcForm({ C, W, active, onDone, admin }) {
   };
   return (
     <form className="card fgrid ec-form" onSubmit={submit} noValidate>
-      <h3 className="full">Create New Application</h3>
+      <h3 className="full">Create New Application Manually</h3>
       <p className="muted small full">Choose the workers going to the same country and employer. Each worker gets their own EC Ref No.</p>
       {admin && <Field label="Agent" hint={ag ? "Registered agent: the file also shows in this agent's portal." : agText.trim() ? "From the agent list (a new name is added to it)." : "Pick a registered agent from the list, or type a name."} full>
         <input type="text" list="ec-agent-list" value={agText} onChange={e => setAgText(e.target.value)} maxLength={120} placeholder="Select an agent or type a name" />

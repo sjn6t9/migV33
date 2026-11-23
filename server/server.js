@@ -1517,7 +1517,8 @@ A["raims.preEc"] = async (d, u, ctx) => { // uses the admin's RAIMS sign-in
   limit(u.id, "preec", u.role === "agent" ? 40 : 200, 3600e3);
   const r = await preEcCheck(d);
   if (u.role !== "admin" && !r.ok) { // agents and staff see a plain message, not what the agency's RAIMS session read
-    return { ok: false, passport: r.passport, problem: r.notFound || /did not show a result|not found/i.test(r.problem || "") ? "No information on BMET for this passport. Check the passport number." : "BMET could not be checked right now. Please try again in a few minutes." };
+    const nf = r.notFound || /did not show a result|not found/i.test(r.problem || "");
+    return { ok: false, passport: r.passport, canManual: !nf, problem: nf ? "No information on BMET for this passport. Check the passport number." : "BMET could not be checked right now. Please try again in a few minutes." };
   }
   return r;
 };
