@@ -245,7 +245,7 @@ function viewFor(u) {
       clearances: db.clearances.map(cleanCl), ledger: db.ledger, tickets: db.tickets, users: db.users.map(x => cleanUser(x, true))
     });
     if (can(u, "jobs")) pub.jobTemplates = db.jobTemplates;
-    if (can(u, "office")) pub.office = { entries: db.office.entries, auto: officeAuto(), leaders: leaders() };
+    if (can(u, "office")) pub.office = { entries: db.office.entries, auto: officeAuto(), leaders: leaders(), from: db.office.from || "" };
     { const me = leaders().find(x => x.uid === u.id); if (me) pub.myMoney = { entries: [...db.office.entries.filter(e => e.people?.includes(me.k)), ...officeAuto().filter(e => personOf(e.method) === me.k)], me }; }
     if (can(u, "ledger") || can(u, "office")) pub.leaders = leaders().map(({ k, name, title }) => ({ k, name, title }));
     if (can(u, "clearance") || u.role === "agent") pub.raimsReady = !!db.raims?.pass;
@@ -2625,7 +2625,8 @@ const attView = (u, all) => ({ today: attDay(), since: ATT.since, holidays: ATT.
   ...(all ? { office: ATT.office, ipLog: Object.fromEntries(Object.entries(ATT.ipLog).sort((a, b) => b[0].localeCompare(a[0])).slice(0, 14)) } : {}) });
 const okDate = v => (/^\d{4}-\d{2}-\d{2}$/.test(v || "") ? v : bdDay());
 function officeAuto() {
-  const out = [];
+  // after a reset, only what happened after it (by the time it was confirmed / paid; by date if no time is known)
+  const out = [], from = db.office?.from || "", fromAt = db.office?.fromAt || "", keep = e => !from || (fromAt && e.at ? String(e.at) >= fromAt : String(e.date || "") >= from);
   for (const r of db.mr.receipts) if (r.status === "approved" && !r.void)
     out.push({ id: "a-" + r.id, auto: "receipt", date: r.date, type: "in", desc: `Money receipt ${r.no}${r.payer.name ? " · " + r.payer.name : r.payer.passport ? " · " + r.payer.passport : ""}${r.purpose ? " · " + r.purpose : ""}`, amount: r.amount, method: [r.method, r.channel].filter(Boolean).join(" · "), ref: r.ref, at: r.approved?.at || r.created || null });
   for (const l of db.ledger) if (l.type === "payment" && l.status === "confirmed" && !l.mr && !l.opening) { // opening balances (previous due / advance) stay out of the Main account
@@ -2634,7 +2635,7 @@ function officeAuto() {
   }
   for (const p of db.salary.pays) if (salaryDone(p) && p.paid > 0)
     out.push({ id: "a-" + p.id, auto: "salary", date: p.date, type: "out", desc: `Salary ${p.no} · ${p.name} · ${monthName(p.month)}`, amount: p.paid, method: [p.method, p.channel].filter(Boolean).join(" · "), ref: p.ref, at: p.recv?.at || p.created || null });
-  return out;
+  return out.filter(keep); // books started again on db.office.from: older automatic entries stay out
 }
 const monthName = m => { const [y, mo] = String(m).split("-"); return new Date(Date.UTC(+y, +mo - 1, 1)).toLocaleString("en-GB", { month: "long", year: "numeric", timeZone: "UTC" }); };
 // where money is: office cash, a bank, a mobile wallet, or with the Managing Director / a Director / the Chairman.
@@ -2652,8 +2653,18 @@ const leaders = () => LEADERS.map(L => {
 // "Person · md" or "Person · md | Bank transfer · Sonali Bank PLC"
 const personOf = method => { const m = /^Person · ([a-z]+)(?: \| (.+))?$/.exec(String(method || "")); return m ? m[1] : null; };
 const personVia = method => { const m = /^Person · [a-z]+ \| (.+)$/.exec(String(method || "")); return m ? m[1] : "Cash"; };
+const dhakaDay = () => new Date(Date.now() + 6 * 3600e3).toISOString().slice(0, 10);
 A["admin.office"] = async (d, u) => {
   needPerm(u, "office");
+  if (d.op === "reset") { // start the books again: money receipts and the main account; agents' own accounts are not touched
+    must(u.role === "admin", "Only the admin can do this.");
+    must(String(d.confirm || "").trim().toUpperCase() === "RESET", "Type RESET to confirm.");
+    const day = dhakaDay(), snap = { at: now(), by: u.name, from: db.office.from || null, office: db.office.entries, receipts: db.mr.receipts, seq: db.mr.seq };
+    fs.writeFileSync(path.join(DATA_DIR, `accounts-reset-${Date.now()}.json`), JSON.stringify(snap)); // a copy, in case it is ever needed
+    const nOf = db.office.entries.length, nMr = db.mr.receipts.length;
+    db.office.entries = []; db.mr.receipts = []; db.mr.seq = {}; db.office.from = day; db.office.fromAt = now();
+    return { msg: `Accounts reset: ${nMr} money receipt(s) and ${nOf} main account entr${nOf === 1 ? "y" : "ies"} removed. The main account starts from ${day}.` };
+  }
   if (d.op === "add") {
     const list = (Array.isArray(d.rows) ? d.rows : [d]).slice(0, 50); must(list.length, "Add at least one entry.");
     const L = leaders(), lead = k => L.find(x => x.k === k), mine = L.find(x => x.uid === u.id)?.k;

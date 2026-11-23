@@ -1515,3 +1515,8 @@ button.hold-tile{cursor:pointer}
 .bal-chip.adv{background:#d9f2e6;color:#00563f}
 .bal-chip:hover{filter:brightness(1.07)}
 @media (max-width:560px){.bal-chip{padding:3px 8px;font-size:12px;gap:4px}.util-r{gap:5px}}
+.day-bar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:12px;padding:8px 10px;border:1px solid var(--line,#d5e3dc);border-radius:12px;background:var(--soft,#f3f8f5)}
+.day-bar .grow{flex:1}
+.day-now{display:inline-flex;align-items:center;gap:8px;font-size:15px;padding:0 6px}
+@media (max-width:560px){.day-bar{gap:6px}.day-now{order:-1;width:100%;justify-content:center}}
+.reset-box{border-color:#f2c4c9}

@@ -22,8 +22,9 @@ function RateCell({ r, onSave }) {
 }
 
 const stime = iso => { try { return new Date(iso).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", timeZone: "Asia/Dhaka" }); } catch { return ""; } };
-export function Statement({ title, sub, kind = "PAYMENT HISTORY", rows, actions, onRate, cash, heads, balText, tools, times, empty = "No entries yet." }) {
-  const [from, setFrom] = React.useState(""); const [to, setTo] = React.useState("");
+export function Statement({ title, sub, kind = "PAYMENT HISTORY", rows, actions, onRate, cash, heads, balText, tools, times, day, empty = "No entries yet." }) {
+  const [from0, setFrom] = React.useState(""); const [to0, setTo] = React.useState("");
+  const from = day || from0, to = day || to0; // day: one day only (the main account's daily view)
   const calc = withBalance(rows, from, to); const st = { title, sub, kind, from, to, calc, cash, times };
   const run = f => Promise.resolve(f(st)).catch(e => toast(e.message || "The file could not be made."));
   const b = calc.balance;
@@ -35,9 +36,9 @@ export function Statement({ title, sub, kind = "PAYMENT HISTORY", rows, actions,
       <div className={(cash ? b < 0 : b > 0) ? "due" : "ok"}><span>{balText ? balText(b) : balWord(b, cash)}</span><b className="num">{amt(cash ? b : Math.abs(b))}</b></div>
     </div>
     <div className="st-tools">
-      <label className="st-date">From <input type="date" value={from} onChange={e => setFrom(e.target.value)} /></label>
-      <label className="st-date">To <input type="date" value={to} onChange={e => setTo(e.target.value)} /></label>
-      {(from || to) && <button className="btn sm link" onClick={() => { setFrom(""); setTo(""); }}><LuX /> All dates</button>}
+      {!day && <><label className="st-date">From <input type="date" value={from} onChange={e => setFrom(e.target.value)} /></label>
+      <label className="st-date">To <input type="date" value={to} onChange={e => setTo(e.target.value)} /></label></>}
+      {!day && (from || to) && <button className="btn sm link" onClick={() => { setFrom(""); setTo(""); }}><LuX /> All dates</button>}
       <span className="grow" />
       {tools ? tools(st) : <>
       <button className="btn sm pri" disabled={!rows.length} onClick={() => run(statementPdf)}><LuFileText /> PDF</button>
@@ -54,6 +55,6 @@ export function Statement({ title, sub, kind = "PAYMENT HISTORY", rows, actions,
         {hasActs && <td className="st-act">{acts[i]}</td>}
       </tr>)}
       <tr className="st-total"><td /><td>Total</td><td /><td className="num r">{amt(calc.debit)}</td><td className="num r">{amt(calc.credit)}</td><td className={`num r ${(cash ? b < 0 : b > 0) ? "st-due" : "st-ok"}`}>{cash ? amt(b) : `${amt(Math.abs(b))} ${b > 0 ? "Due" : b < 0 ? "Adv." : ""}`}</td>{hasActs && <td />}</tr>
-    </tbody></table></div> : <Empty>{from || to ? "No entries in these dates." : empty}</Empty>}
+    </tbody></table></div> : <Empty>{day ? "No entries on this day." : from || to ? "No entries in these dates." : empty}</Empty>}
   </div>;
 }

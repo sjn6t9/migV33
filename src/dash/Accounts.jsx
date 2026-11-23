@@ -1,6 +1,6 @@
 // Payments & receipts › Main account (office cash book) and Salary accounts (pay admin / staff, receipt with QR code).
 import React from "react";
-import { LuPlus, LuX, LuTrash2, LuEye, LuImage, LuFileText, LuMail, LuBan, LuBanknote, LuHistory, LuCheck, LuQrCode, LuExternalLink, LuPrinter } from "react-icons/lu";
+import { LuPlus, LuX, LuTrash2, LuEye, LuImage, LuFileText, LuMail, LuBan, LuBanknote, LuHistory, LuCheck, LuQrCode, LuExternalLink, LuPrinter, LuCalendarDays, LuChevronLeft, LuChevronRight, LuRotateCcw } from "react-icons/lu";
 import { store, user } from "../store.js";
 import { act, openModal, closeModal, toast, confirmBox } from "../actions.js";
 import { Field } from "./shared.jsx";
@@ -91,17 +91,39 @@ export function OfficeAccount() {
   const waiting = O.entries.filter(e => e.status === "pending");
   const sel = key && (H.find(h => h.key === key) || { key, ...(key.startsWith("p:") ? { kind: "person", k: key.slice(2) } : { name: key.slice(2) }) });
   const rows = officeRows(key ? all : all.filter(e => okEntry(e) || e.status === "pending"), key, false);
+  // daily view: today first; Previous day / Next day up to 30 days back; Statement shows every date
+  const today = dhakaToday(), first = addDays(today, -30), [day, setDay] = React.useState(today), [full, setFull] = React.useState(false);
+  const isAdmin = user(store.S.session)?.role === "admin";
   return <>
     <div className="ec-head"><div><h2>Main account</h2><p className="muted small">The office cash book. Money in and money out, with the running balance. Approved money receipts, agent payments and salaries are added automatically. Money with the Managing Director, a Director or the Chairman counts only after they confirm it.</p></div></div>
     <Holdings H={H} waiting={waiting} sel={key} onPick={k => setKey(k === key ? "" : k)} />
     <div className="card">
       {sel && <div className="row6 mb8"><span className="ec-badge">{`Showing: ${holderName(sel)}`}</span><button className="btn sm link" onClick={() => setKey("")}><LuX /> Show the whole main account</button></div>}
-      <Statement title={`Mam & Mam Overseas Ltd. · ${sel ? `Main account · ${holderName(sel)}` : "Main account"}`} kind="MAIN ACCOUNT" cash times heads={["Money in", "Money out"]} rows={rows}
+      <div className="day-bar">
+        {full ? <><b>Statement · all dates</b><span className="grow" /><button className="btn sm" onClick={() => setFull(false)}><LuCalendarDays /> Daily view</button></>
+          : <><button className="btn sm" disabled={day <= first} onClick={() => setDay(addDays(day, -1))}><LuChevronLeft /> Previous day</button>
+            <span className="day-now"><b>{dayLabel(day)}</b>{day === today && <span className="ec-badge">Today</span>}</span>
+            <button className="btn sm" disabled={day >= today} onClick={() => setDay(addDays(day, 1))}>Next day <LuChevronRight /></button>
+            <span className="grow" />{day !== today && <button className="btn sm link" onClick={() => setDay(today)}>Today</button>}
+            <button className="btn sm pri" onClick={() => setFull(true)}><LuFileText /> Statement</button></>}
+      </div>
+      <Statement key={full ? "all" : day} day={full ? "" : day} title={`Mam & Mam Overseas Ltd. · ${sel ? `Main account · ${holderName(sel)}` : "Main account"}`} kind="MAIN ACCOUNT" cash times heads={["Money in", "Money out"]} rows={rows}
         empty={sel ? "No entries for this one yet." : "No entries yet. Add money in or money out below."}
         actions={r => r.manual ? <button className="btn sm link danger" aria-label="Delete entry" onClick={() => confirmBox("Delete this entry from the main account?", () => act("admin.office", { op: "delete", id: r.id }), "Delete")}><LuTrash2 /></button> : null} />
       <OfficeForm />
     </div>
+    {isAdmin && <div className="card reset-box"><h4>Start the accounts again</h4>
+      <p className="muted small">{`Removes every money receipt and every main account entry, and the main account starts from today. Money receipt numbers start again from 0001. Agents' own accounts (due, payments) are not changed. A copy of what is removed is kept on the server.${O.from ? ` Last started again on ${dayLabel(O.from)}.` : ""}`}</p>
+      <button className="btn danger sm" onClick={resetBooks}><LuRotateCcw /> Reset money receipts &amp; main account</button></div>}
   </>;
+}
+const dhakaToday = () => new Date(Date.now() + 6 * 3600e3).toISOString().slice(0, 10);
+const addDays = (d, n) => new Date(Date.parse(d + "T00:00:00Z") + n * 864e5).toISOString().slice(0, 10);
+const dayLabel = d => new Date(d + "T00:00:00Z").toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short", year: "numeric", timeZone: "UTC" });
+function resetBooks() {
+  const v = window.prompt("This removes every money receipt and every main account entry. It cannot be undone here.\n\nType RESET to confirm.");
+  if (v == null) return; if (v.trim().toUpperCase() !== "RESET") return toast("Not reset: type RESET to confirm.");
+  act("admin.office", { op: "reset", confirm: "RESET" });
 }
 /* summary under the main account: cash in office, each bank by name, each wallet, and money with the MD / Directors / Chairman */
 function Holdings({ H, waiting, sel, onPick }) {
