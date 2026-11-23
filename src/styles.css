@@ -1532,3 +1532,4 @@ button.hold-tile{cursor:pointer}
 .fgrid>*,.field,label{min-width:0}
 input[type=date],input[type=time],input[type=datetime-local],input[type=month]{min-width:0;max-width:100%;width:100%;display:block;-webkit-appearance:none;appearance:none;min-height:44px;text-align:left}
 input[type=date]::-webkit-date-and-time-value,input[type=time]::-webkit-date-and-time-value{text-align:left;min-height:1.3em}
+select.need{border-color:#d97706;box-shadow:0 0 0 2px rgba(217,119,6,.18)}

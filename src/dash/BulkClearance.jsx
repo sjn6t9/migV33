@@ -20,7 +20,7 @@ export function BulkEcForm({ onDone }) {
   const findAg = t => agents.find(a => agName(a).trim().toLowerCase() === String(t).trim().toLowerCase());
   const pps = S.passports || [];
   const [rows, setRows] = React.useState(() => Array.from({ length: 5 }, blank));
-  const [common, setCommon] = React.useState({ country: "Saudi Arabia", employer: "", visaType: "Work visa", flightDate: "", notes: "" });
+  const [common, setCommon] = React.useState({ country: "", employer: "", visaType: "Work visa", flightDate: "", notes: "" });
   const [busy, setBusy] = React.useState(false);
   const set = (k, patch) => setRows(L => L.map(r => r.k === k ? { ...r, ...patch } : r));
   const digits = v => String(v || "").replace(/\D/g, "").slice(-10);
@@ -74,7 +74,6 @@ export function BulkEcForm({ onDone }) {
       return { ...b, raimsId: /^\d{4,10}$/.test(ric.trim()) ? ric.trim() : rid, passport: x.passport || "", name: x.name || pp?.name || w?.name || "", icNo: x.ic || ic0 || lic || "", phone: w?.phone || "", agent: wAg ? agName(wAg) : w?.agentName || pp?.ref || "", auto: { name: !x.name, agent: true, phone: true } }; });
     setRows(L => { const keep = L.filter(filled); const out = [...keep, ...made]; while (out.length < 5) out.push(blank()); return out; });
     const c = [...new Set(r.people.map(x => findCountry(x.country)).filter(Boolean))];
-    if (c.length === 1) setCommon(v => ({ ...v, country: c[0] }));
     toast(`${made.length} row${made.length === 1 ? "" : "s"} added from RAIMS${fresh.length < r.people.length ? ` (${r.people.length - fresh.length} already in the list)` : ""}.${c.length > 1 ? " The workers go to different countries: check the destination." : ""}`);
   };
   // a RAIMS number typed (or changed): the list is read by itself after a short pause
@@ -100,6 +99,7 @@ export function BulkEcForm({ onDone }) {
       if (!r.passport.trim() || r.name.trim().length < 2) return toast(`Row ${i + 1}: enter the passport number and candidate name.`);
       if (!r.agent.trim()) return toast(`Row ${i + 1}: select the agent or write a name.`);
     }
+    if (!common.country) return toast("Choose the destination country.");
     setBusy(true);
     const payload = { ...common, rows: used.map(r => { const a = findAg(r.agent); return { passport: r.passport.trim(), name: r.name.trim(), icNo: (r.icNo || lic || "").trim(), raimsId: (r.raimsId || rid || "").trim(), phone: agentByPhone(r.phone) ? "" : r.phone.trim(), ...(a ? { agentId: a.id } : { agentName: r.agent.trim() }), fee: r.fee, due: r.due }; }) };
     const res = await act("admin.clearanceBulk", payload);
@@ -126,7 +126,7 @@ export function BulkEcForm({ onDone }) {
       <div className="card">
         <h3 className="bulk-h"><LuGlobe /> Same for all rows</h3>
         <div className="fgrid">
-          <Field label="Destination country *"><select value={common.country} onChange={e => setCommon({ ...common, country: e.target.value })}><ClCountryOptions /></select></Field>
+          <Field label="Destination country *"><select value={common.country} className={common.country ? "" : "need"} onChange={e => setCommon({ ...common, country: e.target.value })}><option value="">Select country</option><ClCountryOptions /></select></Field>
           <Field label="Employer / sponsor name (optional)"><input type="text" value={common.employer} maxLength={150} onChange={e => setCommon({ ...common, employer: e.target.value })} /></Field>
           <Field label="Visa type"><select value={common.visaType} onChange={e => setCommon({ ...common, visaType: e.target.value })}><Options list={["Work visa", "Free visa", "Group visa", "Other"]} /></select></Field>
           <Field label="Planned flight date (optional)"><input type="date" value={common.flightDate} onChange={e => setCommon({ ...common, flightDate: e.target.value })} /></Field>
