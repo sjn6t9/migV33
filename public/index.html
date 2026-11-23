@@ -3755,20 +3755,20 @@ const GP=(function(){
   function bar(span){if(!v.deadline)return '';return `<div class="gbar"><i data-bar="${v.deadline}" data-span="${span}" style="width:${Math.min(100,sec(v.deadline)/span*100)}%"></i></div>`}
   function idle(more){return `<div class="gnote">${more||'No game is running right now.'}</div><div class="gacts gidle">${btn('!start','▶ Start game',1)}${btn('!start 500','Entry 500')}${btn('!start 1000','Entry 1,000')}</div>`}
   function lowdice(){
-    const dice=v.g==='dice',st=v.state;let h=head(`<span class="chip">Pot ${K(v.pot)}</span>${v.round?`<span class="chip">R${v.round}</span>`:''}${timer()}`);
+    const dice=v.g==='dice',st=v.state;let h=head(`<span class="chip">Pot ${K(v.pot)}</span>${v.round?`<span class="chip">R${v.round}</span>`:''}${dice&&v.target&&st==='playing'?`<span class="chip">🎯 Target ${v.target}</span>`:''}${timer()}`);
     if(st==='idle'||st==='ended'&&!v.players?.length)return h+idle();
     if(st==='joining'||st==='starting')h+=bar(30)+`<div class="gnote warn">Joining open · entry ${K(v.entry)} coins · ${v.players.length} joined</div>`;
     const seats=v.players.map(p=>{
       const win=v.winner===p.n,low=!dice&&v.low.includes(p.n)&&st==='playing';
       let body;
-      if(dice){body=p.dice?`<div class="dies"><span class="die">${DIE[p.dice[0]]}</span><span class="die">${DIE[p.dice[1]]}</span></div><div class="tot">${p.total}</div>`:`<div class="dies"><span class="die bk">⚀</span><span class="die bk">⚀</span></div><div class="sub">${p.wait?'rolling…':'—'}</div>`}
+      if(dice){body=p.dice?`<div class="dies"><span class="die">${DIE[p.dice[0]]}</span><span class="die">${DIE[p.dice[1]]}</span></div><div class="tot">${p.total}${v.target&&p.alive?` <small>${p.total>=v.target?'IN':'OUT'}</small>`:''}</div>`:`<div class="dies"><span class="die bk">⚀</span><span class="die bk">⚀</span></div><div class="sub">${p.wait?'rolling…':'—'}</div>`}
       else body=p.card?card(p.card):card('?', 'bk '+(p.wait&&p.alive?'wt':''));
-      return `<div class="st ${p.me?'me':''} ${win?'win':''} ${!p.alive?'out':''} ${low?'low':''}"><span class="nm">${win?'🏆 ':''}${E(p.n)}</span>${body}<span class="sub">${!p.alive?'eliminated':low?'lowest':p.wait?'to '+(dice?'roll':'draw'):''}</span></div>`}).join('');
+      return `<div class="st ${p.me?'me':''} ${win?'win':''} ${!p.alive?'out':''} ${low?'low':''}"><span class="nm">${win?'🏆 ':''}${E(p.n)}</span>${body}<span class="sub">${!p.alive?'eliminated':low?'lowest':dice&&v.immune?.includes(p.n)&&!p.wait?'🛡 immune':p.wait?'to '+(dice?'roll':'draw'):''}</span></div>`}).join('');
     h+=`<div class="seats">${seats}</div>`;
     if(st==='ended'&&v.winner)h+=`<div class="gnote win">🏆 ${E(v.winner)} won ${K(v.prize)} coins</div>`;
     const acts=[];
     if(st==='joining')acts.push(btn('!j','＋ Join · '+K(v.entry),!v.joined,v.joined));
-    else if(st==='playing')acts.push(btn('!d',dice?'🎲 Roll':'🃏 Draw',v.pending,!v.pending));
+    else if(st==='playing')acts.push(btn(dice?'!r':'!d',dice?'🎲 Roll':'🃏 Draw',v.pending,!v.pending));
     else if(st==='ended')acts.push(btn('!start','▶ New game',1));
     return h+(acts.length?`<div class="gacts">${acts.join('')}</div>`:'');
   }
@@ -3834,7 +3834,7 @@ const GP=(function(){
       if(e.target.closest('[data-info]')){const G={
         cricket:['Cricket',['Type <b>!start</b> to open a table at 100 coins, or <b>!start 500</b> to choose the entry.','Others type <b>!j</b> within 30 seconds to join. At least two players are needed.','Each round, every batter types <b>!d</b> within 30 seconds to bat.','Outcomes: 1, 2, 3, 4 or 6 runs, a dot ball, or out (caught, run out, LBW).','There are six rounds. The most runs wins the pot, minus a 10 percent house cut.']],
         lowcard:['LowCard',['Type <b>!start</b> to open a table, or <b>!start 500</b> to choose the entry.','Others type <b>!j</b> within 30 seconds to join. At least two players are needed.','Each round, every player types <b>!d</b> within 30 seconds to draw one card.','The lowest card is out. Two is the lowest, Ace is the highest.','If several players tie for lowest, only they draw again. The last player standing wins the pot, minus 10 percent.']],
-        dice:['Dice',['Type <b>!start</b> to open a table, or <b>!start 500</b> to choose the entry.','Others type <b>!j</b> within 30 seconds to join. At least two players are needed.','Each player types <b>!d</b> within 30 seconds to roll two dice.','The highest total wins the pot, minus 10 percent.','If there is a tie for highest, only the tied players roll again.']],
+        dice:['Dice',['Type <b>!start</b> to open a table, or <b>!start 500</b> to choose the entry.','Others type <b>!j</b> within 30 seconds to join. At least two players are needed.','Every round the bot rolls two dice: that total is the TARGET.','Each player types <b>!r</b> within 30 seconds to roll two dice. A total equal to or above the target is IN, otherwise OUT and eliminated.','If nobody hits the target, nobody is eliminated. A double gives immunity for the next round.','The last player left wins the pot, minus 10 percent.']],
         royale:['Royale Battle',['Betting is open for 30 seconds. Bet on Red or Blue with <b>!bet red 500</b> or <b>!bet blue 500</b>.','Red and Blue pay 1.9 times your bet.','Special hands pay more: <b>!bet jutt 100</b> pays 5 times, <b>!bet color 100</b> 10 times, <b>!bet run 100</b> 20 times, <b>!bet doublerun 100</b> 100 times, <b>!bet tirel 100</b> 200 times.','The minimum bet is 100 coins.','Check your coins with <b>!bal</b>, and see the top players with <b>!top</b>.','After each result there is a 10-second pause, then the next round opens.']]
       };const g=G[v.g]||G.cricket;sheetOpen(`<h2>📘 ${g[0]} · how to play</h2><span class="gi-grid">${g[1].map((x,n)=>`<span class="gi"><i>${n+1}</i><span class="gt">${x}</span></span>`).join('')}</span><div class="mu">Virtual coins, just for fun.</div>`);return}
       if(e.target.closest('[data-snd]')){const m=GS.cycle();draw();toast(['🔊 Sound + vibration','📳 Vibration only','🔇 Muted'][m]);return}

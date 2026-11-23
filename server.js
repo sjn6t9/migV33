@@ -2239,6 +2239,7 @@ const lcRefundRoom = room => db.transaction(() => {
 // Shared wallet API for the pot games (LowCard, Dice): entries are journaled in lc_pending so a crash refunds them at the next start.
 const gameApi = label => ({
   say: async (room, text) => cast(room, { t: 'msg', room, user: label, text, kind: 'game', ts: Date.now(), role: '' }),
+  tell: async (room, user, text) => members.get(room)?.forEach(w => w.user === user && send(w, { t: 'msg', room, user: label, text, kind: 'game', priv: true, ts: Date.now(), role: '' })),
   debit: async (room, user, amount) => {
     const ok = db.transaction(() => {
       if (!db.prepare('update users set coins=coins-? where name=? and coins>=?').run(amount, user, amount).changes) return false;
@@ -2310,9 +2311,9 @@ const gpView = (room, user) => {
     const bot = g === 'lowcard' ? lowcard : dice, x = bot?.games.get(room);
     const base = { g, room, now, entry: bot?.entry instanceof Map ? (bot.entry.get(room) || 0) : 0 };
     if (!x) return { ...base, state: 'idle' };
-    const alive = g === 'lowcard' ? x.alive : x.players, pend = x.pending || [];
-    const players = x.players.map(n => ({ n, alive: g === 'dice' || alive.includes(n), me: n === user, wait: pend.includes(n) && !(x.draws || x.rolls)?.has(n), card: g === 'lowcard' ? (x.shown.get(n)?.label || null) : null, dice: g === 'dice' ? (x.shown.get(n) ? [x.shown.get(n).a, x.shown.get(n).b] : null) : null, total: g === 'dice' ? (x.shown.get(n)?.total ?? null) : null }));
-    return { ...base, state: x.state, entry: x.entry, pot: x.pot || 0, round: x.round || 0, deadline: x.deadline, players, low: x.lowSet || [], outs: x.outs || [], winner: x.winner, prize: x.prize, joined: x.players.includes(user), pending: pend.includes(user) };
+    const alive = x.alive, pend = x.pending || [];
+    const players = x.players.map(n => ({ n, alive: alive.includes(n), me: n === user, wait: pend.includes(n) && !(x.draws || x.rolls)?.has(n), card: g === 'lowcard' ? (x.shown.get(n)?.label || null) : null, dice: g === 'dice' ? (x.shown.get(n) ? [x.shown.get(n).a, x.shown.get(n).b] : null) : null, total: g === 'dice' ? (x.shown.get(n)?.total ?? null) : null }));
+    return { ...base, state: x.state, entry: x.entry, pot: x.pot || 0, round: x.round || 0, deadline: x.deadline, players, low: x.lowSet || [], outs: x.outs || [], target: x.target || 0, immune: [...(x.immune || [])], winner: x.winner, prize: x.prize, joined: x.players.includes(user), pending: pend.includes(user) };
   }
   if (g === 'cricket') {
     const x = cricket?.games.get(room), base = { g, room, now };
