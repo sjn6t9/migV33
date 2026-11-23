@@ -86,8 +86,8 @@ export function Admin({ u }) {
     };
     body = <>
       <h2>Air tickets</h2>
-      <WfttPanel />
-      <details className="vf-det mt10"><summary>Search flights (net and gross fares)</summary><FlightSearch staff /></details>
+      {user(store.S.session)?.role === "admin" && <WfttPanel />}
+      <details className="vf-det mt10" open={!flHidden()} onToggle={e => { if (ui.flHide !== !e.currentTarget.open) { ui.flHide = !e.currentTarget.open; try { localStorage.setItem("flHide", ui.flHide ? "1" : ""); } catch {} } }}><summary>Search flights (net and gross fares)</summary><FlightSearch staff /></details>
       <h3 className="mt14">Ticket requests</h3>
       <div className="tbl"><table><thead><tr><th>Passenger</th><th>From</th><th>Route / flight</th><th>Preferred</th><th>Booking</th><th>Status</th><th></th></tr></thead><tbody>
         {T.length ? T.map(x => { const w = x.candidateId || x.travellers ? { name: x.name, passport: x.passport } : worker(x.workerId) || { name: "Removed worker" }; const ag = user(x.agentId); return (
@@ -714,6 +714,8 @@ function DocMenu({ files }) {
 }
 
 /* WFTT BD sign-in for live fares (the agency's B2B account); service charge added to every fare shown to agents and job seekers */
+// Air tickets › Search flights: open unless this person hid it (remembered in this browser)
+const flHidden = () => { if (ui.flHide === undefined) { try { ui.flHide = localStorage.getItem("flHide") === "1"; } catch { ui.flHide = false; } } return ui.flHide; };
 function WfttPanel() {
   const W = store.S.wftt, me = user(store.S.session), admin = me?.role === "admin";
   const [f, setF] = React.useState({ email: W?.email || "", password: "" }), [mk, setMk] = React.useState(String(W?.markup ?? 0)), [busy, setBusy] = React.useState(false);
