@@ -3331,12 +3331,31 @@ function linkBookAgent(b, x) {
   db.agentBook = db.agentBook.filter(a => a !== b);
   return n;
 }
+/* an agent ID and an agent in the office's list with the same mobile number or email are the same agent: join them
+   (at start-up, and whenever an agent ID or the list changes). A name alone is joined only when the admin approves the ID. */
+function strongBookMatches(x) {
+  if (x?.role !== "agent" || x.status !== "active") return []; // approved IDs only: an ID waiting for approval is linked when the admin approves it
+  const ph = [x.agent?.phone, x.phone].map(dig10).filter(v => v.length >= 10), em = String(x.email || "").trim().toLowerCase();
+  return db.agentBook.filter(a => (dig10(a.mobile).length >= 10 && ph.includes(dig10(a.mobile))) || (a.email && em && a.email.trim().toLowerCase() === em));
+}
+function autoLinkBooks() {
+  let n = 0;
+  for (const x of db.users) for (const b of strongBookMatches(x)) {
+    const r = linkBookAgent(b, x); n++;
+    notify(x.id, `Your earlier records with the agency (${b.name}) are now in your account: passports, workers, clearance files and payments.`);
+    console.log(`linked agent list "${b.name}" to agent ID ${x.email}`, JSON.stringify(r));
+  }
+  if (n) save();
+  return n;
+}
+setTimeout(() => { try { autoLinkBooks(); } catch (e) { console.error("autoLinkBooks", e); } }, 1500);
 function linkAgentAccount(x) {
   const done = bookMatches(x).map(b => ({ name: b.name, ...linkBookAgent(b, x) }));
   if (done.length) notify(x.id, `Your earlier records with the agency (${done.map(d => d.name).join(", ")}) are now in your account: passports, workers, clearance files and payments.`);
   return done;
 }
-A["admin.agentBook"] = async (d, u) => {
+A["admin.agentBook"] = async (d, u) => { const r = await agentBookOp(d, u); const n = autoLinkBooks(); if (n && r?.msg) r.msg += ` This agent already has an agent ID with the same mobile or email: the records are now in that account.`; return r; };
+async function agentBookOp(d, u) {
   must(PP_PERMS.some(k => can(u, k)), "You do not have permission for this.", 403);
   const F = x => ({ fullName: str(x.fullName, 120), mobile: str(x.mobile, 30), email: str(x.email, 120).toLowerCase(), agency: str(x.agency, 150), address: str(x.address, 500) });
   if (d.op === "save") {
@@ -3366,7 +3385,7 @@ A["admin.agentBook"] = async (d, u) => {
     a.entries = a.entries.filter(e => e.id !== d.eid); return { msg: "Entry deleted." };
   }
   must(false, "Unknown request.");
-};
+}
 A["admin.about"] = async (d, u) => {
   needPerm(u, "content"); const a = db.about;
   const L = (v, n) => String(v ?? "").slice(0, n).trim();
