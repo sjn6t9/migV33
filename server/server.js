@@ -1992,7 +1992,19 @@ function readBody(req) {
   });
 }
 /* behind nginx/Caddy the proxy appends the real client address as the LAST entry; earlier entries can be faked */
-const clientIp = req => (req.headers["x-forwarded-for"] || "").split(",").pop().trim() || req.socket.remoteAddress || "";
+/* the visitor's address. Our own proxy adds it last to X-Forwarded-For. When the site is behind Cloudflare that last address is a Cloudflare
+   server (it changes all the time), so the real one is in CF-Connecting-IP — trusted only when the request really came from Cloudflare. */
+const CF_NETS = ["173.245.48.0/20", "103.21.244.0/22", "103.22.200.0/22", "103.31.4.0/22", "141.101.64.0/18", "108.162.192.0/18", "190.93.240.0/20", "188.114.96.0/20", "197.234.240.0/22", "198.41.128.0/17", "162.158.0.0/15", "104.16.0.0/13", "104.24.0.0/14", "172.64.0.0/13", "131.0.72.0/22"]
+  .map(c => { const [a, b] = c.split("/"); return [a.split(".").reduce((n, x) => n * 256 + +x, 0), +b]; });
+const CF6 = ["2400:cb00:", "2606:4700:", "2803:f800:", "2405:b500:", "2405:8100:", "2a06:98c", "2a06:98c", "2c0f:f248:"];
+const isCf = ip => { ip = String(ip || "").replace(/^::ffff:/, "").toLowerCase();
+  if (/^\d+\.\d+\.\d+\.\d+$/.test(ip)) { const n = ip.split(".").reduce((t, x) => t * 256 + +x, 0); return CF_NETS.some(([a, b]) => Math.floor(n / 2 ** (32 - b)) === Math.floor(a / 2 ** (32 - b))); }
+  return CF6.some(p => ip.startsWith(p)); };
+const clientIp = req => {
+  const last = (req.headers["x-forwarded-for"] || "").split(",").pop().trim() || req.socket.remoteAddress || "";
+  const cf = String(req.headers["cf-connecting-ip"] || "").trim();
+  return cf && isCf(last) ? cf : last;
+};
 const secure = req => req.headers["x-forwarded-proto"] === "https";
 
 async function handleApi(req, res, url) {
@@ -2570,6 +2582,13 @@ if (!ATT.since) ATT.since = attDay(); // days before this are not counted
 // the office network: an IPv4 address as it is; an IPv6 address by its /64 network (every device has its own IPv6 address)
 const netOf = ip => { ip = String(ip || "").replace(/^::ffff:/, ""); if (/^\d+\.\d+\.\d+\.\d+$/.test(ip)) return ip; const g = ip.split(":"); return g.length > 2 ? g.slice(0, 4).join(":") + "::/64" : ip; };
 const attHoliday = d => { const dow = new Date(d + "T00:00:00Z").getUTCDay(); if (dow === 5) return "Weekly holiday (Friday)"; return ATT.holidays.find(h => h.date === d)?.name || ""; };
+/* once: the office network is the one most IDs used on 21 Nov 2026 (as the admin said); self ticks made outside the office are removed */
+if (!ATT.fix2611) {
+  const L = ATT.ipLog?.["2026-11-21"]; const best = L && Object.entries(L).sort((a, b) => b[1].length - a[1].length)[0];
+  if (best && best[1].length >= 2) { ATT.office = { ...ATT.office, mode: "auto", autoIp: best[0], ip: ATT.office.mode === "manual" ? best[0] : ATT.office.ip, autoAt: new Date().toISOString(), candidate: null }; }
+  for (const [uid, days] of Object.entries(ATT.marks || {})) for (const [d, m] of Object.entries(days)) if (m?.by === "self" && m.office === false) delete days[d];
+  ATT.fix2611 = true;
+}
 const officeIp = () => (ATT.office.mode === "manual" && ATT.office.ip) || ATT.office.autoIp || "";
 const attMark = (uid, day, m) => { (ATT.marks[uid] ||= {})[day] = m; };
 function attTouch(u, ip0) {
@@ -2578,11 +2597,12 @@ function attTouch(u, ip0) {
   let changed = false;
   if (!list.includes(u.id)) { list.push(u.id); changed = true; }
   // automatic office IP: the network most admin/staff use today (at least two people); when it moves, people already seen there are ticked
-  // the first office IP: two people on one network; afterwards a new network needs three or more people today, and an admin confirms it
+  // the first office IP: two people on one network; afterwards a new network with two or more people today is only a suggestion, and changes nothing until an admin confirms it
   if (ATT.office.mode !== "manual" && !ATT.office.autoIp && list.length >= 2) {
     ATT.office.autoIp = ip; ATT.office.autoAt = now(); changed = true;
     if (!attHoliday(day)) for (const uid of list) if (!ATT.marks[uid]?.[day]) attMark(uid, day, { at: now(), by: "auto", ip });
-  } else if (ip !== officeIp() && list.length >= 3 && list.length > (log[officeIp()] || []).length && ATT.office.candidate?.ip !== ip && !(ATT.office.dismissed || []).includes(ip)) {
+  } else if (ip !== officeIp() && list.length >= 2 && list.length >= (log[officeIp()] || []).length && ATT.office.candidate?.ip !== ip && !(ATT.office.dismissed || []).includes(ip)) {
+    // two or more IDs on a new network: ask the admin; the office IP stays as it is until the admin confirms
     ATT.office.candidate = { ip, at: now(), day }; changed = true;
     notifyAdmins(`${list.length} admin/staff are using a new network (${ip}) today. If the office internet changed, confirm it as the office IP in Site settings › Office attendance.`, "settings");
   }
@@ -2603,6 +2623,7 @@ A["attendance.tick"] = async (d, u, ctx) => {
   if (d.off) { must(u.role === "admin", "Only an admin can remove a tick.", 403); if (ATT.marks[target]) delete ATT.marks[target][date]; return { msg: "Tick removed." }; }
   if (was) return { msg: "Already ticked." };
   const ip = netOf(ctx.ip);
+  must(target !== u.id || ip === officeIp(), "You can tick only from the office network. Open the site on the office internet.");
   attMark(target, date, { at: now(), by: target === u.id ? "self" : `admin:${u.name}`, ip, office: ip === officeIp() });
   return { msg: "Present." };
 };
