@@ -70,12 +70,17 @@ function officeRows(list, key, pendingToo) {
     const pend = e.status === "pending", sub = e.auto ? `Added automatically · ${AUTO[e.auto]}` : [e.by && `Entered by ${e.by}`, pend && "Waiting for confirmation", e.status === "rejected" && `Not confirmed by ${e.rejected?.by || "director"}${e.rejected?.text ? `: ${e.rejected.text}` : ""}`].filter(Boolean).join(" · ");
     if (e.status === "rejected" && !pendingToo) continue;
     if (e.type === "transfer") {
-      if (!key) continue;
+      if (!key) { // the office's own book: only money that moves between the office and the MD / Directors / Chairman
+        const f = holderOf(e.from), t = holderOf(e.to); if ((f.kind === "person") === (t.kind === "person")) continue;
+        const inn = f.kind === "person", h = inn ? t : f;
+        out.push({ id: e.id, date: e.date, details: `${e.desc} — ${inn ? "received from" : "given to"} ${personName((inn ? f : t).k)}`, ref: e.ref, at: e.at, rate: way(inn ? e.to : e.from), debit: inn ? e.amount : 0, credit: inn ? 0 : e.amount, manual: !e.auto, pending: pend || e.status === "rejected", sub, e });
+        continue;
+      }
       const m = moves(e).find(x => x.h.key === key); if (!m) continue;
       out.push({ id: e.id, date: e.date, details: `${e.desc} — moved ${m.amount > 0 ? `from ${methodText(e.from)}` : `to ${methodText(e.to)}`}`, ref: e.ref, at: e.at, rate: m.h.via ? m.h.via.toUpperCase() : "TRANSFER", debit: m.amount > 0 ? e.amount : 0, credit: m.amount < 0 ? e.amount : 0, manual: !e.auto, pending: pend || e.status === "rejected", sub, e });
       continue;
     }
-    const h = holderOf(e.method); if (key && h.key !== key) continue;
+    const h = holderOf(e.method); if (key ? h.key !== key : h.kind === "person") continue; // money with the MD / Directors / Chairman is theirs until they give it to the office
     out.push({ id: e.id, date: e.date, at: e.at, details: e.desc, ref: e.ref, rate: h.kind === "person" ? h.via.toUpperCase() : way(e.method), debit: e.type === "in" ? e.amount : 0, credit: e.type === "out" ? e.amount : 0, manual: !e.auto, auto: e.auto, pending: pend || e.status === "rejected",
       sub: [h.kind === "person" && !key && `With ${personName(h.k)}`, sub].filter(Boolean).join(" · "), e });
   }
@@ -95,7 +100,7 @@ export function OfficeAccount() {
   const today = dhakaToday(), first = addDays(today, -30), [day, setDay] = React.useState(today), [full, setFull] = React.useState(false);
   const isAdmin = user(store.S.session)?.role === "admin";
   return <>
-    <div className="ec-head"><div><h2>Main account</h2><p className="muted small">The office cash book. Money in and money out, with the running balance. Approved money receipts, agent payments and salaries are added automatically. Money with the Managing Director, a Director or the Chairman counts only after they confirm it.</p></div></div>
+    <div className="ec-head"><div><h2>Main account</h2><p className="muted small">The office cash book, run by the Account Manager. Approved money receipts, agent payments to the office and salaries are added automatically. Money an agent pays to the Managing Director, a Director or the Chairman goes to their own account (below) and comes into the main account only when they give it to the office. Money they take from the office goes out of the main account.</p></div></div>
     <Holdings H={H} waiting={waiting} sel={key} onPick={k => setKey(k === key ? "" : k)} />
     <div className="card">
       {sel && <div className="row6 mb8"><span className="ec-badge">{`Showing: ${holderName(sel)}`}</span><button className="btn sm link" onClick={() => setKey("")}><LuX /> Show the whole main account</button></div>}
@@ -131,7 +136,7 @@ function Holdings({ H, waiting, sel, onPick }) {
   const banks = H.filter(h => h.kind === "bank").sort((a, b) => b.bal - a.bal), wallets = H.filter(h => h.kind === "wallet").sort((a, b) => b.bal - a.bal);
   const people = [...L.map(l => H.find(h => h.key === `p:${l.k}`) || { key: `p:${l.k}`, kind: "person", k: l.k, in: 0, out: 0, bal: 0, vias: {} }), ...H.filter(h => h.kind === "person" && !L.some(l => `p:${l.k}` === h.key))];
   const wait = k => waiting.filter(e => e.people?.includes(k) && !e.accepted?.includes(k));
-  const total = H.reduce((t, h) => t + h.bal, 0), sum = l => l.reduce((t, h) => t + h.bal, 0);
+  const total = H.filter(h => h.kind !== "person").reduce((t, h) => t + h.bal, 0), sum = l => l.reduce((t, h) => t + h.bal, 0); // the MD / Directors / Chairman keep their own accounts
   const Row = ({ h, extra }) => <><tr className={`hold-row${sel === h.key ? " on" : ""}`} onClick={() => onPick(h.key)} title="Show these entries"><td className="b">{holderName(h)}{extra}</td><td className="num">{tk(h.in)}</td><td className="num">{tk(h.out)}</td><td className={`num b${h.bal < 0 ? " neg" : ""}`}>{tk(h.bal)}</td></tr>
     {Object.entries(h.vias || {}).sort((a, b) => (b[1].in - b[1].out) - (a[1].in - a[1].out)).map(([n, v]) => <tr key={n} className="hold-sub"><td>{`↳ ${n}`}</td><td className="num">{tk(v.in)}</td><td className="num">{tk(v.out)}</td><td className="num">{tk(v.in - v.out)}</td></tr>)}</>;
   const Group = ({ title, list, none }) => <div className="hold-group"><h4>{title}<span className="muted small ms6">{`${tk(sum(list))} BDT`}</span></h4>
@@ -141,12 +146,12 @@ function Holdings({ H, waiting, sel, onPick }) {
       <button type="button" className={`hold-tile${sel === "cash" ? " on" : ""}`} onClick={() => onPick("cash")}><span className="muted small">Cash in office (with me)</span><b>{`${tk(cash.bal)} BDT`}</b></button>
       <div className="hold-tile"><span className="muted small">In banks</span><b>{`${tk(sum(banks))} BDT`}</b></div>
       <div className="hold-tile"><span className="muted small">In mobile wallets</span><b>{`${tk(sum(wallets))} BDT`}</b></div>
-      <div className="hold-tile"><span className="muted small">With MD / Directors / Chairman</span><b>{`${tk(sum(people))} BDT`}</b></div>
       <div className="hold-tile tot"><span className="muted small">Main account total</span><b>{`${tk(total)} BDT`}</b></div>
+      <div className="hold-tile sep"><span className="muted small">With MD / Directors / Chairman (separate)</span><b>{`${tk(sum(people))} BDT`}</b></div>
     </div>
     <Group title="Banks" list={banks} none="No money in any bank yet." />
     <Group title="Mobile wallets" list={wallets} none="No money in any mobile wallet yet." />
-    <Group title="Managing Director, Directors and Chairman" list={people} none="" />
+    <Group title="Managing Director, Directors and Chairman (their own accounts, not in the main account)" list={people} none="" />
     <LeaderIds L={L} />
     {waiting.length > 0 && <p className="muted small mt8">{`${waiting.length} ${waiting.length > 1 ? "entries are" : "entry is"} waiting for confirmation. They are shown dimmed and are not counted until confirmed.`}</p>}
     <p className="muted small mt8">Click a row to see only its entries.</p>
@@ -168,14 +173,30 @@ export function MoneyWithMe() {
   const mine = holdings(M.entries.filter(okEntry)).find(h => h.key === key);
   const ok = M.entries.filter(okEntry), bal = ok.reduce((t, e) => t + moves(e).filter(m => m.h.key === key).reduce((s, m) => s + m.amount, 0), 0);
   return <>
-    <div className="ec-head"><div><h2>Money with me</h2><p className="muted small">The Account Manager enters money that came to you or that you paid. Confirm each one. Only confirmed entries go into the main account.</p></div></div>
+    <div className="ec-head"><div><h2>Money with me</h2><p className="muted small">Your own account: money agents paid to you, and money the office gave you or you gave the office. The Account Manager's entries about you count after you confirm them. Use Give money to the office to put money into the main account.</p></div></div>
     <div className="card hold"><div className="hold-top"><div className="hold-tile tot"><span className="muted small">{`With ${M.me?.name || me.name}${M.me?.title ? ` · ${M.me.title}` : ""}`}</span><b>{`${tk(bal)} BDT`}</b></div><div className="hold-tile"><span className="muted small">Waiting for you</span><b>{pend.length}</b></div></div>
       {mine && Object.keys(mine.vias).length > 0 && <div className="tbl hold-tbl"><table><thead><tr><th>Account</th><th className="r">Money in</th><th className="r">Money out</th><th className="r">Balance</th></tr></thead><tbody>
         {Object.entries(mine.vias).map(([n, v]) => <tr key={n}><td className="b">{n}</td><td className="num">{tk(v.in)}</td><td className="num">{tk(v.out)}</td><td className="num b">{tk(v.in - v.out)}</td></tr>)}</tbody></table></div>}</div>
+    <GiveToOffice />
     {pend.length > 0 && <div className="card"><h3>Please confirm</h3>
       {pend.map(e => <MoneyReq key={e.id} e={e} mk={mk} />)}</div>}
     <div className="card"><Statement title={`Mam & Mam Overseas Ltd. · Money with ${M.me?.name || me.name}`} kind="MONEY WITH ME" cash times heads={["Money in", "Money out"]} rows={officeRows(M.entries, key, true)} empty="Nothing yet." /></div>
   </>;
+}
+/* the MD / a Director / the Chairman gives money to the office: a transfer from their account into the main account */
+function GiveToOffice() {
+  const [open, setOpen] = React.useState(false), [busy, setBusy] = React.useState(false);
+  const [f, setF] = React.useState({ amount: "", via: "Cash", to: "Cash", date: today(), ref: "", desc: "" }), set = v => setF(x => ({ ...x, ...v }));
+  if (!open) return <div className="card row between"><div><b>Give money to the office</b><div className="muted small">It goes into the main account.</div></div><button className="btn pri" onClick={() => setOpen(true)}><LuBanknote /> Give money to the office</button></div>;
+  const send = async e => { e.preventDefault(); if (!(Number(f.amount) > 0)) return toast("Enter the amount."); setBusy(true); const r = await act("office.give", f); setBusy(false); if (r) { setOpen(false); set({ amount: "", ref: "", desc: "" }); } };
+  return <form className="card fgrid" onSubmit={send} noValidate><h3 className="full">Give money to the office</h3>
+    <Field label="Amount (BDT)"><input type="number" min="1" value={f.amount} onChange={e => set({ amount: e.target.value })} /></Field>
+    <Field label="Date"><input type="date" value={f.date} onChange={e => set({ date: e.target.value })} /></Field>
+    <Field label="From my"><select value={f.via} onChange={e => set({ via: e.target.value })}><option value="Cash">Cash in hand</option><optgroup label="Bank">{BANKS.map(x => <option key={x} value={`Bank transfer · ${x}`}>{x}</option>)}</optgroup><optgroup label="Mobile banking">{MFS.map(x => <option key={x} value={`Mobile banking · ${x}`}>{x}</option>)}</optgroup></select></Field>
+    <Field label="Office receives it in"><select value={f.to} onChange={e => set({ to: e.target.value })}><Ways /></select></Field>
+    <Field label="Reference (optional)"><input type="text" value={f.ref} onChange={e => set({ ref: e.target.value })} placeholder="e.g. TrxID" /></Field>
+    <Field label="Details (optional)"><input type="text" value={f.desc} onChange={e => set({ desc: e.target.value })} placeholder="e.g. Agent payments collected this week" /></Field>
+    <div className="row full"><button className="btn pri" disabled={busy}><LuBanknote /> Give to the office</button><button type="button" className="btn" onClick={() => setOpen(false)}>Cancel</button></div></form>;
 }
 function MoneyReq({ e, mk }) {
   const [no, setNo] = React.useState(false), [txt, setTxt] = React.useState(""), m = moves(e).find(x => x.h.key === `p:${mk}`);

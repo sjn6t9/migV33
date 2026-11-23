@@ -1520,3 +1520,4 @@ button.hold-tile{cursor:pointer}
 .day-now{display:inline-flex;align-items:center;gap:8px;font-size:15px;padding:0 6px}
 @media (max-width:560px){.day-bar{gap:6px}.day-now{order:-1;width:100%;justify-content:center}}
 .reset-box{border-color:#f2c4c9}
+.hold-tile.sep{opacity:.92;border-style:dashed}

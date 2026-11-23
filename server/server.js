@@ -2698,6 +2698,18 @@ A["admin.office"] = async (d, u) => {
   must(false, "Unknown request.");
 };
 /* the Managing Director, a Director or the Chairman confirms (or refuses) money entered as being with them */
+/* the MD / a Director / the Chairman, from their own admin ID: give money to the office (it goes into the main account) */
+A["office.give"] = async (d, u) => {
+  must(isStaffRole(u), "Not allowed.", 403);
+  const L = leaders().find(x => x.uid === u.id); must(L, "Only the Managing Director, a Director or the Chairman can do this.");
+  const amount = r2(Number(d.amount)); must(amount > 0 && amount < 1e10, "Enter the amount.");
+  const to = str(d.to, 80) || "Cash"; must(!personOf(to), "Choose where the office receives it.");
+  const via = str(d.via, 80) || "Cash";
+  const e = { id: id("of"), date: okDate(d.date), type: "transfer", from: `Person · ${L.k} | ${via}`, to, desc: str(d.desc, 200) || `Given to the office by ${L.name}`, amount, ref: str(d.ref, 80), by: u.name, byId: u.id, at: now(), people: [L.k], accepted: [L.k], status: "accepted" };
+  db.office.entries.push(e);
+  notifyAdmins(`${u.name} gave BDT ${amount.toLocaleString("en-US")} to the office (${to}).`, "office");
+  return { msg: "Done. It is now in the main account." };
+};
 A["office.accept"] = async (d, u) => {
   must(isStaffRole(u), "Not allowed.", 403);
   const k = leaders().find(x => x.uid === u.id)?.k;
@@ -2705,7 +2717,7 @@ A["office.accept"] = async (d, u) => {
   if (d.ok) {
     e.accepted = [...new Set([...(e.accepted || []), k])]; if (e.accepted.length === e.people.length) e.status = "accepted";
     notifyAdmins(`${u.name} confirmed BDT ${e.amount.toLocaleString("en-US")}: ${e.desc.slice(0, 80)}.`, "office");
-    return { msg: e.status === "accepted" ? "Confirmed. It is now in the main account." : "Confirmed. Waiting for the other person." };
+    return { msg: e.status === "accepted" ? "Confirmed." : "Confirmed. Waiting for the other person." };
   }
   e.status = "rejected"; e.rejected = { by: u.name, at: now(), text: str(d.text, 200) };
   notifyAdmins(`${u.name} did not confirm BDT ${e.amount.toLocaleString("en-US")}: ${e.desc.slice(0, 80)}${e.rejected.text ? ` (${e.rejected.text})` : ""}.`, "office");
@@ -2818,7 +2830,12 @@ function stmtSource(kind, ref) {
   }
   if (kind === "office") {
     return { title: "Mam & Mam Overseas Ltd. · Main account", sub: "Office cash book", email: "", label: "MAIN ACCOUNT", cash: true, heads: ["Money in", "Money out"],
-      rows: [...db.office.entries.filter(e => (e.status || "accepted") === "accepted" && e.type !== "transfer"), ...officeAuto()].map(e => ({ date: e.date, details: e.desc, rate: personOf(e.method) ? short(personVia(e.method)) : short(e.method), debit: e.type === "in" ? e.amount : 0, credit: e.type === "out" ? e.amount : 0 })) };
+      // only the office's own money: money with the MD / Directors / Chairman stays out until they give it to the office (a transfer)
+      rows: [...db.office.entries.filter(e => (e.status || "accepted") === "accepted"), ...officeAuto()].flatMap(e => {
+        if (e.type === "transfer") { const pf = personOf(e.from), pt = personOf(e.to); if (!!pf === !!pt) return [];
+          return [{ date: e.date, details: `${e.desc} — ${pf ? "received from" : "given to"} ${leaders().find(x => x.k === (pf || pt))?.name || "director"}`, rate: short(pf ? e.to : e.from), debit: pf ? e.amount : 0, credit: pt ? e.amount : 0 }]; }
+        if (personOf(e.method)) return [];
+        return [{ date: e.date, details: e.desc, rate: short(e.method), debit: e.type === "in" ? e.amount : 0, credit: e.type === "out" ? e.amount : 0 }]; }) };
   }
   must(false, "Choose an account.");
 }
