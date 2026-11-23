@@ -93,7 +93,7 @@ export async function statementCanvases(st) {
     // table header
     g.fillStyle = "#c9e3b2"; g.fillRect(M, y, PW - 2 * M, RH + 4); g.strokeStyle = "#8aa57a"; g.lineWidth = 1.5; g.strokeRect(M, y, PW - 2 * M, RH + 4);
     let x = M; g.fillStyle = INK; g.font = `800 18px ${F}`;
-    for (const [h0, w, al] of COLS) { const h = h0 === "Debit" && st.heads ? st.heads[0] : h0 === "Credit" && st.heads ? st.heads[1] : h0; g.textAlign = al === "r" ? "right" : "left"; g.fillText(h, al === "r" ? x + w - 10 : x + 10, y + 26); x += w; }
+    for (const [h0, w, al] of COLS) { const h = h0 === "Debit" && st.heads ? st.heads[0] : h0 === "Credit" && st.heads ? st.heads[1] : h0 === "Rate" && st.rateHead ? st.rateHead : h0; g.textAlign = al === "r" ? "right" : "left"; g.fillText(h, al === "r" ? x + w - 10 : x + 10, y + 26); x += w; }
     y += RH + 4;
     chunk.forEach((r, k) => {
       g.fillStyle = r.opening ? "#eef3ea" : k % 2 ? "#f6f8f7" : "#fff"; g.fillRect(M, y, PW - 2 * M, RH);
@@ -140,7 +140,7 @@ export function statementXlsx(st) {
   xlsx("Payment history", [
     [{ v: OFFICE.name, s: 3 }], [TAGLINE], [], [{ v: `${st.kind || "Payment history"}: ${st.title}`, s: 1 }], st.sub ? [st.sub] : [],
     [`Period: ${st.from ? sdate(st.from) : "start"} to ${sdate(st.to || localDay())}`], [],
-    ["DATE", "Details", "RATE", "Debit", "Credit", "Balance"].map(v => ({ v, s: 1 })),
+    ["DATE", "Details", st.rateHead || "RATE", st.heads?.[0] || "Debit", st.heads?.[1] || "Credit", "Balance"].map(v => ({ v, s: 1 })),
     ...rows.map(r => [sdate(r.date) + (st.times && r.at && !r.opening ? " " + stime(r.at) : ""), r.details + (r.pending ? " (pending)" : ""), r.rate, r.debit ? { v: r.debit, s: 2 } : "", r.credit ? { v: r.credit, s: 2 } : "", r.balance == null ? "" : { v: r.balance, s: 2 }]),
     [], ["", { v: "Total", s: 1 }, "", { v: debit, s: 4 }, { v: credit, s: 4 }, { v: balance, s: 4 }], ["", { v: balWord(balance, st.cash), s: 1 }, "", "", "", { v: st.cash ? balance : Math.abs(balance), s: 4 }]
   ], [11, 46, 14, 14, 14, 14], `${fileName(st)}.xlsx`);

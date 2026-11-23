@@ -22,10 +22,10 @@ function RateCell({ r, onSave }) {
 }
 
 const stime = iso => { try { return new Date(iso).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", timeZone: "Asia/Dhaka" }); } catch { return ""; } };
-export function Statement({ title, sub, kind = "PAYMENT HISTORY", rows, actions, onRate, cash, heads, balText, tools, times, day, empty = "No entries yet." }) {
+export function Statement({ title, sub, kind = "PAYMENT HISTORY", rows, actions, onRate, cash, heads, balText, tools, times, day, rateHead, empty = "No entries yet." }) {
   const [from0, setFrom] = React.useState(""); const [to0, setTo] = React.useState("");
   const from = day || from0, to = day || to0; // day: one day only (the main account's daily view)
-  const calc = withBalance(rows, from, to); const st = { title, sub, kind, from, to, calc, cash, times };
+  const calc = withBalance(rows, from, to); const st = { title, sub, kind, from, to, calc, cash, times, heads, rateHead };
   const run = f => Promise.resolve(f(st)).catch(e => toast(e.message || "The file could not be made."));
   const b = calc.balance;
   const acts = actions ? calc.rows.map(r => (r.opening ? null : actions(r))) : [], hasActs = acts.some(Boolean); // no empty column when no row has a button
@@ -44,7 +44,7 @@ export function Statement({ title, sub, kind = "PAYMENT HISTORY", rows, actions,
       <button className="btn sm pri" disabled={!rows.length} onClick={() => run(statementPdf)}><LuFileText /> PDF</button>
       <button className="btn sm pri" disabled={!rows.length} onClick={() => run(statementXlsx)}><LuFileSpreadsheet /> Excel</button></>}
     </div>
-    {calc.rows.length ? <div className="tbl st-tbl"><table><thead><tr><th>DATE</th><th>Details</th><th>RATE</th><th className="r">{heads?.[0] || "Debit"}</th><th className="r">{heads?.[1] || "Credit"}</th><th className="r">Balance</th>{hasActs && <th className="st-act" />}</tr></thead><tbody>
+    {calc.rows.length ? <div className="tbl st-tbl"><table><thead><tr><th>DATE</th><th>Details</th><th>{rateHead || "RATE"}</th><th className="r">{heads?.[0] || "Debit"}</th><th className="r">{heads?.[1] || "Credit"}</th><th className="r">Balance</th>{hasActs && <th className="st-act" />}</tr></thead><tbody>
       {calc.rows.map((r, i) => <tr key={r.id} className={r.pending ? "dim" : r.opening ? "st-open" : ""}>
         <td className="num nowrap">{sdate(r.date)}{times && r.at && !r.opening && <div className="muted small st-time">{stime(r.at)}</div>}</td>
         <td className="b">{r.details}{r.pending && <span className="ec-badge mr-wait ms6">Pending</span>}{r.ref && <div className="muted small">{`Ref ${r.ref}`}</div>}{r.sub && <div className="muted small">{r.sub}</div>}</td>

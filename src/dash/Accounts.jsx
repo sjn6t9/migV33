@@ -167,6 +167,43 @@ function LeaderIds({ L }) {
     <p className="muted small">They confirm from their own admin ID, in Money with me. No separate account is needed.</p></div>;
 }
 /* in the ID of the MD / a Director / the Chairman: money the office says is with them */
+/* Payments & receipts › Transaction history: every movement of money, day by day — what agents gave to the office
+   (cash, bank, wallet) or to the MD / Director / Chairman, main account money in and out, transfers. Print / Excel. */
+export function TransactionHistory() {
+  const O = store.S.office || { entries: [], auto: [] };
+  const today = dhakaToday(), [day, setDay] = React.useState(today), [full, setFull] = React.useState(false);
+  const lab = m => { const h = holderOf(m); return h.kind === "person" ? `${personName(h.k)} · ${h.via}` : h.kind === "cash" ? "Office cash" : h.name; };
+  const all = [...O.entries.filter(e => e.status !== "rejected"), ...O.auto];
+  const rows = all.map(e => {
+    const wait = e.status === "pending" ? " (waiting for confirmation)" : "";
+    if (e.type === "transfer") return { id: e.id, date: e.date, at: e.at, details: `${e.desc || "Transfer"} — ${tk(e.amount)} BDT: ${lab(e.from)} → ${lab(e.to)}${wait}`, rate: "TRANSFER", debit: 0, credit: 0, e };
+    return { id: e.id, date: e.date, at: e.at, details: `${e.desc}${wait}`, rate: lab(e.method).toUpperCase(), debit: e.type === "in" ? e.amount : 0, credit: e.type === "out" ? e.amount : 0, e };
+  }).sort((a, b) => String(a.date).localeCompare(String(b.date)) || String(a.at || "").localeCompare(String(b.at || "")));
+  // the day's (or every day's) money in, by who holds it, and money out
+  const inView = rows.filter(r => full || r.date === day), sum = {}; let out = 0, agents = 0;
+  for (const r of inView) { if (r.e.type === "out") { out += r.credit; continue; } if (r.e.type !== "in") continue;
+    const h = holderOf(r.e.method), k = h.kind === "person" ? (leadersList().find(x => x.k === h.k) || LEAD0.find(x => x.k === h.k) || { title: "Director" }).title : "Office (cash, bank, wallet)";
+    sum[k] = (sum[k] || 0) + r.debit; if (r.e.auto === "agent") agents += r.debit; }
+  const label = new Date(day + "T00:00:00Z").toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short", year: "numeric", timeZone: "UTC" });
+  return <>
+    <h2>Transaction history</h2>
+    <p className="muted small">Every transaction in one place, day by day: money agents gave to the office or to the Managing Director, Director or Chairman, the main account's money in and out, and transfers. Print it or save it to Excel from the statement below.</p>
+    <div className="day-bar">
+      {full ? <><b>All dates</b><span className="grow" /><button className="btn sm" onClick={() => setFull(false)}><LuCalendarDays /> Day by day</button></>
+        : <><button className="btn sm" onClick={() => setDay(addDays(day, -1))}><LuChevronLeft /> Previous day</button>
+          <span className="day-now"><b>{label}</b>{day === today && <span className="ec-badge">Today</span>}</span>
+          <button className="btn sm" disabled={day >= today} onClick={() => setDay(addDays(day, 1))}>Next day <LuChevronRight /></button>
+          <input type="date" value={day} max={today} onChange={e => e.target.value && setDay(e.target.value)} aria-label="Day" style={{ width: "auto" }} />
+          <span className="grow" /><button className="btn sm pri" onClick={() => setFull(true)}><LuFileText /> All dates</button></>}
+    </div>
+    <div className="hold-top">
+      {Object.entries(sum).map(([k, v]) => <div key={k} className="hold-tile"><span className="muted small">{"Received · "}{k}</span><b>{`${tk(v)} BDT`}</b></div>)}
+      <div className="hold-tile"><span className="muted small">Of that, from agents</span><b>{`${tk(agents)} BDT`}</b></div>
+      <div className="hold-tile"><span className="muted small">Money out (main account)</span><b>{`${tk(out)} BDT`}</b></div>
+    </div>
+    <div className="card"><Statement key={full ? "all" : day} day={full ? "" : day} title="Mam & Mam Overseas Ltd. · Transaction history" kind="TRANSACTION HISTORY" rateHead="Received by" cash times heads={["Money in", "Money out"]} rows={rows} empty="No transactions." /></div>
+  </>;
+}
 export function MoneyWithMe() {
   const M = store.S.myMoney || { entries: [] }, me = user(store.S.session) || {}, mk = M.me?.k, key = `p:${mk}`;
   const pend = M.entries.filter(e => e.status === "pending" && !e.accepted?.includes(mk));
