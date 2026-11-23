@@ -88,15 +88,18 @@ export function Admin({ u }) {
       <details className="vf-det mt10"><summary>Search flights (net and gross fares)</summary><FlightSearch staff /></details>
       <h3 className="mt14">Ticket requests</h3>
       <div className="tbl"><table><thead><tr><th>Passenger</th><th>From</th><th>Route / flight</th><th>Preferred</th><th>Booking</th><th>Status</th><th></th></tr></thead><tbody>
-        {T.length ? T.map(x => { const w = x.candidateId ? { name: x.name, passport: x.passport } : worker(x.workerId) || { name: "Removed worker" }; const ag = user(x.agentId); return (
+        {T.length ? T.map(x => { const w = x.candidateId || x.travellers ? { name: x.name, passport: x.passport } : worker(x.workerId) || { name: "Removed worker" }; const ag = user(x.agentId); return (
           <tr key={x.id} className={sel?.id === x.id ? "sel" : ""}><td><b>{w.name}</b><div className="muted small">{w.passport}{x.phone ? ` · ${x.phone}` : ""}</div></td><td>{ag ? ag.agent?.business || ag.name : x.candidateId ? <span className="muted">Job seeker</span> : "—"}</td><td>{x.from} → {x.to}<TicketFlight x={x} />{x.notes && <div className="muted small">{x.notes}</div>}</td><td>{fdate(x.prefDate)}{x.returnDate ? <div className="muted small">Return {fdate(x.returnDate)}</div> : null}</td>
             <td>{x.status === "booked" ? <>{x.airline} · <b>{x.pnr}</b><div className="muted small">{fdate(x.flightDate)}{x.fare ? ` · ${bdtFmt(x.fare)}` : ""}</div></> : "—"}</td><td><Pill s={x.status} /></td>
             <td><div className="row tight nowrap">{x.status === "requested" && <><button className="btn sm pri" onClick={() => { ui.bookTicket = x.id; commit(); }}><LuTicket /> Book</button><button className="btn sm danger" onClick={() => act("admin.ticketCancel", { id: x.id })}><LuX /> Cancel</button></>}</div></td></tr>); })
           : <tr><td colSpan={7}><Empty>No ticket requests.</Empty></td></tr>}
       </tbody></table></div>
       {sel && <form className="card fgrid" onSubmit={book} key={sel.id}>
-        <h3 className="full">Book ticket: {worker(sel.workerId)?.name || sel.name} · {sel.from} → {sel.to}</h3>
+        <h3 className="full">Book ticket: {sel.travellers ? sel.name : worker(sel.workerId)?.name || sel.name} · {sel.from} → {sel.to}</h3>
         {sel.flight && <div className="full"><FlightCard f={sel.flight} compact /><p className="muted small">Book this flight in WFTT (b2b.wfttbd.com), then fill in the PNR here.</p></div>}
+        {sel.travellers && <div className="full tbl"><table><thead><tr><th>Traveller</th><th>Date of birth</th><th>Nationality</th><th>Passport</th><th>Expiry</th><th>Copies</th></tr></thead><tbody>
+          {sel.travellers.map((t, i) => <tr key={i}><td data-notr><b>{`${t.title} ${t.given} ${t.surname}`}</b><div className="muted small">{{ ADT: "Adult", CHD: "Child", INF: "Infant" }[t.type]}</div></td><td className="num">{t.dob}</td><td>{t.nationality}</td><td className="num" data-notr>{t.passport}</td><td className="num">{t.expiry}</td>
+            <td><div className="row tight">{t.passportFile && <button type="button" className="btn sm" onClick={() => dlFile(`/api/files/${t.passportFile.id}`, t.passportFile.name)}><LuEye /> Passport</button>}{t.visaFile && <button type="button" className="btn sm" onClick={() => dlFile(`/api/files/${t.visaFile.id}`, t.visaFile.name)}><LuEye /> Visa</button>}</div></td></tr>)}</tbody></table></div>}
         <Field label="Airline"><input type="text" name="airline" required defaultValue={sel.flight?.airline || ""} /></Field>
         <Field label="PNR / booking reference"><input type="text" name="pnr" required /></Field>
         <Field label="Flight date"><input type="date" name="flightDate" defaultValue={sel.prefDate} required /></Field>

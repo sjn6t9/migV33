@@ -1,8 +1,8 @@
 // Air tickets: search live fares (the agency's WFTT BD account, through our server) and send a request to the agency.
 import React from "react";
-import { LuPlaneTakeoff, LuPlaneLanding, LuSearch, LuArrowLeftRight, LuLuggage, LuClock, LuSend, LuX, LuRefreshCw, LuChevronDown, LuChevronUp } from "react-icons/lu";
+import { LuPlaneTakeoff, LuPlaneLanding, LuSearch, LuArrowLeftRight, LuLuggage, LuClock, LuSend, LuX, LuRefreshCw, LuChevronDown, LuChevronUp, LuUser, LuIdCard, LuGlobe, LuUpload } from "react-icons/lu";
 import { store, fdate, bdtFmt } from "../store.js";
-import { act, toast } from "../actions.js";
+import { act, toast, readUpload } from "../actions.js";
 import { Field } from "./shared.jsx";
 
 const hm = m => m ? `${Math.floor(m / 60)}h ${m % 60}m` : "";
@@ -121,16 +121,55 @@ export function FlightSearch({ staff, onPick, pickedId }) {
   </div>;
 }
 
-/* the request form after a flight is picked (agent: which worker; job seeker: name and passport) */
-export function FlightRequest({ pick, q, onClose, onSend, children }) {
+/* Book Now (agent): each traveller as the airline needs them — title, names, birth date, nationality, passport, expiry, passport copy, visa copy */
+const NATS = ["BANGLADESH", "INDIA", "PAKISTAN", "NEPAL", "SRI LANKA", "SAUDI ARABIA", "MALAYSIA", "UNITED ARAB EMIRATES", "QATAR", "OMAN", "KUWAIT", "BAHRAIN", "SINGAPORE", "MALDIVES", "FIJI", "OTHER"];
+const MAXF = 2.5 * 1024 * 1024;
+function Traveller({ i, type, workers, v, set }) {
+  const fill = id => { const w = workers.find(x => x.id === id); if (!w) return; const parts = String(w.name || "").trim().toUpperCase().split(/\s+/), sur = parts.length > 1 ? parts.pop() : "";
+    set({ given: parts.join(" "), surname: sur, passport: String(w.passport || "").toUpperCase(), dob: w.dob || v.dob }); };
+  const lab = { ADT: "Adult", CHD: "Child", INF: "Infant" }[type];
+  return <div className="trav full">
+    <div className="row between"><b>{`Traveller ${i + 1} · ${lab}`}</b>
+      {workers.length > 0 && <select className="slim" value="" onChange={e => fill(e.target.value)} aria-label="Fill from my worker"><option value="">Fill from my worker…</option>{workers.map(w => <option key={w.id} value={w.id}>{`${w.name} · ${w.passport}`}</option>)}</select>}</div>
+    <div className="fgrid mt8">
+      <Field label="Title *"><select value={v.title} onChange={e => set({ title: e.target.value })}>{(type === "ADT" ? ["MR", "MRS", "MS"] : ["MSTR", "MISS"]).map(x => <option key={x}>{x}</option>)}</select></Field>
+      <Field label="Given Name / First Name *"><div className="inp-ic"><LuUser /><input type="text" value={v.given} onChange={e => set({ given: e.target.value.toUpperCase() })} placeholder="E.G., JOHN" autoCapitalize="characters" /></div></Field>
+      <Field label="Surname / Last Name *"><div className="inp-ic"><LuUser /><input type="text" value={v.surname} onChange={e => set({ surname: e.target.value.toUpperCase() })} placeholder="E.G., DOE" autoCapitalize="characters" /></div></Field>
+      <Field label="Date of Birth *"><input type="date" value={v.dob} max={today()} onChange={e => set({ dob: e.target.value })} /></Field>
+      <Field label="Nationality *"><div className="inp-ic"><LuGlobe /><select value={v.nationality} onChange={e => set({ nationality: e.target.value })}>{NATS.map(x => <option key={x}>{x}</option>)}</select></div></Field>
+      <Field label="Passport Number *"><div className="inp-ic"><LuIdCard /><input type="text" value={v.passport} maxLength={15} onChange={e => set({ passport: e.target.value.toUpperCase().replace(/\s+/g, "") })} placeholder="Enter passport number" autoCapitalize="characters" /></div></Field>
+      <Field label="Passport Expiry Date *"><input type="date" value={v.expiry} min={today()} onChange={e => set({ expiry: e.target.value })} /></Field>
+      <Field label="Passport Copy (Max 2.5MB) *"><label className="up-btn"><LuUpload /> {v.passportFile?.name || "Upload File"}<input type="file" accept=".pdf,image/*" hidden onChange={e => { const f = e.target.files[0]; if (f && f.size > MAXF) return toast("The passport copy must be 2.5 MB or smaller."); set({ passportFile: f || null }); }} /></label></Field>
+      <Field label="Visa Copy (Max 2.5MB)"><label className="up-btn"><LuUpload /> {v.visaFile?.name || "Upload File"}<input type="file" accept=".pdf,image/*" hidden onChange={e => { const f = e.target.files[0]; if (f && f.size > MAXF) return toast("The visa copy must be 2.5 MB or smaller."); set({ visaFile: f || null }); }} /></label></Field>
+    </div></div>;
+}
+/* the request form after a flight is picked (agent: the travellers; job seeker: name and passport) */
+export function FlightRequest({ pick, q, onClose, onSend, children, travellers }) {
   const pax = [q.adults && `${q.adults} adult${q.adults > 1 ? "s" : ""}`, q.children && `${q.children} child`, q.infants && `${q.infants} infant`].filter(Boolean).join(", ");
+  const types = [...Array(+q.adults || 1).fill("ADT"), ...Array(+q.children || 0).fill("CHD"), ...Array(+q.infants || 0).fill("INF")].slice(0, 9);
+  const blank = t => ({ title: t === "ADT" ? "MR" : "MSTR", given: "", surname: "", dob: "", nationality: "BANGLADESH", passport: "", expiry: "", passportFile: null, visaFile: null });
+  const [T, setT] = React.useState(() => types.map(blank)), [busy, setBusy] = React.useState(false);
+  const submit = async e => {
+    e.preventDefault(); const fd = Object.fromEntries(new FormData(e.currentTarget)), base = { ...fd, from: q.from, to: q.to, prefDate: q.date, returnDate: q.returnDate || "", pax, flight: pick };
+    if (!travellers) return onSend(base);
+    for (const [i, t] of T.entries()) { const at = T.length > 1 ? ` (traveller ${i + 1})` : "";
+      if (!t.given.trim() || !t.surname.trim()) return toast(`Enter the given name and surname${at}.`);
+      if (!t.dob) return toast(`Enter the date of birth${at}.`); if (t.passport.length < 6) return toast(`Enter the passport number${at}.`);
+      if (!t.expiry) return toast(`Enter the passport expiry date${at}.`); if (!t.passportFile) return toast(`Upload the passport copy${at}.`); }
+    setBusy(true);
+    try {
+      const list = []; for (const [i, t] of T.entries()) list.push({ ...t, type: types[i], passportFile: await readUpload(t.passportFile, { imageMax: 1800 }), visaFile: t.visaFile ? await readUpload(t.visaFile, { imageMax: 1800 }) : null });
+      await onSend({ ...base, travellers: list });
+    } catch (err) { toast(err.message); } finally { setBusy(false); }
+  };
   return <div className="card fl-req">
     <div className="row between"><h3 className="bulk-h"><LuPlaneLanding /> Book this flight</h3><button type="button" className="btn sm link" onClick={onClose} aria-label="Close"><LuX /></button></div>
     <FlightCard f={pick} compact />
-    <form className="fgrid mt10" onSubmit={e => { e.preventDefault(); const fd = Object.fromEntries(new FormData(e.currentTarget)); onSend({ ...fd, from: q.from, to: q.to, prefDate: q.date, returnDate: q.returnDate || "", pax, flight: pick }); }}>
+    <form className="fgrid mt10" onSubmit={submit} noValidate>
       {children}
+      {travellers && T.map((v, i) => <Traveller key={i} i={i} type={types[i]} workers={travellers.workers || []} v={v} set={x => setT(L => L.map((y, j) => (j === i ? { ...y, ...x } : y)))} />)}
       <Field label="Notes" full><input type="text" name="notes" maxLength={500} placeholder="Baggage, meal, seat or anything else" /></Field>
-      <div className="full"><button className="btn pri" type="submit"><LuSend /> Book Now</button> <span className="muted small">{pax} · {bdtFmt(pick.price)}</span></div>
+      <div className="full"><button className="btn pri" type="submit" disabled={busy}><LuSend /> {busy ? "Sending…" : "Book Now"}</button> <span className="muted small">{pax} · {bdtFmt(pick.price)}</span></div>
     </form>
   </div>;
 }

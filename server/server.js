@@ -728,12 +728,29 @@ A["agent.applyJob"] = async ({ jobId, workerIds }, u) => {
   notify(j.employerId, `${ids.length} new applicant(s) for ${j.title} via agent ${u.agent.business}.`);
   return { msg: `${ids.length} application(s) submitted for ${j.title}.` };
 };
+const TITLES = ["MR", "MRS", "MS", "MSTR", "MISS"];
+/* Book Now: the travellers' details as the airline needs them (WFTT form), passport copy required, visa copy optional (each up to 2.5 MB) */
+function ticketTravellers(list, owner) {
+  must(Array.isArray(list) && list.length >= 1 && list.length <= 9, "Fill in the travellers.");
+  const small = (f, what, at) => { must(f?.data, `Upload the ${what}${at}.`); must(Math.floor((f.data.length - f.data.indexOf(",") - 1) * 3 / 4) <= 2.5 * 1024 * 1024 + 1024, `The ${what}${at} is larger than 2.5 MB.`); return storeFile(f, owner); };
+  return list.map((x, i) => {
+    const at = list.length > 1 ? ` (traveller ${i + 1})` : "";
+    const t = { title: TITLES.includes(x.title) ? x.title : "MR", given: str(x.given, 60).toUpperCase(), surname: str(x.surname, 60).toUpperCase(), dob: str(x.dob, 10), nationality: str(x.nationality, 60) || "BANGLADESH", passport: str(x.passport, 20).replace(/\s+/g, "").toUpperCase(), expiry: str(x.expiry, 10), type: ["ADT", "CHD", "INF"].includes(x.type) ? x.type : "ADT" };
+    must(t.given && t.surname, `Enter the given name and surname${at}.`); must(/^\d{4}-\d{2}-\d{2}$/.test(t.dob), `Enter the date of birth${at}.`);
+    must(/^[A-Z0-9]{6,15}$/.test(t.passport), `Enter the passport number${at}.`); must(/^\d{4}-\d{2}-\d{2}$/.test(t.expiry), `Enter the passport expiry date${at}.`);
+    t.passportFile = small(x.passportFile, "passport copy", at); if (x.visaFile?.data) t.visaFile = small(x.visaFile, "visa copy", at);
+    return t;
+  });
+}
 A["agent.ticket"] = async (d, u) => {
-  needRole(u, "agent"); const w = worker(d.workerId); must(w && w.agentId === u.id, "Choose one of your workers."); must(str(d.from) && str(d.to) && str(d.prefDate), "Fill in the route and date.");
+  needRole(u, "agent"); must(str(d.from) && str(d.to) && str(d.prefDate), "Fill in the route and date.");
+  const trav = d.travellers ? ticketTravellers(d.travellers, u.id) : null;
+  const w = d.workerId ? worker(d.workerId) : null; must(trav || (w && w.agentId === u.id), "Choose one of your workers."); if (w) must(w.agentId === u.id, "Choose one of your workers.");
   const fl = flightSnap(d.flight);
-  db.tickets.push({ id: id("t"), agentId: u.id, workerId: w.id, from: str(d.from, 80), to: str(d.to, 80), prefDate: str(d.prefDate, 10), returnDate: str(d.returnDate, 10), pax: str(d.pax, 60), notes: str(d.notes, 500), ...(fl ? { flight: fl } : {}), status: "requested", fare: "", pnr: "", airline: "", flightDate: "", created: now() });
-  notifyAdmins(`Air ticket request: ${w.name}, ${str(d.from, 80)} → ${str(d.to, 80)}${fl ? ` (${fl.airline}, ৳ ${fl.price})` : ""} (${u.agent.business}).`, "tickets");
-  return { msg: "Ticket request sent. The agency will confirm the fare and booking." };
+  const lead = trav?.[0];
+  db.tickets.push({ id: id("t"), agentId: u.id, workerId: w?.id || null, ...(trav ? { travellers: trav, name: `${lead.title} ${lead.given} ${lead.surname}${trav.length > 1 ? ` +${trav.length - 1}` : ""}`, passport: lead.passport } : {}), from: str(d.from, 80), to: str(d.to, 80), prefDate: str(d.prefDate, 10), returnDate: str(d.returnDate, 10), pax: str(d.pax, 60), notes: str(d.notes, 500), ...(fl ? { flight: fl } : {}), status: "requested", fare: "", pnr: "", airline: "", flightDate: "", created: now() });
+  notifyAdmins(`Air ticket booking: ${w?.name || `${lead.given} ${lead.surname}`}, ${str(d.from, 80)} → ${str(d.to, 80)}${fl ? ` (${fl.airline}, ৳ ${fl.price})` : ""} (${u.agent.business}).`, "tickets");
+  return { msg: "Booking request sent. The agency will book the ticket and confirm." };
 };
 /* ======================= Air tickets: live fares from WFTT BD (b2b.wfttbd.com), the agency's own B2B account =======================
    The admin signs in once (email + password, kept sealed on this server); the server keeps the 15-minute token fresh.

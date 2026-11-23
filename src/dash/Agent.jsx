@@ -181,9 +181,7 @@ export function Agent({ u }) {
     body = <>
       <h2>Air tickets</h2>{banner}
       <p className="muted">Search live fares, pick a flight and send it for a worker. The agency books the ticket and adds the fare to your account statement.</p>
-      {fp ? <FlightRequest pick={fp.f} q={fp.q} onClose={() => { ui.flightPick = null; commit(); }} onSend={sendPick}>
-        {W.length ? <Field label="Worker"><select name="workerId" required>{W.map(w => <option key={w.id} value={w.id}>{w.name} · {w.passport}</option>)}</select></Field> : <div className="notice full">Add a worker first.</div>}
-      </FlightRequest> : <FlightSearch onPick={(f, q) => { ui.flightPick = { f, q }; commit(); window.scrollTo({ top: 0, behavior: "smooth" }); }} />}
+      {fp ? <FlightRequest pick={fp.f} q={fp.q} onClose={() => { ui.flightPick = null; commit(); }} onSend={sendPick} travellers={{ workers: W }} /> : <FlightSearch onPick={(f, q) => { ui.flightPick = { f, q }; commit(); window.scrollTo({ top: 0, behavior: "smooth" }); }} />}
       <details className="vf-det mt14" open={!S.flightsReady}><summary>Or send a request without choosing a flight</summary>
       {W.length ? (
         <form className="card fgrid" onSubmit={submit}>
@@ -198,7 +196,7 @@ export function Agent({ u }) {
       ) : <div className="notice">Add a worker first. <button className="btn link sm" onClick={() => setTab("agent", "workers")}>Add worker</button></div>}</details>
       <h3 className="mt14">My ticket requests</h3>
       <div className="tbl"><table><thead><tr><th>Worker</th><th>Route</th><th>Preferred date</th><th>Booking</th><th>Status</th><th></th></tr></thead><tbody>
-        {T.length ? T.map(x => { const w = worker(x.workerId) || { name: "Removed worker" }; return (
+        {T.length ? T.map(x => { const w = worker(x.workerId) || (x.name ? { name: x.name, passport: x.passport } : { name: "Removed worker" }); return (
           <tr key={x.id}><td><b>{w.name}</b><div className="muted small">{w.passport}</div></td><td>{x.from} → {x.to}<TicketFlight x={x} /></td><td>{fdate(x.prefDate)}</td>
             <td>{x.status === "booked" ? <>{x.airline} · PNR <b>{x.pnr || "—"}</b><div className="muted small">Flight {fdate(x.flightDate)}{x.fare ? ` · ${bdtFmt(x.fare)}` : ""}</div></> : "—"}</td>
             <td><Pill s={x.status} /></td><td>{x.status === "requested" && <button className="btn sm link danger" onClick={() => cancel(x)}>Cancel</button>}</td></tr>); })

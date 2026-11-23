@@ -1521,3 +1521,10 @@ button.hold-tile{cursor:pointer}
 @media (max-width:560px){.day-bar{gap:6px}.day-now{order:-1;width:100%;justify-content:center}}
 .reset-box{border-color:#f2c4c9}
 .hold-tile.sep{opacity:.92;border-style:dashed}
+.trav{border:1px solid var(--line,#d5e3dc);border-radius:14px;padding:12px 14px;background:var(--soft,#f6faf8)}
+.trav select.slim{max-width:240px}
+.inp-ic{position:relative;display:flex;align-items:center}
+.inp-ic>svg{position:absolute;left:11px;color:#7b8b84;pointer-events:none}
+.inp-ic>input,.inp-ic>select{padding-left:34px;width:100%}
+.up-btn{display:flex;align-items:center;justify-content:center;gap:8px;border:1px solid var(--line,#d5e3dc);border-radius:10px;padding:10px;cursor:pointer;background:var(--card,#fff);font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.up-btn:hover{border-color:#006a4e}
