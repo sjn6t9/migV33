@@ -74,7 +74,7 @@ export function FlightCard({ f, staff, onPick, picked, compact }) {
       <b className="fl-price">{bdtFmt(f.price)}</b>
       <span className="muted small">Price for {f.pax || 1} traveller{(f.pax || 1) > 1 ? "s" : ""}</span>
       {staff && f.net != null && <span className="muted small" data-notr>Net ৳ {Number(f.net).toLocaleString("en-IN")} · Gross ৳ {Number(f.gross).toLocaleString("en-IN")}</span>}
-      {onPick && <button type="button" className="btn pri sm" onClick={() => onPick(f)}><LuSend /> {picked ? "Selected" : "Request"}</button>}
+      {onPick && <button type="button" className="btn pri sm" onClick={() => onPick(f)}><LuSend /> {picked ? "Selected" : "Book Now"}</button>}
     </div>
     {open && <FlightDetail f={f} staff={staff} />}
   </div>;
@@ -125,12 +125,12 @@ export function FlightSearch({ staff, onPick, pickedId }) {
 export function FlightRequest({ pick, q, onClose, onSend, children }) {
   const pax = [q.adults && `${q.adults} adult${q.adults > 1 ? "s" : ""}`, q.children && `${q.children} child`, q.infants && `${q.infants} infant`].filter(Boolean).join(", ");
   return <div className="card fl-req">
-    <div className="row between"><h3 className="bulk-h"><LuPlaneLanding /> Request this flight</h3><button type="button" className="btn sm link" onClick={onClose} aria-label="Close"><LuX /></button></div>
+    <div className="row between"><h3 className="bulk-h"><LuPlaneLanding /> Book this flight</h3><button type="button" className="btn sm link" onClick={onClose} aria-label="Close"><LuX /></button></div>
     <FlightCard f={pick} compact />
     <form className="fgrid mt10" onSubmit={e => { e.preventDefault(); const fd = Object.fromEntries(new FormData(e.currentTarget)); onSend({ ...fd, from: q.from, to: q.to, prefDate: q.date, returnDate: q.returnDate || "", pax, flight: pick }); }}>
       {children}
       <Field label="Notes" full><input type="text" name="notes" maxLength={500} placeholder="Baggage, meal, seat or anything else" /></Field>
-      <div className="full"><button className="btn pri" type="submit"><LuSend /> Send request</button> <span className="muted small">{pax} · {bdtFmt(pick.price)}</span></div>
+      <div className="full"><button className="btn pri" type="submit"><LuSend /> Book Now</button> <span className="muted small">{pax} · {bdtFmt(pick.price)}</span></div>
     </form>
   </div>;
 }
