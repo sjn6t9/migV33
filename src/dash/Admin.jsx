@@ -1,6 +1,6 @@
 import React from "react";
 import {
-  LuLayoutDashboard, LuSend, LuUsers, LuBriefcase, LuFileText, LuStamp, LuWallet, LuPackage, LuNewspaper, LuSearch, LuSettings, LuMessageSquare,
+  LuLayoutDashboard, LuSend, LuChevronLeft, LuChevronRight, LuUsers, LuBriefcase, LuFileText, LuStamp, LuWallet, LuPackage, LuNewspaper, LuSearch, LuSettings, LuMessageSquare,
   LuCheck, LuX, LuTrash2, LuPencil, LuEye, LuEyeOff, LuBadgeCheck, LuRotateCcw, LuBan, LuTicket, LuUpload, LuImage, LuUserCog, LuImagePlus, LuQuote, LuGalleryHorizontal, LuArrowUp, LuArrowDown, LuTimer, LuPlus, LuDownload, LuMessagesSquare, LuInfo
 } from "react-icons/lu";
 import { FaWhatsapp, FaFacebookF, FaYoutube, FaLinkedinIn, FaTiktok } from "react-icons/fa6";
@@ -574,6 +574,21 @@ const pastSent = c => c.status === "rejected" || CL_STAGES.indexOf(clStage(c)) >
 export const clDelete = c => { const p = clPerson(c); confirmBox(`Delete the clearance file ${c.ref || ""} of ${p.name}? Its documents and the charges it added to the agent account are deleted too. This cannot be undone.`, async () => { if (await act("admin.clDelete", { id: c.id })) closeModal(); }, "Delete"); };
 /* RAIMS: the agency's own sign-in on raims.oep.gov.bd; the server reads the EC application list and moves each file here
    (same IC number, or passport) to the RAIMS status, up to Approved. Checked every 30 minutes, or with Sync now. */
+/* what RAIMS did on one day: each file's last RAIMS status that day (from the files' history), today first; Previous / Next day */
+const bdDayOf = iso => new Date(Date.parse(iso) + 6 * 3600e3).toISOString().slice(0, 10);
+function RaimsDay() {
+  const today = bdDayOf(new Date().toISOString()), [day, setDay] = React.useState(today);
+  const step = n => setDay(d => new Date(Date.parse(d + "T00:00:00Z") + n * 864e5).toISOString().slice(0, 10));
+  const last = {}; for (const c of store.S.clearances) for (const h of c.history || []) if (h.by === "RAIMS" && h.at && bdDayOf(h.at) === day) last[c.id] = h.t || LABEL[h.s] || h.s;
+  const cnt = {}; for (const st of Object.values(last)) cnt[st] = (cnt[st] || 0) + 1;
+  const label = new Date(day + "T00:00:00Z").toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" });
+  return <div className="raims-day mt8">
+    <div className="row6"><button className="btn sm" onClick={() => step(-1)} disabled={day <= new Date(Date.parse(today) - 30 * 864e5).toISOString().slice(0, 10)}><LuChevronLeft /> Previous day</button>
+      <b className="small">{day === today ? `Today · ${label}` : label}</b>
+      <button className="btn sm" onClick={() => step(1)} disabled={day >= today}>Next day <LuChevronRight /></button></div>
+    <p className="muted mt6" data-notr>{Object.keys(cnt).length ? `Statuses on RAIMS that day: ${Object.entries(cnt).sort((a, b) => b[1] - a[1]).map(([k, v]) => `${k} (${v})`).join(", ")}` : "No status changes from RAIMS that day."}</p>
+  </div>;
+}
 function RaimsPanel() {
   const R = store.S.raims, isAdmin = user(store.S.session)?.role === "admin";
   const [edit, setEdit] = React.useState(!R?.saved); React.useEffect(() => { if (!R?.saved) setEdit(true); }, [R?.saved]); const [busy, setBusy] = React.useState(false);
@@ -602,7 +617,7 @@ function RaimsPanel() {
       {L.updated?.length > 0 && <div className="tbl mt8"><table><thead><tr><th>Name</th><th>Passport No</th><th>IC No</th><th>Last Position</th><th>Current Position</th></tr></thead><tbody>
         {L.updated.map((x, i) => { const fc = x.passport ? null : store.S.clearances.find(c => c.ref === x.ref && clPerson(c).name === x.name), pp = x.passport || (fc && clPerson(fc).passport) || "—";
           return <tr key={i}><td data-notr><b>{x.name}</b></td><td className="num" data-notr>{pp}</td><td className="num" data-notr>{x.ref}</td><td>{x.from}</td><td className="b">{x.to}</td></tr>; })}</tbody></table></div>}
-      {L.ok && Object.keys(L.statuses || {}).length > 0 && <p className="muted mt8" data-notr>{`Statuses on RAIMS: ${Object.entries(L.statuses).map(([k, v]) => `${k} (${v})`).join(", ")}`}</p>}
+      {L.ok && <RaimsDay />}
       {L.ok && !L.rows && <details className="vf-det mt8"><summary>RAIMS list was empty — what was read</summary><p className="muted" data-notr>{`Columns: ${(L.head || []).join(", ") || "none"}${L.ajax ? ` · list address ${L.ajax}` : ""}`}</p></details>}
     </div>}
   </div>;
