@@ -93,21 +93,30 @@ function AllGrid({ A, days, hol }) {
 
 /* Admin › Site settings: office IP and government holidays */
 export function AttendanceSettings() {
-  const [d, setD] = React.useState(""), [n, setN] = React.useState("");
+  const [d, setD] = React.useState(""), [n, setN] = React.useState(""), [mip, setMip] = React.useState(""), [blk, setBlk] = React.useState(true);
   const A = store.S.attendance; if (!A?.office) return null;
+  const isOff = ip => (A.officeNets || []).includes(ip) || ip === A.officeIp;
+  const blockOf = ip => /^\d+\.\d+\.\d+\.\d+$/.test(ip) ? ip.replace(/\.\d+$/, ".x") : "";
   const name = id => user(id)?.name || "?";
   const days = Object.entries(A.ipLog || {});
   return <div className="card mt14">
     <h3><LuWifi /> Office attendance</h3>
-    <p className="small"><b>Office IP:</b> <span className="num">{A.officeIp || "not known yet"}</span> · {A.office.mode === "manual" ? `chosen by ${A.office.setBy || "admin"}` : "found automatically; when three or more admin/staff move to a new network, you are asked to confirm it"}</p>
-    {A.office.candidate && <div className="notice warn mt8"><b>{`New network: ${A.office.candidate.ip}`}</b> · three or more admin/staff are using it ({A.office.candidate.day}). If the office internet changed, confirm it.
+    <p className="small"><b>Office IP:</b> <span className="num">{A.officeIp || "not known yet"}</span> · {A.office.mode === "manual" ? `chosen by ${A.office.setBy || "admin"}` : "found automatically; when two or more admin/staff use a new network, you are asked to confirm it"}</p>
+    {A.office.candidate && <div className="notice warn mt8"><b>{`New network: ${A.office.candidate.ip}`}</b> · two or more admin/staff are using it ({A.office.candidate.day}). If the office internet changed, confirm it.
       <div className="row6 mt8"><button className="btn sm pri" onClick={() => act("admin.attendance", { op: "officeIp", ip: A.office.candidate.ip })}><LuCheck /> Confirm as the new office IP</button><button className="btn sm" onClick={() => act("admin.attendance", { op: "dismiss" })}>Keep {A.officeIp}</button></div></div>}
+    <div className="att-manual mt8">
+      <b className="small">Set the office IP by hand</b>
+      <div className="row6 mt6"><input type="text" value={mip} onChange={e => setMip(e.target.value.trim())} placeholder="e.g. 165.101.133.33" aria-label="Office IP" className="num" />
+        <button className="btn sm pri" onClick={async () => { if (await act("admin.attendance", { op: "officeIp", ip: mip, block: blk, manual: true })) setMip(""); }}><LuCheck /> Set office IP</button></div>
+      <label className="check small mt6"><input type="checkbox" checked={blk} onChange={e => setBlk(e.target.checked)} /> {`Also the IPs that go with it${blockOf(mip) ? ` (${blockOf(mip)})` : ""}: the office internet can use several addresses of one block`}</label>
+      <p className="muted small">Find the office IP: on the office computer open whatismyip.com (IPv4). IDs signed in from these IPs today are marked present at once.</p>
+    </div>
     {A.office.mode === "manual" && <button className="btn sm" onClick={() => act("admin.attendance", { op: "officeIp", mode: "auto" })}>Find it automatically again</button>}
     <h4 className="mt14">Networks admin/staff used</h4>
     {days.length ? days.map(([day, ips]) => <div key={day} className="mt8"><b className="small">{day}</b>
       <div className="tbl"><table><thead><tr><th>IP / network</th><th>People</th><th></th></tr></thead><tbody>
-        {Object.entries(ips).sort((a, b) => b[1].length - a[1].length).map(([ip, uids]) => <tr key={ip}><td className="num nowrap">{ip}{ip === A.officeIp && <span className="vf-pill ok ms6">Office</span>}</td><td>{uids.map(name).join(", ")}</td>
-          <td className="nowrap">{ip !== A.officeIp && <button className="btn sm" onClick={() => act("admin.attendance", { op: "officeIp", ip })}>Use as office IP</button>}</td></tr>)}
+        {Object.entries(ips).sort((a, b) => b[1].length - a[1].length).map(([ip, uids]) => <tr key={ip}><td className="num nowrap">{ip}{isOff(ip) && <span className="vf-pill ok ms6">Office</span>}</td><td>{uids.map(name).join(", ")}</td>
+          <td className="nowrap">{!isOff(ip) && <button className="btn sm" onClick={() => act("admin.attendance", { op: "officeIp", ip })}>Use as office IP</button>}</td></tr>)}
       </tbody></table></div></div>) : <p className="muted small">No sign-ins recorded yet. They are recorded from now on.</p>}
     <h4 className="mt14">Government holidays</h4>
     <p className="small muted">Friday is always a weekly holiday. Add the government holidays here.</p>

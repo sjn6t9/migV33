@@ -2590,6 +2590,15 @@ if (!ATT.fix2611) {
   ATT.fix2611 = true;
 }
 const officeIp = () => (ATT.office.mode === "manual" && ATT.office.ip) || ATT.office.autoIp || "";
+/* the office can reach the internet through several addresses of one provider block (e.g. 165.101.133.33 and .39):
+   the office IP may be an address, a block like 165.101.133.0/24, or several of them separated by commas */
+const v4n = ip => /^\d+\.\d+\.\d+\.\d+$/.test(ip) ? ip.split(".").reduce((t, x) => t * 256 + +x, 0) : null;
+const officeSpecs = () => String(officeIp()).split(/[,\s]+/).map(x => x.trim()).filter(Boolean);
+const isOffice = net => { net = String(net || ""); if (!net) return false;
+  return officeSpecs().some(sp => { const [a, b] = sp.split("/"); const n = v4n(net), base = v4n(a);
+    if (b && n != null && base != null) { const bits = Math.max(8, Math.min(32, +b)); return Math.floor(n / 2 ** (32 - bits)) === Math.floor(base / 2 ** (32 - bits)); }
+    return sp === net; }); };
+const officePeople = day => [...new Set(Object.entries(ATT.ipLog[day] || {}).filter(([k]) => isOffice(k)).flatMap(([, l]) => l))];
 const attMark = (uid, day, m) => { (ATT.marks[uid] ||= {})[day] = m; };
 function attTouch(u, ip0) {
   const ip = netOf(ip0); if (!ip) return;
@@ -2601,12 +2610,12 @@ function attTouch(u, ip0) {
   if (ATT.office.mode !== "manual" && !ATT.office.autoIp && list.length >= 2) {
     ATT.office.autoIp = ip; ATT.office.autoAt = now(); changed = true;
     if (!attHoliday(day)) for (const uid of list) if (!ATT.marks[uid]?.[day]) attMark(uid, day, { at: now(), by: "auto", ip });
-  } else if (ip !== officeIp() && list.length >= 2 && list.length >= (log[officeIp()] || []).length && ATT.office.candidate?.ip !== ip && !(ATT.office.dismissed || []).includes(ip)) {
+  } else if (!isOffice(ip) && list.length >= 2 && list.length >= officePeople(day).length && ATT.office.candidate?.ip !== ip && !(ATT.office.dismissed || []).includes(ip)) {
     // two or more IDs on a new network: ask the admin; the office IP stays as it is until the admin confirms
     ATT.office.candidate = { ip, at: now(), day }; changed = true;
     notifyAdmins(`${list.length} admin/staff are using a new network (${ip}) today. If the office internet changed, confirm it as the office IP in Site settings › Office attendance.`, "settings");
   }
-  if (ip === officeIp() && !attHoliday(day) && !ATT.marks[u.id]?.[day]) { attMark(u.id, day, { at: now(), by: "auto", ip }); changed = true; }
+  if (isOffice(ip) && !attHoliday(day) && !ATT.marks[u.id]?.[day]) { attMark(u.id, day, { at: now(), by: "auto", ip }); changed = true; }
   // keep 60 days of the IP log
   for (const d of Object.keys(ATT.ipLog)) if (d < new Date(Date.now() - 60 * 864e5).toISOString().slice(0, 10)) { delete ATT.ipLog[d]; changed = true; }
   if (changed) save();
@@ -2623,8 +2632,8 @@ A["attendance.tick"] = async (d, u, ctx) => {
   if (d.off) { must(u.role === "admin", "Only an admin can remove a tick.", 403); if (ATT.marks[target]) delete ATT.marks[target][date]; return { msg: "Tick removed." }; }
   if (was) return { msg: "Already ticked." };
   const ip = netOf(ctx.ip);
-  must(target !== u.id || ip === officeIp(), "You can tick only from the office network. Open the site on the office internet.");
-  attMark(target, date, { at: now(), by: target === u.id ? "self" : `admin:${u.name}`, ip, office: ip === officeIp() });
+  must(target !== u.id || isOffice(ip), "You can tick only from the office network. Open the site on the office internet.");
+  attMark(target, date, { at: now(), by: target === u.id ? "self" : `admin:${u.name}`, ip, office: isOffice(ip) });
   return { msg: "Present." };
 };
 /* ---------- HEADLINES on the website: a scrolling news line under the header ---------- */
@@ -2654,15 +2663,21 @@ A["admin.attendance"] = async (d, u) => {
   if (d.op === "officeIp") {
     if (d.mode === "auto") { ATT.office.mode = "auto"; return { msg: "The office IP is found automatically." }; }
     ATT.office.candidate = null;
-    const ip = str(d.ip, 60); must(ip, "Choose an IP."); ATT.office = { ...ATT.office, mode: ATT.office.mode === "manual" ? "manual" : "auto", ip, autoIp: ip, setBy: u.name, setAt: now() };
-    const day = attDay(); if (!attHoliday(day)) for (const uid of ATT.ipLog[day]?.[ip] || []) if (!ATT.marks[uid]?.[day]) attMark(uid, day, { at: now(), by: "auto", ip });
-    return { msg: `Office IP set to ${ip}.` };
+    let ip = str(d.ip, 200).replace(/\s+/g, "");
+    const parts = ip.split(",").filter(Boolean); must(parts.length && parts.length <= 6, "Enter the office IP.");
+    for (const x of parts) must(/^\d{1,3}(\.\d{1,3}){3}(\/(8|1[0-9]|2[0-9]|3[0-2]))?$/.test(x) || /^[0-9a-f:]+(\/64)?$/i.test(x), `${x} is not an IP address.`);
+    // "the IPs that go with it": an IPv4 address also covers its /24 block when asked (the provider gives the office several addresses)
+    if (d.block) ip = parts.map(x => /^\d+\.\d+\.\d+\.\d+$/.test(x) ? x.replace(/\.\d+$/, ".0/24") : x).join(",");
+    ATT.office = { ...ATT.office, mode: d.manual ? "manual" : ATT.office.mode === "manual" ? "manual" : "auto", ip, autoIp: ip, setBy: u.name, setAt: now(), candidate: null };
+    const day = attDay(); let n = 0;
+    if (!attHoliday(day)) for (const [net, uids] of Object.entries(ATT.ipLog[day] || {})) if (isOffice(net)) for (const uid of uids) if (!ATT.marks[uid]?.[day]) { attMark(uid, day, { at: now(), by: "auto", ip: net }); n++; }
+    return { msg: `Office IP set to ${ip}.${n ? ` ${n} ID(s) signed in from it today are marked present.` : ""}` };
   }
   if (d.op === "holidayAdd") { const date = /^\d{4}-\d{2}-\d{2}$/.test(d.date || "") ? d.date : ""; must(date && str(d.name), "Enter the date and the name."); ATT.holidays = [...ATT.holidays.filter(h => h.date !== date), { date, name: str(d.name, 80) }].sort((a, b) => a.date.localeCompare(b.date)); return { msg: "Holiday added." }; }
   if (d.op === "holidayDelete") { ATT.holidays = ATT.holidays.filter(h => h.date !== d.date); return { msg: "Holiday removed." }; }
   must(false, "Unknown request.");
 };
-const attView = (u, all) => ({ today: attDay(), since: ATT.since, holidays: ATT.holidays, officeIp: officeIp(), marks: all ? ATT.marks : { [u.id]: ATT.marks[u.id] || {} },
+const attView = (u, all) => ({ today: attDay(), since: ATT.since, holidays: ATT.holidays, officeIp: officeIp(), ...(all ? { officeNets: Object.keys(Object.assign({}, ...Object.values(ATT.ipLog || {}))).filter(isOffice) } : {}), marks: all ? ATT.marks : { [u.id]: ATT.marks[u.id] || {} },
   ...(all ? { office: ATT.office, ipLog: Object.fromEntries(Object.entries(ATT.ipLog).sort((a, b) => b[0].localeCompare(a[0])).slice(0, 14)) } : {}) });
 const okDate = v => (/^\d{4}-\d{2}-\d{2}$/.test(v || "") ? v : bdDay());
 function officeAuto() {
