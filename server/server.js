@@ -2600,8 +2600,10 @@ const isOffice = net => { net = String(net || ""); if (!net) return false;
     return sp === net; }); };
 const officePeople = day => [...new Set(Object.entries(ATT.ipLog[day] || {}).filter(([k]) => isOffice(k)).flatMap(([, l]) => l))];
 const attMark = (uid, day, m) => { (ATT.marks[uid] ||= {})[day] = m; };
+const attSeen = {}; // admin/staff: the network each was last seen on, and when (kept in memory: "who is signed in now")
 function attTouch(u, ip0) {
   const ip = netOf(ip0); if (!ip) return;
+  attSeen[u.id] = { ip, at: Date.now() };
   const day = attDay(), log = (ATT.ipLog[day] ||= {}), list = (log[ip] ||= []);
   let changed = false;
   if (!list.includes(u.id)) { list.push(u.id); changed = true; }
@@ -2677,7 +2679,7 @@ A["admin.attendance"] = async (d, u) => {
   if (d.op === "holidayDelete") { ATT.holidays = ATT.holidays.filter(h => h.date !== d.date); return { msg: "Holiday removed." }; }
   must(false, "Unknown request.");
 };
-const attView = (u, all) => ({ today: attDay(), since: ATT.since, holidays: ATT.holidays, officeIp: officeIp(), ...(all ? { officeNets: Object.keys(Object.assign({}, ...Object.values(ATT.ipLog || {}))).filter(isOffice) } : {}), marks: all ? ATT.marks : { [u.id]: ATT.marks[u.id] || {} },
+const attView = (u, all) => ({ today: attDay(), since: ATT.since, holidays: ATT.holidays, officeIp: officeIp(), ...(all ? { officeNets: Object.keys(Object.assign({}, ...Object.values(ATT.ipLog || {}))).filter(isOffice), seen: Object.fromEntries(Object.entries(attSeen).filter(([, v]) => Date.now() - v.at < 30 * 60e3).map(([k, v]) => [k, { ip: v.ip, ago: Math.round((Date.now() - v.at) / 60e3), office: isOffice(v.ip) }])) } : {}), marks: all ? ATT.marks : { [u.id]: ATT.marks[u.id] || {} },
   ...(all ? { office: ATT.office, ipLog: Object.fromEntries(Object.entries(ATT.ipLog).sort((a, b) => b[0].localeCompare(a[0])).slice(0, 14)) } : {}) });
 const okDate = v => (/^\d{4}-\d{2}-\d{2}$/.test(v || "") ? v : bdDay());
 function officeAuto() {

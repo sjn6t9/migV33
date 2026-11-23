@@ -1,7 +1,7 @@
 // Admin / staff: own Settings (signature, Day/Night/System, password, language, log out), Office attendance, and the admin's attendance settings.
 import React from "react";
-import { LuPenLine, LuSunMoon, LuSun, LuMoon, LuMonitor, LuKeyRound, LuLanguages, LuLogOut, LuChevronLeft, LuChevronRight, LuCheck, LuWifi, LuTrash2, LuPlus } from "react-icons/lu";
-import { store, user } from "../store.js";
+import { LuPenLine, LuSunMoon, LuSun, LuMoon, LuMonitor, LuKeyRound, LuLanguages, LuLogOut, LuChevronLeft, LuChevronRight, LuCheck, LuWifi, LuTrash2, LuPlus, LuRefreshCw } from "react-icons/lu";
+import { store, user, loadState } from "../store.js";
 import { act, toast, formData, signOut, confirmBox } from "../actions.js";
 import { Field } from "./shared.jsx";
 import { RoleBadges } from "../ui.jsx";
@@ -92,6 +92,22 @@ function AllGrid({ A, days, hol }) {
 }
 
 /* Admin › Site settings: office IP and government holidays */
+/* who is signed in now (last 30 minutes) and from which IP: Refresh, then set the IP most of them use as the office IP */
+function SignedInNow({ A, name }) {
+  const [busy, setBusy] = React.useState(false);
+  const by = {}; for (const [uid, v] of Object.entries(A.seen || {})) (by[v.ip] ||= []).push({ uid, ...v });
+  const rows = Object.entries(by).sort((a, b) => b[1].length - a[1].length);
+  const refresh = async () => { setBusy(true); await loadState(); setBusy(false); };
+  return <div className="mt14">
+    <div className="row between"><h4>Signed in now (last 30 minutes)</h4><button className="btn sm" disabled={busy} onClick={refresh}><LuRefreshCw className={busy ? "spin" : ""} /> Refresh</button></div>
+    <p className="muted small">Ask everyone in the office to open or refresh the panel, then press Refresh. The IP that most of them use is the office IP.</p>
+    <div className="tbl"><table><thead><tr><th>IP</th><th>Admin / staff</th><th></th></tr></thead><tbody>
+      {rows.length ? rows.map(([ip, L]) => <tr key={ip}><td className="num nowrap">{ip}{L[0].office && <span className="vf-pill ok ms6">Office</span>}</td>
+        <td>{L.map(x => `${name(x.uid)}${x.ago ? ` (${x.ago} min ago)` : ""}`).join(", ")}</td>
+        <td className="nowrap">{!L[0].office && <button className="btn sm pri" onClick={() => confirmBox(`Set ${ip} and the IPs that go with it as the office IP? ${L.length} ID(s) use it now.`, () => act("admin.attendance", { op: "officeIp", ip, block: true, manual: true }), "Set as office IP")}><LuCheck /> Set as office IP</button>}</td></tr>)
+        : <tr><td colSpan={3} className="muted small">Nobody in the last 30 minutes. Press Refresh after they open the panel.</td></tr>}
+    </tbody></table></div></div>;
+}
 export function AttendanceSettings() {
   const [d, setD] = React.useState(""), [n, setN] = React.useState(""), [mip, setMip] = React.useState(""), [blk, setBlk] = React.useState(true);
   const A = store.S.attendance; if (!A?.office) return null;
@@ -112,6 +128,7 @@ export function AttendanceSettings() {
       <p className="muted small">Find the office IP: on the office computer open whatismyip.com (IPv4). IDs signed in from these IPs today are marked present at once.</p>
     </div>
     {A.office.mode === "manual" && <button className="btn sm" onClick={() => act("admin.attendance", { op: "officeIp", mode: "auto" })}>Find it automatically again</button>}
+    <SignedInNow A={A} name={name} />
     <h4 className="mt14">Networks admin/staff used</h4>
     {days.length ? days.map(([day, ips]) => <div key={day} className="mt8"><b className="small">{day}</b>
       <div className="tbl"><table><thead><tr><th>IP / network</th><th>People</th><th></th></tr></thead><tbody>
