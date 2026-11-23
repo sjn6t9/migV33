@@ -23,11 +23,13 @@ class LowCardGame {
     this.state = 'joining';            // joining | starting | playing | ended
     this.players = []; this.alive = []; this.pot = 0; this.round = 0;
     this.pending = null; this.draws = null; this._done = null;
+    this.deadline = null; this.shown = new Map(); this.lowSet = []; this.outs = []; this.winner = null; this.prize = 0;   // panel info
   }
   say(t) { return this.api.say(this.room, t); }
 
   async open(starter) {
     this.players.push(starter);        // the starter joins automatically
+    this.deadline = Date.now() + this.cfg.JOIN_SECONDS * 1000;
     await this.say(`New LowCard game started. !j to join, entry ${this.entry} coins [${this.cfg.JOIN_SECONDS} seconds]`);
     await sleep(this.cfg.JOIN_SECONDS * 1000);
     if (this.players.length < this.cfg.MIN_PLAYERS) { this.state = 'ended'; await this.say(`Not enough players (need ${this.cfg.MIN_PLAYERS}). Table closed.`); return this.idle(); }
@@ -52,45 +54,48 @@ class LowCardGame {
 
   onDraw(user) {
     if (this.state !== 'playing') return;
-    if (!this.pending) return;
     if (!this.alive.includes(user)) return;
+    if (!this.pending) return this.api.tell ? this.api.tell(this.room, user, 'The round result is being tallied. Please wait.') : undefined;
     if (!this.pending.includes(user)) return this.say(`${user}, wait for the next round.`);
     if (this.draws.has(user)) return;
-    const c = drawCard(this.rng); this.draws.set(user, c);
+    const c = drawCard(this.rng); this.draws.set(user, c); this.shown.set(user, c);
     this.say(`${user} draws: ${c.label}`);
     if (this.draws.size === this.pending.length && this._done) this._done();
   }
 
   async collect(players, seconds) {
-    this.pending = players; this.draws = new Map();
+    this.pending = players; this.draws = new Map(); this.deadline = Date.now() + seconds * 1000;
     await new Promise(res => { this._done = res; this._t = setTimeout(res, seconds * 1000); });
     clearTimeout(this._t);
-    for (const p of players) if (!this.draws.has(p)) { const c = drawCard(this.rng); this.draws.set(p, c); await this.say(`Bot draws - ${p}: ${c.label}`); }
-    const res = this.draws; this.pending = null; this._done = null; return res;
+    const res0 = this.draws; this.pending = null; this._done = null; this.deadline = null;
+    await this.say('Times Up! Tallying cards.');
+    for (const p of players) if (!this.draws.has(p)) { const c = drawCard(this.rng); this.draws.set(p, c); this.shown.set(p, c); await this.say(`Bot draws - ${p}: ${c.label}`); }
+    return res0;
   }
 
   async play() {
     while (this.alive.length > 1) {
-      this.round++;
-      await this.say(`ROUND #${this.round}. Players !d to draw a card [${this.cfg.DRAW_SECONDS} seconds]`);
+      this.round++; this.shown = new Map(); this.lowSet = [];
+      await this.say(`ROUND #${this.round}: !d to draw. ${this.cfg.DRAW_SECONDS} seconds.`);
       let res = await this.collect([...this.alive], this.cfg.DRAW_SECONDS);
       let pool = [...this.alive], low = this.lowest(pool, res);
       while (low.length > 1) {                       // tie for lowest: only the tied players draw again
         await this.say(`Tie between ${low.join(', ')}! Tie-break round. !d to draw [${this.cfg.TIEBREAK_SECONDS} seconds]`);
         res = await this.collect([...low], this.cfg.TIEBREAK_SECONDS); pool = low; low = this.lowest(pool, res);
       }
-      const out = low[0];
-      await this.say(`${out} is OUT with ${res.get(out).label}!`);
+      const out = low[0]; this.lowSet = [out]; this.outs.push(out);
+      await this.say(`${out}: OUT with the lowest card! ${res.get(out).label}`);
       this.alive = this.alive.filter(p => p !== out);
       if (this.alive.length > 1) {
-        await this.say(`Remaining players: ${this.alive.join(', ')} (${this.alive.length}). Next round in ${Math.round(this.cfg.BETWEEN_ROUND_MS / 1000)} seconds.`);
+        await this.say(`Remaining players are ${this.alive.join(', ')} (${this.alive.length} players). Next round starts in ${Math.round(this.cfg.BETWEEN_ROUND_MS / 1000)} seconds.`);
         await sleep(this.cfg.BETWEEN_ROUND_MS);
       }
     }
     const winner = this.alive[0], prize = Math.floor(this.pot * (1 - this.cfg.RAKE_PERCENT / 100));
+    this.winner = winner; this.prize = prize;
     await this.api.settle(this.room, winner, prize);
     this.state = 'ended';
-    await this.say(`Game Over! ${winner} won ${prize} coins. CONGRATS!`);
+    await this.say(`LowCard game over! ${winner} WINS ${prize} credits! CONGRATS!`);
     return this.idle();
   }
   lowest(pool, res) { const m = Math.min(...pool.map(p => res.get(p).r)); return pool.filter(p => res.get(p).r === m); }
