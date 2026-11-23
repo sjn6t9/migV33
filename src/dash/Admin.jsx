@@ -599,8 +599,9 @@ function RaimsPanel() {
         {x.apis?.length > 0 && <ul className="api-list">{x.apis.map(a => <li key={a}><code>{a}</code></li>)}</ul>}</div>)}</details>}
     {L && <div className="mt10 small">
       {L.ok ? <p>{`Last check ${new Date(L.at).toLocaleString("en-GB")} (${L.by}): ${L.rows} files on RAIMS, ${L.matched} matched here, ${L.updated.length} updated.`}</p> : <p className="vf-err">{`Last check ${new Date(L.at).toLocaleString("en-GB")}: ${L.error}`}</p>}
-      {L.updated?.length > 0 && <div className="tbl mt8"><table><thead><tr><th>IC No</th><th>Name</th><th>Was</th><th>Now</th><th>RAIMS status</th></tr></thead><tbody>
-        {L.updated.map((x, i) => <tr key={i}><td className="num" data-notr>{x.ref}</td><td data-notr>{x.name}</td><td>{x.from}</td><td className="b">{x.to}</td><td data-notr>{x.raims}</td></tr>)}</tbody></table></div>}
+      {L.updated?.length > 0 && <div className="tbl mt8"><table><thead><tr><th>Name</th><th>Passport No</th><th>IC No</th><th>Last Position</th><th>Current Position</th></tr></thead><tbody>
+        {L.updated.map((x, i) => { const fc = x.passport ? null : store.S.clearances.find(c => c.ref === x.ref && clPerson(c).name === x.name), pp = x.passport || (fc && clPerson(fc).passport) || "—";
+          return <tr key={i}><td data-notr><b>{x.name}</b></td><td className="num" data-notr>{pp}</td><td className="num" data-notr>{x.ref}</td><td>{x.from}</td><td className="b">{x.to}</td></tr>; })}</tbody></table></div>}
       {L.ok && Object.keys(L.statuses || {}).length > 0 && <p className="muted mt8" data-notr>{`Statuses on RAIMS: ${Object.entries(L.statuses).map(([k, v]) => `${k} (${v})`).join(", ")}`}</p>}
       {L.ok && !L.rows && <details className="vf-det mt8"><summary>RAIMS list was empty — what was read</summary><p className="muted" data-notr>{`Columns: ${(L.head || []).join(", ") || "none"}${L.ajax ? ` · list address ${L.ajax}` : ""}`}</p></details>}
     </div>}

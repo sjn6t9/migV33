@@ -1349,7 +1349,7 @@ async function raimsSync(by = "auto") {
         const payNow = c.agentId && ["final", "approved"].includes(stage) && !["submitted", "paid"].includes(c.payment?.status) ? " Send the payment receipt from BMET clearance (Unpaid)." : "";
         notify(c.agentId || c.candidateId, `BMET clearance for ${name}: ${st}.${stage === "approved" ? " The clearance card will be sent to your portal." : ""}${payNow}`);
         if (stage === "approved" && !c.cardNo) { const pp = worker(c.workerId)?.passport || user(c.candidateId)?.profile?.passportNo || c.passport; if (pp) try { await clearanceCheck({ q: pp }); } catch {} }
-        out.updated.push({ ref: c.ref, name, from: c.history.length > 1 ? (c.history[c.history.length - 2].t || LABEL[cur] || cur) : LABEL[cur] || cur, to: st, raims: st });
+        out.updated.push({ ref: c.ref, name, passport: worker(c.workerId)?.passport || user(c.candidateId)?.profile?.passportNo || c.passport || "", from: c.history.length > 1 ? (c.history[c.history.length - 2].t || LABEL[cur] || cur) : LABEL[cur] || cur, to: st, raims: st });
       }
     }
     out.ok = true;
