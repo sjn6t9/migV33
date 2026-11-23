@@ -23,6 +23,7 @@ import { GroupEcForm } from "./Agent.jsx";
 import { BulkEcForm } from "./BulkClearance.jsx";
 import { AgentsPage } from "./AgentBook.jsx";
 import { PreEcCheck } from "./PreEc.jsx";
+import { tone } from "../sound.js";
 import { ClearanceCheck } from "./ClearanceCheck.jsx";
 import { FlightSearch, FlightCard, TicketFlight } from "./Flights.jsx";
 import { agentRows } from "../statement.js";
@@ -427,6 +428,7 @@ export function Admin({ u }) {
 
   return (
     <div className="wrap dash">
+      {can0("clearance") && <ClearanceSounds />}
       <Rail role={R} items={TABS.filter(([k]) => can(k)).map(([k, l, I]) => [k, l, I, { users: pendU, jobs: pendJ, apps: pendA, clearance: pendC, tickets: pendT, mysalary: (S.mySalary?.pays || []).filter(p => !p.void && p.status === "pending").length, mymoney: (S.myMoney?.entries || []).filter(e => e.status === "pending" && !e.accepted?.includes(S.myMoney.me?.k)).length, attendance: S.attendance && !S.attendance.marks?.[u.id]?.[S.attendance.today] && new Date(S.attendance.today + "T00:00:00Z").getUTCDay() !== 5 && !(S.attendance.holidays || []).some(h => h.date === S.attendance.today) ? 1 : 0, pay: (can("ledger") ? pendP : 0) + (can("packages") ? pendO : 0) + (can("receipts") ? pendR : 0), messages: newMsg, chat: chatUnread }[k]])}
         foot={[["mysettings", "Settings", LuSettings2], ["logout", "Log out", LuLogOut, 0, signOut]]} />
       <div className="panel">{top === "pay" && <nav className="pay-tabs" aria-label="Payments & receipts">
@@ -578,6 +580,17 @@ export const clDelete = c => { const p = clPerson(c); confirmBox(`Delete the cle
 /* what RAIMS did on one day: each file's last RAIMS status that day (from the files' history), today first; Previous / Next day */
 const bdDayOf = iso => new Date(Date.parse(iso) + 6 * 3600e3).toISOString().slice(0, 10);
 /* admin: what each staff member did — every change, the time, and where from (office network or not) */
+/* a sound when a file is newly Approved (RAIMS) or a new clearance application arrives — for admin / staff who handle clearance */
+const clSeen = { ap: null, apps: null };
+function ClearanceSounds() {
+  const C = store.S.clearances || [];
+  React.useEffect(() => {
+    const ap = new Set(C.filter(c => c.status === "approved").map(c => c.id)), apps = new Set(C.filter(clInApps).map(c => c.id));
+    if (clSeen.ap) { if ([...ap].some(x => !clSeen.ap.has(x))) tone("approved"); if ([...apps].some(x => !clSeen.apps.has(x))) setTimeout(() => tone("app"), 700); }
+    clSeen.ap = ap; clSeen.apps = apps;
+  }, [C]);
+  return null;
+}
 function StaffHistory() {
   const S = store.S, staff = S.users.filter(x => x.role === "staff" || x.role === "admin");
   const today = new Date(Date.now() + 6 * 3600e3).toISOString().slice(0, 10);
@@ -711,7 +724,7 @@ function AdminClearanceList({ apps }) {
     </div>
     <div className="tbl ec-tbl grid"><table><thead><tr><th>SL</th><th>Worker name</th><th>Passport No</th><th>{apps ? "IC number · Send to BMET" : "EC Ref No"}</th><th>Country</th><th>Status</th><th>Submission</th><th>Download Documents</th></tr></thead><tbody>
       {shown.length ? shown.map(({ c, p }, i) => (
-        <tr key={c.id}>
+        <tr key={c.id} className={c.status === "approved" ? "row-approved" : undefined}>
           <td>{(pg - 1) * per + i + 1}</td>
           <td><b>{p.name}</b>{apps && c.preEc && <div className="muted small">From Pre EC Check</div>}</td>
           <td className="num" data-notr>{p.passport || "—"}</td>

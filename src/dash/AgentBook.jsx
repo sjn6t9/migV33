@@ -41,7 +41,10 @@ export function bookAccount(a) {
 export function agentPassports({ reg, book }) {
   const S = store.S, k = key(book ? book.name : "");
   const mine = p => reg ? p.agentId === reg.id : !p.agentId && key(p.ref) === k;
-  const pp = (S.passports || []).filter(mine).map(p => ({ id: p.id, name: p.name, passport: p.passport, country: p.country, lists: p.lists || [], vstatus: p.vstatus || {}, at: p.at, src: "pp" }));
+  // each passport's BMET clearance file (the latest), so the agent's list shows where the worker's file is
+  const W = Object.fromEntries((S.workers || []).map(w => [w.id, w])), norm = v => String(v || "").replace(/\s+/g, "").toUpperCase(), byPP = {};
+  for (const c of S.clearances || []) { const n = norm(W[c.workerId]?.passport || c.passport || (S.users || []).find(u => u.id === c.candidateId)?.profile?.passportNo); if (n && (!byPP[n] || String(c.created) > String(byPP[n].created))) byPP[n] = c; }
+  const pp = (S.passports || []).filter(mine).map(p => ({ id: p.id, name: p.name, passport: p.passport, country: p.country, lists: p.lists || [], vstatus: p.vstatus || {}, cl: byPP[norm(p.passport)], at: p.at, src: "pp" }));
   const seen = new Set(pp.map(p => String(p.passport).toUpperCase()));
   const ws = (S.workers || []).filter(w => (reg ? w.agentId === reg.id : !w.agentId && key(w.agentName) === k) && !seen.has(String(w.passport).toUpperCase()))
     .map(w => { const c = [...(S.clearances || [])].reverse().find(x => x.workerId === w.id); return { id: w.id, name: w.name, passport: w.passport, country: c?.country || "", lists: c ? ["clearance"] : [], cl: c, at: w.created, src: "worker" }; });
@@ -107,7 +110,7 @@ function AgentDetail({ reg, book, AddForm, canLedger, canMr }) {
       {pps.length ? <div className="tbl vf-tbl"><table><thead><tr><th>SL</th><th>Name</th><th>Passport</th><th>Country</th><th>Entry</th><th>Status</th><th>Added</th></tr></thead><tbody>
         {pps.map((p, i) => <tr key={p.src + p.id}><td className="num">{i + 1}</td><td className="b" data-notr>{p.name}</td><td className="num" data-notr>{p.passport}</td><td>{p.country || "—"}</td>
           <td>{p.lists.map(l => LIST_NAME[l] || l).join(", ") || "—"}</td>
-          <td>{p.cl ? (p.cl.status === "custom" ? p.cl.statusText : LABEL[p.cl.status] || p.cl.status) : Object.entries(p.vstatus || {}).map(([l, x]) => `${LIST_NAME[l] || l}: ${x.s}`).join(" · ") || "—"}</td>
+          <td>{p.cl ? <span className={`ec-badge s-${p.cl.status}`}>{p.cl.status === "custom" ? p.cl.statusText : LABEL[p.cl.status] || p.cl.status}</span> : Object.entries(p.vstatus || {}).map(([l, x]) => `${LIST_NAME[l] || l}: ${x.s}`).join(" · ") || "—"}</td>
           <td className="nowrap small">{p.at ? fdate(p.at) : "—"}</td></tr>)}
       </tbody></table></div> : <Empty>No passports from this agent yet.</Empty>}
     </div>
