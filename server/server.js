@@ -393,6 +393,7 @@ A["auth.changePassword"] = async ({ old, pass, pass2 }, u, ctx) => {
   u.pass = hashPass(String(pass)); for (const [t, s] of Object.entries(db.sessions)) if (s.uid === u.id && t !== ctx.token) delete db.sessions[t];
   return { msg: "Password changed." };
 };
+A["notif.read"] = async (d, u) => { must(u, "Sign in first.", 401); const n = db.notifications.find(x => x.id === d.id && x.uid === u.id); if (n) n.read = true; return {}; };
 A["notif.readAll"] = async (_, u) => { must(u, "Sign in first.", 401); db.notifications.forEach(n => { if (n.uid === u.id) n.read = true; }); return {}; };
 
 /* ---- public ---- */

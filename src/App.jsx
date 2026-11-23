@@ -1,7 +1,7 @@
 import { VisaFileForm, WafidImport, WafidBookmarkHelp } from "./dash/Visa.jsx";
 import { Headlines } from "./Headlines.jsx";
 import React, { useState, useEffect, useSyncExternalStore } from "react";
-import { LuMenu, LuBell, LuCheck, LuMoon, LuSun, LuLanguages, LuLogOut, LuLayoutDashboard, LuLogIn, LuUserPlus, LuSend, LuMailCheck, LuRefreshCw, LuDownload, LuFileText, LuKeyRound, LuWifiOff, LuPhone, LuMail, LuMegaphone, LuCamera, LuSettings2 } from "react-icons/lu";
+import { LuMenu, LuBell, LuCheck, LuMoon, LuSun, LuLanguages, LuLogOut, LuLayoutDashboard, LuLogIn, LuUserPlus, LuSend, LuMailCheck, LuRefreshCw, LuDownload, LuFileText, LuKeyRound, LuWifiOff, LuPhone, LuMail, LuMegaphone, LuCamera, LuSettings2, LuChevronRight } from "react-icons/lu";
 import { FaWhatsapp, FaFacebookF, FaYoutube, FaLinkedinIn, FaTiktok } from "react-icons/fa6";
 import { ChatWidget } from "./Chat.jsx";
 import { TeamChatWidget } from "./TeamChat.jsx";
@@ -179,6 +179,24 @@ function chime() {
 const ackKey = uid => `mam.bellAck.${uid}`;
 const getAck = uid => { try { return localStorage.getItem(ackKey(uid)); } catch { return null; } };
 const setAck = (uid, at) => { try { localStorage.setItem(ackKey(uid), at || ""); } catch {} };
+/* where a notification leads: the panel page it is about (read from its text) */
+function notifTab(text, role) {
+  const t = String(text || ""), staff = role === "admin" || role === "staff";
+  const R = [
+    [/New BMET clearance application|Clearance applications/i, staff ? "apps" : "clearance"],
+    [/BMET clearance|clearance card|Clearance status|EC Ref|IC No|RAIMS/i, "clearance"],
+    [/asks you to confirm|money with you|Money with me|gave BDT .* to the office/i, staff ? "mymoney" : "overview"],
+    [/salary/i, staff ? "mysalary" : "overview"],
+    [/Money receipt|receipt/i, staff ? "receipts" : role === "agent" ? "account" : "overview"],
+    [/payment|Payment|BDT|৳|due|Due/, staff ? "ledger" : role === "agent" ? "account" : "overview"],
+    [/ticket|PNR|flight/i, "tickets"],
+    [/visa|MOFA/i, staff ? "visa" : "overview"],
+    [/office IP|network|attendance/i, staff ? "attendance" : "overview"],
+    [/job|application/i, staff ? (/live|approved|moderation/i.test(t) ? "jobs" : "apps") : role === "agent" ? "jobs" : "applications"],
+    [/account has been approved|Welcome|earlier records/i, "overview"],
+  ];
+  return (R.find(([re]) => re.test(t)) || [0, "overview"])[1];
+}
 function NotifBell({ u }) {
   const [pos, setPos] = useState(null); const ref = React.useRef(null);
   const N = store.S.notifications.filter(n => n.uid === u.id).slice(0, 40); const n = N.filter(x => !x.read).length;
@@ -199,8 +217,8 @@ function NotifBell({ u }) {
   return <div className="bell" ref={ref}>
     <button className={`btn sm bell-btn${ringing ? " ringing" : ""}`} onClick={toggle} aria-label={n ? `Notifications, ${n} new` : "Notifications"} title="Notifications" aria-expanded={!!pos}><LuBell />{n > 0 && <span className="count">{n > 99 ? "99+" : n}</span>}</button>
     {pos && <div className="bell-pop" style={pos} role="dialog" aria-label="Notifications">
-      <div className="bell-head"><b>Notifications</b>{n > 0 && <button className="btn sm link" onClick={() => act("notif.readAll", {}, { quiet: true })}><LuCheck /> Mark all as read</button>}</div>
-      <div className="bell-list">{N.length ? N.map(x => <div key={x.id} className={`bell-item${x.read ? "" : " new"}`}><span className="bell-dot" /><div><div>{x.text}</div><div className="muted small">{fdate(x.at)}</div></div></div>)
+      <div className="bell-head"><b>Notifications</b><button className="btn sm link" disabled={!n} onClick={() => act("notif.readAll", {}, { quiet: true })}><LuCheck /> Mark all read</button></div>
+      <div className="bell-list">{N.length ? N.map(x => <button type="button" key={x.id} className={`bell-item${x.read ? "" : " new"}`} onClick={() => { setPos(null); if (!x.read) act("notif.read", { id: x.id }, { quiet: true }); setTab(u.role, notifTab(x.text, u.role)); }}><span className="bell-dot" /><div><div>{x.text}</div><div className="muted small">{fdate(x.at)}</div></div><LuChevronRight className="bell-go" /></button>)
         : <p className="muted small bell-empty">No notifications.</p>}</div>
     </div>}
   </div>;
