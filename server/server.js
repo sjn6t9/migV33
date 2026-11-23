@@ -205,7 +205,7 @@ const cleanCl = c => ({ ...c, files: c.files ? { passport: fileRef(c.files.passp
 
 function viewFor(u) {
   const live = db.jobs.filter(j => j.status === "active");
-  const pub = {
+  const pub = { build: BUILD,
     headlines: (db.headlines || []).filter(h => h.active && (!h.until || h.until >= bdDay())).map(h => ({ id: h.id, text: h.text, link: h.link, hot: !!h.hot })),
     v: db.v, session: u?.id || null, settings: { ...db.settings }, needsSetup: !db.users.some(x => x.role === "admin"), seo: db.seo, packages: db.packages, posts: db.posts,
     testimonials: db.testimonials, team: [...db.team].sort((a, b) => (a.order ?? 99) - (b.order ?? 99)).map(m => ({ ...m, photo: m.photo ? { ...m.photo, data: `/api/files/${m.photo.id}` } : null })), gallery: db.gallery.map(g => ({ ...g, src: `/api/files/${g.fileId}` })), scenery: sceneryView(u), about: aboutView(),
@@ -2113,6 +2113,8 @@ var full=w>=innerWidth-4&&h>=innerHeight-4,clip="";if(small)clip="circle(29px at
 if(clip){if(f.style.getPropertyValue("clip-path")!==clip)f.style.setProperty("clip-path",clip,"important")}else f.style.removeProperty("clip-path");
 if(small){cap.style.bottom=Math.max(8,innerHeight-r.bottom+r.height/2-14)+"px";cap.style.right=Math.max(8,innerWidth-r.left-6)+"px"}},200);
 })();</script>`;
+// this build of the site (changes on every deploy): an open page sees a new one and offers to reload
+const BUILD = (() => { try { return crypto.createHash("sha1").update(fs.readFileSync(path.join(STATIC_DIR, "index.html"))).digest("hex").slice(0, 10); } catch { return String(Date.now()); } })();
 function indexHtml(req) {
   const zone = hostZone(req);
   const site = { admin: zone === "admin", agent: zone === "agent", main: ADMIN_HOST || AGENT_HOST ? mainUrl() : "" }; // the admin panel's address is never sent to the public site
@@ -2136,7 +2138,7 @@ function serveJobShare(req, res, jid) {
         : [`<meta property="og:image" content="${escHtml(`${origin}/brand/og-image.png?v=2`)}">`, `<meta property="og:image:width" content="1200">`, `<meta property="og:image:height" content="630">`, `<meta name="twitter:card" content="summary_large_image">`])].join("\n");
     html = html.replace(/<title>.*?<\/title>\s*<meta name="description"[^>]*>/s, tags).replace(/<!--og-->[\s\S]*?<!--\/og-->/, "");
   }
-  res.writeHead(200, { ...baseHeaders, "Content-Type": MIME[".html"], "Cache-Control": "no-cache" }); res.end(html);
+  res.writeHead(200, { ...baseHeaders, "Content-Type": MIME[".html"], "Cache-Control": "no-cache, must-revalidate", "CDN-Cache-Control": "no-store", "Cloudflare-CDN-Cache-Control": "no-store" }); res.end(html);
 }
 
 function serveStatic(req, res, url) {
@@ -2145,9 +2147,9 @@ function serveStatic(req, res, url) {
   if (!file.startsWith(STATIC_DIR) || !fs.existsSync(file) || fs.statSync(file).isDirectory()) {
     const idx = path.join(STATIC_DIR, "index.html"); // single-page app
     if (!fs.existsSync(idx)) return send(res, 503, "Site files are missing. Run the build.", { "Content-Type": "text/plain" });
-    return send(res, 200, indexHtml(req), { "Content-Type": MIME[".html"], "Cache-Control": "no-cache" });
+    return send(res, 200, indexHtml(req), { "Content-Type": MIME[".html"], "Cache-Control": "no-cache, must-revalidate", "CDN-Cache-Control": "no-store", "Cloudflare-CDN-Cache-Control": "no-store" });
   }
-  if (p === "/index.html") return send(res, 200, indexHtml(req), { "Content-Type": MIME[".html"], "Cache-Control": "no-cache" });
+  if (p === "/index.html") return send(res, 200, indexHtml(req), { "Content-Type": MIME[".html"], "Cache-Control": "no-cache, must-revalidate", "CDN-Cache-Control": "no-store", "Cloudflare-CDN-Cache-Control": "no-store" });
   const ext = path.extname(file);
   res.writeHead(200, { ...baseHeaders, "Content-Type": MIME[ext] || "application/octet-stream", "Cache-Control": ext === ".html" ? "no-cache" : "public, max-age=3600" });
   fs.createReadStream(file).pipe(res);

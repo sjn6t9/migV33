@@ -90,7 +90,8 @@ export function JobCard({ j }) {
 
 export function Toast() {
   const t = store.ui.toast;
-  return <div id="toast" className={t ? "show" : ""} role="status" aria-live="polite">{t}</div>;
+  return <><div id="toast" className={t ? "show" : ""} role="status" aria-live="polite">{t}</div>
+    {store.newBuild && <div className="new-build" role="status">A new version of the site is ready. <button className="btn sm pri" onClick={() => location.reload()}>Reload</button></div>}</>;
 }
 
 export function ModalFrame({ onClose, children, wide, className = "" }) {

@@ -579,14 +579,22 @@ const bdDayOf = iso => new Date(Date.parse(iso) + 6 * 3600e3).toISOString().slic
 function RaimsDay() {
   const today = bdDayOf(new Date().toISOString()), [day, setDay] = React.useState(today);
   const step = n => setDay(d => new Date(Date.parse(d + "T00:00:00Z") + n * 864e5).toISOString().slice(0, 10));
-  const last = {}; for (const c of store.S.clearances) for (const h of c.history || []) if (h.by === "RAIMS" && h.at && bdDayOf(h.at) === day) last[c.id] = h.t || LABEL[h.s] || h.s;
-  const cnt = {}; for (const st of Object.values(last)) cnt[st] = (cnt[st] || 0) + 1;
+  // each file RAIMS moved that day: where it was before the day's first move, and where it is after the last one
+  const rows = []; for (const c of store.S.clearances) { const H = c.history || []; let first = -1, lastI = -1;
+    H.forEach((h, i) => { if (h.by === "RAIMS" && h.at && bdDayOf(h.at) === day) { if (first < 0) first = i; lastI = i; } });
+    if (lastI < 0) continue; const pv = H[first - 1], nw = H[lastI], p = clPerson(c);
+    rows.push({ id: c.id, name: p.name, passport: p.passport || "—", ic: c.icNo || c.ref, from: pv ? pv.t || LABEL[pv.s] || pv.s : "—", to: nw.t || LABEL[nw.s] || nw.s, at: nw.at }); }
+  rows.sort((a, b) => String(b.at).localeCompare(String(a.at)));
+  const cnt = {}; for (const r of rows) cnt[r.to] = (cnt[r.to] || 0) + 1;
   const label = new Date(day + "T00:00:00Z").toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" });
   return <div className="raims-day mt8">
     <div className="row6"><button className="btn sm" onClick={() => step(-1)} disabled={day <= new Date(Date.parse(today) - 30 * 864e5).toISOString().slice(0, 10)}><LuChevronLeft /> Previous day</button>
       <b className="small">{day === today ? `Today · ${label}` : label}</b>
       <button className="btn sm" onClick={() => step(1)} disabled={day >= today}>Next day <LuChevronRight /></button></div>
-    <p className="muted mt6" data-notr>{Object.keys(cnt).length ? `Statuses on RAIMS that day: ${Object.entries(cnt).sort((a, b) => b[1] - a[1]).map(([k, v]) => `${k} (${v})`).join(", ")}` : "No status changes from RAIMS that day."}</p>
+    {rows.length ? <><div className="tbl mt8"><table><thead><tr><th>Name</th><th>Passport No</th><th>IC No</th><th>Last Position</th><th>Current Position</th></tr></thead><tbody>
+      {rows.map(r => <tr key={r.id}><td data-notr><b>{r.name}</b></td><td className="num" data-notr>{r.passport}</td><td className="num" data-notr>{r.ic}</td><td>{r.from}</td><td className="b">{r.to}</td></tr>)}</tbody></table></div>
+      <p className="muted small mt6" data-notr>{`Statuses on RAIMS that day: ${Object.entries(cnt).sort((a, b) => b[1] - a[1]).map(([k, v]) => `${k} (${v})`).join(", ")}`}</p></>
+      : <p className="muted small mt6">No status changes from RAIMS that day.</p>}
   </div>;
 }
 function RaimsPanel() {
@@ -600,6 +608,7 @@ function RaimsPanel() {
     <div className="row between"><div>{isAdmin ? <><h3 className="bulk-h"><LuRefreshCw /> RAIMS status sync</h3>
       <p className="muted small">Reads the EC application list from RAIMS and sets each file here that was Sent to BMET to the same status (files with the same IC number change together).</p></> : <h3 className="bulk-h"><LuRefreshCw /> Emigration Clearance status</h3>}</div>
       {R?.saved && <button className="btn pri" disabled={busy} onClick={sync}><LuRefreshCw /> {busy ? "Reading RAIMS…" : "Sync now"}</button>}</div>
+    {R?.saved && <RaimsDay />}
     {isAdmin && R?.saved && !edit && <p className="small mt8 raims-on" data-notr><LuCircleCheck /> {`Signed in to RAIMS as ${R.email}${R.since ? ` since ${new Date(R.since).toLocaleString("en-GB")}` : ""} · Pre EC Check, Add bulk and status sync use this sign-in until the admin logs out · ${R.auto ? "status checked every 15 minutes" : "status only with Sync now"}`}
       {isAdmin && <button className="btn sm link" disabled={busy} onClick={scan}><LuSearch /> RAIMS API addresses</button>}
       {isAdmin && <button className="btn sm link danger" onClick={() => confirmBox("Log out of RAIMS? Pre EC Check, Add bulk search and status sync stop until the admin signs in again.", () => act("admin.raims", { op: "logout" }), "Log out")}><LuLogOut /> Log out of RAIMS</button>}</p>}
@@ -614,10 +623,7 @@ function RaimsPanel() {
         {x.apis?.length > 0 && <ul className="api-list">{x.apis.map(a => <li key={a}><code>{a}</code></li>)}</ul>}</div>)}</details>}
     {L && <div className="mt10 small">
       {L.ok ? <p>{`Last check ${new Date(L.at).toLocaleString("en-GB")} (${L.by}): ${L.rows} files on RAIMS, ${L.matched} matched here, ${L.updated.length} updated.`}</p> : <p className="vf-err">{`Last check ${new Date(L.at).toLocaleString("en-GB")}: ${L.error}`}</p>}
-      {L.updated?.length > 0 && <div className="tbl mt8"><table><thead><tr><th>Name</th><th>Passport No</th><th>IC No</th><th>Last Position</th><th>Current Position</th></tr></thead><tbody>
-        {L.updated.map((x, i) => { const fc = x.passport ? null : store.S.clearances.find(c => c.ref === x.ref && clPerson(c).name === x.name), pp = x.passport || (fc && clPerson(fc).passport) || "—";
-          return <tr key={i}><td data-notr><b>{x.name}</b></td><td className="num" data-notr>{pp}</td><td className="num" data-notr>{x.ref}</td><td>{x.from}</td><td className="b">{x.to}</td></tr>; })}</tbody></table></div>}
-      {L.ok && <RaimsDay />}
+
       {L.ok && !L.rows && <details className="vf-det mt8"><summary>RAIMS list was empty — what was read</summary><p className="muted" data-notr>{`Columns: ${(L.head || []).join(", ") || "none"}${L.ajax ? ` · list address ${L.ajax}` : ""}`}</p></details>}
     </div>}
   </div>;

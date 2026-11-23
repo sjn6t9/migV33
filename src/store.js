@@ -32,7 +32,14 @@ export const getVersion = () => version;
 export function touch() { version++; subs.forEach(f => f()); }
 /* re-render after a change to screen-only state (tabs, filters, open forms) */
 export function commit() { touch(); return true; }
-export function setState(next) { if (next && typeof next === "object" && "session" in next) store.S = next; touch(); }
+export function setState(next) {
+  if (next && typeof next === "object" && "session" in next) {
+    // a new version of the site was deployed while this page was open: offer to reload
+    if (next.build && store.build && next.build !== store.build) store.newBuild = true; else if (next.build && !store.build) store.build = next.build;
+    store.S = next;
+  }
+  touch();
+}
 export async function loadState() {
   try { const r = await fetch("/api/state", { credentials: "same-origin" }); setState(await r.json()); store.loaded = true; store.offline = false; }
   catch { store.offline = true; }

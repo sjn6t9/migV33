@@ -1534,3 +1534,4 @@ input[type=date],input[type=time],input[type=datetime-local],input[type=month]{m
 input[type=date]::-webkit-date-and-time-value,input[type=time]::-webkit-date-and-time-value{text-align:left;min-height:1.3em}
 select.need{border-color:#d97706;box-shadow:0 0 0 2px rgba(217,119,6,.18)}
 .att-manual{border:1px dashed var(--line,#d5e3dc);border-radius:12px;padding:10px 12px}.att-manual input[type=text]{max-width:260px}
+.new-build{position:fixed;left:50%;bottom:18px;transform:translateX(-50%);z-index:9999;background:#00563f;color:#fff;padding:10px 14px;border-radius:12px;box-shadow:0 8px 26px rgba(0,0,0,.25);display:flex;align-items:center;gap:10px;font-size:14px;max-width:calc(100vw - 24px)}.new-build .btn{background:#fff;color:#00563f}
