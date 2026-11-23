@@ -1551,3 +1551,4 @@ select.need{border-color:#d97706;box-shadow:0 0 0 2px rgba(217,119,6,.18)}
 /* computer: Settings and Log out live in the profile menu; phone: they stay where they were */
 @media (min-width:901px){.rail.rail-desk.in-panel .rail-foot-item{display:none}.mob-only{display:none!important}}
 @media (max-width:900px){.prof-desk{display:none}}
+.sh-tools{align-items:center;gap:8px}.sh-tools select,.sh-tools input[type=search]{max-width:240px}.sh-tools input[type=date]{width:auto;min-width:150px}

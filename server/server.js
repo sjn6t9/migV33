@@ -1395,6 +1395,34 @@ async function ipPlace(ip) { // the place an address belongs to (city, region, c
     return loc;
   } catch { return ""; } finally { geoBusy.delete(ip); }
 }
+/* staff (and admin) work history for the admin: every change they make, when, from where */
+if (!db.staffLog) db.staffLog = [];
+const ST_SKIP = /^(chat\.|notif|inbox\.|me\.read|admin\.(agentLog|staffLog)$|flight\.(search|rules|airports)$|pub\.)/;
+const ST_AREA = [[/^auth\./, "Sign-in"], [/clearance|^admin\.cl|^raims\.|clStatus|clRef|clAgent|bulk/i, "BMET clearance"], [/passport|agentBook/i, "Passport Entry / Agents"], [/ledger|^admin\.agent/i, "Agent accounts"],
+  [/receipt|^mr\./i, "Money receipts"], [/office/i, "Main account"], [/salary/i, "Salary"], [/ticket|wftt|flight/i, "Air tickets"], [/visa|mofa|hr/i, "Visa applications"], [/job/i, "Jobs"],
+  [/attendance/i, "Attendance"], [/user|staff|perm/i, "Accounts / staff"], [/content|blog|seo|slide|headline|about|setting/i, "Website"]];
+function staffTrail(type, d, out, who, ip, ua) {
+  try {
+    if (!who || !isStaffRole(who) || ST_SKIP.test(type)) return;
+    if ((type === "auth.login" || type === "auth.otp") && out?.otp) return;
+    const pre = type === "raims.preEc", login = type === "auth.login" || type === "auth.otp";
+    if (!out?.msg && !pre && !login) return; // a read: nothing changed
+    // which record: a clearance file, ticket or ledger entry named by its id
+    const cl = d.id && db.clearances.find(x => x.id === d.id), tk = !cl && d.id && db.tickets.find(x => x.id === d.id);
+    const who2 = cl ? [worker(cl.workerId)?.name || user(cl.candidateId)?.name || cl.name, worker(cl.workerId)?.passport || cl.passport, cl.icNo || cl.ref].filter(Boolean).join(" · ") : tk ? [tk.name || worker(tk.workerId)?.name, `${tk.from} → ${tk.to}`].filter(Boolean).join(" · ") : "";
+    const pick = [who2, d.passport, d.name, d.ref, d.ic, d.status, d.op, d.amount ?? d.rate, d.date].filter(v => v !== undefined && v !== null && v !== "" && typeof v !== "object").map(v => String(v).slice(0, 60));
+    const detail = pre ? `Pre EC Check · ${ppNorm(d.passport)}${out?.ok ? "" : ` · ${out?.problem || "no result"}`}` : login ? "Signed in" : `${out.msg}${pick.length ? ` (${pick.join(" · ")})` : ""}`;
+    const e = { id: id("sh"), at: now(), uid: who.id, type, area: (ST_AREA.find(([re]) => re.test(type)) || [0, "Other"])[1], detail: str(detail, 300), ip: String(ip || "").replace(/^::ffff:/, ""), device: device(ua), office: isOffice(netOf(ip)) };
+    db.staffLog.push(e); if (db.staffLog.length > 30000) db.staffLog.splice(0, db.staffLog.length - 30000);
+  } catch (err) { console.error("staffTrail", err); }
+}
+A["admin.staffLog"] = async (d, u) => {
+  must(u?.role === "admin", "Only the admin can see this.", 403);
+  const day = /^\d{4}-\d{2}-\d{2}$/.test(d.day || "") ? d.day : "", q = String(d.q || "").trim().toLowerCase();
+  const bd = iso => new Date(Date.parse(iso) + 6 * 3600e3).toISOString().slice(0, 10);
+  const L = db.staffLog.filter(x => (!d.uid || x.uid === d.uid) && (!day || bd(x.at) === day) && (!q || `${x.detail} ${x.area}`.toLowerCase().includes(q)));
+  return { log: L.slice(-1500).reverse().map(x => ({ ...x, name: user(x.uid)?.name || "Removed ID" })), total: L.length };
+};
 function agentTrail(type, d, out, who, ip, ua) {
   try {
     if (!AG_TRAIL[type] || !who || who.role !== "agent" || (type !== "raims.preEc" && out?.error)) return;
@@ -2068,13 +2096,14 @@ async function handleApi(req, res, url) {
     try {
       const out = (await fn(body.payload || {}, u, ctx)) || {};
       agentTrail(body.type, body.payload || {}, out, ctx.user || u, ctx.ip, req.headers["user-agent"]);
+      staffTrail(body.type, body.payload || {}, out, ctx.user || u, ctx.ip, req.headers["user-agent"]);
       for (const [t, s] of Object.entries(db.sessions)) if (Date.parse(s.exp) < Date.now()) delete db.sessions[t];
       save();
       if (ctx.redirect) out.redirect = ctx.redirect;
       return send(res, out.error ? 400 : 200, { ...out, state: { ...viewFor(ctx.user), rev: REV } }, setCookie.length ? { "Set-Cookie": setCookie } : {});
     } catch (e) {
       if (!(e instanceof Fail)) console.error(body.type, e);
-      if (body.type === "raims.preEc" && e instanceof Fail) agentTrail(body.type, body.payload || {}, { problem: e.message }, u, ctx.ip, req.headers["user-agent"]);
+      if (body.type === "raims.preEc" && e instanceof Fail) { agentTrail(body.type, body.payload || {}, { problem: e.message }, u, ctx.ip, req.headers["user-agent"]); staffTrail(body.type, body.payload || {}, { problem: e.message }, u, ctx.ip, req.headers["user-agent"]); }
       try { save(); } catch { /* ignore */ }
       return send(res, e.code || 500, { error: e instanceof Fail ? e.message : "Something went wrong. Please try again.", state: { ...viewFor(ctx.user), rev: REV } }, setCookie.length ? { "Set-Cookie": setCookie } : {});
     }

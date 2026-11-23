@@ -1,6 +1,6 @@
 import React from "react";
 import {
-  LuLayoutDashboard, LuSend, LuChevronLeft, LuChevronRight, LuUsers, LuBriefcase, LuFileText, LuStamp, LuWallet, LuPackage, LuNewspaper, LuSearch, LuSettings, LuMessageSquare,
+  LuLayoutDashboard, LuSend, LuHistory, LuChevronLeft, LuChevronRight, LuUsers, LuBriefcase, LuFileText, LuStamp, LuWallet, LuPackage, LuNewspaper, LuSearch, LuSettings, LuMessageSquare,
   LuCheck, LuX, LuTrash2, LuPencil, LuEye, LuEyeOff, LuBadgeCheck, LuRotateCcw, LuBan, LuTicket, LuUpload, LuImage, LuUserCog, LuImagePlus, LuQuote, LuGalleryHorizontal, LuArrowUp, LuArrowDown, LuTimer, LuPlus, LuDownload, LuMessagesSquare, LuInfo
 } from "react-icons/lu";
 import { FaWhatsapp, FaFacebookF, FaYoutube, FaLinkedinIn, FaTiktok } from "react-icons/fa6";
@@ -41,7 +41,7 @@ function FilterButtons({ items, cur, onPick }) {
 // sections inside "Payments & receipts" (each still needs its own staff permission)
 const PAY_SUB = [["receipts", "Money receipts", LuReceipt], ["ledger", "Agent accounts", LuWallet], ["office", "Main account", LuLandmark], ["salary", "Salary accounts", LuBanknote], ["statements", "Statements", LuScrollText], ["packages", "Employer packages", LuPackage]];
 // sections inside "Website" (each still needs its own staff permission)
-const WEB_SUB = [["content", "Website content", LuImage], ["headlines", "Headlines", LuMegaphone], ["about", "About page", LuInfo], ["slides", "Home slideshow", LuGalleryHorizontal], ["blog", "Blog", LuNewspaper], ["seo", "SEO", LuSearch], ["settings", "Site settings", LuSettings], ["staff", "Staff & permissions", LuUserCog]];
+const WEB_SUB = [["content", "Website content", LuImage], ["headlines", "Headlines", LuMegaphone], ["about", "About page", LuInfo], ["slides", "Home slideshow", LuGalleryHorizontal], ["blog", "Blog", LuNewspaper], ["seo", "SEO", LuSearch], ["settings", "Site settings", LuSettings], ["staff", "Staff & permissions", LuUserCog], ["staffhist", "Staff history", LuHistory]];
 const TABS = [
   ["overview", "Overview", LuLayoutDashboard], ["users", "Accounts", LuUsers], ["jobs", "Job moderation", LuBriefcase], ["apps", "Applications", LuFileText],
   ["clearance", "BMET clearance", LuStamp], ["passports", "Passport Entry", LuBookUser], ["agents", "Agents", LuContact], ["visa", "Visa applications", LuPlaneTakeoff], ["tickets", "Air tickets", LuTicket], ["pay", "Payments & receipts", LuReceipt], ["mysalary", "My salary", LuWallet], ["mymoney", "Money with me", LuHandCoins], ["attendance", "Office attendance", LuCalendarCheck],
@@ -51,7 +51,7 @@ const TABS = [
 export function Admin({ u }) {
   const S = store.S; const R = u.role; const isAdmin = R === "admin";
   const chatUnread = useInboxUnread(isAdmin || !!u.perms?.includes("chat"));
-  const can0 = k => k === "agents" ? ["clearance", "receipts", "ledger", "office", "visa"].some(can0) : k === "passports" ? can0("clearance") || can0("visa") : k === "mymoney" ? !!S.myMoney : k === "overview" || k === "mysalary" || k === "attendance" || k === "mysettings" || isAdmin || (k !== "staff" && u.perms?.includes(k === "slides" || k === "about" ? "content" : k));
+  const can0 = k => k === "agents" ? ["clearance", "receipts", "ledger", "office", "visa"].some(can0) : k === "passports" ? can0("clearance") || can0("visa") : k === "mymoney" ? !!S.myMoney : k === "overview" || k === "mysalary" || k === "attendance" || k === "mysettings" || isAdmin || (k !== "staff" && k !== "staffhist" && u.perms?.includes(k === "slides" || k === "about" ? "content" : k));
   // employer packages only matter when paid job posting is on (or orders are still open)
   const paySubs = PAY_SUB.filter(([k]) => (k === "statements" ? ["ledger", "receipts", "salary", "office"].some(can0) : can0(k)) && (k !== "packages" || S.settings.paidPosting || S.orders.some(o => o.status === "pending")));
   const webSubs = WEB_SUB.filter(([k]) => can0(k));
@@ -184,6 +184,7 @@ export function Admin({ u }) {
   }
 
   if (t === "staff") body = <StaffAdmin u={u} />;
+  if (t === "staffhist") body = <StaffHistory />;
 
   if (t === "overview") {
     const byStatus = [...STAGES, "rejected"].map(s => [LABEL[s], S.applications.filter(a => a.status === s).length]);
@@ -576,6 +577,37 @@ export const clDelete = c => { const p = clPerson(c); confirmBox(`Delete the cle
    (same IC number, or passport) to the RAIMS status, up to Approved. Checked every 30 minutes, or with Sync now. */
 /* what RAIMS did on one day: each file's last RAIMS status that day (from the files' history), today first; Previous / Next day */
 const bdDayOf = iso => new Date(Date.parse(iso) + 6 * 3600e3).toISOString().slice(0, 10);
+/* admin: what each staff member did — every change, the time, and where from (office network or not) */
+function StaffHistory() {
+  const S = store.S, staff = S.users.filter(x => x.role === "staff" || x.role === "admin");
+  const today = new Date(Date.now() + 6 * 3600e3).toISOString().slice(0, 10);
+  const [f, setF] = React.useState({ uid: "", day: today, q: "" }), [res, setRes] = React.useState(null), [busy, setBusy] = React.useState(false);
+  const load = async (x = f) => { setBusy(true); const r = await act("admin.staffLog", x, { quiet: true }); setBusy(false); if (r) setRes(r); };
+  React.useEffect(() => { load(); }, []);
+  const set = v => { const x = { ...f, ...v }; setF(x); load(x); };
+  const step = n => set({ day: new Date(Date.parse((f.day || today) + "T00:00:00Z") + n * 864e5).toISOString().slice(0, 10) });
+  const tm = iso => new Date(iso).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", hour12: true, timeZone: "Asia/Dhaka" });
+  const dt = iso => new Date(iso).toLocaleDateString("en-GB", { day: "2-digit", month: "short", timeZone: "Asia/Dhaka" });
+  return <>
+    <h2>Staff history</h2>
+    <p className="muted small">Every change admin and staff make in the panel: what, when and from where. Only the admin sees this.</p>
+    <div className="card row6 wrap sh-tools">
+      <select value={f.uid} onChange={e => set({ uid: e.target.value })} aria-label="Staff"><option value="">All admin / staff</option>{staff.map(x => <option key={x.id} value={x.id}>{x.name}</option>)}</select>
+      <button className="btn sm" onClick={() => step(-1)} disabled={!f.day}><LuChevronLeft /> Previous day</button>
+      <input type="date" value={f.day} max={today} onChange={e => set({ day: e.target.value })} aria-label="Day" />
+      <button className="btn sm" onClick={() => step(1)} disabled={!f.day || f.day >= today}>Next day <LuChevronRight /></button>
+      <button className={`btn sm ${f.day ? "" : "pri"}`} onClick={() => set({ day: f.day ? "" : today })}>{f.day ? "All days" : "One day"}</button>
+      <input type="search" value={f.q} onChange={e => setF({ ...f, q: e.target.value })} onKeyDown={e => { if (e.key === "Enter") load(); }} placeholder="Search: passport, name, IC…" aria-label="Search" />
+      <button className="btn sm pri" disabled={busy} onClick={() => load()}><LuSearch /> {busy ? "Loading…" : "Search"}</button>
+    </div>
+    {res && <p className="muted small mt8">{`${res.total} entr${res.total === 1 ? "y" : "ies"}${res.total > res.log.length ? ` · showing the latest ${res.log.length}` : ""}`}</p>}
+    <div className="tbl mt8"><table><thead><tr><th>Time</th><th>Staff</th><th>Section</th><th>What they did</th><th>From</th></tr></thead><tbody>
+      {res?.log.length ? res.log.map(x => <tr key={x.id}><td className="nowrap num">{f.day ? tm(x.at) : `${dt(x.at)} · ${tm(x.at)}`}</td><td data-notr><b>{x.name}</b></td><td>{x.area}</td><td className="small" data-notr>{x.detail}</td>
+        <td className="small nowrap" data-notr>{x.office ? <span className="vf-pill ok">Office</span> : <span className="vf-pill">Outside</span>}<div className="muted">{x.ip}{x.device ? ` · ${x.device}` : ""}</div></td></tr>)
+        : <tr><td colSpan={5}><Empty>{busy ? "Loading…" : "Nothing found."}</Empty></td></tr>}
+    </tbody></table></div>
+  </>;
+}
 function RaimsDay() {
   const today = bdDayOf(new Date().toISOString()), [day, setDay] = React.useState(today);
   const step = n => setDay(d => new Date(Date.parse(d + "T00:00:00Z") + n * 864e5).toISOString().slice(0, 10));
