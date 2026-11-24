@@ -630,7 +630,10 @@ function RaimsDay() {
   // each file RAIMS moved that day: where it was before the day's first move, and where it is after the last one
   const rows = []; for (const c of store.S.clearances) { const H = c.history || []; let first = -1, lastI = -1;
     H.forEach((h, i) => { if (h.by === "RAIMS" && h.at && bdDayOf(h.at) === day) { if (first < 0) first = i; lastI = i; } });
-    if (lastI < 0) continue; const pv = H[first - 1], nw = H[lastI], p = clPerson(c);
+    if (lastI < 0) continue;
+    // only files still on the way: now at Pending Section / AD / DD / Director / ADG Approval (approved files drop out)
+    const cur = H[H.length - 1]; if (c.status === "approved" || c.status === "rejected" || !/^pending .+approval$/i.test(String(cur?.t || LABEL[cur?.s] || ""))) continue;
+    const pv = H[first - 1], nw = H[lastI], p = clPerson(c);
     rows.push({ id: c.id, name: p.name, passport: p.passport || "—", ic: c.icNo || c.ref, from: pv ? pv.t || LABEL[pv.s] || pv.s : "—", to: nw.t || LABEL[nw.s] || nw.s, at: nw.at }); }
   rows.sort((a, b) => String(b.at).localeCompare(String(a.at)));
   const cnt = {}; for (const r of rows) cnt[r.to] = (cnt[r.to] || 0) + 1;
@@ -699,7 +702,8 @@ function AdminClearanceList({ apps }) {
   // agent applications stay in Applications › Clearance applications until the agency sends them to BMET
   const ALL = S.clearances.filter(c => apps ? clInApps(c) : !clInApps(c));
   const cnt = k => ALL.filter(c => match(k, c)).length;
-  const rows = ALL.filter(c => match(f, c)).sort((a, b) => b.created.localeCompare(a.created))
+  // in All, files whose card has been sent go to the end (newest first within each part)
+  const rows = ALL.filter(c => match(f, c)).sort((a, b) => (f === "all" && !apps ? (a.card ? 1 : 0) - (b.card ? 1 : 0) : 0) || b.created.localeCompare(a.created))
     .map(c => ({ c, p: clPerson(c) }))
     .filter(({ c, p }) => { const k = q.trim().toLowerCase(); return !k || [c.ref, p.name, p.passport, c.country].some(v => String(v || "").toLowerCase().includes(k)); });
   const pages = Math.max(1, Math.ceil(rows.length / per)); const pg = Math.min(page, pages);
