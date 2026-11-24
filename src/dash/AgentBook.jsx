@@ -24,6 +24,8 @@ export function bookRows(a) {
   for (const c of (S.clearances || []).filter(c => !c.agentId && key(c.agentName) === k)) {
     const w = (S.workers || []).find(x => x.id === c.workerId), nm = w?.name || "", d = c.created.slice(0, 10);
     if (c.fee > 0) rows.push({ id: `${c.id}f`, date: d, at: c.created, details: `BMET clearance processing: ${nm} (${c.ref})`, rate: `${amt(c.fee)}X1`, debit: c.fee, credit: 0 });
+    // the clearance card fee given with Send Card / Upload & send (registered agents get it as a ledger charge on the server)
+    if (c.card?.fee > 0) rows.push({ id: `${c.id}c`, date: String(c.card.sentAt || c.created).slice(0, 10), at: c.card.sentAt || c.created, details: `BMET clearance card fee: ${nm} (${c.ref})`, rate: `${amt(c.card.fee)}X1`, debit: c.card.fee, credit: 0 });
     if (c.due > 0) rows.push({ id: `${c.id}d`, date: d, at: c.created, details: `Previous due: ${nm} (${c.ref})`, rate: `${amt(c.due)}X1`, debit: c.due, credit: 0 });
   }
   for (const e of a.entries || []) rows.push({ id: e.id, date: e.date, at: e.at, details: e.desc, ref: e.ref, rate: e.type === "charge" ? `${amt(e.rate)}X${e.qty}` : e.opening ? "ADVANCE" : (e.method || "Cash").toUpperCase(), debit: e.type === "charge" ? e.amount : 0, credit: e.type === "payment" ? e.amount : 0, entry: e });

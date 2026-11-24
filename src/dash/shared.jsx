@@ -95,7 +95,7 @@ function RaimsCard({ c, who }) {
   return <div className="raims-card">
     <b><LuShieldCheck /> Clearance card from RAIMS</b>
     <p className="muted small">{c.cardNo ? <>Clearance ID <b data-notr>{c.cardNo}</b> (from RAIMS Clearance Check).</> : "The card is found in RAIMS Clearance Check by the worker's passport number."}</p>
-    {!c.card && <div className="raims-card-row"><label className="f">Card fee (BDT)<input type="number" min="0" value={fee} onChange={e => setFee(e.target.value)} /></label></div>}
+    {!(c.card?.fee > 0) && <div className="raims-card-row"><label className="f">Card fee (BDT)<input type="number" min="0" value={fee} onChange={e => setFee(e.target.value)} /></label></div>}
     <div className="row tight wrap">
       <button type="button" className="btn" disabled={!!busy} onClick={() => run("download")}><LuDownload /> {busy === "download" ? "Getting…" : "Download Card"}</button>
       <button type="button" className="btn pri" disabled={!!busy} onClick={() => run("send")}><LuSend /> {busy === "send" ? "Sending…" : c.card ? "Send Card again" : "Send Card"}</button>
@@ -129,7 +129,7 @@ export function CardAdmin({ c }) {
       <RaimsCard c={c} who={p.kind === "agent" ? "agent" : "job seeker"} />
       <form className="fgrid" onSubmit={send}>
         <Field label={c.card ? "Replace card file" : "Upload Clearance Card"} hint="PDF, JPG or WebP, up to 1.5 MB"><input type="file" name="card" accept={CARD_TYPES} required /></Field>
-        {!c.card && <Field label="Card fee (BDT)" hint={p.kind === "agent" ? "Added to the agent's account statement" : "Shown to the job seeker; mark it received when paid"}><input type="number" name="fee" min="0" defaultValue="0" /></Field>}
+        {!(c.card?.fee > 0) && <Field label="Card fee (BDT)" hint={p.kind === "agent" ? "Added to the agent's account statement" : "Shown to the job seeker; mark it received when paid"}><input type="number" name="fee" min="0" defaultValue="0" /></Field>}
         <div className="full"><button className="btn pri" type="submit"><LuSend /> {c.card ? "Replace & notify" : `Upload & send to ${p.kind === "agent" ? "agent" : "job seeker"}`}</button></div>
       </form>
     </div>

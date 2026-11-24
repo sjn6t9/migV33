@@ -1772,14 +1772,15 @@ A["admin.clRef"] = async ({ id: cid, ref }, u) => {
 A["admin.card"] = async ({ id: cid, file, fee }, u) => {
   needPerm(u, "clearance"); const c = db.clearances.find(x => x.id === cid); must(c && c.status === "approved", "Upload the card after the file is Approved.");
   const owner = c.agentId || c.candidateId; const ref = storeFile(file, owner || u.id);
-  const replacing = !!c.card; const f = replacing ? Number(c.card.fee || 0) : numv(fee, 0, 1e7);
+  // a fee is charged once: a card sent again keeps the fee already charged; one sent first with no fee can get it now
+  const replacing = !!c.card, had = Number(c.card?.fee || 0), f = had > 0 ? had : numv(fee, 0, 1e7), charge = had <= 0 && f > 0;
   if (c.card) dropFile(c.card);
   const isCand = !c.agentId;
   c.card = { ...ref, fee: f, feeNote: isCand && f > 0 ? (c.card?.feePaid ? "paid" : "pay at the office") : "", sentAt: now(), feePaid: c.card?.feePaid || c.payment?.status === "paid" || false };
   const name = c.workerId ? worker(c.workerId)?.name : c.fullName;
-  if (!replacing && f > 0 && c.agentId) db.ledger.push({ id: id("l"), agentId: c.agentId, type: "charge", desc: `BMET clearance card fee: ${name}`, amount: f, date: now().slice(0, 10), method: "", ref: "", status: "confirmed" });
-  notify(owner, `${replacing ? "Updated clearance card" : "Clearance card"} for ${name} is ready. Download it from your portal${f > 0 && !replacing ? `. Card fee: ${bdt(f)}` : ""}.`);
-  return { msg: c.agentId ? "Clearance card sent to the agent." : c.candidateId ? "Clearance card sent to the job seeker." : "Clearance card saved." };
+  if (charge && c.agentId) db.ledger.push({ id: id("l"), agentId: c.agentId, type: "charge", desc: `BMET clearance card fee: ${name}`, amount: f, date: now().slice(0, 10), method: "", ref: "", status: "confirmed" });
+  notify(owner, `${replacing ? "Updated clearance card" : "Clearance card"} for ${name} is ready. Download it from your portal${charge ? `. Card fee: ${bdt(f)}` : ""}.`);
+  return { msg: (c.agentId ? "Clearance card sent to the agent." : c.candidateId ? "Clearance card sent to the job seeker." : "Clearance card saved.") + (charge && !c.candidateId ? ` Card fee ${bdt(f)} added to ${c.agentId ? agentName(user(c.agentId)) : c.agentName || "the agent"}'s account.` : "") };
 };
 /* the EC card PDF RAIMS gives at …/clearance-check/download/card/<Clearance ID> */
 async function raimsCardFile(no) {
