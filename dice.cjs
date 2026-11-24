@@ -46,7 +46,7 @@ class DiceGame {
     if (this.state !== 'playing') return;
     if (!this.alive.includes(user)) return;
     if (!this.pending) return this.api.tell ? this.api.tell(this.room, user, 'The round result is being tallied. Please wait.') : undefined;
-    if (this.rolls.has(user)) return;
+    if (this.rolls.has(user)) return this.api.tell ? this.api.tell(this.room, user, 'You have already rolled in this round') : undefined;
     const r = roll(this.rng); this.rolls.set(user, r); this.shown.set(user, r);
     this.say(`${user}: ${show(r)} ${r.total >= this.target ? 'IN!' : 'OUT!'}${r.a === r.b ? ' Double - immunity for the next round!' : ''}`);
     if (this.rolls.size === this.pending.length && this._done) this._done();
@@ -73,7 +73,7 @@ class DiceGame {
       if (!ins.length) await this.say(`No one hit the TARGET (${this.target}) - nobody is eliminated, everyone advances!`);
       else {
         const outs = this.alive.filter(p => !ins.includes(p) && !this.immune.has(p)), saved = this.alive.filter(p => !ins.includes(p) && this.immune.has(p));
-        if (outs.length) await this.say(`Eliminated: ${list(outs)}.`);
+        if (outs.length) { await this.say(`Eliminated: ${list(outs)}.`); if (this.api.tell) for (const o of outs) await this.api.tell(this.room, o, 'Sorry you LOST!'); }
         if (saved.length) await this.say(`${list(saved)} stay in thanks to immunity.`);
         this.alive = this.alive.filter(p => !outs.includes(p));
       }
