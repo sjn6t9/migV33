@@ -248,7 +248,7 @@ function viewFor(u) {
     if (can(u, "jobs")) pub.jobTemplates = db.jobTemplates;
     if (can(u, "office")) pub.office = { entries: db.office.entries, auto: officeAuto(), leaders: leaders(), from: db.office.from || "" };
     { const me = leaders().find(x => x.uid === u.id); if (me) pub.myMoney = { entries: [...db.office.entries.filter(e => e.people?.includes(me.k)), ...officeAuto().filter(e => personOf(e.method) === me.k)], me }; }
-    if (can(u, "ledger") || can(u, "office")) pub.leaders = leaders().map(({ k, name, title }) => ({ k, name, title }));
+    if (can(u, "ledger") || can(u, "office") || can(u, "receipts")) pub.leaders = leaders().map(({ k, name, title }) => ({ k, name, title }));
     if (can(u, "clearance") || u.role === "agent") pub.raimsReady = !!db.raims?.pass;
     if (can(u, "tickets")) { pub.wftt = db.wftt ? { ...(u.role === "admin" ? { email: db.wftt.email } : {}), since: db.wftt.since || null, ready: !!db.wftt.token, markup: Number(db.settings.ticketMarkup || 0) } : null; pub.flightsReady = !!db.wftt?.token; }
     if (can(u, "clearance")) pub.raims = db.raims ? { ...(u.role === "admin" ? { email: db.raims.email } : {}), auto: db.raims.auto, saved: !!db.raims.pass, since: db.raims.since || null, last: db.raims.last || null } : null;
@@ -2457,9 +2457,9 @@ const mrSigner = u => { const m = u.memberId && db.team.find(x => x.id === u.mem
 // what the browser gets: signature pictures as links (staff: stored files; public page: through the receipt's own link)
 const mrOut = (r, pub) => {
   const sig = (s, k) => s ? { name: s.name, title: s.title, at: s.at, sigUrl: s.sig && db.files[s.sig] ? (pub ? `/api/receipt/${r.token}/sig/${k}` : `/api/files/${s.sig}`) : "" } : null;
-  const x = { id: r.id, no: r.no, accountId: r.accountId, payer: r.payer, agentId: r.agentId || null, amount: r.amount, method: r.method, channel: r.channel || "", balance: r.balance || null, mailed: r.mailed || null, ref: r.ref, purpose: r.purpose, note: r.note, date: r.date, created: r.created,
+  const x = { id: r.id, no: r.no, accountId: r.accountId, payer: r.payer, agentId: r.agentId || null, amount: r.amount, method: r.method, channel: r.channel || "", paidTo: r.paidTo || "", balance: r.balance || null, mailed: r.mailed || null, ref: r.ref, purpose: r.purpose, note: r.note, date: r.date, created: r.created,
     status: r.status, token: r.status === "approved" ? r.token : "", received: sig(r.received, "r"), approved: sig(r.approved, "a"), void: r.void || null };
-  if (pub) { delete x.accountId; delete x.id; delete x.mailed; delete x.agentId; if (x.payer) x.payer = { ...x.payer, email: x.payer.email ? x.payer.email.replace(/^(.).*(@.*)$/, "$1***$2") : "" }; }
+  if (pub) { delete x.accountId; delete x.id; delete x.mailed; delete x.agentId; delete x.paidTo; if (x.payer) x.payer = { ...x.payer, email: x.payer.email ? x.payer.email.replace(/^(.).*(@.*)$/, "$1***$2") : "" }; }
   return x;
 };
 const MR_METHODS = ["Cash", "Bank transfer", "Mobile banking", "Cheque", "Card"];
@@ -2489,7 +2489,8 @@ A["admin.mr"] = async (d, u) => {
       const channel = MR_CHANNEL.includes(method) ? str(L.channel, 80) : "";
       must(channel || method === "Cheque" || !MR_CHANNEL.includes(method), (method === "Mobile banking" ? "Choose the mobile banking service" : "Choose the bank") + `${at}.`);
       const date = /^\d{4}-\d{2}-\d{2}$/.test(L.date || "") ? L.date : new Date(Date.now() + 6 * 3600e3).toISOString().slice(0, 10); // Bangladesh date
-      return { amount, method, channel, date, ref: str(L.ref, 80), purpose: str(L.purpose ?? d.purpose, 160) };
+      const paidTo = leaders().some(x => x.k === L.paidTo) ? L.paidTo : ""; // given to the MD / a Director / the Chairman: not in the main account
+      return { amount, method, channel, date, ref: str(L.ref, 80), purpose: str(L.purpose ?? d.purpose, 160), ...(paidTo ? { paidTo } : {}) };
     });
     const ag = d.agentId ? user(d.agentId) : null; must(!d.agentId || ag?.role === "agent", "Agent not found.");
     if (ag) x.agent = agentName(ag);
@@ -2734,7 +2735,7 @@ function officeAuto() {
   // after a reset, only what happened after it (by the time it was confirmed / paid; by date if no time is known)
   const out = [], from = db.office?.from || "", fromAt = db.office?.fromAt || "", keep = e => !from || (fromAt && e.at ? String(e.at) >= fromAt : String(e.date || "") >= from);
   for (const r of db.mr.receipts) if (r.status === "approved" && !r.void)
-    out.push({ id: "a-" + r.id, auto: "receipt", date: r.date, type: "in", desc: `Money receipt ${r.no}${r.payer.name ? " · " + r.payer.name : r.payer.passport ? " · " + r.payer.passport : ""}${r.purpose ? " · " + r.purpose : ""}`, amount: r.amount, method: [r.method, r.channel].filter(Boolean).join(" · "), ref: r.ref, at: r.approved?.at || r.created || null });
+    out.push({ id: "a-" + r.id, auto: "receipt", date: r.date, type: "in", desc: `Money receipt ${r.no}${r.payer.name ? " · " + r.payer.name : r.payer.passport ? " · " + r.payer.passport : ""}${r.purpose ? " · " + r.purpose : ""}`, amount: r.amount, method: (r.paidTo ? `Person · ${r.paidTo} | ` : "") + [r.method, r.channel].filter(Boolean).join(" · "), ref: r.ref, at: r.approved?.at || r.created || null });
   for (const l of db.ledger) if (l.type === "payment" && l.status === "confirmed" && !l.mr && !l.opening) { // opening balances (previous due / advance) stay out of the Main account
     const ag = user(l.agentId);
     out.push({ id: "a-" + l.id, auto: "agent", date: l.date, type: "in", desc: `Agent payment · ${agentName(ag) || "Agent"}${l.desc ? " · " + l.desc : ""}`, amount: Number(l.amount), method: l.method, ref: l.ref, at: l.confirmedAt || l.at || null });

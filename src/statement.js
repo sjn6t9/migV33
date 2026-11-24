@@ -81,7 +81,7 @@ export async function statementCanvases(st) {
       g.fillText(`Period: ${st.from ? sdate(st.from) : "Start"} – ${st.to ? sdate(st.to) : sdate(st.at || localDay())}`, qx - 18, 274);
       g.fillText(`${st.no ? "Issued" : "Printed"}: ${new Date(st.at || Date.now()).toLocaleString("en-GB", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })}`, qx - 18, 304);
       // totals
-      const bad = isBad(balance, st.cash);
+      const bad = st.balText ? balance > 0 : isBad(balance, st.cash);
       const bx = [[st.cash ? "Money in" : "Total debit", amt(debit), INK], [st.cash ? "Money out" : "Total credit", amt(credit), INK], [st.balText ? st.balText(balance) : balWord(balance, st.cash), amt(Math.abs(balance)), bad ? RED : GREEN]];
       bx.forEach(([l, v, col], k) => { const w = (PW - 2 * M - 40) / 3, x = M + k * (w + 20); rr(g, x, 330, w, 84, 12); g.fillStyle = k === 2 ? (bad ? "#fdecee" : "#e6f6ea") : TINT; g.fill();
         g.textAlign = "left"; g.fillStyle = MUTED; g.font = `600 17px ${F}`; g.fillText(l + " (BDT)", x + 18, 362); g.fillStyle = col; g.font = `800 28px ${F}`; g.fillText(v, x + 18, 400); });

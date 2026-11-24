@@ -33,7 +33,7 @@ export function Statement({ title, sub, kind = "PAYMENT HISTORY", rows, actions,
     <div className="st-sum">
       <div><span>{heads?.[0] || (cash ? "Money in" : "Total debit")}</span><b className="num">{amt(calc.debit)}</b></div>
       <div><span>{heads?.[1] || (cash ? "Money out" : "Total credit")}</span><b className="num">{amt(calc.credit)}</b></div>
-      <div className={(cash ? b < 0 : b > 0) ? "due" : "ok"}><span>{balText ? balText(b) : balWord(b, cash)}</span><b className="num">{amt(cash && !balText ? b : Math.abs(b))}</b></div>
+      <div className={(cash && !balText ? b < 0 : b > 0) ? "due" : "ok"}><span>{balText ? balText(b) : balWord(b, cash)}</span><b className="num">{amt(cash && !balText ? b : Math.abs(b))}</b></div>
     </div>
     <div className="st-tools">
       {!day && <><label className="st-date">From <input type="date" value={from} onChange={e => setFrom(e.target.value)} /></label>
@@ -54,7 +54,7 @@ export function Statement({ title, sub, kind = "PAYMENT HISTORY", rows, actions,
         <td className={`num r b ${(cash ? r.balance < 0 : r.balance > 0) ? "st-due" : "st-ok"}`}>{r.balance == null ? "—" : amt(r.balance)}</td>
         {hasActs && <td className="st-act">{acts[i]}</td>}
       </tr>)}
-      <tr className="st-total"><td /><td>Total</td><td /><td className="num r">{amt(calc.debit)}</td><td className="num r">{amt(calc.credit)}</td><td className={`num r ${(cash ? b < 0 : b > 0) ? "st-due" : "st-ok"}`}>{cash ? amt(b) : `${amt(Math.abs(b))} ${b > 0 ? "Due" : b < 0 ? "Adv." : ""}`}</td>{hasActs && <td />}</tr>
+      <tr className="st-total"><td /><td>Total</td><td /><td className="num r">{amt(calc.debit)}</td><td className="num r">{amt(calc.credit)}</td><td className={`num r ${(cash && !balText ? b < 0 : b > 0) ? "st-due" : "st-ok"}`}>{cash ? amt(b) : `${amt(Math.abs(b))} ${b > 0 ? "Due" : b < 0 ? "Adv." : ""}`}</td>{hasActs && <td />}</tr>
     </tbody></table></div> : <Empty>{day ? "No entries on this day." : from || to ? "No entries in these dates." : empty}</Empty>}
   </div>;
 }

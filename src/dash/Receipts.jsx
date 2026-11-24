@@ -106,7 +106,7 @@ export function ReceiptsAdmin() {
       {R.slice(0, n).map((r, i) => <tr key={r.id} className={r.void ? "mr-void" : ""}>
         <td>{i + 1}</td><td className="ec-ref" data-notr>{r.no}</td><td className="num">{rDate(r.date)}</td>
         <td data-notr>{r.payer.name || "—"}</td><td className="num" data-notr><div className="ec-sub"><span>{r.payer.passport || "—"}</span><span className="muted small">{r.payer.mobile}</span></div></td><td data-notr>{r.payer.agent || "—"}</td>
-        <td className="num r"><b>{tk(r.amount)}</b><div className="muted small">{r.method}</div></td>
+        <td className="num r"><b>{tk(r.amount)}</b><div className="muted small">{r.method}</div>{r.paidTo && <div className="small mr-boss">{"Given to "}{(store.S.leaders || []).find(x => x.k === r.paidTo)?.title || "director"}</div>}</td>
         <td><StatusBadge r={r} /></td>
         <td><div className="ec-sub"><span className="small" data-notr>{r.received?.name || "—"}</span>{r.approved ? <span className="small mr-ok" data-notr><LuCheck /> {r.approved.name}</span> : null}</div></td>
         <td><div className="row6"><button className="ec-ico view" title="View receipt" aria-label="View receipt" onClick={() => openModal("mrView", { rid: r.id })}><LuEye /></button>
@@ -166,7 +166,7 @@ export function MrEntry({ aid: aid0, pp: pp0, agentId: ag0, book: bk0 }) {
   const [p, setP] = React.useState(fromAgent && !acc ? fromAgent : acc ? { ...blank, ...pick(acc) } : pp1 ? { ...blank, name: pp1.name, passport: pp1.passport, agent: pp1.agentId ? "" : pp1.ref || "" } : blank);
   const [agentId, setAgentId] = React.useState(reg0 ? reg0.id : acc?.agentId || (!acc && pp1?.agentId) || ""); const [agentOther, setAgentOther] = React.useState(() => { if (bk1) return "book"; if (reg0) return false; const n = acc ? !acc.agentId && acc.agent : pp1 && !pp1.agentId && pp1.ref; return n ? (bookByName(n) ? "book" : true) : false; });
   const [price, setPrice] = React.useState(acc?.price != null ? String(acc.price) : "");
-  const newLine = () => ({ k: Math.random().toString(36).slice(2), amount: "", date: today(), method: "Cash", channel: "", chOther: false, ref: "", purpose: "" });
+  const newLine = () => ({ k: Math.random().toString(36).slice(2), amount: "", date: today(), method: "Cash", channel: "", chOther: false, ref: "", purpose: "", paidTo: "" });
   const [lines, setLines] = React.useState(() => [newLine()]);
   const setLine = (i, v) => setLines(lines.map((L, j) => (j === i ? { ...L, ...v } : L)));
   const [q, setQ] = React.useState(""); const [busy, setBusy] = React.useState(false);
@@ -196,7 +196,7 @@ export function MrEntry({ aid: aid0, pp: pp0, agentId: ag0, book: bk0 }) {
     setBusy(true);
     const r = await act("admin.mr", { op: "entry", accountId: aid || (auto ? auto.id : undefined), payer: { ...p, agent: ag ? ag.name : agentOther ? p.agent : "" }, agentId: agentId || "",
       price: agentId ? undefined : price, note: d.note,
-      lines: lines.map(L => ({ amount: Number(L.amount), date: L.date, method: L.method, channel: channelsFor(L.method) ? L.channel : "", ref: L.ref, purpose: L.purpose })) });
+      lines: lines.map(L => ({ amount: Number(L.amount), date: L.date, method: L.method, channel: channelsFor(L.method) ? L.channel : "", ref: L.ref, purpose: L.purpose, paidTo: L.paidTo || "" })) });
     if (r?.receiptIds?.length > 1) { setBusy(false); openModal("mrAccount", { aid: r.accountId }); return; }
     setBusy(false); if (r?.receiptId) openModal("mrView", { rid: r.receiptId, fresh: true });
   };
@@ -234,6 +234,9 @@ export function MrEntry({ aid: aid0, pp: pp0, agentId: ag0, book: bk0 }) {
               {ch.map(x => <option key={x} value={x} data-notr>{x}</option>)}<option value="__other">Other (type the name)</option></select></Field>}
           {ch && L.chOther && <Field label={L.method === "Mobile banking" ? "Service name" : "Bank name"}><input type="text" value={L.channel} onChange={e => setLine(i, { channel: e.target.value })} maxLength={80} /></Field>}
           <Field label={L.method === "Mobile banking" ? "Transaction ID" : L.method === "Cheque" ? "Cheque No." : "Transaction / Ref No."}><input type="text" value={L.ref} onChange={e => setLine(i, { ref: e.target.value })} maxLength={80} placeholder="Optional" /></Field>
+          {(store.S.leaders || []).length > 0 && <Field label="Money given to"><select value={L.paidTo || ""} onChange={e => setLine(i, { paidTo: e.target.value })}>
+            <option value="">Office (main account)</option>{store.S.leaders.map(x => <option key={x.k} value={x.k} data-notr>{`${x.name} · ${x.title}`}</option>)}</select>
+            {L.paidTo && <small className="muted">Not added to the main account. It shows in Transaction history and in their own account.</small>}</Field>}
           <Field label="Purpose of payment" full><input type="text" value={L.purpose} onChange={e => setLine(i, { purpose: e.target.value })} maxLength={160} list="mr-purposes" placeholder="e.g. Visa processing fee" /></Field>
         </div>
       </div>; })}
