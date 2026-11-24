@@ -38,6 +38,13 @@ function AppRow({ a }) {
   );
 }
 
+/* the latest status the office gave in Passport Entry (KSA / Fiji / BMET lists) */
+const PP_LIST = { bmet: "BMET", ksa: "KSA", fiji: "Fiji" };
+function PpStatus({ p }) {
+  const last = p && Object.entries(p.vstatus || {}).sort((a, b) => String(b[1].at).localeCompare(String(a[1].at)))[0];
+  if (!last) return p ? <span className="muted small">Received by the office</span> : <span className="muted small">None</span>;
+  return <><span className="ec-badge">{last[1].s}</span><div className="muted small">{`${PP_LIST[last[0]] || last[0]} · ${fdate(last[1].at)}`}</div></>;
+}
 export function Agent({ u }) {
   const S = store.S; const t = ui.tab.agent; const ag = u.agent || {};
   const W = S.workers.filter(w => w.agentId === u.id);
@@ -89,6 +96,10 @@ export function Agent({ u }) {
       if (S.clearances.some(c => c.workerId === w.id && c.status !== "rejected") || S.applications.some(a => a.workerId === w.id)) return toast("This worker has a clearance file or job application, so they cannot be removed.");
       confirmBox(`Remove ${w.name} from your list?`, () => act("agent.workerDelete", { id: w.id }), "Remove");
     };
+    // the office's Passport Entry for the same passport: its status shows here until the file is in BMET clearance
+    const nP = v => String(v || "").replace(/\s+/g, "").toUpperCase();
+    const ppOf = n => (S.passports || []).find(p => nP(p.passport) === nP(n));
+    const ppOnly = (S.passports || []).filter(p => !W.some(w => nP(w.passport) === nP(p.passport)));
     body = <>
       <h2>My workers</h2>
       <form className="card fgrid" onSubmit={save} key={e0?.id || "new"}>
@@ -104,13 +115,15 @@ export function Agent({ u }) {
         <Field label="Experience (years)"><input type="number" name="experience" min="0" defaultValue={w.experience ?? 0} /></Field>
         <div className="full row"><button className="btn pri" type="submit">{e0 ? "Save changes" : <><LuPlus /> Add worker</>}</button>{e0 && <button className="btn" type="button" onClick={() => { ui.editWorker = null; commit(); }}>Cancel</button>}</div>
       </form>
-      <div className="tbl"><table><thead><tr><th>Worker</th><th>Passport</th><th>Trade</th><th>Clearance</th><th>Actions</th></tr></thead><tbody>
-        {W.length ? W.map(w => { const c = C.find(x => x.workerId === w.id); return (
+      <div className="tbl"><table><thead><tr><th>Worker</th><th>Passport</th><th>Trade</th><th>Status</th><th>Actions</th></tr></thead><tbody>
+        {W.length || ppOnly.length ? W.map(w => { const c = C.find(x => x.workerId === w.id); return (
           <tr key={w.id}><td><b>{w.name}</b><div className="muted small">{w.district}{w.phone ? ` · ${w.phone}` : ""}</div></td><td className="num">{w.passport}<div className="muted small">Exp. {fdate(w.passportExpiry)}</div></td>
-            <td>{w.trade || "—"} <span className="muted small">{w.experience ? `${w.experience} yr` : ""}</span></td><td>{c ? <Pill s={c.status} label={c.status === "custom" ? c.statusText : undefined} /> : <span className="muted small">None</span>}</td>
+            <td>{w.trade || "—"} <span className="muted small">{w.experience ? `${w.experience} yr` : ""}</span></td><td>{c ? <><Pill s={c.status} label={c.status === "custom" ? c.statusText : undefined} /><div className="muted small">BMET clearance</div></> : <PpStatus p={ppOf(w.passport)} />}</td>
             <td><div className="row tight nowrap"><button className="btn sm" onClick={() => { ui.editWorker = w.id; commit(); window.scrollTo(0, 0); }}><LuPencil /> Edit</button>
               {!c && <button className="btn sm" onClick={() => { ui.clWorker = w.id; setTab("agent", "clearance"); }}><LuStamp /> Apply clearance</button>}
               <button className="btn sm danger" onClick={() => del(w)} aria-label={`Remove ${w.name}`}><LuTrash2 /></button></div></td></tr>); })
+          .concat(ppOnly.map(p => <tr key={p.id}><td><b data-notr>{p.name}</b><div className="muted small">Entered by the office</div></td><td className="num" data-notr>{p.passport}</td>
+            <td>{p.fiji?.profession || "—"}</td><td>{(c => c ? <><Pill s={c.status} label={c.status === "custom" ? c.statusText : undefined} /><div className="muted small">BMET clearance</div></> : <PpStatus p={p} />)(C.find(c => nP(c.passport || worker(c.workerId)?.passport) === nP(p.passport)))}</td><td><span className="muted small">{p.country || ""}</span></td></tr>))
           : <tr><td colSpan={5}><Empty>No workers yet. Add your first worker above.</Empty></td></tr>}
       </tbody></table></div>
     </>;
