@@ -1,7 +1,7 @@
 // Admin panel › Money receipts: payment entry (any of name, mobile, passport, email, agent),
 // search to find and update a payer's account, and receipts downloadable as PNG, PDF and Excel.
 import React from "react";
-import { LuPlus, LuSearch, LuEye, LuDownload, LuFileSpreadsheet, LuFileText, LuImage, LuPrinter, LuPencil, LuX, LuReceipt, LuUserRound, LuBan, LuCheck, LuSignature, LuUpload, LuTrash2, LuClock, LuQrCode, LuExternalLink, LuMail, LuBookUser } from "react-icons/lu";
+import { LuRotateCcw, LuPlus, LuSearch, LuEye, LuDownload, LuFileSpreadsheet, LuFileText, LuImage, LuPrinter, LuPencil, LuX, LuReceipt, LuUserRound, LuBan, LuCheck, LuSignature, LuUpload, LuTrash2, LuClock, LuQrCode, LuExternalLink, LuMail, LuBookUser } from "react-icons/lu";
 import { store, user, balanceOf } from "../store.js";
 import { act, openModal, closeModal, toast, confirmBox, setTab } from "../actions.js";
 import { Field } from "./shared.jsx";
@@ -93,7 +93,8 @@ export function ReceiptsAdmin() {
   const sum = l => `৳ ${tk(paid(l)).replace(/\.00$/, "")}`;
   return <>
     <div className="ec-head"><div><h2>Money receipts</h2><p className="muted small">Payment entry and money receipts. Search by anything to find a payer's account.</p></div>
-      <button className="btn pri" onClick={() => openModal("mrEntry", {})}><LuPlus /> New payment entry</button></div>
+      <div className="row6"><button className="btn" onClick={() => openModal("mrRefund", {})}><LuRotateCcw /> Pay back an advance</button>
+        <button className="btn pri" onClick={() => openModal("mrEntry", {})}><LuPlus /> New payment entry</button></div></div>
     {u && !u.signature && <div className="notice">Upload your signature before you approve payments: Settings (bottom of the menu) › My signature. <button className="btn link sm" onClick={() => setTab(u.role, "mysettings")}>Open Settings</button></div>}
     <Tiles items={[[sum(live.filter(r => r.date === d)), "Received today"], [sum(live.filter(r => r.date.startsWith(mo))), "This month"], [String(waiting), "Waiting for approval", waiting > 0], [String(live.length), "Approved receipts"]]} />
     <div className="ec-tools mt14">
@@ -106,7 +107,7 @@ export function ReceiptsAdmin() {
       {R.slice(0, n).map((r, i) => <tr key={r.id} className={r.void ? "mr-void" : ""}>
         <td>{i + 1}</td><td className="ec-ref" data-notr>{r.no}</td><td className="num">{rDate(r.date)}</td>
         <td data-notr>{r.payer.name || "—"}</td><td className="num" data-notr><div className="ec-sub"><span>{r.payer.passport || "—"}</span><span className="muted small">{r.payer.mobile}</span></div></td><td data-notr>{r.payer.agent || "—"}</td>
-        <td className="num r"><b>{tk(r.amount)}</b><div className="muted small">{r.method}</div>{r.paidTo && <div className="small mr-boss">{"Given to "}{(store.S.leaders || []).find(x => x.k === r.paidTo)?.title || "director"}</div>}</td>
+        <td className="num r"><b>{tk(r.amount)}</b><div className="muted small">{r.method}</div>{(r.refunds || []).length > 0 && <div className="small mr-boss">{"Paid back "}{tk(r.refunds.reduce((t, e) => t + e.amount, 0))}</div>}{r.paidTo && <div className="small mr-boss">{"Given to "}{(store.S.leaders || []).find(x => x.k === r.paidTo)?.title || "director"}</div>}</td>
         <td><StatusBadge r={r} /></td>
         <td><div className="ec-sub"><span className="small" data-notr>{r.received?.name || "—"}</span>{r.approved ? <span className="small mr-ok" data-notr><LuCheck /> {r.approved.name}</span> : null}</div></td>
         <td><div className="row6"><button className="ec-ico view" title="View receipt" aria-label="View receipt" onClick={() => openModal("mrView", { rid: r.id })}><LuEye /></button>

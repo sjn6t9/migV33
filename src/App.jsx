@@ -14,7 +14,7 @@ import { Home, Jobs, JobDetail, Services, About, Blog, Post, Contact, Track, Set
 import { Dashboard } from "./dash/Dashboard.jsx";
 import { ClPayForm } from "./dash/Agent.jsx";
 import { MrEntry, MrView, MrAccount, VerifyReceipt } from "./dash/Receipts.jsx";
-import { SalaryPay, SalaryView, VerifySalary } from "./dash/Accounts.jsx";
+import { SalaryPay, SalaryView, VerifySalary, MrRefund } from "./dash/Accounts.jsx";
 import { VerifyStatement } from "./dash/Statements.jsx";
 import { StatusCell, ClPayCell } from "./dash/Admin.jsx";
 import { LANGS, getLang, setLang, t, onLang } from "./i18n.js";
@@ -395,6 +395,7 @@ function ModalHost() {
       {m.type === "wafidHelp" && <WafidBookmarkHelp />}
       {m.type === "visaFile" && <VisaFileForm key={m.id || "new"} id={m.id} />}
       {m.type === "agentBook" && <AgentBookEdit id={m.id} />}
+      {m.type === "mrRefund" && <MrRefund no={m.no} />}
       {m.type === "mrEntry" && <MrEntry key={m.aid || m.pp || m.agentId || m.book || "new"} aid={m.aid} pp={m.pp} agentId={m.agentId} book={m.book} />}
       {m.type === "mrView" && <MrView rid={m.rid} fresh={m.fresh} />}
       {m.type === "mrAccount" && <MrAccount key={m.aid} aid={m.aid} />}

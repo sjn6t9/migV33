@@ -259,6 +259,7 @@ function viewFor(u) {
     if (can(u, "headlines")) pub.headlinesAll = db.headlines || [];
     if (isStaffRole(u)) pub.mySalary = { monthly: db.salary.profiles[u.id]?.monthly ?? null, pays: db.salary.pays.filter(p => p.uid === u.id).map(p => salaryOut(p)) };
     if (can(u, "salary")) pub.salary = { profiles: db.salary.profiles, pays: db.salary.pays.map(p => salaryOut(p)) };
+    if (can(u, "office") || can(u, "receipts") || can(u, "ledger")) pub.khata = db.khata;
     if (can(u, "receipts")) pub.mr = { accounts: db.mr.accounts, receipts: db.mr.receipts.map(r => mrOut(r)), charges: db.mr.charges };
     if (u.role === "admin") { const c = smtpConf(); pub.smtp = { host: c.host || "", port: c.port || 465, user: c.user || "", from: c.from || "", hasPass: !!c.pass, local: !!c.local }; }
   }
@@ -2457,10 +2458,12 @@ for (const r of db.mr.receipts) { // receipts made before approval existed wait 
 // who signs: name, designation (from the Expert Team member, if linked) and the signature file at that moment
 const mrSigner = u => { const m = u.memberId && db.team.find(x => x.id === u.memberId); return { uid: u.id, name: u.name || "Office", title: m?.title || u.title || "", sig: u.signature?.id || null, at: now() }; };
 // what the browser gets: signature pictures as links (staff: stored files; public page: through the receipt's own link)
+// an advance on a money receipt paid back later: main account entries (money out) that name the receipt
+const mrRefunds = r => db.office.entries.filter(e => e.mr?.rid === r.id && e.status !== "rejected");
 const mrOut = (r, pub) => {
   const sig = (s, k) => s ? { name: s.name, title: s.title, at: s.at, sigUrl: s.sig && db.files[s.sig] ? (pub ? `/api/receipt/${r.token}/sig/${k}` : `/api/files/${s.sig}`) : "" } : null;
   const x = { id: r.id, no: r.no, accountId: r.accountId, payer: r.payer, agentId: r.agentId || null, amount: r.amount, method: r.method, channel: r.channel || "", paidTo: r.paidTo || "", balance: r.balance || null, mailed: r.mailed || null, ref: r.ref, purpose: r.purpose, note: r.note, date: r.date, created: r.created,
-    status: r.status, token: r.status === "approved" ? r.token : "", received: sig(r.received, "r"), approved: sig(r.approved, "a"), void: r.void || null };
+    status: r.status, token: r.status === "approved" ? r.token : "", received: sig(r.received, "r"), approved: sig(r.approved, "a"), void: r.void || null, refunds: mrRefunds(r).map(e => ({ amount: e.amount, date: e.date, status: e.status || "accepted", method: e.method })) };
   if (pub) { delete x.accountId; delete x.id; delete x.mailed; delete x.agentId; delete x.paidTo; if (x.payer) x.payer = { ...x.payer, email: x.payer.email ? x.payer.email.replace(/^(.).*(@.*)$/, "$1***$2") : "" }; }
   return x;
 };
@@ -2513,6 +2516,28 @@ A["admin.mr"] = async (d, u) => {
     notifyAdmins(made.length > 1 ? `${made.length} payments (${nos}, BDT ${total.toLocaleString("en-US")}) are waiting for approval.` : `Payment ${nos} (BDT ${total.toLocaleString("en-US")}) is waiting for approval.`, "receipts");
     return { msg: made.length > 1 ? `${made.length} payments saved (${nos}). They wait for approval by an admin or another staff member.` : `Payment ${nos} saved. It waits for approval by an admin or another staff member.`,
       receiptId: made[0].id, receiptIds: made.map(r => r.id), accountId: acc.id };
+  }
+  /* Advance paid back: give the earlier receipt number; the payment is a main account money-out entry naming that receipt.
+     Paid from office cash / bank / wallet: the main account; paid by the MD / a Director / the Chairman: their account (they confirm it). */
+  if (d.op === "refundFind") {
+    const no = str(d.no, 30).replace(/\s+/g, "").toUpperCase(); const r = M.receipts.find(x => x.no.toUpperCase() === no);
+    must(r, `Money receipt ${no || ""} not found.`); must(r.status === "approved" && !r.void, `Money receipt ${r.no} is not approved, or it is cancelled.`);
+    const paid = mrRefunds(r).reduce((t, e) => t + e.amount, 0);
+    return { receipt: { id: r.id, no: r.no, date: r.date, amount: r.amount, payer: r.payer, purpose: r.purpose, paid: r2(paid), left: r2(r.amount - paid) } };
+  }
+  if (d.op === "refund") {
+    const r = M.receipts.find(x => x.id === d.id); must(r && r.status === "approved" && !r.void, "Money receipt not found.");
+    const left = r2(r.amount - mrRefunds(r).reduce((t, e) => t + e.amount, 0)), amount = r2(Number(d.amount));
+    must(amount > 0, "Enter the amount paid back."); must(amount <= left + 0.001, `Only BDT ${left.toLocaleString("en-US")} of ${r.no} is left to pay back.`);
+    const method = str(d.method, 80) || "Cash", k = personOf(method), L = leaders(), lead = k && L.find(x => x.k === k), mine = L.find(x => x.uid === u.id)?.k;
+    must(!k || lead, "Choose a Managing Director, Director or Chairman.");
+    const who = r.payer.name || r.payer.passport || r.payer.mobile || "the payer";
+    const e = { id: id("of"), date: okDate(d.date), type: "out", desc: `Advance paid back to ${who} · against ${r.no}${str(d.note, 120) ? " · " + str(d.note, 120) : ""}`, amount, method, ref: str(d.ref, 80),
+      mr: { rid: r.id, no: r.no }, by: u.name, byId: u.id, at: now(), people: k ? [k] : [], accepted: k && k === mine ? [k] : [] };
+    e.status = e.accepted.length === e.people.length ? "accepted" : "pending";
+    db.office.entries.push(e);
+    if (e.status === "pending" && lead?.uid) notify(lead.uid, `${u.name} asks you to confirm BDT ${amount.toLocaleString("en-US")} paid out by you: ${e.desc.slice(0, 90)}. Open Money with me.`);
+    return { msg: `BDT ${amount.toLocaleString("en-US")} paid back against ${r.no}.${e.status === "pending" ? ` Waiting for ${lead.name}'s confirmation.` : ""}` };
   }
   if (d.op === "approve") { // a second person signs as Authorized signature; then the receipt and its QR code exist
     const r = M.receipts.find(x => x.id === d.id); must(r, "Receipt not found."); must(r.status === "pending" && !r.void, "This payment is not waiting for approval.");
@@ -2692,6 +2717,7 @@ A["attendance.tick"] = async (d, u, ctx) => {
 /* ---------- HEADLINES on the website: a scrolling news line under the header ---------- */
 if (!db.headlines) db.headlines = [];
 if (!db.agentBook) db.agentBook = [];
+if (!db.khata) db.khata = []; // Payments & receipts › Other accounts: named accounts kept only for the record
 // the old "Visa & BMET processing" department is now two: BMET section and Visa section (a title with BMET goes to BMET section)
 for (const m of db.team || []) if (m.dept === "Visa & BMET processing") m.dept = /bmet|clearance|emigration/i.test(`${m.title} ${m.bio}`) ? "BMET section" : "Visa section";
 A["admin.headlines"] = async (d, u) => {
@@ -2811,6 +2837,28 @@ A["admin.office"] = async (d, u) => {
 };
 /* the Managing Director, a Director or the Chairman confirms (or refuses) money entered as being with them */
 /* the MD / a Director / the Chairman, from their own admin ID: give money to the office (it goes into the main account) */
+/* Payments & receipts › Other accounts: an account by name, kept only for the record (not in the main account, not in the bosses' accounts) */
+A["admin.khata"] = async (d, u) => {
+  must(can(u, "office") || can(u, "receipts") || can(u, "ledger"), "You do not have permission for this.", 403);
+  const K = db.khata, acc = d.id ? K.find(x => x.id === d.id) : null;
+  if (d.op === "add" || d.op === "edit") {
+    const name = str(d.name, 120); must(name.length >= 2, "Enter the name.");
+    must(!K.some(x => x !== acc && x.name.toLowerCase() === name.toLowerCase()), `An account named ${name} already exists.`);
+    const v = { name, mobile: str(d.mobile, 30), note: str(d.note, 300) };
+    if (d.op === "edit") { must(acc, "Account not found."); Object.assign(acc, v, { updated: now() }); return { msg: "Saved." }; }
+    const x = { id: id("kh"), ...v, entries: [], by: u.name, at: now() }; K.unshift(x); return { msg: `Account ${name} made.`, id: x.id };
+  }
+  must(acc, "Account not found.");
+  if (d.op === "remove") { must(u.role === "admin" || !acc.entries.length, "Only an admin can remove an account that has entries."); db.khata = K.filter(x => x !== acc); return { msg: `${acc.name} removed.` }; }
+  if (d.op === "entry") {
+    const amount = r2(Number(d.amount)); must(amount > 0 && amount < 1e10, "Enter the amount.");
+    const v = { date: okDate(d.date), type: d.type === "got" ? "got" : "gave", amount, desc: str(d.desc, 200), method: str(d.method, 80), ref: str(d.ref, 80) };
+    if (d.eid) { const e = acc.entries.find(x => x.id === d.eid); must(e, "Entry not found."); Object.assign(e, v, { edited: { by: u.name, at: now() } }); return { msg: "Entry updated." }; }
+    acc.entries.push({ id: id("ke"), ...v, by: u.name, at: now() }); return { msg: "Entry added." };
+  }
+  if (d.op === "entryDelete") { const e = acc.entries.find(x => x.id === d.eid); must(e, "Entry not found."); acc.entries = acc.entries.filter(x => x !== e); return { msg: "Entry deleted." }; }
+  must(false, "Unknown request.");
+};
 A["office.give"] = async (d, u) => {
   must(isStaffRole(u), "Not allowed.", 403);
   const L = leaders().find(x => x.uid === u.id); must(L, "Only the Managing Director, a Director or the Chairman can do this.");
