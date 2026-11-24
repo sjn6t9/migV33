@@ -14,7 +14,7 @@
 #   5. ADDS a site for the domain to the existing nginx or Caddy (other sites are not changed;
 #      the config is tested before reload and a backup is kept), with HTTPS
 #   6. for a .bd main domain: runs the domain's own DNS server (server/dns.cjs, service "mam-dns")
-#      so the registrar only needs the name servers ns1.migv33.tech and ns2.migv33.tech
+#      so the registrar only needs the name servers ns1.<domain> and ns2.<domain> (both with this server's IP)
 #      and its email: noreply@ sends verification codes, info@ is forwarded (deploy/mail.sh)
 #   7. if DNS or HTTPS is not ready yet, tries again by itself every 10 minutes until it is
 #      and a separate admin panel at admin.<domain> (admin and staff sign in only there)
@@ -139,7 +139,7 @@ Wants=network-online.target
 User=mamapp
 Group=mamapp
 WorkingDirectory=$APP
-Environment=DNS_IP=$MYIP DNS_BIND=$DBIND DNS_ZONES=$DOMAIN DNS_NS=${DNS_NS:-ns1.migv33.tech,ns2.migv33.tech}
+Environment=DNS_IP=$MYIP DNS_BIND=$DBIND DNS_ZONES=$DOMAIN DNS_NS=${DNS_NS:-ns1.$DOMAIN,ns2.$DOMAIN}
 ExecStart=$NODE_BIN server/dns.cjs
 Restart=always
 RestartSec=3

@@ -2,7 +2,7 @@
 //
 // It answers for the zones in DNS_ZONES (default mamandmam.bd):
 //   <zone>, www.<zone>, mail.<zone>, admin.<zone>, agent.<zone>  ->  A  DNS_IP
-//   NS  -> DNS_NS (default ns1.migv33.tech, ns2.migv33.tech)
+//   NS  -> ns1.<zone>, ns2.<zone> (A -> DNS_IP); DNS_NS can name others
 //   SOA -> first name server
 //   MX 10 mail.<zone>, SPF and DMARC TXT records, and the DKIM key from
 //   /etc/mam-dns/dkim-<zone>.txt (written by deploy/mail.sh) as mail._domainkey.<zone>
@@ -16,7 +16,10 @@ const net = require("net");
 const IP = (process.env.DNS_IP || "").trim();
 if (!/^\d{1,3}(\.\d{1,3}){3}$/.test(IP)) { console.error("DNS_IP must be an IPv4 address"); process.exit(1); }
 const ZONES = (process.env.DNS_ZONES || "mamandmam.bd").toLowerCase().split(/[,\s]+/).filter(Boolean);
-const NS = (process.env.DNS_NS || "ns1.migv33.tech,ns2.migv33.tech").toLowerCase().split(/[,\s]+/).filter(Boolean);
+// name servers: the zone's own ns1.<zone> and ns2.<zone> (answered here with DNS_IP), so the domain needs no other domain.
+// An old DNS_NS that names migv33.tech is ignored: that domain is being given up.
+const NS_ENV = (process.env.DNS_NS || "").toLowerCase().split(/[,\s]+/).filter(Boolean).filter((n) => !/(^|\.)migv33\.tech$/.test(n));
+const nsFor = (zone) => (NS_ENV.length ? NS_ENV : [`ns1.${zone}`, `ns2.${zone}`]);
 const BIND = process.env.DNS_BIND || IP;
 const PORT = Number(process.env.DNS_PORT || 53);
 const TTL = 300;
@@ -39,7 +42,7 @@ function rr(ptr, type, rdata, ttl = TTL) {
   return Buffer.concat([u16(0xc000 | ptr), u16(type), u16(1), u32(ttl), u16(rdata.length), rdata]);
 }
 function soaData(zone) {
-  return Buffer.concat([encName(NS[0]), encName("hostmaster." + zone), u32(SERIAL), u32(3600), u32(600), u32(1209600), u32(TTL)]);
+  return Buffer.concat([encName(nsFor(zone)[0]), encName("hostmaster." + zone), u32(SERIAL), u32(3600), u32(600), u32(1209600), u32(TTL)]);
 }
 function aData(ip) { return Buffer.from(ip.split(".").map(Number)); }
 function txtData(text) { // split into 255-byte character-strings
@@ -52,9 +55,9 @@ function dkimText(zone) { try { return fs.readFileSync(`${DKIM_DIR}/dkim-${zone}
 // every record of a name in the zone: [{ type, data }], or null if the name does not exist
 function recordsFor(name, zone) {
   const A = { type: T.A, data: aData(IP) };
-  if (name === zone) return [A, ...NS.map((n) => ({ type: T.NS, data: encName(n) })), { type: T.SOA, data: soaData(zone) },
+  if (name === zone) return [A, ...nsFor(zone).map((n) => ({ type: T.NS, data: encName(n) })), { type: T.SOA, data: soaData(zone) },
     { type: T.MX, data: Buffer.concat([u16(10), encName("mail." + zone)]) }, { type: T.TXT, data: txtData(`v=spf1 a mx ip4:${IP} ~all`) }];
-  if (name === "www." + zone || name === "mail." + zone || name === "admin." + zone || name === "agent." + zone) return [A];
+  if (name === "ns1." + zone || name === "ns2." + zone || name === "www." + zone || name === "mail." + zone || name === "admin." + zone || name === "agent." + zone) return [A];
   if (name === "_dmarc." + zone) return [{ type: T.TXT, data: txtData(`v=DMARC1; p=none; adkim=r; aspf=r`) }];
   if (name === "mail._domainkey." + zone) { const k = dkimText(zone); return k ? [{ type: T.TXT, data: txtData(k) }] : null; }
   if (name === "_domainkey." + zone && dkimText(zone)) return []; // empty non-terminal
