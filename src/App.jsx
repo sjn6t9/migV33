@@ -9,7 +9,7 @@ import { ShareJob } from "./Share.jsx";
 import { store, subscribe, getVersion, touch, me, user, job, unread, PAGES, fdate, kb, candOf, worker, clPerson, LABEL, CL_STAGES, CL_DOCS , findMember, bdtFmt, balanceOf } from "./store.js";
 import { openModal, closeModal, signOut, toast, formData, setClStatus, downloadFile, fileExt, act, afterLogin, readUpload, DOC_TYPES, confirmBox, dashHash, setTab } from "./actions.js";
 import { Logo, Toast, ModalFrame, Pill, ClPipe, CardDownload, Avatar, Drawer } from "./ui.jsx";
-import { CardAdmin, AgentDocsView, DocView } from "./dash/shared.jsx";
+import { CardAdmin, AgentDocsView, DocView, RaimsCard } from "./dash/shared.jsx";
 import { Home, Jobs, JobDetail, Services, About, Blog, Post, Contact, Track, Setup, Team, waLink } from "./pages/Public.jsx";
 import { Dashboard } from "./dash/Dashboard.jsx";
 import { ClPayForm } from "./dash/Agent.jsx";
@@ -553,6 +553,21 @@ function ClearanceCard({ cid, admin }) {
   const c = store.S.clearances.find(x => x.id === cid); if (!c) return null;
   const w = clPerson(c);
   const rows = [["Applicant", w.name], ["Filed by", w.via], ["Father's name", w.father], ["Passport no.", w.passport], ["Passport expiry", fdate(w.passportExpiry)], ["Date of birth", fdate(w.dob)], ["Mobile", w.phone], ["District", w.district], ["Trade", w.trade], ["Destination", c.country], ["Employer / sponsor", c.employer], ["Visa no.", c.visaNo], ["Visa type", c.visaType], ["Planned flight", c.flightDate ? fdate(c.flightDate) : ""], ...(c.icNo ? [["IC No.", c.icNo]] : []), ...(c.raimsId ? [["RAIMS ID No.", c.raimsId]] : []), ...(c.fee ? [["Processing fee", bdtFmt(c.fee)]] : []), ...(c.due ? [["Previous due", bdtFmt(c.due)]] : []), ["Notes", c.notes]];
+  // an Approved file (office side): only what is needed to send the card, one under the other
+  if (admin && c.status === "approved") return (
+    <div className="cl-approved">
+      <h3>BMET clearance: {w.name}</h3>
+      <div className="row6"><b>Status</b> <Pill s={c.status} /></div>
+      <table className="mt8"><tbody>{[["Applicant", w.name], ["Filed by", w.via], ["Passport no.", w.passport], ["Destination", c.country], ["IC No.", c.icNo || c.ref]].map(([k, v]) => <tr key={k}><th>{k}</th><td data-notr>{v || "—"}</td></tr>)}</tbody></table>
+      <h4 className="mt16 mb6">Documents</h4>
+      {c.files && (["passport", "visa", "contract"].some(k => c.files[k]) || c.files.others?.length)
+        ? <div className="stack8">{[["passport", "Passport copy"], ["visa", "Visa copy"], ["contract", "Employment contract"]].filter(([k]) => c.files[k]).map(([k, l]) => <ClFile key={k} c={c} f={c.files[k]} label={l} />)}
+          {(c.files.others || []).map((f, i) => <ClFile key={i} c={c} f={f} label={`Other document ${i + 1}`} />)}</div>
+        : <p className="muted small">No documents uploaded.</p>}
+      <h4 className="mt16 mb6">History</h4>{c.history.map((h, i) => <div key={i} className="small">{fdate(h.at)} — {h.t || LABEL[h.s]}</div>)}
+      <div className="mt16"><RaimsCard c={c} who={clPerson(c).kind === "agent" ? "agent" : "job seeker"} compact /></div>
+    </div>
+  );
   return (
     <>
       <h3>BMET clearance: {w.name}</h3>

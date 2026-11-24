@@ -85,7 +85,7 @@ export const Options = ({ list, blank }) => <>{blank !== undefined && <option va
 
 /* The clearance card from RAIMS by its card number (IT-I-2026-6009034): the server takes it from
    raims.oep.gov.bd/agency/employee/clearance-check/download/card/<number> with the agency's RAIMS sign-in */
-function RaimsCard({ c, who }) {
+export function RaimsCard({ c, who, compact }) {
   // no Clearance ID to type: the server checks RAIMS Clearance Check with the file's passport and takes the card from there
   const [fee, setFee] = React.useState("0"), [busy, setBusy] = React.useState("");
   const run = async op => {
@@ -95,11 +95,12 @@ function RaimsCard({ c, who }) {
   return <div className="raims-card">
     <b><LuShieldCheck /> Clearance card from RAIMS</b>
     <p className="muted small">{c.cardNo ? <>Clearance ID <b data-notr>{c.cardNo}</b> (from RAIMS Clearance Check).</> : "The card is found in RAIMS Clearance Check by the worker's passport number."}</p>
-    {!(c.card?.fee > 0) && <div className="raims-card-row"><label className="f">Card fee (BDT)<input type="number" min="0" value={fee} onChange={e => setFee(e.target.value)} /></label></div>}
+    {c.card && compact && <p className="small ok-txt"><LuCheck /> {`Card sent ${fdate(c.card.sentAt)}${c.card.fee > 0 ? ` · Card fee ${Number(c.card.fee).toLocaleString("en-US")} BDT added` : ""}`}</p>}
+    {!(c.card?.fee > 0) && <div className="raims-card-row"><label className="f">Card fee (BDT)<input type="number" min="0" value={fee} onChange={e => setFee(e.target.value)} />{compact && who === "agent" && <span className="hint">Added to the agent's account statement</span>}</label></div>}
     <div className="row tight wrap">
-      <button type="button" className="btn" disabled={!!busy} onClick={() => run("download")}><LuDownload /> {busy === "download" ? "Getting…" : "Download Card"}</button>
+      {!compact && <button type="button" className="btn" disabled={!!busy} onClick={() => run("download")}><LuDownload /> {busy === "download" ? "Getting…" : "Download Card"}</button>}
       <button type="button" className="btn pri" disabled={!!busy} onClick={() => run("send")}><LuSend /> {busy === "send" ? "Sending…" : c.card ? "Send Card again" : "Send Card"}</button>
-      {c.cardNo && <a className="btn sm link" href={`https://raims.oep.gov.bd/agency/employee/clearance-check/download/card/${encodeURIComponent(c.cardNo)}`} target="_blank" rel="noopener noreferrer">Open in RAIMS</a>}
+      {c.cardNo && !compact && <a className="btn sm link" href={`https://raims.oep.gov.bd/agency/employee/clearance-check/download/card/${encodeURIComponent(c.cardNo)}`} target="_blank" rel="noopener noreferrer">Open in RAIMS</a>}
     </div>
     <p className="muted small">Send Card puts the card in the {who}'s portal to download.</p>
   </div>;
