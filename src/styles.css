@@ -1569,3 +1569,4 @@ select.need{border-color:#d97706;box-shadow:0 0 0 2px rgba(217,119,6,.18)}
 .hold-word.adv,.boss-amt.adv{color:#067647}.hold-word.with,.boss-amt.with{color:#b42318}
 :root[data-theme="dark"] .hold-word.adv,:root[data-theme="dark"] .boss-amt.adv{color:#47cd89}:root[data-theme="dark"] .hold-word.with,:root[data-theme="dark"] .boss-amt.with{color:#f97066}
 .mr-boss{color:#b54708;font-weight:600}:root[data-theme="dark"] .mr-boss{color:#fdb022}
+.ok-txt{color:#067647;font-weight:600;display:inline-flex;align-items:center;gap:4px}:root[data-theme="dark"] .ok-txt{color:#47cd89}

@@ -686,7 +686,9 @@ function AppIcCell({ c }) {
     const ic = v.trim().toUpperCase().replace(/\s+/g, ""); if (!/^IC[-A-Z0-9]{6,}$/.test(ic)) return toast("Enter the IC number from RAIMS, e.g. IC-2026-RL1217-602390.");
     setBusy(true); const ok = (ic === c.icNo || await act("admin.clRef", { id: c.id, ref: ic }, { quiet: true })) && await act("admin.clStatus", { id: c.id, status: "sent_bmet" }); setBusy(false);
   };
-  return <div className="stack6 app-ic"><input type="text" value={v} onChange={e => setV(e.target.value.toUpperCase())} onKeyDown={e => { if (e.key === "Enter") send(); }} placeholder="IC number" aria-label="IC number" data-notr />
+  if (c.status === "pending") return <span className="muted small">Mark the file Received first.</span>;
+  if (!c.entryList) return <button className="btn sm pri" disabled={busy} onClick={async () => { setBusy(true); await act("admin.clEntry", { id: c.id }); setBusy(false); }}><LuListPlus /> Save to Entry List</button>;
+  return <div className="stack6 app-ic"><span className="small ok-txt"><LuCheck /> In Entry List</span><input type="text" value={v} onChange={e => setV(e.target.value.toUpperCase())} onKeyDown={e => { if (e.key === "Enter") send(); }} placeholder="IC number" aria-label="IC number" data-notr />
     <button className="btn sm pri" disabled={busy} onClick={send}><LuSend /> Send to BMET</button></div>;
 }
 function AdminClearanceList({ apps }) {
@@ -703,7 +705,7 @@ function AdminClearanceList({ apps }) {
   const shown = rows.slice((pg - 1) * per, pg * per);
   const [form, setForm] = React.useState("");
   return <>
-    {apps ? <p className="muted small">Agents' BMET clearance applications. Received tells the agent the file has arrived. Enter the IC number from RAIMS and Send to BMET: the file moves to BMET clearance and its status then follows RAIMS.</p> : <div className="ec-head">
+    {apps ? <p className="muted small">Agents' BMET clearance applications. Received tells the agent the file has arrived. Then Save to Entry List adds the worker to BMET Passport Entry. Enter the IC number from RAIMS and Send to BMET: the file moves to BMET clearance and its status then follows RAIMS.</p> : <div className="ec-head">
       <h2>BMET clearance applications</h2>
       <div className="ec-head-btns">
         <button className={`btn ${form === "one" ? "dark" : "soft"}`} onClick={() => setForm(x => x === "one" ? "" : "one")}>{form === "one" ? <LuX /> : <LuCirclePlus />} {form === "one" ? "Close the form" : "Create application"}</button>

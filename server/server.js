@@ -986,6 +986,22 @@ A["admin.clDelete"] = async ({ id: cid }, u) => {
 // the files under one RAIMS IC number (EC Ref No or IC No.)
 const icOf = c => { const r = String(c.icNo || "").replace(/\s+/g, "").toUpperCase() || (/^IC-/.test(String(c.ref || "").toUpperCase()) ? String(c.ref).toUpperCase() : ""); return r; };
 const icFiles = ic => db.clearances.filter(x => icOf(x) === ic || String(x.ref || "").toUpperCase() === ic);
+/* Applications › Clearance applications: after Received, Save to Entry List puts the worker in Passport Entry › BMET Passport Entry
+   (an existing passport gets the BMET list added); then Send to BMET. */
+A["admin.clEntry"] = async (d, u) => {
+  needPerm(u, "clearance");
+  const c = db.clearances.find(x => x.id === d.id); must(c, "File not found."); must(c.status === "received", "Mark the file Received first.");
+  const w = worker(c.workerId), cu = user(c.candidateId), ag = c.agentId ? user(c.agentId) : null;
+  const passport = ppNorm(w?.passport || cu?.profile?.passportNo || c.passport || "").slice(0, 20), name = str(w?.name || cu?.name || c.name, 120);
+  must(/^[A-Z0-9]{6,15}$/.test(passport), "This file has no passport number."); must(name.length >= 2, "This file has no worker name.");
+  const v = { name, country: c.country || "", ref: ag ? agentName(ag) : str(c.agentName, 120), agentId: ag ? ag.id : null };
+  const old = db.passports.find(p => p.passport === passport);
+  if (old) Object.assign(old, { ...v, lists: [...new Set([...ppLists(old), "bmet"])], updated: now() }, old.country ? { country: old.country } : {});
+  else db.passports.unshift({ id: id("pp"), ...v, passport, gender: w?.gender === "Female" ? "Female" : w?.gender === "Male" ? "Male" : "", ...(w?.phone && !ag ? { mobile: w.phone } : {}), lists: ["bmet"], by: u.name, at: now() });
+  c.entryList = now();
+  ppFillQueue([db.passports.find(p => p.passport === passport)].filter(Boolean)); // BMET details from RAIMS, when signed in
+  return { msg: `${name} (${passport}) saved to BMET Passport Entry. Now enter the IC number and Send to BMET.` };
+};
 A["admin.clStatus"] = async (d, u) => {
   const r = await clStatusOne(d, u);
   if (d.status === "sent_bmet") syncSoon();
@@ -1020,6 +1036,7 @@ async function clStatusOne({ id: cid, status, text }, u) {
     return { msg: `Clearance status: ${t}.${c.agentId ? " Agent notified." : c.candidateId ? " Job seeker notified." : ""}` };
   }
   if (c.status === status) return {};
+  must(!(c.via === "agent" && !c.entryList && !["pending", "received", "rejected"].includes(status)), "Save to Entry List first, then Send to BMET.");
   must(!(c.via === "agent" && !c.icNo && !["pending", "received", "rejected"].includes(status)), "Enter the IC number from RAIMS first, then Send to BMET.");
   c.status = status; delete c.statusText; c.history.push({ s: status, at: now() });
   const payNow = c.agentId && ["final", "approved"].includes(status) && !["submitted", "paid"].includes(c.payment?.status) ? " Send the payment receipt from BMET clearance (Unpaid)." : "";
