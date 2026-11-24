@@ -223,6 +223,7 @@ function viewFor(u) {
     pub.jobs = db.jobs.filter(j => j.status === "active" || pub.applications.some(a => a.jobId === j.id));
     pub.clearances = db.clearances.filter(c => c.candidateId === u.id).map(cleanCl);
     pub.tickets = db.tickets.filter(t => t.candidateId === u.id); pub.flightsReady = !!db.wftt?.token;
+    pub.myPassports = myPassports(u);
   } else if (u.role === "employer") {
     const mine = db.jobs.filter(j => j.employerId === u.id);
     pub.jobs = [...live.filter(j => j.employerId !== u.id), ...mine];
@@ -3238,6 +3239,14 @@ async function ppFillRun() {
 }
 const PP_BMET = ["regNo", "finger", "available", "nameBn", "nid", "dob", "father", "mother", "mobile", "profession", "address", "training", "pdo", "issueDate", "expiryDate"];
 const PP_INFO = ["fatherName", "motherName", "dob", "birthPlace", "prevNationality", "nationality", "marital", "sect", "religion", "address", "mofaId", "oldMofaId", "issuePlace", "issueDate", "expiryDate", "validity"];
+// a passenger's mobile on a passport entry: digits (with an optional +), checked loosely; matched on the last 10 digits
+const ppMobile = v => { const m = String(v || "").replace(/[^\d+]/g, "").slice(0, 16); must(!m || m.replace(/\D/g, "").length >= 10, "Check the passenger's mobile number."); return m; };
+const last10 = v => String(v || "").replace(/\D/g, "").slice(-10);
+// the passports the office entered for this passenger: by the mobile on the entry, or by their passport number
+const myPassports = u => { const M = last10(u.profile?.phone || u.phone), P = String(u.profile?.passportNo || "").replace(/\s+/g, "").toUpperCase();
+  return db.passports.filter(p => (M.length === 10 && p.mobile && last10(p.mobile) === M) || (P.length >= 6 && p.passport === P))
+    .map(p => ({ id: p.id, name: p.name, passport: p.passport, country: p.country || "", lists: ppLists(p), vstatus: p.vstatus || {}, profession: p.fiji?.profession || "", at: p.at,
+      clearance: (() => { const c = db.clearances.find(c => String(worker(c.workerId)?.passport || c.passport || "").replace(/\s+/g, "").toUpperCase() === p.passport); return c ? { status: c.status, statusText: c.statusText || "", country: c.country } : null; })() })); };
 A["admin.passport"] = async (d, u) => {
   must(can(u, "clearance") || can(u, "visa"), "You do not have permission for this.", 403);
   const read = x => {
@@ -3248,7 +3257,8 @@ A["admin.passport"] = async (d, u) => {
     const info = x.info && typeof x.info === "object" ? Object.fromEntries(PP_INFO.map(k => [k, VISA_DATES.includes(k) ? okDay(x.info[k]) : str(x.info[k], k === "address" ? 1000 : 160)]).filter(([, v]) => v)) : undefined;
     // BMET details (from Pre EC Check, or typed): registration, finger, availability, Bangla name, NID, parents, mobile …
     const bm = x.bmet && typeof x.bmet === "object" ? Object.fromEntries(PP_BMET.map(k => [k, str(x.bmet[k], k === "address" ? 600 : 160)]).filter(([, v]) => v)) : undefined;
-    return { name, passport, country, gender, ref: ag ? agentName(ag) : str(x.ref, 120), agentId: ag ? ag.id : null, ...(info ? { info } : {}), ...(bm && Object.keys(bm).length ? { bmet: { ...bm, ...(x.bmet.checked ? { checked: now() } : {}) } } : {}) };
+    const ref = ag ? agentName(ag) : str(x.ref, 120), mobile = ag || ref ? "" : ppMobile(x.mobile); // no agent: the passenger's own mobile, so their portal account finds the passport
+    return { name, passport, country, gender, ref, agentId: ag ? ag.id : null, mobile, ...(info ? { info } : {}), ...(bm && Object.keys(bm).length ? { bmet: { ...bm, ...(x.bmet.checked ? { checked: now() } : {}) } } : {}) };
   };
   if (d.op === "add") {
     const list = (Array.isArray(d.rows) ? d.rows : [d]).slice(0, 100); must(list.length, "Add at least one passport.");
@@ -3303,15 +3313,15 @@ A["admin.passport"] = async (d, u) => {
     const fiji = { profession: str(x.profession, 80), experience: Math.max(0, Math.min(50, Number(x.experience) || 0)), returnee, prevCountry: returnee === "yes" ? str(x.prevCountry, 80) : "",
       submitted: x.submitted === "photocopy" ? "photocopy" : "original", docs: ["photo", "police", "medical"].filter(k => (x.docs || []).includes(k)), note: str(x.note, 1000), at: now(), by: u.name };
     must(fiji.profession, "Enter the profession."); must(returnee === "no" || fiji.prevCountry, "Enter the country the person came back from.");
-    const ref = ag ? agentName(ag) : str(d.ref, 120);
+    const ref = ag ? agentName(ag) : str(d.ref, 120), mobile = ag || ref ? "" : ppMobile(d.mobile);
     const old = d.id ? db.passports.find(p => p.id === d.id) : db.passports.find(p => p.passport === passport);
     must(!d.id || old, "Passport not found.");
     if (old) {
       must(!db.passports.some(p => p !== old && p.passport === passport), `Passport ${passport} is already in the list.`);
-      Object.assign(old, { name, passport, ref, agentId: ag ? ag.id : null, fiji, lists: [...new Set([...ppLists(old), "fiji"])], updated: now() }); if (!old.country) old.country = "Fiji";
+      Object.assign(old, { name, passport, ref, agentId: ag ? ag.id : null, mobile, fiji, lists: [...new Set([...ppLists(old), "fiji"])], updated: now() }); if (!old.country) old.country = "Fiji";
       return { msg: d.id ? "Passport updated." : `Fiji details added to passport ${passport}.` };
     }
-    db.passports.unshift({ id: id("pp"), name, passport, country: "Fiji", gender: "", ref, agentId: ag ? ag.id : null, fiji, lists: ["fiji"], by: u.name, at: now() });
+    db.passports.unshift({ id: id("pp"), name, passport, country: "Fiji", gender: "", ref, agentId: ag ? ag.id : null, mobile, fiji, lists: ["fiji"], by: u.name, at: now() });
     return { msg: `Passport ${passport} added.` };
   }
   must(false, "Unknown request.");

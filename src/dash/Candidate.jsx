@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import {
   LuLayoutDashboard, LuUser, LuFileText, LuBookmark, LuBell, LuMail, LuUpload, LuTrash2, LuStamp, LuSend, LuEye,
-  LuCamera, LuDownload, LuCircleCheck, LuCircle, LuArrowLeft, LuArrowRight, LuMapPin, LuBriefcase, LuSearch, LuTicket, LuPlaneTakeoff
+  LuCamera, LuDownload, LuCircleCheck, LuCircle, LuArrowLeft, LuArrowRight, LuMapPin, LuBriefcase, LuSearch, LuTicket, LuPlaneTakeoff, LuBookUser
 } from "react-icons/lu";
 import { store, commit, job, live, company, money, isHourly, fdate, kb, completeness, unread, bdtFmt, COUNTRIES, CATS } from "../store.js";
 import { FlightSearch, FlightRequest, TicketFlight } from "./Flights.jsx";
@@ -181,6 +181,26 @@ function ClearanceForm({ u }) {
   );
 }
 
+/* My passport: passports the office entered for this passenger (by the mobile number on the entry, or the passport number) */
+const LIST_NAME = { bmet: "BMET", ksa: "KSA (Saudi Arabia)", fiji: "Fiji" };
+function MyPassports() {
+  const list = store.S.myPassports || [];
+  return <>
+    <h2>My passport</h2>
+    <p className="muted small">Passports the office entered for you with your mobile number or passport number, and where each one stands.</p>
+    {list.length ? list.map(p => <div key={p.id} className="card mt14">
+      <div className="row between"><div><b data-notr>{p.name}</b><div className="muted small" data-notr>{[p.passport, p.country, p.profession].filter(Boolean).join(" · ")}</div></div>
+        <span className="ec-badge">{p.lists.map(k => LIST_NAME[k] || k).join(" · ")}</span></div>
+      <div className="tbl mt8"><table><thead><tr><th>File</th><th>Status</th><th>Updated</th></tr></thead><tbody>
+        {Object.keys(p.vstatus).length || p.clearance ? <>
+          {Object.entries(p.vstatus).map(([k, v]) => <tr key={k}><td>{LIST_NAME[k] || k}</td><td className="b">{v.s}</td><td className="nowrap">{fdate(v.at)}</td></tr>)}
+          {p.clearance && <tr><td>BMET clearance</td><td className="b">{p.clearance.statusText || p.clearance.status}</td><td>{p.clearance.country}</td></tr>}</>
+          : <tr><td colSpan={3} className="muted">Received by the office. The status shows here once work starts.</td></tr>}
+      </tbody></table></div>
+    </div>) : <Empty>No passport has been entered for you yet. When the office enters your passport with your mobile number, it shows here.</Empty>}
+  </>;
+}
+
 export function Candidate({ u }) {
   const S = store.S; const t = ui.tab.candidate;
   const apps = S.applications.filter(a => a.candidateId === u.id).sort((a, b) => b.appliedAt.localeCompare(a.appliedAt));
@@ -283,11 +303,12 @@ export function Candidate({ u }) {
     </>;
   }
 
+  if (t === "passport") body = <MyPassports />;
   if (t === "notifications") body = <NotifPanel u={u} />;
 
   return (
     <div className="wrap dash">
-      <Rail role="candidate" items={[["overview", "Overview", LuLayoutDashboard], ["profile", "Profile & CV", LuUser], ["applications", "Applications", LuFileText, apps.length], ["clearance", "BMET clearance", LuStamp, S.clearances.filter(c => c.candidateId === u.id && c.card).length], ["tickets", "Air tickets", LuTicket, (S.tickets || []).filter(x => x.candidateId === u.id && x.status === "booked").length], ["saved", "Saved jobs", LuBookmark, u.saved.length], ["alerts", "Job alerts", LuMail]]} />
+      <Rail role="candidate" items={[["overview", "Overview", LuLayoutDashboard], ["profile", "Profile & CV", LuUser], ["applications", "Applications", LuFileText, apps.length], ["passport", "My passport", LuBookUser, (S.myPassports || []).length], ["clearance", "BMET clearance", LuStamp, S.clearances.filter(c => c.candidateId === u.id && c.card).length], ["tickets", "Air tickets", LuTicket, (S.tickets || []).filter(x => x.candidateId === u.id && x.status === "booked").length], ["saved", "Saved jobs", LuBookmark, u.saved.length], ["alerts", "Job alerts", LuMail]]} />
       <div className="panel">{body}</div>
     </div>
   );

@@ -11,7 +11,7 @@ import { AgentDatalist, VStatusCell, vsRow } from "./AgentBook.jsx";
 
 const agentsList = () => store.S.users.filter(u => u.role === "agent").map(u => ({ id: u.id, name: u.agent?.business || u.name })).sort((a, b) => a.name.localeCompare(b.name));
 const DOCS = [["photo", "Photo"], ["police", "Police clearance"], ["medical", "Medical report"]];
-const blank = () => ({ name: "", passport: "", ref: "", agentId: "", fiji: { profession: "", experience: "", returnee: "no", prevCountry: "", submitted: "original", docs: [], note: "" } });
+const blank = () => ({ name: "", passport: "", ref: "", agentId: "", mobile: "", fiji: { profession: "", experience: "", returnee: "no", prevCountry: "", submitted: "original", docs: [], note: "" } });
 const day = iso => (iso ? new Date(iso).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" }) : "");
 
 export function FijiPassportEntry() {
@@ -24,10 +24,10 @@ export function FijiPassportEntry() {
   const known = !edit && f.passport.length >= 6 && passports().find(p => p.passport === f.passport.replace(/\s+/g, "").toUpperCase());
   const save = async e => {
     e.preventDefault(); setBusy(true);
-    const r = await act("admin.passport", { op: "fiji", id: edit, name: f.name, passport: f.passport, ref: f.ref, agentId: f.agentId, fiji: { ...J, experience: Number(J.experience) || 0 } }); setBusy(false);
+    const r = await act("admin.passport", { op: "fiji", id: edit, name: f.name, passport: f.passport, ref: f.ref, agentId: f.agentId, mobile: f.agentId || f.ref.trim() ? "" : f.mobile, fiji: { ...J, experience: Number(J.experience) || 0 } }); setBusy(false);
     if (r) { setF(blank()); setEdit(null); }
   };
-  const start = p => { setEdit(p.id); setF({ name: p.name, passport: p.passport, ref: p.ref || "", agentId: p.agentId || "", fiji: { ...blank().fiji, ...p.fiji, experience: String(p.fiji.experience ?? "") } }); window.scrollTo?.({ top: 0, behavior: "smooth" }); };
+  const start = p => { setEdit(p.id); setF({ name: p.name, passport: p.passport, ref: p.ref || "", agentId: p.agentId || "", mobile: p.mobile || "", fiji: { ...blank().fiji, ...p.fiji, experience: String(p.fiji.experience ?? "") } }); window.scrollTo?.({ top: 0, behavior: "smooth" }); };
   const docsText = p => DOCS.filter(([k]) => p.fiji.docs?.includes(k)).map(([, l]) => l);
   const excel = () => xlsx("Fiji passports", [["SL", "Full name", "Passport No.", "Profession", "Experience (years)", "Returnee", "Came back from", "Ref. / Agent", "Passport handed in", "Photo", "Police clearance", "Medical report", "Note", "Added"].map(v => ({ v, s: 1 })),
     ...list.map((p, i) => [i + 1, p.name, p.passport, p.fiji.profession, p.fiji.experience, p.fiji.returnee === "yes" ? "Yes" : "No", p.fiji.prevCountry, p.ref, p.fiji.submitted === "photocopy" ? "Photocopy" : "Original", ...DOCS.map(([k]) => (p.fiji.docs?.includes(k) ? "Yes" : "No")), p.fiji.note, day(p.fiji.at || p.at)])],
@@ -48,6 +48,7 @@ export function FijiPassportEntry() {
         <Field label="Reference / agent" hint={refAgent ? `Agent: ${refAgent.name}` : "Choose an agent or type who referred the person"}>
           <input type="text" value={f.ref} list="fj-agents" onChange={e => { const a = ags.find(x => x.name === e.target.value); set({ ref: e.target.value, agentId: a ? a.id : "" }); }} maxLength={120} placeholder="Agent or reference name" />
           <AgentDatalist id="fj-agents" /></Field>
+        {!f.agentId && !f.ref.trim() && <Field label="Passenger's mobile number" hint="No agent: when the passenger makes an account on the portal with this number, they see this passport and its status there."><input type="tel" inputMode="tel" value={f.mobile} maxLength={20} placeholder="01XXXXXXXXX" onChange={e => set({ mobile: e.target.value })} /></Field>}
         <Field label="Passport handed in"><div className="seg2" role="radiogroup" aria-label="Passport handed in">{[["original", "Original passport"], ["photocopy", "Photocopy"]].map(([k, l]) =>
           <button key={k} type="button" role="radio" aria-checked={J.submitted === k} className={J.submitted === k ? "on" : ""} onClick={() => setJ({ submitted: k })}>{l}</button>)}</div></Field>
         <Field label="Handed in with the passport" full><div className="fj-docs">{DOCS.map(([k, l]) => <label key={k} className="check"><input type="checkbox" checked={J.docs.includes(k)} onChange={e => setJ({ docs: e.target.checked ? [...J.docs, k] : J.docs.filter(x => x !== k) })} /> {l}</label>)}</div></Field>
@@ -63,7 +64,7 @@ export function FijiPassportEntry() {
         {list.map((p, i) => <tr key={p.id} {...vsRow(p, "fiji")}>
           <td className="num">{list.length - i}</td><td className="b" data-notr>{p.name}</td><td className="num" data-notr>{p.passport}</td><td>{p.fiji.profession}</td><td className="num">{`${p.fiji.experience || 0} yr`}</td>
           <td>{p.fiji.returnee === "yes" ? <span className="vf-pill info">{`Yes · ${p.fiji.prevCountry}`}</span> : <span className="muted">No</span>}</td>
-          <td data-notr>{p.ref || <span className="muted">Office</span>}</td>
+          <td data-notr>{p.ref || (p.mobile ? <span>{"Passenger · "}{p.mobile}</span> : <span className="muted">Office</span>)}</td>
           <td><VStatusCell p={p} list="fiji" /></td>
           <td><span className={`vf-pill ${p.fiji.submitted === "photocopy" ? "wait" : "ok"}`}>{p.fiji.submitted === "photocopy" ? "Photocopy" : "Original"}</span></td>
           <td>{docsText(p).length ? docsText(p).join(", ") : <span className="muted">—</span>}</td>
