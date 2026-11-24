@@ -770,16 +770,18 @@ function DocMenu({ files }) {
   }, [open]);
   const toggle = e => {
     if (open) return setOpen(null);
-    const r = e.currentTarget.getBoundingClientRect(), W = 240, H = 16 + files.length * 52;
+    const r = e.currentTarget.getBoundingClientRect(), W = 300, H = 16 + files.length * 52;
     const left = Math.max(8, Math.min(window.innerWidth - W - 8, document.dir === "rtl" ? r.left : r.right - W));
     const top = r.bottom + 4 + H > window.innerHeight ? Math.max(8, r.top - 4 - H) : r.bottom + 4;
     setOpen({ left, top, width: W });
   };
   return (
     <div className="ec-dl" ref={ref}>
-      <button className="btn sm" aria-expanded={!!open} onClick={toggle}><LuDownload /> Downloads <span className="ec-dl-n">{files.length}</span></button>
+      <button className="btn sm" aria-expanded={!!open} onClick={toggle}><LuDownload /> Documents <span className="ec-dl-n">{files.length}</span></button>
       {open && <div className="ec-dl-menu" role="menu" style={open}>
-        {files.map(([l, x]) => <button key={l} role="menuitem" className="ec-dl-item" title={x.name} onClick={() => dlFile(x.data, x.name)}><LuDownload /> <span>{l}</span><small data-notr>{x.name}</small></button>)}
+        {files.map(([l, x]) => <div key={l} className="ec-dl-row">
+          <button role="menuitem" className="ec-dl-item" title={x.name} onClick={() => dlFile(x.data, x.name)}><LuDownload /> <span>{l}</span><small data-notr>{x.name}</small></button>
+          <button role="menuitem" className="ec-dl-view" title={`View ${l}`} aria-label={`View ${l}`} onClick={() => { setOpen(null); openModal("docView", { src: x.data, name: x.name, label: l }); }}><LuEye /> View</button></div>)}
       </div>}
     </div>
   );

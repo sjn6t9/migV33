@@ -9,7 +9,7 @@ import { ShareJob } from "./Share.jsx";
 import { store, subscribe, getVersion, touch, me, user, job, unread, PAGES, fdate, kb, candOf, worker, clPerson, LABEL, CL_STAGES, CL_DOCS , findMember, bdtFmt, balanceOf } from "./store.js";
 import { openModal, closeModal, signOut, toast, formData, setClStatus, downloadFile, fileExt, act, afterLogin, readUpload, DOC_TYPES, confirmBox, dashHash, setTab } from "./actions.js";
 import { Logo, Toast, ModalFrame, Pill, ClPipe, CardDownload, Avatar, Drawer } from "./ui.jsx";
-import { CardAdmin, AgentDocsView } from "./dash/shared.jsx";
+import { CardAdmin, AgentDocsView, DocView } from "./dash/shared.jsx";
 import { Home, Jobs, JobDetail, Services, About, Blog, Post, Contact, Track, Setup, Team, waLink } from "./pages/Public.jsx";
 import { Dashboard } from "./dash/Dashboard.jsx";
 import { ClPayForm } from "./dash/Agent.jsx";
@@ -376,7 +376,7 @@ function ModalHost() {
   const m = store.ui.modal; if (!m) return null;
   const close = closeModal;
   return (
-    <ModalFrame onClose={close} wide={m.type === "share" || m.type === "vcard" || m.type === "mrEntry" || m.type === "dueReceipt" || m.type === "mrView" || m.type === "mrAccount" || m.type === "salaryPay" || m.type === "salaryView" || m.type === "visaFile"} className={m.type === "memberCheck" ? "modal-verify" : ""}>
+    <ModalFrame onClose={close} wide={m.type === "docView" || m.type === "share" || m.type === "vcard" || m.type === "mrEntry" || m.type === "dueReceipt" || m.type === "mrView" || m.type === "mrAccount" || m.type === "salaryPay" || m.type === "salaryView" || m.type === "visaFile"} className={m.type === "memberCheck" ? "modal-verify" : ""}>
       {m.type === "confirm" && <>
         <h3>Please confirm</h3><p className="confirm-msg">{m.msg}</p>
         <div className="row"><button className="btn pri" autoFocus onClick={() => { closeModal(); m.onYes(); }}>{m.yes}</button><button className="btn" onClick={close}>Cancel</button></div>
@@ -395,6 +395,7 @@ function ModalHost() {
       {m.type === "wafidHelp" && <WafidBookmarkHelp />}
       {m.type === "visaFile" && <VisaFileForm key={m.id || "new"} id={m.id} />}
       {m.type === "agentBook" && <AgentBookEdit id={m.id} />}
+      {m.type === "docView" && <DocView src={m.src} name={m.name} label={m.label} />}
       {m.type === "dueReceipt" && <DueReceipt agentId={m.agentId} book={m.book} />}
       {m.type === "mrRefund" && <MrRefund no={m.no} />}
       {m.type === "mrEntry" && <MrEntry key={m.aid || m.pp || m.agentId || m.book || "new"} aid={m.aid} pp={m.pp} agentId={m.agentId} book={m.book} />}
@@ -532,7 +533,10 @@ function CandidateCard({ aid }) {
 
 function ClFile({ c, f, label }) {
   const p = clPerson(c); const fname = `${label.replace(/\s+/g, "-")}-${(p.passport || c.id).replace(/[^\w-]/g, "")}.${fileExt(f)}`;
-  return <div className="row between filerow"><span><LuFileText /> <b>{label}</b> <span className="muted small">{f.name} · {kb(f.size)}</span></span><button className="btn sm" onClick={() => downloadFile(f.data, fname)}><LuDownload /> Download</button></div>;
+  const [view, setView] = React.useState(false);
+  return <div className="stack6"><div className="row between filerow"><span><LuFileText /> <b>{label}</b> <span className="muted small">{f.name} · {kb(f.size)}</span></span>
+    <span className="row6"><button className={`btn sm${view ? " pri" : ""}`} aria-expanded={view} onClick={() => setView(!view)}><LuEye /> {view ? "Hide" : "View"}</button><button className="btn sm" onClick={() => downloadFile(f.data, fname)}><LuDownload /> Download</button></span></div>
+    {view && <DocView src={f.data} name={fname} label={label} />}</div>;
 }
 
 /* admin: add a missing passport / visa / contract copy to a clearance file */

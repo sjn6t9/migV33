@@ -1,5 +1,5 @@
 import React from "react";
-import { LuPlus, LuPencil, LuRotateCcw, LuEye, LuCheck, LuX, LuTrash2, LuUpload, LuSend, LuDownload, LuCamera, LuFileText, LuIdCard, LuFileBadge, LuShieldCheck, LuSearch } from "react-icons/lu";
+import { LuPlus, LuPencil, LuRotateCcw, LuEye, LuCheck, LuX, LuTrash2, LuUpload, LuSend, LuDownload, LuCamera, LuFileText, LuIdCard, LuFileBadge, LuShieldCheck, LuSearch, LuExternalLink } from "react-icons/lu";
 import { store, num, fdate, kb, bdtFmt, candOf, clPerson, job, STAGES, LABEL, CARD_TYPES, COUNTRIES, CATS, TYPES, BENEFITS, HOURLY } from "../store.js";
 import { openModal, setAppStatus, confirmPayment, confirmBox, toast, downloadFile, cardFileName, formData, act } from "../actions.js";
 import { Pill, Empty, Avatar } from "../ui.jsx";
@@ -170,15 +170,16 @@ export function AgentDocUploads({ u }) {
 }
 const DOC_TYPES_LOCAL = ".pdf,.jpg,.jpeg,.png,.webp";
 export function AgentDocsView({ u }) {
-  const docs = u.agent?.docs || {};
+  const docs = u.agent?.docs || {}, [view, setView] = React.useState("");
   return (
     <>
       <div className="row"><Avatar name={u.name} src={docs.photo?.data} size={64} /><div><h3>{u.agent?.business}</h3><div className="muted small">{u.name} · {u.agent?.phone} · {u.email}</div><Pill s={u.status} /></div></div>
       <table className="mt14"><tbody>{[["District", u.agent?.district], ["Office address", u.agent?.address], ["Registered", fdate(u.created)]].map(([k, v]) => <tr key={k}><th>{k}</th><td>{v || "—"}</td></tr>)}</tbody></table>
       <h4 className="mt16 mb6">Documents</h4>
-      <div className="stack8">{AGENT_DOCS.map(([k, label, Icon]) => { const f = docs[k]; return (
-        <div key={k} className="row between filerow"><span><Icon /> <b>{label}</b> <span className="muted small">{f ? `${f.name} · ${kb(f.size)}` : "Not uploaded"}</span></span>
-          {f && <button className="btn sm" onClick={() => downloadFile(f.data, `${label.replace(/\s+/g, "-")}-${(u.agent?.business || "agent").replace(/[^\w-]/g, "")}.${fileExt(f)}`)}><LuDownload /> Download</button>}</div>); })}</div>
+      <div className="stack8">{AGENT_DOCS.map(([k, label, Icon]) => { const f = docs[k], fn = f ? `${label.replace(/\s+/g, "-")}-${(u.agent?.business || "agent").replace(/[^\w-]/g, "")}.${fileExt(f)}` : ""; return (
+        <div key={k} className="stack6"><div className="row between filerow"><span><Icon /> <b>{label}</b> <span className="muted small">{f ? `${f.name} · ${kb(f.size)}` : "Not uploaded"}</span></span>
+          {f && <span className="row6"><button className={`btn sm${view === k ? " pri" : ""}`} onClick={() => setView(view === k ? "" : k)}><LuEye /> {view === k ? "Hide" : "View"}</button><button className="btn sm" onClick={() => downloadFile(f.data, fn)}><LuDownload /> Download</button></span>}</div>
+          {f && view === k && <DocView src={f.data} name={fn} label={label} />}</div>); })}</div>
     </>
   );
 }
@@ -280,4 +281,29 @@ function TemplateEditor({ t, onClose, onSaved }) {
       <div className="full row"><button type="button" className="btn pri" onClick={save}><LuCheck /> {t ? "Save template" : "Add job"}</button><button type="button" className="btn" onClick={onClose}>Cancel</button></div>
     </div>
   );
+}
+
+
+/* View a stored document inside the site: pictures fit the window, PDFs open in the browser's own viewer (all pages) */
+export function DocView({ src, name, label }) {
+  const [st, setSt] = React.useState({ url: "", type: "", err: "" });
+  React.useEffect(() => { let url = "", gone = false;
+    (async () => { try { const r = await fetch(src, { credentials: "same-origin" }); if (!r.ok) throw 0;
+      const b = await r.blob(), ext = String(name || "").split(".").pop().toLowerCase();
+      const type = b.type || (ext === "pdf" ? "application/pdf" : /^(jpe?g|png|webp|gif)$/.test(ext) ? `image/${ext === "jpg" ? "jpeg" : ext}` : "");
+      url = URL.createObjectURL(type && type !== b.type ? new Blob([b], { type }) : b); if (!gone) setSt({ url, type, err: "" }); }
+      catch { if (!gone) setSt({ url: "", type: "", err: "The document could not be opened. You may not have access to it." }); } })();
+    return () => { gone = true; if (url) URL.revokeObjectURL(url); }; }, [src]);
+  const img = st.type.startsWith("image/"), pdf = st.type === "application/pdf";
+  return <div className="doc-view">
+    <div className="doc-view-head"><div><h3>{label || "Document"}</h3><small className="muted" data-notr>{name}</small></div>
+      <div className="row6">{st.url && <a className="btn sm" href={st.url} target="_blank" rel="noopener noreferrer"><LuExternalLink /> Open in new tab</a>}
+        <button className="btn sm" onClick={() => downloadFile(src, name)}><LuDownload /> Download</button></div></div>
+    <div className="doc-view-body">
+      {st.err ? <p className="notice">{st.err}</p> : !st.url ? <p className="muted">Opening…</p>
+        : img ? <img src={st.url} alt={label || name} />
+        : pdf ? <iframe src={st.url + "#view=FitH"} title={label || name} />
+        : <p className="muted">This file type cannot be shown here. Use Download.</p>}
+    </div>
+  </div>;
 }
