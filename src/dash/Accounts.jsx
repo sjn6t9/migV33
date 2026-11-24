@@ -383,7 +383,7 @@ export function MrRefund({ no: no0 }) {
 }
 
 /* Payments & receipts › Other accounts: accounts by name, only for the record (not in the main account or the bosses' accounts) */
-export function OtherAccounts({ own }) {
+export function OtherAccounts({ own, title }) {
   const K = (own ? store.S.myKhata : store.S.khata) || [], ui = store.ui, O = own ? { own: true } : {};
   const [q, setQ] = React.useState(""), [sel, setSel] = React.useState(ui.khataSel || null), [nf, setNf] = React.useState(null), [ef, setEf] = React.useState(null), [busy, setBusy] = React.useState(false);
   const acc = sel && K.find(x => x.id === sel), pick = id => { ui.khataSel = id; setSel(id); setEf(null); };
@@ -401,7 +401,7 @@ export function OtherAccounts({ own }) {
         const rows = [...acc.entries].sort((x, y) => String(x.date).localeCompare(String(y.date)) || String(x.at).localeCompare(String(y.at)))
       .map(e => ({ id: e.id, date: e.date, at: e.at, details: e.desc || (e.type === "gave" ? "Given" : "Received"), ref: e.ref, rate: way(e.method), debit: e.type === "gave" ? e.amount : 0, credit: e.type === "got" ? e.amount : 0, e }));
     return <>
-      <div className="ec-head"><div><button className="btn sm link" onClick={() => pick(null)}><LuChevronLeft /> {own ? "My other accounts" : "Other accounts"}</button>
+      <div className="ec-head"><div><button className="btn sm link" onClick={() => pick(null)}><LuChevronLeft /> {title || (own ? "My other accounts" : "Other accounts")}</button>
         <h2 data-notr>{acc.name}</h2><p className="muted small" data-notr>{[acc.mobile, acc.note].filter(Boolean).join(" · ") || "Only for the record: not in the main account or the bosses' accounts."}</p></div>
         <div className="row6"><button className="btn" onClick={() => setNf({ id: acc.id, name: acc.name, mobile: acc.mobile || "", note: acc.note || "" })}><LuPencil /> Edit</button>
           <button className="btn link danger" onClick={() => confirmBox(`Remove the account ${acc.name}${acc.entries.length ? ` and its ${acc.entries.length} entries` : ""}?`, async () => { if (await act("admin.khata", { op: "remove", ...O, id: acc.id })) pick(null); }, "Remove")}><LuTrash2 /></button></div></div>
@@ -421,7 +421,7 @@ export function OtherAccounts({ own }) {
     </>;
   }
   return <>
-    <div className="ec-head"><div><h2>{own ? "My other accounts" : "Other accounts"}</h2><p className="muted small">{own ? "Your own accounts by name, only for the record. Only you see them; they are not added to the main account or to your account with the office." : "Keep an account by name, only for the record. It is not added to the main account or the bosses' accounts."}</p></div>
+    <div className="ec-head"><div><h2>{title || (own ? "My other accounts" : "Other accounts")}</h2><p className="muted small">{own ? (title ? "Your personal accounts by name, only for the record. Only you see them; they are not added to any office account." : "Your own accounts by name, only for the record. Only you see them; they are not added to the main account or to your account with the office.") : "Keep an account by name, only for the record. It is not added to the main account or the bosses' accounts."}</p></div>
       <button className="btn pri" onClick={() => setNf({ name: q.trim(), mobile: "", note: "" })}><LuPlus /> New account</button></div>
     {accForm}
     <div className="card mt14">

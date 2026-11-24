@@ -248,7 +248,7 @@ function viewFor(u) {
     });
     if (can(u, "jobs")) pub.jobTemplates = db.jobTemplates;
     if (can(u, "office")) pub.office = { entries: db.office.entries, auto: officeAuto(), leaders: leaders(), from: db.office.from || "" };
-    { const me = leaders().find(x => x.uid === u.id); if (me) pub.myKhata = db.khata.filter(x => x.owner === me.k); if (me) pub.myMoney = { entries: [...db.office.entries.filter(e => e.people?.includes(me.k)), ...officeAuto().filter(e => personOf(e.method) === me.k)], me }; }
+    { const me = leaders().find(x => x.uid === u.id); if (isStaffRole(u)) { const ow = me ? me.k : `u:${u.id}`; pub.myKhata = db.khata.filter(x => x.owner === ow); } if (me) pub.myMoney = { entries: [...db.office.entries.filter(e => e.people?.includes(me.k)), ...officeAuto().filter(e => personOf(e.method) === me.k)], me }; }
     if (can(u, "ledger") || can(u, "office") || can(u, "receipts")) pub.leaders = leaders().map(({ k, name, title }) => ({ k, name, title }));
     if (can(u, "clearance") || u.role === "agent") pub.raimsReady = !!db.raims?.pass;
     if (can(u, "tickets")) { pub.wftt = db.wftt ? { ...(u.role === "admin" ? { email: db.wftt.email } : {}), since: db.wftt.since || null, ready: !!db.wftt.token, markup: Number(db.settings.ticketMarkup || 0) } : null; pub.flightsReady = !!db.wftt?.token; }
@@ -2857,8 +2857,9 @@ A["admin.office"] = async (d, u) => {
 /* Payments & receipts › Other accounts: an account by name, kept only for the record (not in the main account, not in the bosses' accounts) */
 A["admin.khata"] = async (d, u) => {
   // own: the MD / a Director / the Chairman keeps their own accounts (only they see them); otherwise the office's accounts
-  const owner = d.own ? leaders().find(x => x.uid === u.id)?.k : null;
-  if (d.own) must(isStaffRole(u) && owner, "Only the Managing Director, a Director or the Chairman can do this.", 403);
+  // own: personal accounts (only that person sees them): the MD / a Director / the Chairman under their key, any other admin / staff ID under its own
+  const owner = d.own && isStaffRole(u) ? (leaders().find(x => x.uid === u.id)?.k || `u:${u.id}`) : null;
+  if (d.own) must(owner, "Not allowed.", 403);
   else must(can(u, "office") || can(u, "receipts") || can(u, "ledger"), "You do not have permission for this.", 403);
   const K = db.khata.filter(x => (x.owner || null) === owner), acc = d.id ? K.find(x => x.id === d.id) : null;
   if (d.op === "add" || d.op === "edit") {

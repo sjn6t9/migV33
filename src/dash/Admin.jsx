@@ -45,14 +45,14 @@ const PAY_SUB = [["receipts", "Money receipts", LuReceipt], ["ledger", "Agent ac
 const WEB_SUB = [["content", "Website content", LuImage], ["headlines", "Headlines", LuMegaphone], ["about", "About page", LuInfo], ["slides", "Home slideshow", LuGalleryHorizontal], ["blog", "Blog", LuNewspaper], ["seo", "SEO", LuSearch], ["settings", "Site settings", LuSettings], ["staff", "Staff & permissions", LuUserCog], ["staffhist", "Staff history", LuHistory]];
 const TABS = [
   ["overview", "Overview", LuLayoutDashboard], ["users", "Accounts", LuUsers], ["jobs", "Job moderation", LuBriefcase], ["apps", "Applications", LuFileText],
-  ["clearance", "BMET clearance", LuStamp], ["passports", "Passport Entry", LuBookUser], ["agents", "Agents", LuContact], ["visa", "Visa applications", LuPlaneTakeoff], ["tickets", "Air tickets", LuTicket], ["pay", "Payments & receipts", LuReceipt], ["mysalary", "My salary", LuWallet], ["mymoney", "Money with me", LuHandCoins], ["attendance", "Office attendance", LuCalendarCheck],
+  ["clearance", "BMET clearance", LuStamp], ["passports", "Passport Entry", LuBookUser], ["agents", "Agents", LuContact], ["visa", "Visa applications", LuPlaneTakeoff], ["tickets", "Air tickets", LuTicket], ["pay", "Payments & receipts", LuReceipt], ["mysalary", "My salary", LuWallet], ["myaccounts", "My Accounts", LuNotebookPen], ["mymoney", "Money with me", LuHandCoins], ["attendance", "Office attendance", LuCalendarCheck],
   ["chat", "Live chat", LuMessagesSquare], ["messages", "Messages", LuMessageSquare], ["web", "Website", LuGlobe]
 ];
 
 export function Admin({ u }) {
   const S = store.S; const R = u.role; const isAdmin = R === "admin";
   const chatUnread = useInboxUnread(isAdmin || !!u.perms?.includes("chat"));
-  const can0 = k => k === "agents" ? ["clearance", "receipts", "ledger", "office", "visa"].some(can0) : k === "passports" ? can0("clearance") || can0("visa") : k === "mymoney" ? !!S.myMoney : k === "overview" || k === "mysalary" || k === "attendance" || k === "mysettings" || isAdmin || (k !== "staff" && k !== "staffhist" && u.perms?.includes(k === "slides" || k === "about" ? "content" : k));
+  const can0 = k => k === "agents" ? ["clearance", "receipts", "ledger", "office", "visa"].some(can0) : k === "passports" ? can0("clearance") || can0("visa") : k === "mymoney" ? !!S.myMoney : k === "myaccounts" ? !S.myMoney : k === "overview" || k === "mysalary" || k === "attendance" || k === "mysettings" || isAdmin || (k !== "staff" && k !== "staffhist" && u.perms?.includes(k === "slides" || k === "about" ? "content" : k));
   // employer packages only matter when paid job posting is on (or orders are still open)
   const paySubs = PAY_SUB.filter(([k]) => (k === "statements" ? ["ledger", "receipts", "salary", "office"].some(can0) : k === "txhist" || k === "khata" ? ["office", "ledger", "receipts"].some(can0) : can0(k)) && (k !== "packages" || S.settings.paidPosting || S.orders.some(o => o.status === "pending")));
   const webSubs = WEB_SUB.filter(([k]) => can0(k));
@@ -412,6 +412,7 @@ export function Admin({ u }) {
   if (t === "khata") body = <OtherAccounts />;
   if (t === "salary") body = <SalaryAdmin />;
   if (t === "mysalary") body = <MySalary />;
+  if (t === "myaccounts") body = <OtherAccounts own title="My Accounts" />;
   if (t === "mymoney") body = <MoneyWithMe />;
   if (t === "mysettings") body = <MySettings />;
   if (t === "headlines") body = <HeadlinesAdmin />;
