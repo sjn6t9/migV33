@@ -22,10 +22,10 @@ function RateCell({ r, onSave }) {
 }
 
 const stime = iso => { try { return new Date(iso).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", timeZone: "Asia/Dhaka" }); } catch { return ""; } };
-export function Statement({ title, sub, kind = "PAYMENT HISTORY", rows, actions, onRate, cash, heads, balText, tools, times, day, rateHead, empty = "No entries yet." }) {
+export function Statement({ title, sub, kind = "PAYMENT HISTORY", rows, actions, onRate, cash, heads, balText, tools, times, day, rateHead, plain, empty = "No entries yet." }) {
   const [from0, setFrom] = React.useState(""); const [to0, setTo] = React.useState("");
   const from = day || from0, to = day || to0; // day: one day only (the main account's daily view)
-  const calc = withBalance(rows, from, to); const st = { title, sub, kind, from, to, calc, cash, times, heads, rateHead, balText };
+  const calc = withBalance(rows, from, to); const st = { title, sub, kind, from, to, calc, cash, times, heads, rateHead, balText, plain };
   const run = f => Promise.resolve(f(st)).catch(e => toast(e.message || "The file could not be made."));
   const b = calc.balance;
   const acts = actions ? calc.rows.map(r => (r.opening ? null : actions(r))) : [], hasActs = acts.some(Boolean); // no empty column when no row has a button
@@ -33,7 +33,8 @@ export function Statement({ title, sub, kind = "PAYMENT HISTORY", rows, actions,
     <div className="st-sum">
       <div><span>{heads?.[0] || (cash ? "Money in" : "Total debit")}</span><b className="num">{amt(calc.debit)}</b></div>
       <div><span>{heads?.[1] || (cash ? "Money out" : "Total credit")}</span><b className="num">{amt(calc.credit)}</b></div>
-      <div className={(cash && !balText ? b < 0 : b > 0) ? "due" : "ok"}><span>{balText ? balText(b) : balWord(b, cash)}</span><b className="num">{amt(cash && !balText ? b : Math.abs(b))}</b></div>
+      {plain ? <div><span>Balance</span><b className="num">{amt(b)}</b></div>
+        : <div className={(cash && !balText ? b < 0 : b > 0) ? "due" : "ok"}><span>{balText ? balText(b) : balWord(b, cash)}</span><b className="num">{amt(cash && !balText ? b : Math.abs(b))}</b></div>}
     </div>
     <div className="st-tools">
       {!day && <><label className="st-date">From <input type="date" value={from} onChange={e => setFrom(e.target.value)} /></label>
@@ -51,10 +52,10 @@ export function Statement({ title, sub, kind = "PAYMENT HISTORY", rows, actions,
         <RateCell r={r} onSave={onRate} />
         <td className="num r">{r.debit ? amt(r.debit) : ""}</td>
         <td className="num r">{r.credit ? amt(r.credit) : ""}</td>
-        <td className={`num r b ${(cash ? r.balance < 0 : r.balance > 0) ? "st-due" : "st-ok"}`}>{r.balance == null ? "—" : amt(r.balance)}</td>
+        <td className={`num r b ${plain ? "" : (cash ? r.balance < 0 : r.balance > 0) ? "st-due" : "st-ok"}`}>{r.balance == null ? "—" : amt(r.balance)}</td>
         {hasActs && <td className="st-act">{acts[i]}</td>}
       </tr>)}
-      <tr className="st-total"><td /><td>Total</td><td /><td className="num r">{amt(calc.debit)}</td><td className="num r">{amt(calc.credit)}</td><td className={`num r ${(cash && !balText ? b < 0 : b > 0) ? "st-due" : "st-ok"}`}>{cash ? amt(b) : `${amt(Math.abs(b))} ${b > 0 ? "Due" : b < 0 ? "Adv." : ""}`}</td>{hasActs && <td />}</tr>
+      <tr className="st-total"><td /><td>Total</td><td /><td className="num r">{amt(calc.debit)}</td><td className="num r">{amt(calc.credit)}</td><td className={`num r ${plain ? "" : (cash && !balText ? b < 0 : b > 0) ? "st-due" : "st-ok"}`}>{cash || plain ? amt(b) : `${amt(Math.abs(b))} ${b > 0 ? "Due" : b < 0 ? "Adv." : ""}`}</td>{hasActs && <td />}</tr>
     </tbody></table></div> : <Empty>{day ? "No entries on this day." : from || to ? "No entries in these dates." : empty}</Empty>}
   </div>;
 }

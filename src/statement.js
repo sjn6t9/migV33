@@ -81,9 +81,9 @@ export async function statementCanvases(st) {
       g.fillText(`Period: ${st.from ? sdate(st.from) : "Start"} – ${st.to ? sdate(st.to) : sdate(st.at || localDay())}`, qx - 18, 274);
       g.fillText(`${st.no ? "Issued" : "Printed"}: ${new Date(st.at || Date.now()).toLocaleString("en-GB", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })}`, qx - 18, 304);
       // totals
-      const bad = st.balText ? balance > 0 : isBad(balance, st.cash);
-      const bx = [[st.cash ? "Money in" : "Total debit", amt(debit), INK], [st.cash ? "Money out" : "Total credit", amt(credit), INK], [st.balText ? st.balText(balance) : balWord(balance, st.cash), amt(Math.abs(balance)), bad ? RED : GREEN]];
-      bx.forEach(([l, v, col], k) => { const w = (PW - 2 * M - 40) / 3, x = M + k * (w + 20); rr(g, x, 330, w, 84, 12); g.fillStyle = k === 2 ? (bad ? "#fdecee" : "#e6f6ea") : TINT; g.fill();
+      const bad = st.plain ? null : st.balText ? balance > 0 : isBad(balance, st.cash);
+      const bx = [[st.cash ? "Money in" : "Total debit", amt(debit), INK], [st.cash ? "Money out" : "Total credit", amt(credit), INK], [st.plain ? "Balance" : st.balText ? st.balText(balance) : balWord(balance, st.cash), st.plain ? amt(balance) : amt(Math.abs(balance)), st.plain ? INK : bad ? RED : GREEN]];
+      bx.forEach(([l, v, col], k) => { const w = (PW - 2 * M - 40) / 3, x = M + k * (w + 20); rr(g, x, 330, w, 84, 12); g.fillStyle = k === 2 && !st.plain ? (bad ? "#fdecee" : "#e6f6ea") : TINT; g.fill();
         g.textAlign = "left"; g.fillStyle = MUTED; g.font = `600 17px ${F}`; g.fillText(l + " (BDT)", x + 18, 362); g.fillStyle = col; g.font = `800 28px ${F}`; g.fillText(v, x + 18, 400); });
       y = 446;
     } else {
@@ -104,7 +104,7 @@ export async function statementCanvases(st) {
       let cx = M;
       cells.forEach((v, ci) => {
         const [, w, al] = COLS[ci]; g.textAlign = al === "r" ? "right" : "left";
-        g.fillStyle = ci === 5 && r.balance != null ? (isBad(r.balance, st.cash) ? RED : GREEN) : r.pending ? MUTED : INK;
+        g.fillStyle = ci === 5 && r.balance != null && !st.plain ? (isBad(r.balance, st.cash) ? RED : GREEN) : r.pending ? MUTED : INK;
         g.font = `${ci === 1 || ci === 5 || r.opening ? 700 : 500} 17px ${F}`;
         if (ci === 0 && tm) { g.fillText(String(v), cx + 10, y + 17); g.font = `500 12px ${F}`; g.fillStyle = MUTED; g.fillText(tm, cx + 10, y + 32); cx += w; return; }
         g.fillText(clip(g, String(v ?? ""), w - 20), al === "r" ? cx + w - 10 : cx + 10, y + 24); cx += w;
@@ -117,7 +117,7 @@ export async function statementCanvases(st) {
       g.fillStyle = INK; g.font = `800 18px ${F}`; g.textAlign = "left"; g.fillText("Total", M + COLS[0][1] + 10, y + 26);
       g.textAlign = "right"; const x3 = M + COLS[0][1] + COLS[1][1] + COLS[2][1];
       g.fillText(amt(debit), x3 + COLS[3][1] - 10, y + 26); g.fillText(amt(credit), x3 + COLS[3][1] + COLS[4][1] - 10, y + 26);
-      g.fillStyle = isBad(balance, st.cash) ? RED : GREEN; g.fillText(st.cash ? amt(balance) : `${amt(Math.abs(balance))} ${balance > 0 ? "Due" : balance < 0 ? "Adv." : ""}`.trim(), PW - M - 10, y + 26);
+      g.fillStyle = st.plain ? INK : isBad(balance, st.cash) ? RED : GREEN; g.fillText(st.cash || st.plain ? amt(balance) : `${amt(Math.abs(balance))} ${balance > 0 ? "Due" : balance < 0 ? "Adv." : ""}`.trim(), PW - M - 10, y + 26);
     }
     g.fillStyle = GREEN; g.fillRect(0, PH - 40, PW, 40); g.fillStyle = "#fff"; g.textAlign = "center"; g.font = `500 16px ${F}`;
     g.fillText(`Computer generated statement · ${OFFICE.name} · ${OFFICE.site} · Page ${pi + 1} of ${pages.length}`, PW / 2, PH - 14);
@@ -142,6 +142,6 @@ export function statementXlsx(st) {
     [`Period: ${st.from ? sdate(st.from) : "start"} to ${sdate(st.to || localDay())}`], [],
     ["DATE", "Details", st.rateHead || "RATE", st.heads?.[0] || "Debit", st.heads?.[1] || "Credit", "Balance"].map(v => ({ v, s: 1 })),
     ...rows.map(r => [sdate(r.date) + (st.times && r.at && !r.opening ? " " + stime(r.at) : ""), r.details + (r.pending ? " (pending)" : ""), r.rate, r.debit ? { v: r.debit, s: 2 } : "", r.credit ? { v: r.credit, s: 2 } : "", r.balance == null ? "" : { v: r.balance, s: 2 }]),
-    [], ["", { v: "Total", s: 1 }, "", { v: debit, s: 4 }, { v: credit, s: 4 }, { v: balance, s: 4 }], ["", { v: st.balText ? st.balText(balance) : balWord(balance, st.cash), s: 1 }, "", "", "", { v: st.cash && !st.balText ? balance : Math.abs(balance), s: 4 }]
+    [], ["", { v: "Total", s: 1 }, "", { v: debit, s: 4 }, { v: credit, s: 4 }, { v: balance, s: 4 }], ["", { v: st.plain ? "Balance" : st.balText ? st.balText(balance) : balWord(balance, st.cash), s: 1 }, "", "", "", { v: (st.cash && !st.balText) || st.plain ? balance : Math.abs(balance), s: 4 }]
   ], [11, 46, 14, 14, 14, 14], `${fileName(st)}.xlsx`);
 }

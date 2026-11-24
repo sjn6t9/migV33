@@ -214,6 +214,12 @@ export function TransactionHistory() {
   </>;
 }
 export function MoneyWithMe() {
+  const [tab, setTab] = React.useState(store.ui.mwmTab || "mine"), go = k => { store.ui.mwmTab = k; setTab(k); };
+  const nav = <nav className="pay-tabs" aria-label="Money with me">{[["mine", "My account with the office"], ["other", "My other accounts"]].map(([k, l]) => <button key={k} className={tab === k ? "on" : ""} aria-current={tab === k ? "page" : undefined} onClick={() => go(k)}>{l}</button>)}</nav>;
+  if (tab === "other") return <>{nav}<OtherAccounts own /></>;
+  return <>{nav}<MoneyMine /></>;
+}
+function MoneyMine() {
   const M = store.S.myMoney || { entries: [] }, me = user(store.S.session) || {}, mk = M.me?.k, key = `p:${mk}`;
   const pend = M.entries.filter(e => e.status === "pending" && !e.accepted?.includes(mk));
   const mine = holdings(M.entries.filter(okEntry)).find(h => h.key === key);
@@ -377,15 +383,14 @@ export function MrRefund({ no: no0 }) {
 }
 
 /* Payments & receipts › Other accounts: accounts by name, only for the record (not in the main account or the bosses' accounts) */
-export function OtherAccounts() {
-  const K = store.S.khata || [], ui = store.ui;
+export function OtherAccounts({ own }) {
+  const K = (own ? store.S.myKhata : store.S.khata) || [], ui = store.ui, O = own ? { own: true } : {};
   const [q, setQ] = React.useState(""), [sel, setSel] = React.useState(ui.khataSel || null), [nf, setNf] = React.useState(null), [ef, setEf] = React.useState(null), [busy, setBusy] = React.useState(false);
   const acc = sel && K.find(x => x.id === sel), pick = id => { ui.khataSel = id; setSel(id); setEf(null); };
   const bal = a => a.entries.reduce((t, e) => t + (e.type === "gave" ? e.amount : -e.amount), 0);
-  const word = b => (b > 0.004 ? "They owe the office" : b < -0.004 ? "The office owes them" : "Settled");
   const list = K.filter(a => !q.trim() || [a.name, a.mobile, a.note].some(v => (v || "").toLowerCase().includes(q.trim().toLowerCase())));
-  const saveAcc = async e => { e.preventDefault(); setBusy(true); const r = await act("admin.khata", { op: nf.id ? "edit" : "add", ...nf }); setBusy(false); if (r) { if (r.id) pick(r.id); setNf(null); } };
-  const saveEntry = async e => { e.preventDefault(); if (!(Number(ef.amount) > 0)) return toast("Enter the amount."); setBusy(true); const r = await act("admin.khata", { op: "entry", id: acc.id, ...ef, amount: Number(ef.amount) }); setBusy(false); if (r) setEf(null); };
+  const saveAcc = async e => { e.preventDefault(); setBusy(true); const r = await act("admin.khata", { op: nf.id ? "edit" : "add", ...O, ...nf }); setBusy(false); if (r) { if (r.id) pick(r.id); setNf(null); } };
+  const saveEntry = async e => { e.preventDefault(); if (!(Number(ef.amount) > 0)) return toast("Enter the amount."); setBusy(true); const r = await act("admin.khata", { op: "entry", ...O, id: acc.id, ...ef, amount: Number(ef.amount) }); setBusy(false); if (r) setEf(null); };
   const blankE = type => ({ type, date: today(), amount: "", desc: "", method: "Cash", ref: "" });
   const accForm = nf && <form className="card mt14" onSubmit={saveAcc}><h3>{nf.id ? "Edit account" : "New account"}</h3><div className="fgrid">
     <Field label="Name"><input type="text" value={nf.name} onChange={e => setNf({ ...nf, name: e.target.value })} maxLength={120} autoFocus /></Field>
@@ -396,10 +401,10 @@ export function OtherAccounts() {
         const rows = [...acc.entries].sort((x, y) => String(x.date).localeCompare(String(y.date)) || String(x.at).localeCompare(String(y.at)))
       .map(e => ({ id: e.id, date: e.date, at: e.at, details: e.desc || (e.type === "gave" ? "Given" : "Received"), ref: e.ref, rate: way(e.method), debit: e.type === "gave" ? e.amount : 0, credit: e.type === "got" ? e.amount : 0, e }));
     return <>
-      <div className="ec-head"><div><button className="btn sm link" onClick={() => pick(null)}><LuChevronLeft /> Other accounts</button>
+      <div className="ec-head"><div><button className="btn sm link" onClick={() => pick(null)}><LuChevronLeft /> {own ? "My other accounts" : "Other accounts"}</button>
         <h2 data-notr>{acc.name}</h2><p className="muted small" data-notr>{[acc.mobile, acc.note].filter(Boolean).join(" · ") || "Only for the record: not in the main account or the bosses' accounts."}</p></div>
         <div className="row6"><button className="btn" onClick={() => setNf({ id: acc.id, name: acc.name, mobile: acc.mobile || "", note: acc.note || "" })}><LuPencil /> Edit</button>
-          <button className="btn link danger" onClick={() => confirmBox(`Remove the account ${acc.name}${acc.entries.length ? ` and its ${acc.entries.length} entries` : ""}?`, async () => { if (await act("admin.khata", { op: "remove", id: acc.id })) pick(null); }, "Remove")}><LuTrash2 /></button></div></div>
+          <button className="btn link danger" onClick={() => confirmBox(`Remove the account ${acc.name}${acc.entries.length ? ` and its ${acc.entries.length} entries` : ""}?`, async () => { if (await act("admin.khata", { op: "remove", ...O, id: acc.id })) pick(null); }, "Remove")}><LuTrash2 /></button></div></div>
       {accForm}
       <div className="row6 mt14"><button className="btn pri" onClick={() => setEf(blankE("gave"))}><LuPlus /> Money given</button><button className="btn pri" onClick={() => setEf(blankE("got"))}><LuPlus /> Money received</button></div>
       {ef && <form className="card mt14" onSubmit={saveEntry}><h3>{ef.eid ? "Edit entry" : ef.type === "gave" ? "Money given" : "Money received"}</h3><div className="fgrid">
@@ -410,14 +415,13 @@ export function OtherAccounts() {
         <Field label="Transaction / Ref No."><input type="text" value={ef.ref} onChange={e => setEf({ ...ef, ref: e.target.value })} maxLength={80} placeholder="Optional" /></Field>
         <Field label="Details" full><input type="text" value={ef.desc} onChange={e => setEf({ ...ef, desc: e.target.value })} maxLength={200} placeholder="What it was for" /></Field></div>
         <div className="row6 mt8"><button className="btn pri" type="submit" disabled={busy}><LuCheck /> Save</button><button className="btn" type="button" onClick={() => setEf(null)}>Cancel</button></div></form>}
-      <div className="card mt14"><Statement key={acc.id + acc.entries.length} title={`Mam & Mam Overseas Ltd. · ${acc.name}`} kind="ACCOUNT STATEMENT" heads={["Given", "Received"]} rows={rows} times
-        balText={b => word(b)} actions={r => <span className="row6 nowrap"><button className="ec-ico view" title="Edit" aria-label="Edit entry" onClick={() => setEf({ eid: r.e.id, type: r.e.type, date: r.e.date, amount: String(r.e.amount), desc: r.e.desc || "", method: r.e.method || "Cash", ref: r.e.ref || "" })}><LuPencil /></button>
-          <button className="ec-ico del" title="Delete" aria-label="Delete entry" onClick={() => confirmBox(`Delete this entry of BDT ${tk(r.e.amount)}?`, () => act("admin.khata", { op: "entryDelete", id: acc.id, eid: r.e.id }), "Delete")}><LuTrash2 /></button></span>}
+      <div className="card mt14"><Statement key={acc.id + acc.entries.length} title={`Mam & Mam Overseas Ltd. · ${acc.name}`} kind="ACCOUNT STATEMENT" heads={["Given", "Received"]} rows={rows} times plain actions={r => <span className="row6 nowrap"><button className="ec-ico view" title="Edit" aria-label="Edit entry" onClick={() => setEf({ eid: r.e.id, type: r.e.type, date: r.e.date, amount: String(r.e.amount), desc: r.e.desc || "", method: r.e.method || "Cash", ref: r.e.ref || "" })}><LuPencil /></button>
+          <button className="ec-ico del" title="Delete" aria-label="Delete entry" onClick={() => confirmBox(`Delete this entry of BDT ${tk(r.e.amount)}?`, () => act("admin.khata", { op: "entryDelete", ...O, id: acc.id, eid: r.e.id }), "Delete")}><LuTrash2 /></button></span>}
         empty="No entries yet. Add money given or received above." /></div>
     </>;
   }
   return <>
-    <div className="ec-head"><div><h2>Other accounts</h2><p className="muted small">Keep an account by name, only for the record. It is not added to the main account or the bosses' accounts.</p></div>
+    <div className="ec-head"><div><h2>{own ? "My other accounts" : "Other accounts"}</h2><p className="muted small">{own ? "Your own accounts by name, only for the record. Only you see them; they are not added to the main account or to your account with the office." : "Keep an account by name, only for the record. It is not added to the main account or the bosses' accounts."}</p></div>
       <button className="btn pri" onClick={() => setNf({ name: q.trim(), mobile: "", note: "" })}><LuPlus /> New account</button></div>
     {accForm}
     <div className="card mt14">
@@ -426,7 +430,7 @@ export function OtherAccounts() {
         {list.map(a => { const b = bal(a), last = [...a.entries].sort((x, y) => String(y.date).localeCompare(String(x.date)))[0]; return <tr key={a.id} className="click" onClick={() => pick(a.id)} tabIndex={0} onKeyDown={e => e.key === "Enter" && pick(a.id)}>
           <td className="b" data-notr>{a.name}</td><td data-notr>{a.mobile || "—"}</td>
           <td className="num r">{tk(a.entries.filter(e => e.type === "gave").reduce((t, e) => t + e.amount, 0))}</td><td className="num r">{tk(a.entries.filter(e => e.type === "got").reduce((t, e) => t + e.amount, 0))}</td>
-          <td className={`num r boss-amt ${b > 0.004 ? "with" : b < -0.004 ? "adv" : ""}`}>{tk(Math.abs(b))}<span className={`hold-word ${b > 0.004 ? "with" : b < -0.004 ? "adv" : ""}`}>{word(b)}</span></td>
+          <td className="num r b">{tk(b)}</td>
           <td className="nowrap">{last ? rDate(last.date) : "—"}</td></tr>; })}
       </tbody></table></div> : <Empty>{q.trim() ? "No account with this name. Use New account to make it." : "No accounts yet. Use New account to make the first one."}</Empty>}
     </div>
