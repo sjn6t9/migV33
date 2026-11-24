@@ -35,6 +35,33 @@ export function approve(r) {
   if (!me()?.signature) { toast("Upload your signature first: Settings › My signature."); return; }
   confirmBox(`Approve payment ${r.no} of BDT ${tk(r.amount)} from ${r.payer.name || r.payer.passport || r.payer.mobile || "the payer"}? Your name and signature go on the receipt as Authorized signature.`, async () => { const res = await act("admin.mr", { op: "approve", id: r.id }); if (res) { openModal("mrView", { rid: r.id }); if (res.email) mailReceipt(r.id); } }, "Approve");
 }
+/* Agents › Due receipt: what an agent owes from before, as a receipt-style PDF emailed to them. No money moves anywhere. */
+export function DueReceipt({ agentId, book }) {
+  const reg = agentId && (store.S.users || []).find(u => u.id === agentId), bk = book && bookAgents().find(x => x.id === book);
+  const due0 = reg ? balanceOf(reg.id) : bk ? bookAccount(bk).due : 0;
+  const [f, setF] = React.useState({ amount: due0 > 0 ? String(Math.round(due0 * 100) / 100) : "", date: new Date(Date.now() + 6 * 3600e3).toISOString().slice(0, 10), purpose: "Due from before", note: "", to: reg?.email || bk?.email || "" });
+  const set = v => setF(o => ({ ...o, ...v })); const [busy, setBusy] = React.useState(false), [made, setMade] = React.useState(null);
+  const name = reg ? reg.agent?.business || reg.name : bk?.name;
+  const make = async () => { if (made) return made; if (!(Number(f.amount) > 0)) { toast("Enter the due amount."); return null; } const r = await act("admin.dueReceipt", { op: "make", agentId: agentId || "", book: book || "", amount: Number(f.amount), date: f.date, purpose: f.purpose, note: f.note }, { quiet: true }); if (r?.receipt) { setMade(r.receipt); return r.receipt; } return null; };
+  const send = async () => { if (!f.to.trim()) return toast("This agent has no email address. Enter one."); setBusy(true);
+    try { const r = await make(); if (r) { const blob = await receiptPdfBlob(r, store.S.settings); const pdf = await new Promise((res, rej) => { const x = new FileReader(); x.onload = () => res(x.result); x.onerror = rej; x.readAsDataURL(blob); }); if (await act("admin.dueReceipt", { op: "mail", id: r.id, pdf, to: f.to.trim() })) closeModal(); } }
+    catch { toast("The due receipt PDF could not be made. Try again."); } setBusy(false); };
+  const dl = async () => { setBusy(true); try { const r = await make(); if (r) await receiptPdf(r, store.S.settings); } catch { toast("The due receipt PDF could not be made."); } setBusy(false); };
+  return <div className="stack">
+    <h2 className="row6"><LuReceipt /> Due receipt</h2>
+    <p className="muted small" data-notr>{name}</p>
+    <p className="muted small">The receipt tells the agent how much is due. Nothing is added to the main account or any other account; it is only emailed to the agent.</p>
+    <div className="fgrid">
+      <Field label="Amount due (BDT)" hint={due0 > 0 ? `Due on the account now: ${tk(due0)}` : "No due on the account now"}><input type="number" min="1" step="0.01" value={f.amount} disabled={!!made} onChange={e => set({ amount: e.target.value })} inputMode="decimal" /></Field>
+      <Field label="Date"><input type="date" value={f.date} disabled={!!made} onChange={e => set({ date: e.target.value })} /></Field>
+      <Field label="Details" full><input type="text" value={f.purpose} disabled={!!made} onChange={e => set({ purpose: e.target.value })} maxLength={160} /></Field>
+      <Field label="Note" full><input type="text" value={f.note} disabled={!!made} onChange={e => set({ note: e.target.value })} maxLength={300} placeholder="Optional" /></Field>
+      <Field label="Agent's email" full><input type="email" value={f.to} onChange={e => set({ to: e.target.value })} maxLength={200} /></Field>
+    </div>
+    {made && <p className="small">{`Due receipt ${made.no} made.`}</p>}
+    <div className="row6"><button className="btn pri" disabled={busy} onClick={send}><LuMail /> Send to the agent's email</button><button className="btn" disabled={busy} onClick={dl}><LuDownload /> Download PDF</button></div>
+  </div>;
+}
 /** make the PDF here and have the server email it to the payer */
 export async function mailReceipt(rid, to) {
   const r = MR().receipts.find(x => x.id === rid); if (!r) return;

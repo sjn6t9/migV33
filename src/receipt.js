@@ -75,7 +75,7 @@ export async function drawReceipt(r, settings = {}) {
   g.fillText(`${OFFICE.site}  ·  ${settings.email || OFFICE.email}`, 326, 204); g.globalAlpha = 1;
   // title pill
   rr(g, W - 376, 78, 320, 74, 37); g.fillStyle = "#fff"; g.fill();
-  g.fillStyle = RED; g.textAlign = "center"; g.font = `800 32px ${F}`; g.fillText("MONEY RECEIPT", W - 216, 127);
+  g.fillStyle = RED; g.textAlign = "center"; g.font = `800 32px ${F}`; g.fillText(r.kind === "due" ? "DUE RECEIPT" : "MONEY RECEIPT", W - 216, 127);
 
   // receipt no. and date
   g.textAlign = "left"; g.fillStyle = MUTED; g.font = `600 22px ${F}`; g.fillText("Receipt No.", 70, 300);
@@ -92,10 +92,10 @@ export async function drawReceipt(r, settings = {}) {
     g.strokeStyle = LINE; g.setLineDash([3, 5]); g.lineWidth = 2; g.beginPath(); g.moveTo(x, y + 56); g.lineTo(x + w, y + 56); g.stroke(); g.setLineDash([]);
   };
   const L = 70, CW = (W - 140 - 50) / 2, R2 = L + CW + 50;
-  field("Received with thanks from", p.name, L, 420, W - 140);
+  field(r.kind === "due" ? "Due from" : "Received with thanks from", p.name, L, 420, W - 140);
   field("Passport No.", p.passport, L, 520, CW); field("Mobile", p.mobile, R2, 520, CW);
   field("Email", p.email, L, 620, CW); field("Agent", p.agent, R2, 620, CW);
-  field("Purpose of payment", r.purpose, L, 720, CW); field("Payment method" + (r.ref ? (r.method === "Mobile banking" ? " · Transaction ID" : r.method === "Cheque" ? " · Cheque No." : " · Transaction / Ref No.") : ""), [r.method, r.channel, r.ref].filter(Boolean).join(" · "), R2, 720, CW);
+  r.kind === "due" ? field("Details", r.purpose, L, 720, W - 140) : field("Purpose of payment", r.purpose, L, 720, CW); if (r.kind !== "due") field("Payment method" + (r.ref ? (r.method === "Mobile banking" ? " · Transaction ID" : r.method === "Cheque" ? " · Cheque No." : " · Transaction / Ref No.") : ""), [r.method, r.channel, r.ref].filter(Boolean).join(" · "), R2, 720, CW);
 
   // amount in words (+ balance) + amount box
   const bl = r.status === "approved" ? balLines(r.balance) : null, ww = bl ? 560 : 960;
@@ -115,8 +115,8 @@ export async function drawReceipt(r, settings = {}) {
     g.textAlign = "left";
   }
   const bx = 1070, bw = W - 70 - bx;
-  rr(g, bx, 812, bw, 96, 14); g.fillStyle = GREEN; g.fill();
-  g.fillStyle = "#fff"; g.textAlign = "left"; g.font = `600 20px ${F}`; g.globalAlpha = .9; g.fillText("Amount (BDT)", bx + 24, 846); g.globalAlpha = 1;
+  rr(g, bx, 812, bw, 96, 14); g.fillStyle = r.kind === "due" ? RED : GREEN; g.fill();
+  g.fillStyle = "#fff"; g.textAlign = "left"; g.font = `600 20px ${F}`; g.globalAlpha = .9; g.fillText(r.kind === "due" ? "Amount due (BDT)" : "Amount (BDT)", bx + 24, 846); g.globalAlpha = 1;
   g.textAlign = "right"; fitFont(g, tk(r.amount), bw - 48, 40, 800); g.fillText(tk(r.amount), bx + bw - 24, 892);
 
   // note
@@ -132,12 +132,12 @@ export async function drawReceipt(r, settings = {}) {
     if (s?.name) { g.font = `700 21px ${F}`; g.fillText(clip(g, s.name + (s.title ? ", " + s.title : ""), 380), x + 190, 1047); }
     g.fillStyle = MUTED; g.font = `600 17px ${F}`; g.fillText(label, x + 190, 1071);
   };
-  sig(L, "Received by", r.received, sigR); sig(W - 70 - 380, "Authorized signature", r.approved, sigA);
+  sig(L, r.kind === "due" ? "Prepared by" : "Received by", r.received, sigR); sig(W - 70 - 380, "Authorized signature", r.approved, sigA);
 
   // footer
   g.fillStyle = GREEN; g.fillRect(0, H - 44, W, 44);
   g.fillStyle = "#fff"; g.textAlign = "center"; g.font = `500 19px ${F}`;
-  g.fillText(`Computer generated receipt · ${OFFICE.name} · ${OFFICE.site}`, W / 2, H - 15);
+  g.fillText(r.kind === "due" ? `Due receipt · not a payment · ${OFFICE.name} · ${OFFICE.site}` : `Computer generated receipt · ${OFFICE.name} · ${OFFICE.site}`, W / 2, H - 15);
 
   const stamp = r.void ? ["CANCELLED", RED] : r.status !== "approved" ? ["NOT APPROVED YET", "#c98e1e"] : null;
   if (stamp) {
@@ -155,7 +155,7 @@ export async function receiptPng(r, settings) { const c = await drawReceipt(r, s
 
 /** One-page PDF (A5 landscape) holding the receipt as a JPEG image. */
 export async function receiptPdf(r, settings) { save(await receiptPdfBlob(r, settings), `${r.no}.pdf`); }
-export async function receiptPdfBlob(r, settings) { return pdfFromCanvases([await drawReceipt(r, settings)], 595.28, 419.53, `Money receipt ${r.no}`); }
+export async function receiptPdfBlob(r, settings) { return pdfFromCanvases([await drawReceipt(r, settings)], 595.28, 419.53, `${r.kind === "due" ? "Due receipt" : "Money receipt"} ${r.no}`); }
 
 /** A PDF with one page per canvas (each page is the canvas as a JPEG), page size in points. */
 export async function pdfFromCanvases(canvases, pw, ph, title = "") {

@@ -13,7 +13,7 @@ import { CardAdmin, AgentDocsView } from "./dash/shared.jsx";
 import { Home, Jobs, JobDetail, Services, About, Blog, Post, Contact, Track, Setup, Team, waLink } from "./pages/Public.jsx";
 import { Dashboard } from "./dash/Dashboard.jsx";
 import { ClPayForm } from "./dash/Agent.jsx";
-import { MrEntry, MrView, MrAccount, VerifyReceipt } from "./dash/Receipts.jsx";
+import { MrEntry, MrView, MrAccount, VerifyReceipt, DueReceipt } from "./dash/Receipts.jsx";
 import { SalaryPay, SalaryView, VerifySalary, MrRefund } from "./dash/Accounts.jsx";
 import { VerifyStatement } from "./dash/Statements.jsx";
 import { StatusCell, ClPayCell } from "./dash/Admin.jsx";
@@ -376,7 +376,7 @@ function ModalHost() {
   const m = store.ui.modal; if (!m) return null;
   const close = closeModal;
   return (
-    <ModalFrame onClose={close} wide={m.type === "share" || m.type === "vcard" || m.type === "mrEntry" || m.type === "mrView" || m.type === "mrAccount" || m.type === "salaryPay" || m.type === "salaryView" || m.type === "visaFile"} className={m.type === "memberCheck" ? "modal-verify" : ""}>
+    <ModalFrame onClose={close} wide={m.type === "share" || m.type === "vcard" || m.type === "mrEntry" || m.type === "dueReceipt" || m.type === "mrView" || m.type === "mrAccount" || m.type === "salaryPay" || m.type === "salaryView" || m.type === "visaFile"} className={m.type === "memberCheck" ? "modal-verify" : ""}>
       {m.type === "confirm" && <>
         <h3>Please confirm</h3><p className="confirm-msg">{m.msg}</p>
         <div className="row"><button className="btn pri" autoFocus onClick={() => { closeModal(); m.onYes(); }}>{m.yes}</button><button className="btn" onClick={close}>Cancel</button></div>
@@ -395,6 +395,7 @@ function ModalHost() {
       {m.type === "wafidHelp" && <WafidBookmarkHelp />}
       {m.type === "visaFile" && <VisaFileForm key={m.id || "new"} id={m.id} />}
       {m.type === "agentBook" && <AgentBookEdit id={m.id} />}
+      {m.type === "dueReceipt" && <DueReceipt agentId={m.agentId} book={m.book} />}
       {m.type === "mrRefund" && <MrRefund no={m.no} />}
       {m.type === "mrEntry" && <MrEntry key={m.aid || m.pp || m.agentId || m.book || "new"} aid={m.aid} pp={m.pp} agentId={m.agentId} book={m.book} />}
       {m.type === "mrView" && <MrView rid={m.rid} fresh={m.fresh} />}

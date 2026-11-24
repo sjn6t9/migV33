@@ -2734,7 +2734,8 @@ A["attendance.tick"] = async (d, u, ctx) => {
 /* ---------- HEADLINES on the website: a scrolling news line under the header ---------- */
 if (!db.headlines) db.headlines = [];
 if (!db.agentBook) db.agentBook = [];
-if (!db.khata) db.khata = []; // Payments & receipts › Other accounts: named accounts kept only for the record
+if (!db.khata) db.khata = [];
+if (!db.dueReceipts) db.dueReceipts = { seq: {}, list: [] }; // due receipts: a paper telling an agent what they owe; no money moves // Payments & receipts › Other accounts: named accounts kept only for the record
 // the old "Visa & BMET processing" department is now two: BMET section and Visa section (a title with BMET goes to BMET section)
 for (const m of db.team || []) if (m.dept === "Visa & BMET processing") m.dept = /bmet|clearance|emigration/i.test(`${m.title} ${m.bio}`) ? "BMET section" : "Visa section";
 A["admin.headlines"] = async (d, u) => {
@@ -2855,6 +2856,41 @@ A["admin.office"] = async (d, u) => {
 /* the Managing Director, a Director or the Chairman confirms (or refuses) money entered as being with them */
 /* the MD / a Director / the Chairman, from their own admin ID: give money to the office (it goes into the main account) */
 /* Payments & receipts › Other accounts: an account by name, kept only for the record (not in the main account, not in the bosses' accounts) */
+/* Agents › Due receipt: tells an agent (registered, or in the agent list) how much is due from before. Nothing is added
+   to the main account or anywhere else: the office's browser makes the PDF and the server emails it to the agent. */
+A["admin.dueReceipt"] = async (d, u) => {
+  must(can(u, "ledger") || can(u, "receipts"), "You do not have permission for this.", 403);
+  const D = db.dueReceipts;
+  if (d.op === "make") {
+    const ag = d.agentId ? user(d.agentId) : null, bk = d.book ? db.agentBook.find(x => x.id === d.book) : null;
+    must(ag?.role === "agent" || bk, "Agent not found.");
+    const amount = r2(Number(d.amount)); must(amount > 0 && amount < 1e10, "Enter the due amount.");
+    const date = okDate(d.date), yr = date.slice(0, 4); D.seq[yr] = (D.seq[yr] || 0) + 1;
+    const x = { id: id("dr"), no: `DR-${yr}-${String(D.seq[yr]).padStart(4, "0")}`, kind: "due", date, amount, agentId: ag ? ag.id : null, book: bk ? bk.id : null,
+      payer: ag ? { name: agentName(ag), mobile: ag.agent?.phone || ag.phone || "", email: ag.email || "", passport: "", agent: agentName(ag) } : { name: bk.fullName || bk.name, mobile: bk.mobile || "", email: bk.email || "", passport: "", agent: bk.name },
+      purpose: str(d.purpose, 160) || "Due from before", note: str(d.note, 300), status: "approved", received: mrSigner(u), created: now() };
+    D.list.unshift(x); if (D.list.length > 5000) D.list.length = 5000;
+    const sig = x.received.sig && db.files[x.received.sig] ? `/api/files/${x.received.sig}` : "";
+    return { receipt: { ...x, received: { ...x.received, sigUrl: sig } } };
+  }
+  if (d.op === "mail") {
+    const x = D.list.find(r => r.id === d.id); must(x, "Due receipt not found.");
+    const to = mrNorm.email(d.to || x.payer.email); must(/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(to), "This agent has no email address. Enter one.");
+    const pdf = Buffer.from(String(d.pdf || "").replace(/^data:application\/pdf;base64,/, ""), "base64");
+    must(pdf.length > 100 && pdf.length < 4e6 && pdf.subarray(0, 5).toString() === "%PDF-", "The receipt PDF is missing.");
+    const m = await getMailer(); must(m, "Email is not set up on this server. Download the PDF and send it yourself.");
+    const money = n => `BDT ${Number(n).toLocaleString("en-US", { minimumFractionDigits: 2 })}`;
+    try {
+      await m.sendMail({ from: `"Mam & Mam Overseas Ltd." <${mailFrom()}>`, to, subject: `Due receipt ${x.no} · Mam & Mam Overseas Ltd.`,
+        text: `Assalamu Alaikum ${x.payer.name},\n\nYour due receipt is attached.\n\nReceipt No.: ${x.no}\nDate: ${x.date}\nAmount due: ${money(x.amount)}\n${x.purpose ? `Details: ${x.purpose}\n` : ""}${x.note ? `Note: ${x.note}\n` : ""}\nPlease pay the due amount to the office.\n\nMam & Mam Overseas Ltd. · Government Licensed Recruiting Agency · RL1217`,
+        attachments: [{ filename: `${x.no}.pdf`, content: pdf, contentType: "application/pdf" }] });
+    } catch (e) { console.error("Due receipt email failed:", e.message); must(false, `The due receipt could not be emailed to ${to}. Try again later.`); }
+    x.mailed = { to, at: now() };
+    if (x.agentId) notify(x.agentId, `Due receipt ${x.no}: ${money(x.amount)} due. It has been emailed to you.`);
+    return { msg: `Due receipt ${x.no} emailed to ${to}.` };
+  }
+  must(false, "Unknown request.");
+};
 A["admin.khata"] = async (d, u) => {
   // own: the MD / a Director / the Chairman keeps their own accounts (only they see them); otherwise the office's accounts
   // own: personal accounts (only that person sees them): the MD / a Director / the Chairman under their key, any other admin / staff ID under its own

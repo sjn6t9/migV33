@@ -104,6 +104,7 @@ function AgentDetail({ reg, book, AddForm, canLedger, canMr }) {
     <div className="ec-head"><div><button className="btn sm link" onClick={back}><LuArrowLeft /> Agents</button>
       <h2 data-notr>{name} {reg && <span className="ec-badge s-approved">Registered</span>}</h2><p className="muted small" data-notr>{info.join(" · ") || "No details yet"}</p></div>
       <div className="row6">{book && <button className="btn" onClick={() => openModal("agentBook", { id: book.id })}><LuPencil /> Update</button>}
+        {(canLedger || canMr) && <button className="btn" onClick={() => openModal("dueReceipt", reg ? { agentId: reg.id } : { book: book.id })}><LuReceipt /> Due receipt</button>}
         {canMr && <button className="btn pri" onClick={mr}><LuReceipt /> Money receipt</button>}</div></div>
     <div className="card">
       <h3 className="bulk-h"><LuBookUser /> Passports <span className="bulk-count">{pps.length}</span></h3>
