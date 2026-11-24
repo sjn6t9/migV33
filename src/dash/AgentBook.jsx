@@ -22,11 +22,14 @@ export const bookByName = n => bookAgents().find(a => key(a.name) === key(n));
 export function bookRows(a) {
   const S = store.S, k = key(a.name), rows = [];
   for (const c of (S.clearances || []).filter(c => !c.agentId && key(c.agentName) === k)) {
-    const w = (S.workers || []).find(x => x.id === c.workerId), nm = w?.name || "", d = c.created.slice(0, 10);
-    if (c.fee > 0) rows.push({ id: `${c.id}f`, date: d, at: c.created, details: `BMET clearance processing: ${nm} (${c.ref})`, rate: `${amt(c.fee)}X1`, debit: c.fee, credit: 0 });
-    // the clearance card fee given with Send Card / Upload & send (registered agents get it as a ledger charge on the server)
-    if (c.card?.fee > 0) rows.push({ id: `${c.id}c`, date: String(c.card.sentAt || c.created).slice(0, 10), at: c.card.sentAt || c.created, details: `BMET clearance card fee: ${nm} (${c.ref})`, rate: `${amt(c.card.fee)}X1`, debit: c.card.fee, credit: 0 });
-    if (c.due > 0) rows.push({ id: `${c.id}d`, date: d, at: c.created, details: `Previous due: ${nm} (${c.ref})`, rate: `${amt(c.due)}X1`, debit: c.due, credit: 0 });
+    const w = (S.workers || []).find(x => x.id === c.workerId), d = c.created.slice(0, 10);
+    const facts = ` · Applicant: ${w?.name || "—"} · Passport no: ${String(w?.passport || c.passport || "—").toUpperCase()} · Country: ${c.country || "—"}`;
+    if (c.fee > 0) rows.push({ id: `${c.id}f`, date: d, at: c.created, details: `BMET clearance processing${facts}`, rate: `${amt(c.fee)}X1`, debit: c.fee, credit: 0 });
+    if (c.due > 0) rows.push({ id: `${c.id}d`, date: d, at: c.created, details: `Previous due${facts}`, rate: `${amt(c.due)}X1`, debit: c.due, credit: 0 });
+    // the clearance card fee and Others fee given with Send Card (registered agents get them as ledger charges on the server)
+    const cd = String(c.card?.sentAt || c.created).slice(0, 10), ca = c.card?.sentAt || c.created;
+    if (c.card?.fee > 0) rows.push({ id: `${c.id}c`, date: cd, at: ca, details: `BMET clearance card fee${facts}`, rate: `${amt(c.card.fee)}X1`, debit: c.card.fee, credit: 0 });
+    if (c.card?.other?.amount > 0) rows.push({ id: `${c.id}o`, date: cd, at: ca, details: `${c.card.other.label || "Stamp fee"}${facts}`, rate: `${amt(c.card.other.amount)}X1`, debit: c.card.other.amount, credit: 0 });
   }
   for (const e of a.entries || []) rows.push({ id: e.id, date: e.date, at: e.at, details: e.desc, ref: e.ref, rate: e.type === "charge" ? `${amt(e.rate)}X${e.qty}` : e.opening ? "ADVANCE" : (e.method || "Cash").toUpperCase(), debit: e.type === "charge" ? e.amount : 0, credit: e.type === "payment" ? e.amount : 0, entry: e });
   for (const r of (S.mr?.receipts || []).filter(r => !r.agentId && key(r.payer?.agent) === k && !r.void))

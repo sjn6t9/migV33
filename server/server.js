@@ -662,7 +662,7 @@ A["agent.clearance"] = async (d, u) => {
   db.clearances.push({ id: id("c"), via: "agent", ...(pre ? { preEc: true } : {}), agentId: u.id, workerId: w.id, candidateId: null, country: d.country, employer: str(d.employer, 150), visaNo: str(d.visaNo, 40), visaType: str(d.visaType, 40), flightDate: str(d.flightDate, 10), docs, files, notes: str(d.notes, 2000), status: "pending", history: [{ s: "pending", at: now() }], created: now() });
   { const c = db.clearances[db.clearances.length - 1]; c.ref = ecRef(c); }
   const fee = Number(db.settings.clearanceFee || 0);
-  if (fee > 0) db.ledger.push({ id: id("l"), agentId: u.id, type: "charge", desc: `BMET clearance processing: ${w.name}`, amount: fee, date: now().slice(0, 10), method: "", ref: "", status: "confirmed" });
+  if (fee > 0) db.ledger.push(clCharge(u.id, db.clearances[db.clearances.length - 1], "BMET clearance processing", fee));
   notifyAdmins(`New BMET clearance application: ${w.name} (${d.country}) from ${u.agent.business}. See Applications › Clearance applications.`, "clearance");
   return { msg: "Clearance application submitted." };
 };
@@ -720,8 +720,8 @@ A["admin.clearance"] = async (d, u) => {
   // a RAIMS IC number given with the file becomes its reference number; one IC covers every worker of that RAIMS application, so files can share it
   const icRef = c.icNo.replace(/\s+/g, "").toUpperCase();
   db.clearances.push(c); c.ref = /^IC[-A-Z0-9/]{3,39}$/.test(icRef) ? icRef : ecRef(c);
-  if (ag && fee > 0) db.ledger.push({ id: id("l"), agentId: ag.id, type: "charge", desc: `BMET clearance processing: ${w.name} (${c.ref})`, amount: fee, date: now().slice(0, 10), method: "", ref: "", status: "confirmed" });
-  if (ag && due > 0) db.ledger.push({ id: id("l"), agentId: ag.id, type: "charge", desc: `Previous due: ${w.name} (${c.ref})`, amount: due, date: now().slice(0, 10), method: "", ref: "", status: "confirmed" });
+  if (ag && fee > 0) db.ledger.push(clCharge(ag.id, c, "BMET clearance processing", fee));
+  if (ag && due > 0) db.ledger.push(clCharge(ag.id, c, "Previous due", due));
   if (ag) notify(ag.id, `The agency created a BMET clearance file for ${w.name} (${d.country})${due > 0 ? `; previous due ${bdt(due)} added to your account` : ""}.`);
   return { msg: "Clearance application created." };
 };
@@ -972,12 +972,27 @@ A["admin.clDoc"] = async ({ id: cid, kind, file }, u) => {
   return { msg: `${L[kind]} saved.` };
 };
 /* only the admin deletes a BMET clearance file: its documents, the charges it made on the agent account, and the worker if nothing else uses them */
+/* what an agent's account line says about a clearance file: "<what> · Applicant: … · Passport no: … · Country: …"; cl links the line to the file */
+const clFacts = c => { const w = c.workerId ? worker(c.workerId) : null, cu = c.candidateId ? user(c.candidateId) : null;
+  return { name: w?.name || cu?.name || c.fullName || "", passport: String(w?.passport || cu?.profile?.passportNo || c.passport || "").replace(/\s+/g, "").toUpperCase(), country: c.country || "" }; };
+const clDesc = (what, c) => { const f = clFacts(c); return `${what} · Applicant: ${f.name || "—"} · Passport no: ${f.passport || "—"} · Country: ${f.country || "—"}`; };
+const clCharge = (agentId, c, what, amount, date) => ({ id: id("l"), agentId, cl: c.id, type: "charge", desc: clDesc(what, c), amount, date: (date || now()).slice(0, 10), method: "", ref: "", status: "confirmed" });
+// does an account line belong to this clearance file (lines made before the cl link name the worker and the EC Ref No)
+const clOwns = (l, c, name) => l.type === "charge" && (l.cl === c.id || (!l.cl && c.ref && String(l.desc || "").includes(`${name} (${c.ref})`)));
+// once: the clearance lines already in agents' accounts get the same wording (Applicant · Passport no · Country) and the cl link
+if (!db.clDescFix) {
+  const RX = /^(BMET clearance processing|BMET clearance card fee|Previous due): (.+?)(?: \(([^()]+)\))?$/;
+  for (const l of db.ledger) { if (l.type !== "charge" || l.cl) continue; const m = RX.exec(String(l.desc || "")); if (!m) continue;
+    const c = db.clearances.find(x => x.agentId === l.agentId && (!m[3] || x.ref === m[3]) && clFacts(x).name === m[2]); if (!c) continue;
+    l.cl = c.id; l.desc = clDesc(m[1], c); }
+  db.clDescFix = true;
+}
 A["admin.clDelete"] = async ({ id: cid }, u) => {
   must(u?.role === "admin", "Only the admin can delete a clearance file.", 403);
   const c = db.clearances.find(x => x.id === cid); must(c, "File not found.");
   const w = c.workerId ? worker(c.workerId) : null, name = w?.name || c.fullName || "the worker";
   for (const f of [c.files?.passport, c.files?.visa, c.files?.contract, ...(c.files?.others || []), c.card, c.payment?.file]) if (f) { try { dropFile(f); } catch {} }
-  if (c.ref) db.ledger = db.ledger.filter(l => !(l.type === "charge" && l.agentId === c.agentId && String(l.desc || "").includes(`${name} (${c.ref})`)));
+  db.ledger = db.ledger.filter(l => !(l.agentId === c.agentId && clOwns(l, c, name)));
   db.clearances = db.clearances.filter(x => x !== c);
   let gone = false;
   if (w && !db.clearances.some(x => x.workerId === w.id) && !db.applications.some(a => a.workerId === w.id)) { db.workers = db.workers.filter(x => x !== w); gone = true; }
@@ -1752,7 +1767,7 @@ A["admin.clAgent"] = async (d, u) => {
   if (w) { w.agentId = ag ? ag.id : null; if (ag) delete w.agentName; else w.agentName = name; }
   // the processing fee / previous due this file charged move to the new registered agent
   let moved = 0, left = 0;
-  if (oldId && c.ref) for (const l of db.ledger) if (l.agentId === oldId && l.type === "charge" && String(l.desc || "").includes(`${wname} (${c.ref})`)) { if (ag) { l.agentId = ag.id; moved++; } else left++; }
+  if (oldId) for (const l of db.ledger) if (l.agentId === oldId && clOwns(l, c, wname)) { if (ag) { l.agentId = ag.id; moved++; } else left++; }
   const pp = w ? db.passports.find(x => x.passport === ppNorm(w.passport)) : null; if (pp) { pp.agentId = ag ? ag.id : null; pp.ref = newName; }
   c.history.push({ s: c.status, t: `Agent changed: ${oldName} → ${newName}`, at: now(), by: u.name });
   if (ag) notify(ag.id, `BMET clearance file ${c.ref} (${wname}) is now under your account.`);
@@ -1769,18 +1784,22 @@ A["admin.clRef"] = async ({ id: cid, ref }, u) => {
   if (/^IC/.test(r)) c.icNo = r;
   c.ref = r; return { msg: `EC Ref No saved: ${r}` };
 };
-A["admin.card"] = async ({ id: cid, file, fee }, u) => {
+A["admin.card"] = async ({ id: cid, file, fee, other }, u) => {
   needPerm(u, "clearance"); const c = db.clearances.find(x => x.id === cid); must(c && c.status === "approved", "Upload the card after the file is Approved.");
   const owner = c.agentId || c.candidateId; const ref = storeFile(file, owner || u.id);
   // a fee is charged once: a card sent again keeps the fee already charged; one sent first with no fee can get it now
   const replacing = !!c.card, had = Number(c.card?.fee || 0), f = had > 0 ? had : numv(fee, 0, 1e7), charge = had <= 0 && f > 0;
+  // Others fee (optional): "Stamp fee" unless a custom name is written; charged once, like the card fee
+  const oHad = c.card?.other?.amount > 0 ? c.card.other : null, oAmt = oHad ? 0 : numv(other?.amount, 0, 1e7);
+  const oth = oHad || (oAmt > 0 ? { label: str(other?.label, 60) || "Stamp fee", amount: oAmt } : null);
   if (c.card) dropFile(c.card);
   const isCand = !c.agentId;
-  c.card = { ...ref, fee: f, feeNote: isCand && f > 0 ? (c.card?.feePaid ? "paid" : "pay at the office") : "", sentAt: now(), feePaid: c.card?.feePaid || c.payment?.status === "paid" || false };
+  c.card = { ...ref, fee: f, ...(oth ? { other: oth } : {}), feeNote: isCand && f > 0 ? (c.card?.feePaid ? "paid" : "pay at the office") : "", sentAt: now(), feePaid: c.card?.feePaid || c.payment?.status === "paid" || false };
   const name = c.workerId ? worker(c.workerId)?.name : c.fullName;
-  if (charge && c.agentId) db.ledger.push({ id: id("l"), agentId: c.agentId, type: "charge", desc: `BMET clearance card fee: ${name}`, amount: f, date: now().slice(0, 10), method: "", ref: "", status: "confirmed" });
-  notify(owner, `${replacing ? "Updated clearance card" : "Clearance card"} for ${name} is ready. Download it from your portal${charge ? `. Card fee: ${bdt(f)}` : ""}.`);
-  return { msg: (c.agentId ? "Clearance card sent to the agent." : c.candidateId ? "Clearance card sent to the job seeker." : "Clearance card saved.") + (charge && !c.candidateId ? ` Card fee ${bdt(f)} added to ${c.agentId ? agentName(user(c.agentId)) : c.agentName || "the agent"}'s account.` : "") };
+  if (charge && c.agentId) db.ledger.push(clCharge(c.agentId, c, "BMET clearance card fee", f));
+  if (oAmt > 0 && c.agentId) db.ledger.push(clCharge(c.agentId, c, oth.label, oAmt));
+  notify(owner, `${replacing ? "Updated clearance card" : "Clearance card"} for ${name} is ready. Download it from your portal${charge ? `. Card fee: ${bdt(f)}` : ""}${oAmt > 0 ? `. ${oth.label}: ${bdt(oAmt)}` : ""}.`);
+  return { msg: (c.agentId ? "Clearance card sent to the agent." : c.candidateId ? "Clearance card sent to the job seeker." : "Clearance card saved.") + ((charge || oAmt > 0) && !c.candidateId ? ` ${[charge ? `Card fee ${bdt(f)}` : "", oAmt > 0 ? `${oth.label} ${bdt(oAmt)}` : ""].filter(Boolean).join(" and ")} added to ${c.agentId ? agentName(user(c.agentId)) : c.agentName || "the agent"}'s account.` : "") };
 };
 /* the EC card PDF RAIMS gives at …/clearance-check/download/card/<Clearance ID> */
 async function raimsCardFile(no) {
@@ -1822,7 +1841,7 @@ A["admin.clRaimsCard"] = async (d, u) => {
   if (d.op === "save") return { msg: `Card number saved: ${no}` };
   must(c.status === "approved", "The card can be taken after the file is Approved.");
   const file = await raimsCardFile(no);
-  if (d.op === "send") { const r = await A["admin.card"]({ id: c.id, file, fee: d.fee }, u); return { ...r, msg: `${r.msg} (${no})` }; }
+  if (d.op === "send") { const r = await A["admin.card"]({ id: c.id, file, fee: d.fee, other: d.other }, u); return { ...r, msg: `${r.msg} (${no})` }; }
   return { file };
 };
 /* clearance fee: after Final Approval the agent sends a payment receipt; the agency approves it and the file shows Paid */
@@ -3472,8 +3491,10 @@ function linkBookAgent(b, x) {
   for (const w of db.workers) if (!w.agentId && bookKey(w.agentName) === k) { w.agentId = x.id; delete w.agentName; n.workers++; }
   for (const c of db.clearances) if (!c.agentId && !c.candidateId && bookKey(c.agentName) === k) {
     c.agentId = x.id; delete c.agentName; n.files++; const w = worker(c.workerId), nm = w?.name || "";
-    if (c.fee > 0) db.ledger.push({ id: id("l"), agentId: x.id, type: "charge", desc: `BMET clearance processing: ${nm} (${c.ref})`, amount: c.fee, date: (c.created || today).slice(0, 10), method: "", ref: "", status: "confirmed" });
-    if (c.due > 0) db.ledger.push({ id: id("l"), agentId: x.id, type: "charge", desc: `Previous due: ${nm} (${c.ref})`, amount: c.due, date: (c.created || today).slice(0, 10), method: "", ref: "", status: "confirmed" });
+    if (c.fee > 0) db.ledger.push(clCharge(x.id, c, "BMET clearance processing", c.fee, c.created || today));
+    if (c.due > 0) db.ledger.push(clCharge(x.id, c, "Previous due", c.due, c.created || today));
+    if (c.card?.fee > 0) db.ledger.push(clCharge(x.id, c, "BMET clearance card fee", c.card.fee, c.card.sentAt || today));
+    if (c.card?.other?.amount > 0) db.ledger.push(clCharge(x.id, c, c.card.other.label || "Stamp fee", c.card.other.amount, c.card.sentAt || today));
   }
   for (const r of db.mr.receipts) if (!r.agentId && bookKey(r.payer?.agent) === k) {
     r.agentId = x.id; r.payer.agent = agentName(x); n.receipts++;

@@ -1578,3 +1578,5 @@ select.need{border-color:#d97706;box-shadow:0 0 0 2px rgba(217,119,6,.18)}
 .doc-view-body{background:var(--soft,#f2f4f7);border-radius:12px;min-height:200px;display:flex;align-items:center;justify-content:center;overflow:auto}
 .doc-view-body img{max-width:100%;max-height:78vh;object-fit:contain;display:block;margin:auto}
 .doc-view-body iframe{width:100%;height:78vh;border:0;border-radius:12px;background:#fff}
+.fee-other{display:flex;flex-direction:column;gap:6px}.fee-other>b{font-weight:600}.fee-other .hint{font-size:13px;color:var(--muted,#667085)}
+.fee-other-row{display:flex;gap:8px;flex-wrap:wrap}.fee-other-row>*{margin:0}

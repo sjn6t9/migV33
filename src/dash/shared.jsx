@@ -87,26 +87,50 @@ export const Options = ({ list, blank }) => <>{blank !== undefined && <option va
    raims.oep.gov.bd/agency/employee/clearance-check/download/card/<number> with the agency's RAIMS sign-in */
 export function RaimsCard({ c, who, compact }) {
   // no Clearance ID to type: the server checks RAIMS Clearance Check with the file's passport and takes the card from there
-  const [fee, setFee] = React.useState("0"), [busy, setBusy] = React.useState("");
+  const [fee, setFee] = React.useState(""), [busy, setBusy] = React.useState(""), [failed, setFailed] = React.useState(false);
+  const [oKind, setOKind] = React.useState("Stamp fee"), [oName, setOName] = React.useState(""), [oAmt, setOAmt] = React.useState("");
+  const feeDone = c.card?.fee > 0, otherDone = c.card?.other?.amount > 0, agent = who === "agent";
+  const other = () => ({ label: oKind === "custom" ? oName.trim() : "Stamp fee", amount: Number(oAmt || 0) });
   const run = async op => {
-    setBusy(op); const r = await act("admin.clRaimsCard", { id: c.id, no: c.cardNo || "", op, fee: Number(fee || 0) }, op === "download" ? { quiet: true } : undefined); setBusy("");
+    if (op === "send" && oKind === "custom" && Number(oAmt) > 0 && !oName.trim()) return toast("Write the name of the other fee.");
+    setBusy(op); const r = await act("admin.clRaimsCard", { id: c.id, no: c.cardNo || "", op, fee: Number(fee || 0), other: other() }, op === "download" ? { quiet: true } : undefined); setBusy("");
     if (op === "download" && r?.file) downloadFile(r.file.data, r.file.name);
+    if (op === "send" && !r) setFailed(true);
   };
+  const manual = async e => {
+    e.preventDefault(); const f = e.currentTarget.card.files[0]; if (!f) return toast("Choose the clearance card file first.");
+    if (oKind === "custom" && Number(oAmt) > 0 && !oName.trim()) return toast("Write the name of the other fee.");
+    let file; try { file = await readUpload(f, { imageMax: 2000 }); } catch (err) { return toast(err.message); }
+    setBusy("manual"); const r = await act("admin.card", { id: c.id, file, fee: Number(fee || 0), other: other() }); setBusy(""); if (r) setFailed(false);
+  };
+  const fees = <>
+    {!feeDone && <label className="f">Card fee (BDT)<input type="number" min="0" value={fee} placeholder="0" onChange={e => setFee(e.target.value)} />{compact && agent && <span className="hint">Added to the agent's account statement</span>}</label>}
+    {compact && !otherDone && <div className="fee-other"><b>Others fee <span className="muted">(optional)</span></b>
+      <div className="fee-other-row"><select value={oKind} onChange={e => setOKind(e.target.value)} aria-label="Other fee name" style={{ flex: "1 1 150px" }}><option value="Stamp fee">Stamp fee</option><option value="custom">Custom…</option></select>
+        {oKind === "custom" && <input type="text" value={oName} onChange={e => setOName(e.target.value)} maxLength={60} placeholder="Fee name" aria-label="Custom fee name" style={{ flex: "1 1 150px" }} />}
+        <input type="number" min="0" value={oAmt} onChange={e => setOAmt(e.target.value)} placeholder="Amount (BDT)" aria-label="Other fee amount" style={{ flex: "1 1 120px" }} /></div>
+      {agent && <span className="hint">Added to the agent's account statement</span>}</div>}
+  </>;
   return <div className="raims-card">
     <b><LuShieldCheck /> Clearance card from RAIMS</b>
     <p className="muted small">{c.cardNo ? <>Clearance ID <b data-notr>{c.cardNo}</b> (from RAIMS Clearance Check).</> : "The card is found in RAIMS Clearance Check by the worker's passport number."}</p>
-    {c.card && compact && <p className="small ok-txt"><LuCheck /> {`Card sent ${fdate(c.card.sentAt)}${c.card.fee > 0 ? ` · Card fee ${Number(c.card.fee).toLocaleString("en-US")} BDT added` : ""}`}</p>}
-    {!(c.card?.fee > 0) && <div className="raims-card-row"><label className="f">Card fee (BDT)<input type="number" min="0" value={fee} onChange={e => setFee(e.target.value)} />{compact && who === "agent" && <span className="hint">Added to the agent's account statement</span>}</label></div>}
+    {c.card && compact && <p className="small ok-txt"><LuCheck /> {`Card sent ${fdate(c.card.sentAt)}${feeDone ? ` · Card fee ${Number(c.card.fee).toLocaleString("en-US")} BDT` : ""}${otherDone ? ` · ${c.card.other.label} ${Number(c.card.other.amount).toLocaleString("en-US")} BDT` : ""}`}</p>}
+    <div className={compact ? "stack" : "raims-card-row"}>{fees}</div>
     <div className="row tight wrap">
       {!compact && <button type="button" className="btn" disabled={!!busy} onClick={() => run("download")}><LuDownload /> {busy === "download" ? "Getting…" : "Download Card"}</button>}
       <button type="button" className="btn pri" disabled={!!busy} onClick={() => run("send")}><LuSend /> {busy === "send" ? "Sending…" : c.card ? "Send Card again" : "Send Card"}</button>
       {c.cardNo && !compact && <a className="btn sm link" href={`https://raims.oep.gov.bd/agency/employee/clearance-check/download/card/${encodeURIComponent(c.cardNo)}`} target="_blank" rel="noopener noreferrer">Open in RAIMS</a>}
     </div>
     <p className="muted small">Send Card puts the card in the {who}'s portal to download.</p>
+    {compact && failed && <form className="stack mt8 card-manual" onSubmit={manual}>
+      <b>Send the card manually</b>
+      <p className="muted small">The card could not be taken from RAIMS. Upload the card file instead; the fees above go with it.</p>
+      <label className="f">Clearance card file<input type="file" name="card" accept={CARD_TYPES} required /><span className="hint">PDF, JPG or WebP, up to 1.5 MB</span></label>
+      <div><button className="btn pri" type="submit" disabled={!!busy}><LuUpload /> {busy === "manual" ? "Sending…" : `Upload & send to ${who}`}</button></div>
+    </form>}
   </div>;
 }
 
-/* Admin: upload the BMET clearance card for an approved file, set the card fee and send it to the agent or job seeker */
 export function CardAdmin({ c }) {
   const p = clPerson(c); const who = p.kind === "agent" ? `agent (${p.via})` : "job seeker";
   if (c.status !== "approved") return <p className="muted small">The Upload Clearance Card option appears when the status is Approved.</p>;
