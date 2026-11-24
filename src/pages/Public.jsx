@@ -349,6 +349,13 @@ export function Track() {
 }
 function TrackFile() {
   const [res, setRes] = React.useState(null); const [busy, setBusy] = React.useState(false);
+  // tracking a file needs an account: the Sign in page opens (job seekers then see their files in their own panel too)
+  const signed = !!store.S.session;
+  React.useEffect(() => { if (!signed) openModal("auth", { mode: "login" }); }, [signed]);
+  if (!signed) return <div className="card stack track-signin"><h3><LuLogIn /> Sign in to track your file</h3>
+    <p className="muted">Sign in with your account to track your application, BMET clearance, visa and air ticket. New here? Create a free job seeker account with your mobile number; passports the office entered with that number show in your account.</p>
+    <div className="row"><button className="btn pri" type="button" onClick={() => openModal("auth", { mode: "login" })}><LuLogIn /> Sign in</button>
+      <button className="btn" type="button" onClick={() => openModal("auth", { mode: "register", role: "candidate" })}><LuUserPlus /> Create account</button></div></div>;
   const submit = async e => {
     e.preventDefault(); const d = Object.fromEntries(new FormData(e.currentTarget)); const pass = String(d.passport || "").trim(), ph = String(d.phone || "").replace(/\D/g, "");
     if (pass.length < 6 && ph.length < 10) return toast("Enter the passport number or the mobile number.");

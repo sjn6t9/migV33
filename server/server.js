@@ -407,6 +407,7 @@ A["contact.send"] = async (d, u, ctx) => {
 };
 /* Track/Verify › Track: the passport number OR the mobile number (either one) finds the person's files */
 A["track.lookup"] = async ({ passport, phone }, u, ctx) => {
+  must(u, "Sign in to track your file.", 401);
   limit(ctx.ip, "track", 30, 3600e3);
   const P = str(passport, 30).replace(/\s+/g, "").toUpperCase(), dg = v => String(v || "").replace(/\D/g, "").slice(-10), M = dg(phone);
   must(P.length >= 6 || M.length >= 10, "Enter the passport number or the mobile number.");
