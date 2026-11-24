@@ -1,8 +1,8 @@
 'use strict';
 // Dice Bot - chat-room game engine (virtual coins, for fun only). Node 16+, no packages.
 // Elimination rules: every round the bot rolls two dice - that total is the TARGET. Each player rolls two dice once (!r).
-// A total >= TARGET is IN, otherwise OUT and eliminated. If nobody hits the target nobody is eliminated. A double gives
-// immunity for the next round. Last player standing wins the pot (minus rake).
+// A total >= TARGET is IN, otherwise OUT and eliminated. If nobody hits the target nobody is eliminated. A double six (6+6) gives
+// immunity for the next round (other doubles do not). Last player standing wins the pot (minus rake).
 // Commands: !start [amount]   !j   !r (also !d / !roll)
 // api: say(room,text) · tell(room,user,text) optional private line · debit(room,user,amount)->bool · settle(room,winner,prize) · refund(room)
 
@@ -16,6 +16,7 @@ const FACE = ['', '⚀', '⚁', '⚂', '⚃', '⚄', '⚅'];
 const roll = rng => { const a = 1 + Math.floor(rng() * 6), b = 1 + Math.floor(rng() * 6); return { a, b, total: a + b }; };
 const show = (r) => `${FACE[r.a]} ${r.a} + ${FACE[r.b]} ${r.b} = ${r.total}`;
 const list = a => a.join(', ');
+const isImmuneRoll = r => r.a === 6 && r.b === 6;   // only a double six gives immunity
 
 class DiceGame {
   constructor(room, api, entry, cfg, rng) { this.room = room; this.api = api; this.entry = entry; this.cfg = cfg; this.rng = rng; this.deadline = null; this.shown = new Map(); this.winner = null; this.prize = 0; this.round = 0; this.target = 0; this.alive = []; this.immune = new Set(); this.state = 'joining'; this.players = []; this.pending = null; this.rolls = null; this._done = null; }
@@ -48,7 +49,7 @@ class DiceGame {
     if (!this.pending) return this.api.tell ? this.api.tell(this.room, user, 'The round result is being tallied. Please wait.') : undefined;
     if (this.rolls.has(user)) return this.api.tell ? this.api.tell(this.room, user, 'You have already rolled in this round') : undefined;
     const r = roll(this.rng); this.rolls.set(user, r); this.shown.set(user, r);
-    this.say(`${user}: ${show(r)} ${r.total >= this.target ? 'IN!' : 'OUT!'}${r.a === r.b ? ' Double - immunity for the next round!' : ''}`);
+    this.say(`${user}: ${show(r)} ${r.total >= this.target ? 'IN!' : 'OUT!'}${isImmuneRoll(r) ? ' Double six - immunity for the next round!' : ''}`);
     if (this.rolls.size === this.pending.length && this._done) this._done();
   }
   async collect(players, seconds) {
@@ -57,7 +58,7 @@ class DiceGame {
     clearTimeout(this._t);
     const res = this.rolls; this.pending = null; this._done = null; this.deadline = null;
     await this.say("TIME'S UP! Tallying rolls...");
-    for (const p of players) if (!res.has(p)) { const r = roll(this.rng); res.set(p, r); this.shown.set(p, r); await this.say(`Bot rolls - ${p}: ${show(r)} ${r.total >= this.target ? 'IN!' : 'OUT!'}${r.a === r.b ? ' = immunity for the next round!' : ''}`); }
+    for (const p of players) if (!res.has(p)) { const r = roll(this.rng); res.set(p, r); this.shown.set(p, r); await this.say(`Bot rolls - ${p}: ${show(r)} ${r.total >= this.target ? 'IN!' : 'OUT!'}${isImmuneRoll(r) ? ' = immunity for the next round!' : ''}`); }
     return res;
   }
   async play() {
@@ -69,7 +70,7 @@ class DiceGame {
       await this.say(`Players: !r to roll. ${this.cfg.ROLL_SECONDS} seconds.`);
       const res = await this.collect([...this.alive], this.cfg.ROLL_SECONDS);
       const ins = this.alive.filter(p => res.get(p).total >= this.target);
-      const nextImmune = new Set(this.alive.filter(p => res.get(p).a === res.get(p).b));
+      const nextImmune = new Set(this.alive.filter(p => isImmuneRoll(res.get(p))));
       if (!ins.length) await this.say(`No one hit the TARGET (${this.target}) - nobody is eliminated, everyone advances!`);
       else {
         const outs = this.alive.filter(p => !ins.includes(p) && !this.immune.has(p)), saved = this.alive.filter(p => !ins.includes(p) && this.immune.has(p));
