@@ -2950,7 +2950,7 @@ async function on(m){
     const bg=cur==='account'&&document.querySelector('#view .big');if(bg&&!ST.unlimited)bg.textContent='¢ '+m.coins}
   if(m.t==='online'){ONL=m.list;m.list.forEach(u=>ROLES[u.name]=u.role)}
   if(m.t==='roominfo'&&m.room===room&&$('log'))roomIntro(m);
-  if(m.t==='roominfo'&&m.room===room)setTimeout(()=>{drawNav();songBar()},0);
+  if(m.t==='roominfo'&&m.room===room)setTimeout(()=>{drawNav();songBar();rbSwap()},0);
   if(m.t==='song')songOn(m);
   if((m.t==='enter'||m.t==='leave')&&m.bg&&m.room!==room&&OPEN.includes(m.room)){(BUF[m.room]=BUF[m.room]||[]).push(m);if(BUF[m.room].length>200)BUF[m.room].shift();UNR[m.room]=(UNR[m.room]||0)+1;drawTabs()}
   if(m.t==='leave'&&m.room===room&&$('log'))leaveLine(m);
@@ -4017,12 +4017,14 @@ function drawOnline(){const b=$('rbar');if(!b)return;
   const nm=RM.map(u=>`<span style="color:${nc(u.name)}">${esc(u.name)}</span>`).join(', ');
   b.innerHTML=`<button class="on1" data-b="ppl"><span class="dot online" style="width:14px;height:14px;flex:none"></span><span class="o1t"><b>${RM.length} online</b><span class="o1n">${nm}</span></span></button>
    <button class="ib star ${RI?.fav?'on':''}" data-b="fav" aria-label="Favorite">${IC.star}</button><button class="ib" data-b="gift" aria-label="Send Gift">${IC.gift}</button><button class="ib" data-b="ppl" aria-label="Participants">${IC.ppl}</button><button class="ib" data-b="cmds" aria-label="Command List">${IC.cmd}</button><span id="rbx"></span><button class="ib" data-b="more" aria-label="Room options">${IC.more}</button>`;try{placeHdr(true)}catch{}
+  rbSwap();
   if(!window._ro&&$('hdr')&&window.ResizeObserver){window._ro=new ResizeObserver(()=>{if($('chatbox'))fitChat()});window._ro.observe($('hdr'))}
   const bt=$('rbt');if(bt&&!bt._b){bt._b=1;bt.onclick=()=>{const w=$('rbw');const h=w.classList.toggle('hid');clearTimeout(window._rbT);if(!h)window._rbT=setTimeout(()=>{const x=$('rbw');if(x)x.classList.add('hid')},5000)}}
   b.onclick=async e=>{const el=e.target.closest('[data-b]'),k=el?.dataset.b;if(!k)return;
     if(k==='ppl')return memPop(el);
     if(k==='gift')return giftSheet();
     if(k==='cmds')return go('cmds');
+    if(k==='song')return songSheet();
     if(k==='fav'){try{await api('POST',`/rooms/${encodeURIComponent(room)}/fav`);if(RI)RI.fav=!RI.fav;drawOnline()}catch(er){fail(er)}return}
     if(k==='mods')return modPop(el);
     if(k==='more')return chatMenu(el)}}
@@ -4092,6 +4094,11 @@ if(/^.+ \(\d+ runs?\)(\s*\n\s*.+ \(\d+ runs?\))*$/.test(t)&&!/^Tie/.test(t))retu
 let SONG={},ytP=null,ytReady=0,ytWant=null,songMuted=false,songBlocked=false;
 const canSong0=()=>room&&!room.startsWith('dm:')&&(['staff','admin'].includes(ST.role)||(RI&&(RI.owner===me||(RI.mods||[]).includes(me))));
 const canSong=()=>cur==='chat'&&canSong0();
+const SONGIC='<svg viewBox="0 0 24 24"><path d="M9 18V6l10-2v12"/><circle cx="6.500" cy="18" r="2.500"/><circle cx="16.500" cy="16" r="2.500"/></svg>';
+/* in the room bar (the strip under the drawer button) Play Song takes the place of Command List for admins/moderators */
+function rbSwap(){const bar=$('rbar');if(!bar)return;const b=bar.querySelector('[data-b=cmds],[data-b=song]');if(!b)return;const mod=!!canSong0();
+  if(mod&&b.dataset.b!=='song'){b.dataset.b='song';b.setAttribute('aria-label','Play Song');b.innerHTML=SONGIC}
+  else if(!mod&&b.dataset.b!=='cmds'){b.dataset.b='cmds';b.setAttribute('aria-label','Command List');b.innerHTML=IC.cmd}}
 function ytLoad(cb){if(window.YT&&YT.Player){cb();return}(ytLoad.q=ytLoad.q||[]).push(cb);if(ytLoad.s)return;ytLoad.s=1;window.onYouTubeIframeAPIReady=()=>{(ytLoad.q||[]).forEach(f=>f());ytLoad.q=[]};const t=document.createElement('script');t.src='https://www.youtube.com/iframe_api';t.onerror=()=>{ytLoad.s=0};document.head.appendChild(t)}
 const sTitle=x=>x?(x.title||'YouTube song'):'';
 /* slim bar left of the drawer button (what is playing + room name) and Play/Pause buttons on its right */
