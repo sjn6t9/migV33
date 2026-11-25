@@ -7,7 +7,11 @@ export function currentTheme() { return savedTheme() || (mq && mq.matches ? "dar
 
 export function applyTheme() {
   const s = savedTheme(); const el = document.documentElement;
+  // switch with animations off and make the browser work out every colour again at once, so no part keeps its old Day/Night colours
+  el.classList.add("theme-switching");
   if (s) el.dataset.theme = s; else delete el.dataset.theme;
+  void el.offsetHeight;
+  requestAnimationFrame(() => requestAnimationFrame(() => el.classList.remove("theme-switching")));
   const meta = document.querySelector('meta[name="theme-color"]');
   if (meta) meta.setAttribute("content", currentTheme() === "dark" ? "#0f1f19" : "#006a4e");
 }
