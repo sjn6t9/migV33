@@ -4123,7 +4123,7 @@ function chatMenu(anchor){
   if($('rpop'))return $('rpop').remove();
   const dm=room.startsWith('dm:');
   const p=document.createElement('nav');p.id='rpop';
-  p.innerHTML=`${dm?'':'<button data-c="ppl">👥 Participants</button>'}<button data-c="bal">🪙 Check Balance</button><button data-c="gift">🎁 Send Gift</button>${dm?'':'<button data-c="pkt">🧧 Lucky Packet</button>'}${dm?'':'<button data-c="info">ℹ️ Room info</button>'}${!dm&&canEditRoom()?'<button data-c="edit">✏️ Room Edit</button>':''}<button data-c="clr">🧹 Clear Chat</button><button data-c="cmds">⌨️ Command List</button><button data-c="rooms">💬 All rooms</button>${dm?'<button data-c="leave" class="dg">✖️ Close Chat</button>':'<button data-c="leave" class="dg">🚪 Leave Room</button>'}`;
+  p.innerHTML=`${dm?'':'<button data-c="ppl">👥 Participants</button>'}<button data-c="bal">🪙 Check Balance</button><button data-c="gift">🎁 Send Gift</button>${dm?'':'<button data-c="pkt">🧧 Lucky Packet</button>'}${dm?'':'<button data-c="info">ℹ️ Room info</button>'}${!dm&&canEditRoom()?'<button data-c="edit">✏️ Room Edit</button>':''}${!dm&&canSong()?'<button data-c="song">🎵 Play Song</button>':''}<button data-c="clr">🧹 Clear Chat</button><button data-c="cmds">⌨️ Command List</button><button data-c="rooms">💬 All rooms</button>${dm?'<button data-c="leave" class="dg">✖️ Close Chat</button>':'<button data-c="leave" class="dg">🚪 Leave Room</button>'}`;
   const a=(anchor||$('rbar')).getBoundingClientRect();
   document.body.appendChild(p);
   const h=p.offsetHeight,w=p.offsetWidth;
@@ -4142,7 +4142,7 @@ function chatMenu(anchor){
     if(k==='gift')return giftSheet();
     if(k==='pkt')return packetSheet();
     if(k==='cmds'||k==='rooms')return go(k);
-    if(k==='edit')return roomEdit()}}
+    if(k==='edit')return roomEdit();if(k==='song')return songSheet()}}
 async function roomEdit(){
   let e;try{e=await api('GET','/rooms/'+encodeURIComponent(room)+'/edit')}catch(er){return fail(er)}
   sheetOpen(`<h2>✏️ Room Edit</h2><small class="mu">${esc(rtitle(room))} · admin ${esc(e.owner)}</small>
