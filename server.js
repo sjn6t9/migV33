@@ -2522,7 +2522,7 @@ const songPos = st => st?.playing ? (st.base || 0) + (Date.now() - st.at) / 1000
 const songView = room => { const p = plGet(room), st = SONG.get(room), c = p.list[p.cur];
   return { t: 'song', room, list: p.list, cur: p.cur, vid: c?.vid || '', url: c?.url || '', title: c?.title || '', by: p.by, playing: !!(c && st?.playing), pos: c ? Math.max(0, songPos(st)) : 0 }; };
 const castSong = room => cast(room, songView(room));
-const songSay = (room, text) => cast(room, { t: 'msg', room, user: '', text, kind: 'game', ts: Date.now(), role: '' });
+const songSay = (room, text) => cast(room, { t: 'msg', room, user: room, text, kind: 'song', ts: Date.now(), role: '' });
 const songErr = (ws, room, text) => send(ws, { t: 'msg', room, user: '', text, kind: 'err', ts: Date.now(), role: '' });
 const songLast = new Map();   // user -> last change time (anti-spam)
 const songTitle = async (room, vid) => {   // best effort: look up the video title so the playlist is readable
@@ -2549,7 +2549,7 @@ function onSong(ws, m) {
     const url = String(m.url || '').trim().slice(0, 300), vid = ytId(url);
     if (!vid) return songErr(ws, room, 'That is not a valid YouTube video link. Use a link like https://www.youtube.com/watch?v=... or https://youtu.be/...');
     if (p.list.length >= MAX_SONGS) return songErr(ws, room, 'The song list is full (' + MAX_SONGS + ' songs). Remove one first.');
-    p.list.push({ url, vid, title: '' }); p.by = ws.user; plSave(room, p); songSay(room, '🎵 ' + ws.user + ' added a song to ' + room + '.'); castSong(room); songTitle(room, vid); return;
+    p.list.push({ url, vid, title: '' }); p.by = ws.user; plSave(room, p); songSay(room, '🎵 ' + ws.user + ' added a song.'); castSong(room); songTitle(room, vid); return;
   }
   if (m.t === 'song_del') {
     const i = +m.i; if (!(i >= 0 && i < p.list.length)) return;
@@ -2561,9 +2561,9 @@ function onSong(ws, m) {
   if (m.t === 'song_play') {
     const on = !!m.on, pos = songPos(st);
     SONG.set(room, { playing: on, base: pos, at: Date.now() });
-    songSay(room, (on ? '▶ ' : '⏸ ') + ws.user + (on ? ' played' : ' paused') + ' the song in ' + room + '.'); return castSong(room);
+    songSay(room, (on ? '▶ ' : '⏸ ') + ws.user + (on ? ' played' : ' paused') + ' the song.'); return castSong(room);
   }
-  if (m.t === 'song_pick') { const i = +m.i; if (i >= 0 && i < p.list.length) { go(i, true); songSay(room, '🎵 Now playing in ' + room + ': ' + (p.list[i].title || 'song ' + (i + 1))); } return; }
+  if (m.t === 'song_pick') { const i = +m.i; if (i >= 0 && i < p.list.length) { go(i, true); songSay(room, '🎵 Now playing: ' + (p.list[i].title || 'song ' + (i + 1))); } return; }
   if (m.t === 'song_next') return go((p.cur + 1) % p.list.length, !!st?.playing);
   if (m.t === 'song_prev') return go((p.cur - 1 + p.list.length) % p.list.length, !!st?.playing);
 }

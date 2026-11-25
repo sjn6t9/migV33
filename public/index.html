@@ -3967,7 +3967,7 @@ V.chat=async(r)=>{room=r;if(!r.startsWith('dm:'))lastRoom=r;target='';pend=null;
    <div id="recbar" class="row" hidden><button type="button" id="rcx" aria-label="Cancel recording">✕</button><span class="rdot"></span><b id="rect">0:00</b><span class="mu g">Recording…</span><button type="button" class="o" id="rcs">Send ➤</button></div><input type="file" id="pfile" accept="image/*" hidden></div>`);
   try{placeHdr(false)}catch{}
   document.querySelectorAll('#hdr #rbw,#hdr #srow,#hdr #rbt').forEach(n=>n.remove());
-  {const h=$('hdr'),w=$('rbw');w.classList.add('hid');w.classList.remove('show');h.appendChild(w);const sr=document.createElement('div');sr.id='srow';sr.innerHTML='<div id="sbl"></div><div id="sbr"></div>';sr.insertBefore($('rbt'),$('sbr'));h.appendChild(sr);songBar()}
+  {const h=$('hdr'),w=$('rbw');w.classList.add('hid');w.classList.remove('show');h.appendChild(w);const sr=document.createElement('div');sr.id='srow';sr.innerHTML='<div id="sbl"></div><div id="sbr"></div>';sr.insertBefore($('rbt'),sr.querySelector('#sbr'));h.appendChild(sr);songBar()}
   drawTabs();
   $('f').onsubmit=e=>{e.preventDefault();const t=$('t').value.trim();if(t){if(t[0]==='/'&&!/^\/bot(\s|$)/i.test(t))add({user:me,text:t,kind:'msg',ts:Date.now(),role:ROLES[me]||ST.role||'user',xp:ST.xp});tx({t:'msg',text:t})}$('t').value=''};
   $('log').onclick=e=>{if(e.target.dataset.big)return lightbox(e.target.dataset.big);const u=e.target.dataset.u;if(u&&u!==me)setTarget(u)};
@@ -4090,7 +4090,8 @@ const CKF=t=>{let m=t.match(/^(.+?) bats: (.+)$/);if(m){const L=m[2].trim(),l=L.
 if(/^.+ \(\d+ runs?\)(\s*\n\s*.+ \(\d+ runs?\))*$/.test(t)&&!/^Tie/.test(t))return '<span class="ckl">'+t.split(/\s*\n\s*/).map((x,n)=>{const q=x.match(/^(.+) \((\d+) runs?\)$/);return q?`<span class="ckp"><i>${n+1}</i>${q[1]}<b>${q[2]}</b></span>`:x}).join('')+'</span>';return t};
 /* ---------- Play Song (room admin / moderators build a YouTube playlist; audio plays for everyone in the room) ---------- */
 let SONG={},ytP=null,ytReady=0,ytWant=null,songMuted=false,songBlocked=false;
-const canSong=()=>cur==='chat'&&room&&!room.startsWith('dm:')&&(['staff','admin'].includes(ST.role)||(RI&&(RI.owner===me||(RI.mods||[]).includes(me))));
+const canSong0=()=>room&&!room.startsWith('dm:')&&(['staff','admin'].includes(ST.role)||(RI&&(RI.owner===me||(RI.mods||[]).includes(me))));
+const canSong=()=>cur==='chat'&&canSong0();
 function ytLoad(cb){if(window.YT&&YT.Player){cb();return}(ytLoad.q=ytLoad.q||[]).push(cb);if(ytLoad.s)return;ytLoad.s=1;window.onYouTubeIframeAPIReady=()=>{(ytLoad.q||[]).forEach(f=>f());ytLoad.q=[]};const t=document.createElement('script');t.src='https://www.youtube.com/iframe_api';t.onerror=()=>{ytLoad.s=0};document.head.appendChild(t)}
 const sTitle=x=>x?(x.title||'YouTube song'):'';
 /* slim bar left of the drawer button (what is playing + room name) and Play/Pause buttons on its right */
@@ -4098,7 +4099,7 @@ function songBar(){const l=$('sbl'),r=$('sbr');if(!l||!r)return;const S=SONG[roo
   if(!S||!S.vid){l.innerHTML='';r.innerHTML='';return}
   const c=(S.list||[])[S.cur]||{};
   const tt=songBlocked?'Tap to listen':sTitle(c);l.innerHTML=`<button type="button" class="sbt${S.playing?' on':''}" id="sbtx" title="${esc(tt)}"><span class="mq" style="--d:${Math.max(8,Math.round(tt.length*.28))}s">🎵 ${esc(tt)}</span></button>`;
-  const mod=canSong();
+  const mod=!!canSong0();
   r.innerHTML=(mod?`<button type="button" data-k="prev" aria-label="Previous song">⏮</button><button type="button" data-k="pp" aria-label="${S.playing?'Pause':'Play'}">${S.playing?'⏸':'▶'}</button><button type="button" data-k="next" aria-label="Next song">⏭</button>`:'')+`<button type="button" data-k="mute" aria-label="Mute">${songMuted?'🔇':'🔊'}</button>`;
   $('sbtx').onclick=()=>{if(songBlocked){songBlocked=false;try{ytP&&ytP.playVideo()}catch{}songBar()}else if(mod)songSheet()};
   r.onclick=e=>{const b=e.target.closest('[data-k]');if(!b)return;e.stopPropagation();const k=b.dataset.k;
@@ -4216,6 +4217,7 @@ function addFx(m){const K=m.kind,d=document.createElement('div'),L=$('log'),tm=n
   L.append(d);L.scrollTop=1e9;return true}
 const giftCol=h=>{if(h.toLowerCase()==='#d9342b')return h;let x=h.slice(1);if(x.length===3)x=x.split('').map(c=>c+c).join('');const n=parseInt(x.slice(0,6).padEnd(6,'0'),16),r=n>>16&255,g=n>>8&255,b=n&255,lum=(0.299*r+0.587*g+0.114*b)/255;return lum<0.45?'#a9b8ff':h};
 function add(m){if(['info','ok','err','emote','emotep','note','notel','notea','gift'].includes(m.kind)&&addFx(m))return;ROLES[m.user]=m.role;const d=document.createElement('div');if(m.kind==='sys'||m.kind==='action'){d.className=m.kind==='sys'?'g2':'act';d.textContent=m.text;$('log').append(d);$('log').scrollTop=1e9;return}const t=new Date(m.ts).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})+' · '+new Date(m.ts).toLocaleDateString([],{day:'numeric',month:'short'}),stamp=()=>{const s=document.createElement('div');s.className='bts';s.textContent=t;return s};
+  if(m.kind==='song'){d.className='rl';d.innerHTML=`<span class="rn2">${esc(m.user)}:</span> ${esc(m.text)}`;$('log').append(d);$('log').scrollTop=1e9;return}
   if(m.kind==='gift'){d.className='g2';const gm=/^\[g:(\/uploads\/[a-f0-9]{32}\.\w+)\] ?(.*)$/.exec(m.text);if(gm){d.innerHTML=`<b>${esc(m.user)}</b>${lvtag(m.user,m.xp)}: `;const im=document.createElement('img');im.src=gm[1];im.alt='';im.style.cssText='height:26px;width:26px;object-fit:contain;vertical-align:middle;margin:0 4px';d.append(im,gm[2])}else{d.innerHTML=`<b>${esc(m.user)}</b>${lvtag(m.user,m.xp)}: ${esc(m.text)}`;if(/Type \/grab/.test(m.text)){const gb=document.createElement('button');gb.className='o';gb.textContent='🧧 Grab';gb.style.cssText='margin-left:8px;padding:2px 12px';gb.onclick=()=>tx({t:'msg',text:'/grab'});d.append(gb)}}}
   else if(m.kind==='image'||m.kind==='voice'){const light=$('log').classList.contains('light');d.className='b';
     const [u,dur]=String(m.text).split('|');const safe=/^\/uploads\/[a-f0-9]{32}\.\w+$/.test(u)?u:'';
