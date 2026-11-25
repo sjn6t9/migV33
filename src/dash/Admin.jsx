@@ -634,6 +634,7 @@ function RaimsDay() {
     // only files still on the way: now at Pending Section / AD / DD / Director / ADG Approval (approved files drop out)
     const cur = H[H.length - 1]; if (c.status === "approved" || c.status === "rejected" || !/^pending .+approval$/i.test(String(cur?.t || LABEL[cur?.s] || ""))) continue;
     const pv = H[first - 1], nw = H[lastI], p = clPerson(c);
+    if (!/^pending .+approval$/i.test(String(pv ? pv.t || LABEL[pv.s] || "" : ""))) continue; // Last Position must already be a Pending … Approval stage (from Pending Section Approval on)
     rows.push({ id: c.id, name: p.name, passport: p.passport || "—", ic: c.icNo || c.ref, from: pv ? pv.t || LABEL[pv.s] || pv.s : "—", to: nw.t || LABEL[nw.s] || nw.s, at: nw.at }); }
   rows.sort((a, b) => String(b.at).localeCompare(String(a.at)));
   const cnt = {}; for (const r of rows) cnt[r.to] = (cnt[r.to] || 0) + 1;
