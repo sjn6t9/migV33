@@ -4153,7 +4153,7 @@ function chatMenu(anchor){
   if($('rpop'))return $('rpop').remove();
   const dm=room.startsWith('dm:');
   const p=document.createElement('nav');p.id='rpop';
-  p.innerHTML=`${dm?'':'<button data-c="ppl">👥 Participants</button>'}<button data-c="bal">🪙 Check Balance</button><button data-c="gift">🎁 Send Gift</button>${dm?'':'<button data-c="pkt">🧧 Lucky Packet</button>'}${dm?'':'<button data-c="info">ℹ️ Room info</button>'}${!dm&&canEditRoom()?'<button data-c="edit">✏️ Room Edit</button>':''}${!dm&&canSong()?'<button data-c="song">🎵 Play Song</button>':''}<button data-c="clr">🧹 Clear Chat</button><button data-c="cmds">⌨️ Command List</button><button data-c="rooms">💬 All rooms</button>${dm?'<button data-c="leave" class="dg">✖️ Close Chat</button>':'<button data-c="leave" class="dg">🚪 Leave Room</button>'}`;
+  p.innerHTML=`${dm?'':'<button data-c="ppl">👥 Participants</button>'}<button data-c="bal">🪙 Check Balance</button><button data-c="gift">🎁 Send Gift</button>${dm?'':'<button data-c="pkt">🧧 Lucky Packet</button>'}${dm?'':'<button data-c="info">ℹ️ Room info</button>'}${!dm&&canEditRoom()?'<button data-c="edit">✏️ Room Edit</button>':''}${!dm&&canSong()?'<button data-c="cmds">⌨️ Command List</button>':''}<button data-c="clr">🧹 Clear Chat</button>${!dm&&canSong()?'<button data-c="song">🎵 Play Song</button>':'<button data-c="cmds">⌨️ Command List</button>'}<button data-c="rooms">💬 All rooms</button>${dm?'<button data-c="leave" class="dg">✖️ Close Chat</button>':'<button data-c="leave" class="dg">🚪 Leave Room</button>'}`;
   const a=(anchor||$('rbar')).getBoundingClientRect();
   document.body.appendChild(p);
   const h=p.offsetHeight,w=p.offsetWidth;
