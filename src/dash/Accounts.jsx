@@ -1,14 +1,14 @@
 // Payments & receipts › Main account (office cash book) and Salary accounts (pay admin / staff, receipt with QR code).
 import React from "react";
-import { LuPencil, LuSearch, LuPlus, LuX, LuTrash2, LuEye, LuImage, LuFileText, LuMail, LuBan, LuBanknote, LuHistory, LuCheck, LuQrCode, LuExternalLink, LuPrinter, LuCalendarDays, LuChevronLeft, LuChevronRight, LuRotateCcw } from "react-icons/lu";
-import { store, user } from "../store.js";
+import { LuPencil, LuSearch, LuPlus, LuX, LuTrash2, LuEye, LuImage, LuFileText, LuMail, LuBan, LuBanknote, LuHistory, LuCheck, LuQrCode, LuExternalLink, LuPrinter, LuCalendarDays, LuChevronLeft, LuChevronRight, LuRotateCcw, LuSheet } from "react-icons/lu";
+import { store, user, clPerson } from "../store.js";
 import { act, openModal, closeModal, toast, confirmBox } from "../actions.js";
 import { Field } from "./shared.jsx";
 import { Empty, RoleBadges } from "../ui.jsx";
 import { Statement } from "./Statement.jsx";
 import { PassportPick, ppLine } from "./Passports.jsx";
 import { METHODS, MFS, BANKS, channelsFor } from "../banks.js";
-import { drawSalary, salaryPng, salaryPdf, salaryPdfBlob, salaryUrl, monthName, tk, rDate, takaWords } from "../receipt.js";
+import { xlsx, drawSalary, salaryPng, salaryPdf, salaryPdfBlob, salaryUrl, monthName, tk, rDate, takaWords } from "../receipt.js";
 
 const today = () => new Date(Date.now() - new Date().getTimezoneOffset() * 6e4).toISOString().slice(0, 10);
 const key = () => Math.random().toString(36).slice(2);
@@ -211,6 +211,51 @@ export function TransactionHistory() {
     <div className="hold-top mt8">{leadersList().map(l => { const h = boss.find(x => x.key === `p:${l.k}`), b = h ? h.bal : 0;
       return <div key={l.k} className="hold-tile"><span className="muted small">{`${l.name} · ${l.title}`}</span><b className={`boss-amt ${bossCls(b)}`}>{`${tk(Math.abs(b))} BDT`}</b><span className={`hold-word ${b < -0.004 ? "adv" : b > 0.004 ? "with" : ""}`}>{bossWord(b)}</span></div>; })}</div>
     <div className="card"><Statement key={full ? "all" : day} day={full ? "" : day} title="Mam & Mam Overseas Ltd. · Transaction history" kind="TRANSACTION HISTORY" rateHead="Received by" cash times noOpen heads={["Money in", "Money out"]} rows={rows} empty="No transactions." /></div>
+  </>;
+}
+/* Payments & receipts › Passport Delivery List: the files whose clearance card was sent, by day or by month,
+   with Name, Passport Number, Country, IC Number, Agent Name and Card fee, and the total at the bottom. Print / Excel. */
+const dhakaDay = iso => new Date(Date.parse(iso) + 6 * 3600e3).toISOString().slice(0, 10);
+export function PassportDelivery() {
+  const today = dhakaToday(), [mode, setMode] = React.useState("day"), [day, setDay] = React.useState(today), [month, setMonth] = React.useState(today.slice(0, 7));
+  const all = (store.S.clearances || []).filter(c => c.card?.sentAt).map(c => { const p = clPerson(c);
+    return { id: c.id, at: c.card.sentAt, d: dhakaDay(c.card.sentAt), name: p.name || "", passport: String(p.passport || "").toUpperCase(), country: c.country || "", ic: c.icNo || c.ref || "", agent: p.via || "", fee: Number(c.card.fee || 0) }; })
+    .sort((a, b) => a.at.localeCompare(b.at));
+  const rows = all.filter(r => mode === "day" ? r.d === day : r.d.slice(0, 7) === month), total = rows.reduce((t, r) => t + r.fee, 0);
+  const label = mode === "day" ? dayLabel(day) : monthName(month), addMonth = n => { const [y, m] = month.split("-").map(Number); const d = new Date(Date.UTC(y, m - 1 + n, 1)); return d.toISOString().slice(0, 7); };
+  const head = ["SL", "Date", "Name", "Passport Number", "Country", "IC Number", "Agent Name", "Card fee (BDT)"];
+  const excel = () => xlsx("Passport delivery", [[{ v: "Mam & Mam Overseas Ltd. · Passport Delivery List", s: 3 }], [label], [], head.map(v => ({ v, s: 1 })),
+    ...rows.map((r, i) => [i + 1, r.d, r.name, r.passport, r.country, r.ic, r.agent, { v: r.fee, s: 2 }]), ["", "", "", "", "", "", { v: "Total Amount", s: 1 }, { v: total, s: 4 }]],
+    [6, 12, 28, 16, 14, 26, 26, 16], `passport-delivery-${mode === "day" ? day : month}.xlsx`);
+  const print = () => {
+    const e = v => String(v ?? "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+    const html = `<!doctype html><html><head><meta charset="utf-8"><title>Passport Delivery List · ${e(label)}</title><style>body{font:13px/1.4 Arial,sans-serif;margin:24px;color:#111}h1{font-size:20px;margin:0 0 2px;color:#006a4e}h2{font-size:14px;margin:0 0 14px;font-weight:600}table{width:100%;border-collapse:collapse}th,td{border:1px solid #9aa;padding:6px 8px;text-align:left}th{background:#e3efdc}td.n,th.n{text-align:right}tfoot td{font-weight:700;background:#e3efdc}@page{size:A4 landscape;margin:12mm}</style></head><body>
+      <h1>Mam &amp; Mam Overseas Ltd. · Passport Delivery List</h1><h2>${e(label)} · ${rows.length} file(s)</h2>
+      <table><thead><tr>${head.map((h, i) => `<th${i === 7 ? ' class="n"' : ""}>${e(h)}</th>`).join("")}</tr></thead><tbody>${rows.map((r, i) => `<tr><td>${i + 1}</td><td>${e(r.d.split("-").reverse().join("-"))}</td><td>${e(r.name)}</td><td>${e(r.passport)}</td><td>${e(r.country)}</td><td>${e(r.ic)}</td><td>${e(r.agent)}</td><td class="n">${tk(r.fee)}</td></tr>`).join("")}</tbody>
+      <tfoot><tr><td colspan="7" class="n">Total Amount</td><td class="n">${tk(total)}</td></tr></tfoot></table><script>onload=()=>{print()}<\/script></body></html>`;
+    const w = window.open(URL.createObjectURL(new Blob([html], { type: "text/html" })), "_blank"); if (!w) toast("Allow pop-ups for this site to print.");
+  };
+  return <>
+    <h2>Passport Delivery List</h2>
+    <p className="muted small">The files whose clearance card was sent, by the day it was sent. See one day or a whole month, print it or save it to Excel.</p>
+    <div className="pay-tabs mt8" role="tablist">{[["day", "Day"], ["month", "Month"]].map(([k, l]) => <button key={k} role="tab" aria-selected={mode === k} className={mode === k ? "on" : ""} onClick={() => setMode(k)}>{l}</button>)}</div>
+    <div className="day-bar mt8">
+      {mode === "day" ? <><button className="btn sm" onClick={() => setDay(addDays(day, -1))}><LuChevronLeft /> Previous day</button>
+        <span className="day-now"><b>{dayLabel(day)}</b>{day === today && <span className="ec-badge">Today</span>}</span>
+        <button className="btn sm" disabled={day >= today} onClick={() => setDay(addDays(day, 1))}>Next day <LuChevronRight /></button>
+        <input type="date" value={day} max={today} onChange={e => e.target.value && setDay(e.target.value)} aria-label="Day" style={{ width: "auto" }} /></>
+        : <><button className="btn sm" onClick={() => setMonth(addMonth(-1))}><LuChevronLeft /> Previous month</button>
+        <span className="day-now"><b>{monthName(month)}</b></span>
+        <button className="btn sm" disabled={month >= today.slice(0, 7)} onClick={() => setMonth(addMonth(1))}>Next month <LuChevronRight /></button>
+        <input type="month" value={month} max={today.slice(0, 7)} onChange={e => e.target.value && setMonth(e.target.value)} aria-label="Month" style={{ width: "auto" }} /></>}
+      <span className="grow" />
+      <button className="btn sm" disabled={!rows.length} onClick={print}><LuPrinter /> Print</button>
+      <button className="btn sm" disabled={!rows.length} onClick={excel}><LuSheet /> Excel</button>
+    </div>
+    <div className="card mt8"><div className="tbl"><table><thead><tr>{head.map((h, i) => <th key={h} style={i === 7 ? { textAlign: "right" } : undefined}>{h}</th>)}</tr></thead><tbody>
+      {rows.length ? rows.map((r, i) => <tr key={r.id}><td>{i + 1}</td><td className="nowrap">{r.d.split("-").reverse().join("-")}</td><td className="b" data-notr>{r.name}</td><td className="num" data-notr>{r.passport}</td><td>{r.country}</td><td className="num nowrap" data-notr>{r.ic}</td><td data-notr>{r.agent}</td><td className="num" style={{ textAlign: "right" }}>{tk(r.fee)}</td></tr>)
+        : <tr><td colSpan={8}><Empty>{mode === "day" ? "No clearance card was sent on this day." : "No clearance card was sent in this month."}</Empty></td></tr>}
+    </tbody>{rows.length > 0 && <tfoot><tr className="st-total"><td colSpan={7} className="b" style={{ textAlign: "right" }}>Total Amount</td><td className="num b" style={{ textAlign: "right" }}>{tk(total)}</td></tr></tfoot>}</table></div></div>
   </>;
 }
 export function MoneyWithMe() {
