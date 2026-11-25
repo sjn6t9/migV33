@@ -87,7 +87,8 @@ export function Admin({ u }) {
     };
     body = <>
       <h2>Air tickets</h2>
-      {user(store.S.session)?.role === "admin" && <WfttPanel />}
+      {user(store.S.session)?.role === "admin" && <details className="vf-det mt10" open={wfttShown()} onToggle={e => { if (ui.wfttShow !== e.currentTarget.open) { ui.wfttShow = e.currentTarget.open; try { localStorage.setItem("wfttShow", ui.wfttShow ? "1" : ""); } catch {} } }}>
+        <summary>{store.S.wftt?.ready ? "WFTT BD sign-in" : "WFTT BD sign-in (not signed in)"}</summary><WfttPanel /></details>}
       <details className="vf-det mt10" open={!flHidden()} onToggle={e => { if (ui.flHide !== !e.currentTarget.open) { ui.flHide = !e.currentTarget.open; try { localStorage.setItem("flHide", ui.flHide ? "1" : ""); } catch {} } }}><summary>Search flights (net and gross fares)</summary><FlightSearch staff /></details>
       <h3 className="mt14">Ticket requests</h3>
       <div className="tbl"><table><thead><tr><th>Passenger</th><th>From</th><th>Route / flight</th><th>Preferred</th><th>Booking</th><th>Status</th><th></th></tr></thead><tbody>
@@ -794,6 +795,8 @@ function DocMenu({ files }) {
 
 /* WFTT BD sign-in for live fares (the agency's B2B account); service charge added to every fare shown to agents and job seekers */
 // Air tickets › Search flights: open unless this person hid it (remembered in this browser)
+// the WFTT sign-in box is hidden unless the admin opens it (remembered); it opens by itself while WFTT is not signed in
+const wfttShown = () => { if (ui.wfttShow === undefined) { try { ui.wfttShow = localStorage.getItem("wfttShow") === "1"; } catch { ui.wfttShow = false; } } return ui.wfttShow || !store.S.wftt?.ready; };
 const flHidden = () => { if (ui.flHide === undefined) { try { ui.flHide = localStorage.getItem("flHide") === "1"; } catch { ui.flHide = false; } } return ui.flHide; };
 function WfttPanel() {
   const W = store.S.wftt, me = user(store.S.session), admin = me?.role === "admin";
