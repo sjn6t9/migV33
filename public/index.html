@@ -4096,28 +4096,38 @@ function ytLoad(cb){if(window.YT&&YT.Player){cb();return}(ytLoad.q=ytLoad.q||[])
 const sTitle=x=>x?(x.title||'YouTube song'):'';
 /* slim bar left of the drawer button (what is playing + room name) and Play/Pause buttons on its right */
 function songBar(){const l=$('sbl'),r=$('sbr');if(!l||!r)return;const S=SONG[room];
-  if(!S||!S.vid){l.innerHTML='';r.innerHTML='';return}
+  if(!S||!S.vid){l.innerHTML='';r.innerHTML='';const v=$('svol');if(v)v.remove();return}
   const c=(S.list||[])[S.cur]||{};
   const tt=songBlocked?'Tap to listen':sTitle(c);l.innerHTML=`<button type="button" class="sbt${S.playing?' on':''}" id="sbtx" title="${esc(tt)}"><span class="mq" style="--d:${Math.max(8,Math.round(tt.length*.28))}s">🎵 ${esc(tt)}</span></button>`;
   const mod=!!canSong0();
-  r.innerHTML=(mod?`<button type="button" data-k="prev" aria-label="Previous song">⏮</button><button type="button" data-k="pp" aria-label="${S.playing?'Pause':'Play'}">${S.playing?'⏸':'▶'}</button><button type="button" data-k="next" aria-label="Next song">⏭</button>`:'')+`<button type="button" data-k="mute" aria-label="Mute">${songMuted?'🔇':'🔊'}</button>`;
+  r.innerHTML=(mod?`<button type="button" data-k="prev" aria-label="Previous song">⏮</button><button type="button" data-k="pp" aria-label="${S.playing?'Pause':'Play'}">${S.playing?'⏸':'▶'}</button><button type="button" data-k="next" aria-label="Next song">⏭</button>`:'')+`<button type="button" data-k="mute" aria-label="Mute">${songMuted?'🔇':'🔊'}</button><button type="button" data-k="vol" aria-label="Volume">🎚</button>`;
   $('sbtx').onclick=()=>{if(songBlocked){songBlocked=false;try{ytP&&ytP.playVideo()}catch{}songBar()}else if(mod)songSheet()};
   r.onclick=e=>{const b=e.target.closest('[data-k]');if(!b)return;e.stopPropagation();const k=b.dataset.k;
+    if(k==='vol'){songVol(b);return}
     if(k==='mute'){songMuted=!songMuted;try{songMuted?ytP.mute():ytP.unMute()}catch{}songBar();return}
     if(k==='pp')tx({t:'song_play',room,on:!S.playing});else tx({t:'song_'+k,room})}}
 const songOpen=()=>$('sheet').classList.contains('open')&&$('songsh');
+let songVolPct=+(localStorage.songvol||100),songVolT=0;
+const songApplyVol=()=>{try{ytP&&ytP.setVolume&&ytP.setVolume(songVolPct)}catch{}};
+function songVol(anchor){let v=$('svol');if(v){v.remove();clearTimeout(songVolT);return}
+  v=document.createElement('div');v.id='svol';const r=anchor.getBoundingClientRect();
+  v.style.cssText='position:fixed;z-index:80;top:'+Math.round(r.bottom+6)+'px;right:8px;display:flex;gap:8px;align-items:center;background:#0f1a2b;color:#fff;border-radius:14px;padding:8px 12px;box-shadow:0 6px 20px #0006';
+  v.innerHTML='<button type="button" data-d="-10" aria-label="Volume down" style="width:28px;height:28px;border:0;border-radius:50%;padding:0;font-size:16px">−</button><input type="range" min="0" max="100" step="1" value="'+songVolPct+'" style="width:130px;accent-color:#7dd3fc" aria-label="Volume"><button type="button" data-d="10" aria-label="Volume up" style="width:28px;height:28px;border:0;border-radius:50%;padding:0;font-size:16px">+</button><b id="svp" style="min-width:34px;text-align:right;font-size:12px">'+songVolPct+'%</b>';
+  document.body.appendChild(v);
+  const hide=()=>{clearTimeout(songVolT);songVolT=setTimeout(()=>{const x=$('svol');if(x)x.remove()},5000)},set=n=>{songVolPct=Math.max(0,Math.min(100,Math.round(n)));try{localStorage.songvol=songVolPct}catch{}v.querySelector('input').value=songVolPct;$('svp').textContent=songVolPct+'%';songApplyVol();if(songVolPct>0&&songMuted){songMuted=false;try{ytP.unMute()}catch{}songBar()}hide()};
+  v.querySelector('input').oninput=e=>set(+e.target.value);v.onclick=e=>{const d=e.target.closest('[data-d]');if(d)set(songVolPct+ +d.dataset.d)};v.onpointerdown=hide;hide()}
 function songStop(){try{ytP&&ytP.stopVideo()}catch{}songBlocked=false}
 function songOn(m){SONG[m.room]=m;if(m.room!==room)return;
   if(!m.vid||!m.playing){songStop();ytWant=null;songBar();if(songOpen())songSheet(1);return}
   ytWant=m;ytLoad(()=>{
     if(!ytP){let h=$('ytbox');if(!h){h=document.createElement('div');h.id='ytbox';h.style.cssText='position:fixed;right:0;bottom:0;width:200px;height:200px;opacity:.01;pointer-events:none;z-index:-1;overflow:hidden';h.innerHTML='<div id="ytp"></div>';document.body.appendChild(h)}
-      ytP=new YT.Player('ytp',{width:'200',height:'200',videoId:m.vid,playerVars:{autoplay:1,playsinline:1,controls:0},events:{onReady:()=>{ytReady=1;songGo()},onStateChange:e=>{
+      ytP=new YT.Player('ytp',{width:'200',height:'200',videoId:m.vid,playerVars:{autoplay:1,playsinline:1,controls:0},events:{onReady:()=>{ytReady=1;songApplyVol();songGo()},onStateChange:e=>{
         if(e.data===-1)setTimeout(()=>{try{if(ytWant&&![1,3].includes(ytP.getPlayerState())){songBlocked=true;songBar()}}catch{}},1500);
         if(e.data===1&&songBlocked){songBlocked=false;songBar()}
         if(e.data===0&&ytWant)tx({t:'song_end',room:ytWant.room,vid:ytWant.vid})},onError:()=>{const w=ytWant;if(w)setTimeout(()=>{if(ytWant&&ytWant.vid===w.vid)tx({t:'song_end',room:w.room,vid:w.vid})},3200)}}})}
     else if(ytReady)songGo()});
   songBar();if(songOpen())songSheet(1)}
-function songGo(){const m=ytWant;if(!m||!ytP)return;try{const id=ytP.getVideoData&&ytP.getVideoData().video_id;if(id!==m.vid)ytP.loadVideoById(m.vid,m.pos||0);else{const d=Math.abs((ytP.getCurrentTime?ytP.getCurrentTime():0)-(m.pos||0));if(d>2.5||ytP.getPlayerState()===2||ytP.getPlayerState()===5)ytP.seekTo(m.pos||0,true);ytP.playVideo()}songMuted?ytP.mute():ytP.unMute()}catch{}}
+function songGo(){const m=ytWant;if(!m||!ytP)return;try{const id=ytP.getVideoData&&ytP.getVideoData().video_id;if(id!==m.vid)ytP.loadVideoById(m.vid,m.pos||0);else{const d=Math.abs((ytP.getCurrentTime?ytP.getCurrentTime():0)-(m.pos||0));if(d>2.5||ytP.getPlayerState()===2||ytP.getPlayerState()===5)ytP.seekTo(m.pos||0,true);ytP.playVideo()}songMuted?ytP.mute():ytP.unMute();songApplyVol()}catch{}}
 setInterval(()=>{if(ytWant&&ytWant.room!==room){ytWant=null;songStop();return}
   if(ytWant&&ytReady&&ytP){try{const st=ytP.getPlayerState();if(st===2||st===5||st===-1)ytP.playVideo()}catch{}}},2500);
 document.addEventListener('visibilitychange',()=>{if(!document.hidden&&ytWant&&ytReady&&ytP)try{ytP.playVideo()}catch{}});
