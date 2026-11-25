@@ -35,11 +35,11 @@ export function accountRows(acc, charges, receipts) {
 
 /** sort, apply a date range (earlier rows become one opening balance row) and add the running balance */
 export const stime = iso => { try { return new Date(iso).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", timeZone: "Asia/Dhaka" }); } catch { return ""; } };
-export function withBalance(rows, from = "", to = "") {
+export function withBalance(rows, from = "", to = "", noOpen = false) { // noOpen: the range stands alone (no opening balance row, balance starts at 0)
   // oldest first, so the latest transaction is at the bottom: by date, then by the time it was entered
   const all = [...rows].sort((a, b) => (a.date || "").localeCompare(b.date || "") || (a.at && b.at ? a.at.localeCompare(b.at) : 0) || (a.debit ? -1 : 1) - (b.debit ? -1 : 1));
   let bal = 0; const out = [];
-  const before = from ? all.filter(r => r.date < from && !r.pending) : [];
+  const before = from && !noOpen ? all.filter(r => r.date < from && !r.pending) : [];
   if (before.length) { bal = before.reduce((s, r) => s + r.debit - r.credit, 0); out.push({ id: "open", date: from, details: "Opening balance", rate: "", debit: bal > 0 ? bal : 0, credit: bal < 0 ? -bal : 0, balance: bal, opening: true }); }
   for (const r of all) {
     if (from && r.date < from) continue; if (to && r.date > to) continue;

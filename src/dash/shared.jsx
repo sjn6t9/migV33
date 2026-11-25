@@ -91,14 +91,16 @@ export function RaimsCard({ c, who, compact }) {
   const [oKind, setOKind] = React.useState("Stamp fee"), [oName, setOName] = React.useState(""), [oAmt, setOAmt] = React.useState("");
   const feeDone = c.card?.fee > 0, otherDone = c.card?.other?.amount > 0, agent = who === "agent";
   const other = () => ({ label: oKind === "custom" ? oName.trim() : "Stamp fee", amount: Number(oAmt || 0) });
+  const feeMissing = !feeDone && String(fee).trim() === ""; // Send Card works once a number (0 too) is in Card fee
   const run = async op => {
+    if (op === "send" && feeMissing) return toast("Enter the card fee first (0 if there is none).");
     if (op === "send" && oKind === "custom" && Number(oAmt) > 0 && !oName.trim()) return toast("Write the name of the other fee.");
     setBusy(op); const r = await act("admin.clRaimsCard", { id: c.id, no: c.cardNo || "", op, fee: Number(fee || 0), other: other() }, op === "download" ? { quiet: true } : undefined); setBusy("");
     if (op === "download" && r?.file) downloadFile(r.file.data, r.file.name);
     if (op === "send" && !r) setFailed(true);
   };
   const manual = async e => {
-    e.preventDefault(); const f = e.currentTarget.card.files[0]; if (!f) return toast("Choose the clearance card file first.");
+    e.preventDefault(); if (feeMissing) return toast("Enter the card fee first (0 if there is none)."); const f = e.currentTarget.card.files[0]; if (!f) return toast("Choose the clearance card file first.");
     if (oKind === "custom" && Number(oAmt) > 0 && !oName.trim()) return toast("Write the name of the other fee.");
     let file; try { file = await readUpload(f, { imageMax: 2000 }); } catch (err) { return toast(err.message); }
     setBusy("manual"); const r = await act("admin.card", { id: c.id, file, fee: Number(fee || 0), other: other() }); setBusy(""); if (r) setFailed(false);
@@ -118,7 +120,7 @@ export function RaimsCard({ c, who, compact }) {
     <div className={compact ? "stack" : "raims-card-row"}>{fees}</div>
     <div className="row tight wrap">
       {!compact && <button type="button" className="btn" disabled={!!busy} onClick={() => run("download")}><LuDownload /> {busy === "download" ? "Getting…" : "Download Card"}</button>}
-      <button type="button" className="btn pri" disabled={!!busy} onClick={() => run("send")}><LuSend /> {busy === "send" ? "Sending…" : c.card ? "Send Card again" : "Send Card"}</button>
+      <button type="button" className="btn pri" disabled={!!busy || feeMissing} title={feeMissing ? "Enter the card fee first" : undefined} onClick={() => run("send")}><LuSend /> {busy === "send" ? "Sending…" : c.card ? "Send Card again" : "Send Card"}</button>
       {c.cardNo && !compact && <a className="btn sm link" href={`https://raims.oep.gov.bd/agency/employee/clearance-check/download/card/${encodeURIComponent(c.cardNo)}`} target="_blank" rel="noopener noreferrer">Open in RAIMS</a>}
     </div>
     <p className="muted small">Send Card puts the card in the {who}'s portal to download.</p>
@@ -126,7 +128,7 @@ export function RaimsCard({ c, who, compact }) {
       <b>Send the card manually</b>
       <p className="muted small">The card could not be taken from RAIMS. Upload the card file instead; the fees above go with it.</p>
       <label className="f">Clearance card file<input type="file" name="card" accept={CARD_TYPES} required /><span className="hint">PDF, JPG or WebP, up to 1.5 MB</span></label>
-      <div><button className="btn pri" type="submit" disabled={!!busy}><LuUpload /> {busy === "manual" ? "Sending…" : `Upload & send to ${who}`}</button></div>
+      <div><button className="btn pri" type="submit" disabled={!!busy || feeMissing}><LuUpload /> {busy === "manual" ? "Sending…" : `Upload & send to ${who}`}</button></div>
     </form>}
   </div>;
 }

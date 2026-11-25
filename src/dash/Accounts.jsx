@@ -210,7 +210,7 @@ export function TransactionHistory() {
     </div>
     <div className="hold-top mt8">{leadersList().map(l => { const h = boss.find(x => x.key === `p:${l.k}`), b = h ? h.bal : 0;
       return <div key={l.k} className="hold-tile"><span className="muted small">{`${l.name} · ${l.title}`}</span><b className={`boss-amt ${bossCls(b)}`}>{`${tk(Math.abs(b))} BDT`}</b><span className={`hold-word ${b < -0.004 ? "adv" : b > 0.004 ? "with" : ""}`}>{bossWord(b)}</span></div>; })}</div>
-    <div className="card"><Statement key={full ? "all" : day} day={full ? "" : day} title="Mam & Mam Overseas Ltd. · Transaction history" kind="TRANSACTION HISTORY" rateHead="Received by" cash times heads={["Money in", "Money out"]} rows={rows} empty="No transactions." /></div>
+    <div className="card"><Statement key={full ? "all" : day} day={full ? "" : day} title="Mam & Mam Overseas Ltd. · Transaction history" kind="TRANSACTION HISTORY" rateHead="Received by" cash times noOpen heads={["Money in", "Money out"]} rows={rows} empty="No transactions." /></div>
   </>;
 }
 export function MoneyWithMe() {

@@ -22,10 +22,10 @@ function RateCell({ r, onSave }) {
 }
 
 const stime = iso => { try { return new Date(iso).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", timeZone: "Asia/Dhaka" }); } catch { return ""; } };
-export function Statement({ title, sub, kind = "PAYMENT HISTORY", rows, actions, onRate, cash, heads, balText, tools, times, day, rateHead, plain, empty = "No entries yet." }) {
+export function Statement({ title, sub, kind = "PAYMENT HISTORY", rows, actions, onRate, cash, heads, balText, tools, times, day, rateHead, plain, noOpen, empty = "No entries yet." }) {
   const [from0, setFrom] = React.useState(""); const [to0, setTo] = React.useState("");
   const from = day || from0, to = day || to0; // day: one day only (the main account's daily view)
-  const calc = withBalance(rows, from, to); const st = { title, sub, kind, from, to, calc, cash, times, heads, rateHead, balText, plain };
+  const calc = withBalance(rows, from, to, noOpen); const st = { title, sub, kind, from, to, calc, cash, times, heads, rateHead, balText, plain };
   const run = f => Promise.resolve(f(st)).catch(e => toast(e.message || "The file could not be made."));
   const b = calc.balance;
   const acts = actions ? calc.rows.map(r => (r.opening ? null : actions(r))) : [], hasActs = acts.some(Boolean); // no empty column when no row has a button
