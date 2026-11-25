@@ -2496,9 +2496,11 @@ const isSuper = (room, u) => !!db.prepare('select 1 from room_mods where room=? 
 const isSA = u => ['staff', 'admin'].includes(roleOf(u));
 const canMod = (room, u) => isSA(u) || ownerOf(room) === u || isRoomMod(room, u);
 
-// ---------- Play Song: room admin / moderators set a YouTube link and play it for everyone in the room ----------
+// ---------- Play Song: room admin / moderators build a YouTube playlist and play it for everyone in the room ----------
 db.exec(`create table if not exists room_song(room text primary key, url text, vid text, by text, ts int)`);
-const SONG = new Map();   // room -> { playing, at }  (the link itself is stored in room_song; "playing" lives in memory only)
+db.exec(`create table if not exists room_pl(room text primary key, list text, cur int default 0, by text, ts int)`);
+const SONG = new Map();   // room -> { playing, base, at }  base = seconds into the song when "at" was set (lives in memory only)
+const MAX_SONGS = 30;
 const YT_HOSTS = new Set(['youtube.com', 'www.youtube.com', 'm.youtube.com', 'music.youtube.com', 'youtu.be', 'www.youtube-nocookie.com', 'youtube-nocookie.com']);
 const ytId = raw => {   // video id from a youtube link, or '' when it is not a plain video link
   let u; try { u = new URL(String(raw || '').trim()); } catch { return ''; }
@@ -2508,34 +2510,62 @@ const ytId = raw => {   // video id from a youtube link, or '' when it is not a 
   if (u.pathname === '/watch') return ok(u.searchParams.get('v'));
   const m = u.pathname.match(/^\/(?:shorts|embed|live|v)\/([A-Za-z0-9_-]{11})(?:[/?]|$)/); return m ? m[1] : '';
 };
-const songView = room => { const r = db.prepare('select url,vid,by from room_song where room=?').get(room), st = SONG.get(room);
-  return { t: 'song', room, url: r?.url || '', vid: r?.vid || '', by: r?.by || '', playing: !!(r?.vid && st?.playing), pos: r?.vid && st?.playing ? Math.max(0, (Date.now() - st.at) / 1000) : 0 }; };
+const plGet = room => {
+  let r = db.prepare('select list,cur,by from room_pl where room=?').get(room);
+  if (!r) { const o = db.prepare('select url,vid,by from room_song where room=?').get(room);   // older single-song data
+    if (o?.vid) { r = { list: JSON.stringify([{ url: o.url, vid: o.vid, title: '' }]), cur: 0, by: o.by }; db.prepare('insert or ignore into room_pl(room,list,cur,by,ts) values(?,?,?,?,?)').run(room, r.list, 0, o.by, Date.now()); } }
+  let list = []; try { list = JSON.parse(r?.list || '[]'); } catch {}
+  return { list, cur: Math.min(Math.max(0, r?.cur || 0), Math.max(0, list.length - 1)), by: r?.by || '' };
+};
+const plSave = (room, p) => db.prepare('insert into room_pl(room,list,cur,by,ts) values(?,?,?,?,?) on conflict(room) do update set list=excluded.list, cur=excluded.cur, by=excluded.by, ts=excluded.ts').run(room, JSON.stringify(p.list), p.cur, p.by, Date.now());
+const songPos = st => st?.playing ? (st.base || 0) + (Date.now() - st.at) / 1000 : (st?.base || 0);
+const songView = room => { const p = plGet(room), st = SONG.get(room), c = p.list[p.cur];
+  return { t: 'song', room, list: p.list, cur: p.cur, vid: c?.vid || '', url: c?.url || '', title: c?.title || '', by: p.by, playing: !!(c && st?.playing), pos: c ? Math.max(0, songPos(st)) : 0 }; };
 const castSong = room => cast(room, songView(room));
 const songSay = (room, text) => cast(room, { t: 'msg', room, user: '', text, kind: 'game', ts: Date.now(), role: '' });
+const songErr = (ws, room, text) => send(ws, { t: 'msg', room, user: '', text, kind: 'err', ts: Date.now(), role: '' });
 const songLast = new Map();   // user -> last change time (anti-spam)
+const songTitle = async (room, vid) => {   // best effort: look up the video title so the playlist is readable
+  try { const r = await fetch('https://www.youtube.com/oembed?format=json&url=' + encodeURIComponent('https://www.youtube.com/watch?v=' + vid), { signal: AbortSignal.timeout(4000) });
+    const t = String((await r.json()).title || '').slice(0, 120); if (!t) return;
+    const p = plGet(room); let ch = false; p.list.forEach(x => { if (x.vid === vid && !x.title) { x.title = t; ch = true; } });
+    if (ch) { plSave(room, p); castSong(room); } } catch {}
+};
 function onSong(ws, m) {
   const room = ws.room;
   if (!room || room.startsWith('dm:') || m.room !== room) return;
-  if (!canMod(room, ws.user)) return send(ws, { t: 'msg', room, user: '', text: 'Only staff, admins, the room admin or room moderators can use Play Song.', kind: 'err', ts: Date.now(), role: '' });
-  if (Date.now() - (songLast.get(ws.user) || 0) < 1500) return;
+  if (m.t === 'song_end') {   // the song finished on someone's device: move on (any member may report; the server checks it)
+    const st = SONG.get(room), p = plGet(room);
+    if (!st?.playing || p.list[p.cur]?.vid !== m.vid || Date.now() - st.at < 3000) return;
+    if (p.list.length < 2) { SONG.set(room, { playing: false, base: 0, at: 0 }); return castSong(room); }
+    p.cur = (p.cur + 1) % p.list.length; plSave(room, p); SONG.set(room, { playing: true, base: 0, at: Date.now() }); return castSong(room);
+  }
+  if (!canMod(room, ws.user)) return songErr(ws, room, 'Only staff, admins, the room admin or room moderators can use Play Song.');
+  if (Date.now() - (songLast.get(ws.user) || 0) < 700) return;
   songLast.set(ws.user, Date.now());
-  if (m.t === 'song_set') {
-    const url = String(m.url || '').trim().slice(0, 300);
-    if (!url) { db.prepare('delete from room_song where room=?').run(room); SONG.delete(room); songSay(room, '🎵 ' + ws.user + ' removed the song.'); return castSong(room); }
-    const vid = ytId(url);
-    if (!vid) return send(ws, { t: 'msg', room, user: '', text: 'That is not a valid YouTube video link. Use a link like https://www.youtube.com/watch?v=... or https://youtu.be/...', kind: 'err', ts: Date.now(), role: '' });
-    db.prepare('insert into room_song(room,url,vid,by,ts) values(?,?,?,?,?) on conflict(room) do update set url=excluded.url, vid=excluded.vid, by=excluded.by, ts=excluded.ts').run(room, url, vid, ws.user, Date.now());
-    SONG.set(room, { playing: false, at: 0 });   // a new link stops the old song; press Play to start it
-    songSay(room, '🎵 ' + ws.user + ' set a new song.');
-    return castSong(room);
+  const p = plGet(room), cur = p.list[p.cur], st = SONG.get(room);
+  const go = (i, play) => { p.cur = i; p.by = ws.user; plSave(room, p); SONG.set(room, { playing: play, base: 0, at: Date.now() }); castSong(room); };
+  if (m.t === 'song_add') {
+    const url = String(m.url || '').trim().slice(0, 300), vid = ytId(url);
+    if (!vid) return songErr(ws, room, 'That is not a valid YouTube video link. Use a link like https://www.youtube.com/watch?v=... or https://youtu.be/...');
+    if (p.list.length >= MAX_SONGS) return songErr(ws, room, 'The song list is full (' + MAX_SONGS + ' songs). Remove one first.');
+    p.list.push({ url, vid, title: '' }); p.by = ws.user; plSave(room, p); songSay(room, '🎵 ' + ws.user + ' added a song to ' + room + '.'); castSong(room); songTitle(room, vid); return;
   }
+  if (m.t === 'song_del') {
+    const i = +m.i; if (!(i >= 0 && i < p.list.length)) return;
+    p.list.splice(i, 1); const wasCur = i === p.cur; if (i < p.cur) p.cur--; if (p.cur >= p.list.length) p.cur = 0;
+    plSave(room, p); if (wasCur || !p.list.length) SONG.set(room, { playing: false, base: 0, at: 0 }); return castSong(room);
+  }
+  if (m.t === 'song_clear') { db.prepare('delete from room_pl where room=?').run(room); db.prepare('delete from room_song where room=?').run(room); SONG.delete(room); songSay(room, '🎵 ' + ws.user + ' cleared the song list.'); return castSong(room); }
+  if (!cur) return songErr(ws, room, 'Add a YouTube link first.');
   if (m.t === 'song_play') {
-    const r = db.prepare('select vid from room_song where room=?').get(room);
-    if (!r?.vid) return send(ws, { t: 'msg', room, user: '', text: 'Set a YouTube link first.', kind: 'err', ts: Date.now(), role: '' });
-    const on = !!m.on; SONG.set(room, { playing: on, at: Date.now() });
-    songSay(room, on ? '🎵 ' + ws.user + ' started the song.' : '⏹ ' + ws.user + ' stopped the song.');
-    return castSong(room);
+    const on = !!m.on, pos = songPos(st);
+    SONG.set(room, { playing: on, base: pos, at: Date.now() });
+    songSay(room, (on ? '▶ ' : '⏸ ') + ws.user + (on ? ' played' : ' paused') + ' the song in ' + room + '.'); return castSong(room);
   }
+  if (m.t === 'song_pick') { const i = +m.i; if (i >= 0 && i < p.list.length) { go(i, true); songSay(room, '🎵 Now playing in ' + room + ': ' + (p.list[i].title || 'song ' + (i + 1))); } return; }
+  if (m.t === 'song_next') return go((p.cur + 1) % p.list.length, !!st?.playing);
+  if (m.t === 'song_prev') return go((p.cur - 1 + p.list.length) % p.list.length, !!st?.playing);
 }
 const reply = (ws, text, kind) => send(ws, { t: 'msg', room: ws.room, user: '', text, kind: kind || (/^(Usage:|Unknown|User not found|Only |You need|Pick another|Not enough|Please wait|Nobody|You are silenced|This room)/.test(text) ? 'err' : 'info'), ts: Date.now() });
 const say = (room, user, text, kind = 'action') => {
@@ -2976,7 +3006,7 @@ function onWsMessage(ws, raw) {
       if (r1 && ws.room !== r1) { try { ws.tabs && ws.tabs.delete(r1); } catch {} purgeRoomMsgs(r1); }
       return;
     }
-    if (m.t === 'song_set' || m.t === 'song_play') return onSong(ws, m);
+    if (/^song_/.test(m.t)) return onSong(ws, m);
     if (m.t === 'bye') { ws._bye = true; return; }
     if (m.t === 'ludo') return ludoAct(ws, m);
     if (m.t === 'vis') { ws.vis = !!m.v; const was = ws.hiddenAt; if (m.v) { ws._bgOut = 0; ws._bgAll = 0; } ws.hiddenAt = m.v ? 0 : Date.now(); if (m.v && was && Date.now() - was > AWAY_MS) { goneAt.delete(ws.user); online(); userRooms(ws.user).forEach(castRoster); } return; }   // app on screen (true) or in the background (false)   // the browser/tab is closing: show offline without the grace period
