@@ -2495,6 +2495,48 @@ const isRoomMod = (room, u) => !!db.prepare('select 1 from room_mods where room=
 const isSuper = (room, u) => !!db.prepare('select 1 from room_mods where room=? and user=? and super=1').get(room, u);
 const isSA = u => ['staff', 'admin'].includes(roleOf(u));
 const canMod = (room, u) => isSA(u) || ownerOf(room) === u || isRoomMod(room, u);
+
+// ---------- Play Song: room admin / moderators set a YouTube link and play it for everyone in the room ----------
+db.exec(`create table if not exists room_song(room text primary key, url text, vid text, by text, ts int)`);
+const SONG = new Map();   // room -> { playing, at }  (the link itself is stored in room_song; "playing" lives in memory only)
+const YT_HOSTS = new Set(['youtube.com', 'www.youtube.com', 'm.youtube.com', 'music.youtube.com', 'youtu.be', 'www.youtube-nocookie.com', 'youtube-nocookie.com']);
+const ytId = raw => {   // video id from a youtube link, or '' when it is not a plain video link
+  let u; try { u = new URL(String(raw || '').trim()); } catch { return ''; }
+  if (!/^https?:$/.test(u.protocol) || !YT_HOSTS.has(u.hostname.toLowerCase())) return '';
+  const ok = x => /^[A-Za-z0-9_-]{11}$/.test(x || '') ? x : '';
+  if (u.hostname.toLowerCase() === 'youtu.be') return ok(u.pathname.slice(1).split('/')[0]);
+  if (u.pathname === '/watch') return ok(u.searchParams.get('v'));
+  const m = u.pathname.match(/^\/(?:shorts|embed|live|v)\/([A-Za-z0-9_-]{11})(?:[/?]|$)/); return m ? m[1] : '';
+};
+const songView = room => { const r = db.prepare('select url,vid,by from room_song where room=?').get(room), st = SONG.get(room);
+  return { t: 'song', room, url: r?.url || '', vid: r?.vid || '', by: r?.by || '', playing: !!(r?.vid && st?.playing), pos: r?.vid && st?.playing ? Math.max(0, (Date.now() - st.at) / 1000) : 0 }; };
+const castSong = room => cast(room, songView(room));
+const songSay = (room, text) => cast(room, { t: 'msg', room, user: '', text, kind: 'game', ts: Date.now(), role: '' });
+const songLast = new Map();   // user -> last change time (anti-spam)
+function onSong(ws, m) {
+  const room = ws.room;
+  if (!room || room.startsWith('dm:') || m.room !== room) return;
+  if (!canMod(room, ws.user)) return send(ws, { t: 'msg', room, user: '', text: 'Only staff, admins, the room admin or room moderators can use Play Song.', kind: 'err', ts: Date.now(), role: '' });
+  if (Date.now() - (songLast.get(ws.user) || 0) < 1500) return;
+  songLast.set(ws.user, Date.now());
+  if (m.t === 'song_set') {
+    const url = String(m.url || '').trim().slice(0, 300);
+    if (!url) { db.prepare('delete from room_song where room=?').run(room); SONG.delete(room); songSay(room, '🎵 ' + ws.user + ' removed the song.'); return castSong(room); }
+    const vid = ytId(url);
+    if (!vid) return send(ws, { t: 'msg', room, user: '', text: 'That is not a valid YouTube video link. Use a link like https://www.youtube.com/watch?v=... or https://youtu.be/...', kind: 'err', ts: Date.now(), role: '' });
+    db.prepare('insert into room_song(room,url,vid,by,ts) values(?,?,?,?,?) on conflict(room) do update set url=excluded.url, vid=excluded.vid, by=excluded.by, ts=excluded.ts').run(room, url, vid, ws.user, Date.now());
+    SONG.set(room, { playing: false, at: 0 });   // a new link stops the old song; press Play to start it
+    songSay(room, '🎵 ' + ws.user + ' set a new song.');
+    return castSong(room);
+  }
+  if (m.t === 'song_play') {
+    const r = db.prepare('select vid from room_song where room=?').get(room);
+    if (!r?.vid) return send(ws, { t: 'msg', room, user: '', text: 'Set a YouTube link first.', kind: 'err', ts: Date.now(), role: '' });
+    const on = !!m.on; SONG.set(room, { playing: on, at: Date.now() });
+    songSay(room, on ? '🎵 ' + ws.user + ' started the song.' : '⏹ ' + ws.user + ' stopped the song.');
+    return castSong(room);
+  }
+}
 const reply = (ws, text, kind) => send(ws, { t: 'msg', room: ws.room, user: '', text, kind: kind || (/^(Usage:|Unknown|User not found|Only |You need|Pick another|Not enough|Please wait|Nobody|You are silenced|This room)/.test(text) ? 'err' : 'info'), ts: Date.now() });
 const say = (room, user, text, kind = 'action') => {
   const o = { user, text, kind, ts: Date.now(), role: roleOf(user), xp: xpOf(user) };
@@ -2934,6 +2976,7 @@ function onWsMessage(ws, raw) {
       if (r1 && ws.room !== r1) { try { ws.tabs && ws.tabs.delete(r1); } catch {} purgeRoomMsgs(r1); }
       return;
     }
+    if (m.t === 'song_set' || m.t === 'song_play') return onSong(ws, m);
     if (m.t === 'bye') { ws._bye = true; return; }
     if (m.t === 'ludo') return ludoAct(ws, m);
     if (m.t === 'vis') { ws.vis = !!m.v; const was = ws.hiddenAt; if (m.v) { ws._bgOut = 0; ws._bgAll = 0; } ws.hiddenAt = m.v ? 0 : Date.now(); if (m.v && was && Date.now() - was > AWAY_MS) { goneAt.delete(ws.user); online(); userRooms(ws.user).forEach(castRoster); } return; }   // app on screen (true) or in the background (false)   // the browser/tab is closing: show offline without the grace period
@@ -2974,6 +3017,7 @@ function onWsMessage(ws, raw) {
       let sinceTs = 0;
       if (!isDm) { try { const row = db.prepare('select ts from room_since where user=? and room=?').get(ws.user, m.room); if (wasHere && row) sinceTs = row.ts; else db.prepare('insert or replace into room_since(user,room,ts) values(?,?,?)').run(ws.user, m.room, Date.now()); } catch {} }
       if (!isDm) send(ws, { t: 'roominfo', room: m.room, owner: ownerOf(m.room) || STAFF_USER, mods: db.prepare('select user from room_mods where room=?').all(m.room).map(x => x.user), supers: db.prepare('select user from room_mods where room=? and super=1').all(m.room).map(x => x.user), cap: db.prepare('select cap from rooms where name=?').get(m.room)?.cap || 0, descr: db.prepare('select descr from rooms where name=?').get(m.room)?.descr || '', minlv: db.prepare('select minlv from rooms where name=?').get(m.room)?.minlv || 0, announce: cfg(m.room).announce || '', users: roster(m.room), fav: !!db.prepare('select 1 from favs where user=? and room=?').get(ws.user, m.room) });
+      if (!isDm) send(ws, songView(m.room));
       const hist = db.prepare('select user,text,kind,ts,(select role from users where name=msgs.user) role,(select xp from users where name=msgs.user) xp from msgs where room=? and not exists(select 1 from blocks where (a=? and b=msgs.user) or (b=? and a=msgs.user)) order by id desc limit 50').all(m.room, ws.user, ws.user).reverse();
       const roomHist = (!isDm && sinceTs && !m.have) ? db.prepare('select user,text,kind,ts,(select role from users where name=msgs.user) role,(select xp from users where name=msgs.user) xp from msgs where room=? and ts>=? and not exists(select 1 from blocks where (a=? and b=msgs.user) or (b=? and a=msgs.user)) order by id desc limit 100').all(m.room, sinceTs, ws.user, ws.user).reverse() : [];
       send(ws, { t: 'history', room: m.room, items: isDm ? hist : roomHist });   // rooms: you only see what is said while you are inside
