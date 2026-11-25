@@ -46,7 +46,7 @@ export function DueReceipt({ agentId, book }) {
   const send = async () => { if (!f.to.trim()) return toast("This agent has no email address. Enter one."); setBusy(true);
     try { const r = await make(); if (r) { const blob = await receiptPdfBlob(r, store.S.settings); const pdf = await new Promise((res, rej) => { const x = new FileReader(); x.onload = () => res(x.result); x.onerror = rej; x.readAsDataURL(blob); }); if (await act("admin.dueReceipt", { op: "mail", id: r.id, pdf, to: f.to.trim() })) closeModal(); } }
     catch { toast("The due receipt PDF could not be made. Try again."); } setBusy(false); };
-  const dl = async () => { setBusy(true); try { const r = await make(); if (r) await receiptPdf(r, store.S.settings); } catch { toast("The due receipt PDF could not be made."); } setBusy(false); };
+  const dl = async (png) => { setBusy(true); try { const r = await make(); if (r) await (png ? receiptPng : receiptPdf)(r, store.S.settings); } catch { toast("The due receipt could not be made."); } setBusy(false); };
   return <div className="stack">
     <h2 className="row6"><LuReceipt /> Due receipt</h2>
     <p className="muted small" data-notr>{name}</p>
@@ -59,9 +59,62 @@ export function DueReceipt({ agentId, book }) {
       <Field label="Agent's email" full><input type="email" value={f.to} onChange={e => set({ to: e.target.value })} maxLength={200} /></Field>
     </div>
     {made && <p className="small">{`Due receipt ${made.no} made.`}</p>}
-    <div className="row6"><button className="btn pri" disabled={busy} onClick={send}><LuMail /> Send to the agent's email</button><button className="btn" disabled={busy} onClick={dl}><LuDownload /> Download PDF</button></div>
+    <div className="row6"><button className="btn pri" disabled={busy} onClick={send}><LuMail /> Send to the agent's email</button><button className="btn" disabled={busy} onClick={() => dl(false)}><LuDownload /> Download PDF</button><button className="btn" disabled={busy} onClick={() => dl(true)}><LuImage /> Download PNG</button></div>
   </div>;
 }
+/* Payments & receipts › Due Amount List: every agent who owes the office, with Send Due Receipt (made for the due now
+   and emailed) and View Due Receipt (the last one sent, or a preview of one for the due now). PNG and PDF everywhere. */
+const kq = s => String(s || "").trim().toLowerCase();
+export const dueAgents = () => {
+  const S = store.S;
+  return [...(S.users || []).filter(u => u.role === "agent").map(u => ({ k: "reg", id: u.id, name: u.agent?.business || u.name, fullName: u.name, mobile: u.agent?.phone || u.phone || "", email: u.email || "", due: balanceOf(u.id) })),
+    ...bookAgents().map(a => ({ k: "book", id: a.id, name: a.name, fullName: a.fullName || "", mobile: a.mobile || "", email: a.email || "", due: bookAccount(a).due }))].filter(a => a.due > 0.004);
+};
+const lastDue = a => (store.S.dueReceipts || []).find(x => (a.k === "reg" ? x.agentId === a.id : x.book === a.id));
+const dueDraft = a => ({ id: "", no: "DRAFT", kind: "due", status: "approved", date: new Date(Date.now() + 6 * 3600e3).toISOString().slice(0, 10), amount: Math.round(a.due * 100) / 100,
+  payer: { name: a.k === "reg" ? a.name : a.fullName || a.name, mobile: a.mobile, email: a.email, passport: "", agent: a.name }, purpose: "Due from before", note: "", received: null });
+async function pdfData(r) { const blob = await receiptPdfBlob(r, store.S.settings); return new Promise((res, rej) => { const x = new FileReader(); x.onload = () => res(x.result); x.onerror = rej; x.readAsDataURL(blob); }); }
+export async function sendDueReceipt(a) {
+  const m = await act("admin.dueReceipt", { op: "make", agentId: a.k === "reg" ? a.id : "", book: a.k === "book" ? a.id : "", amount: Math.round(a.due * 100) / 100, purpose: "Due from before" }, { quiet: true });
+  if (!m?.receipt) return false; return !!(await act("admin.dueReceipt", { op: "mail", id: m.receipt.id, pdf: await pdfData(m.receipt), to: a.email }));
+}
+export function DueView({ agentKey }) {
+  const a = dueAgents().find(x => `${x.k}:${x.id}` === agentKey), r = a && (lastDue(a) || dueDraft(a)), [img, setImg] = React.useState(""), [busy, setBusy] = React.useState(false);
+  React.useEffect(() => { let url = ""; if (r) drawReceipt(r, store.S.settings).then(c => c.toBlob(b => { url = URL.createObjectURL(b); setImg(url); }, "image/png")); return () => url && URL.revokeObjectURL(url); }, [r?.id, r?.amount]);
+  if (!a) return <p className="muted">This agent has no due now.</p>;
+  const draft = !r.id;
+  return <div className="stack">
+    <h2 className="row6"><LuReceipt /> {draft ? "Due receipt (not sent yet)" : `Due receipt ${r.no}`}</h2>
+    <p className="muted small" data-notr>{`${a.name} · ${tk(r.amount)} BDT${r.mailed ? ` · emailed to ${r.mailed.to}` : ""}`}</p>
+    {draft && <p className="small">No due receipt has been sent to this agent yet. This is how it will look for the due now.</p>}
+    <div className="mr-preview">{img ? <img src={img} alt="Due receipt" style={{ width: "100%", display: "block" }} /> : <p className="muted" style={{ padding: 20 }}>Making the receipt…</p>}</div>
+    <div className="row6 wrap">
+      {!draft && <><button className="btn" onClick={() => receiptPng(r, store.S.settings)}><LuImage /> Download PNG</button><button className="btn" onClick={() => receiptPdf(r, store.S.settings)}><LuDownload /> Download PDF</button></>}
+      <button className="btn pri" disabled={busy || !a.email} title={a.email ? undefined : "This agent has no email address"} onClick={async () => { setBusy(true); if (await sendDueReceipt(a)) closeModal(); setBusy(false); }}><LuMail /> {draft ? "Send Due Receipt" : "Send a new Due Receipt"}</button>
+    </div>
+  </div>;
+}
+export function DueList() {
+  const [q, setQ] = React.useState(""), [busy, setBusy] = React.useState("");
+  const all = dueAgents().sort((x, y) => y.due - x.due), list = all.filter(a => !q.trim() || [a.name, a.fullName, a.mobile, a.email].some(v => kq(v).includes(kq(q))));
+  const total = list.reduce((t, a) => t + a.due, 0);
+  const send = a => confirmBox(`Send a due receipt of BDT ${tk(a.due)} to ${a.email}?`, async () => { setBusy(a.k + a.id); await sendDueReceipt(a); setBusy(""); }, "Send");
+  return <>
+    <div className="ec-head"><div><h2>Due Amount List</h2><p className="muted small">Agents who owe the office now. Send Due Receipt makes a receipt for the due now and emails it to the agent; nothing is added to any account.</p></div></div>
+    <div className="card mt8">
+      <div className="row between wrap"><label className="ec-search mr-search"><input type="text" value={q} onChange={e => setQ(e.target.value)} placeholder="Search agent, name, mobile or email" aria-label="Search" /><LuSearch /></label>
+        <b>{`Total due: ${tk(total)} BDT`}</b></div>
+      {list.length ? <div className="tbl mt8"><table><thead><tr><th>SL</th><th>Agent Name</th><th>Full Name</th><th>Mobile Number</th><th>Email Address</th><th style={{ textAlign: "right" }}>Due (BDT)</th><th>Last due receipt</th><th>Actions</th></tr></thead><tbody>
+        {list.map((a, i) => { const l = lastDue(a); return <tr key={a.k + a.id}><td>{i + 1}</td><td className="b" data-notr>{a.name}</td><td data-notr>{a.fullName || "—"}</td><td data-notr>{a.mobile || "—"}</td><td data-notr>{a.email || "—"}</td>
+          <td className="num b" style={{ textAlign: "right" }}>{tk(a.due)}</td><td className="small nowrap">{l ? <span data-notr>{`${l.no} · ${rDate(l.date)}${l.mailed ? " · emailed" : ""}`}</span> : <span className="muted">None</span>}</td>
+          <td><span className="row6 nowrap"><button className="btn sm pri" disabled={!a.email || busy === a.k + a.id} title={a.email ? undefined : "This agent has no email address"} onClick={() => send(a)}><LuMail /> {busy === a.k + a.id ? "Sending…" : "Send Due Receipt"}</button>
+            <button className="btn sm" onClick={() => openModal("dueView", { agentKey: `${a.k}:${a.id}` })}><LuEye /> View Due Receipt</button></span></td></tr>; })}
+      </tbody><tfoot><tr className="st-total"><td colSpan={5} className="b" style={{ textAlign: "right" }}>Total</td><td className="num b" style={{ textAlign: "right" }}>{tk(total)}</td><td colSpan={2} /></tr></tfoot></table></div>
+        : <Empty>{q.trim() ? "No agent with due matches this search." : "No agent owes the office now."}</Empty>}
+    </div>
+  </>;
+}
+
 /** make the PDF here and have the server email it to the payer */
 export async function mailReceipt(rid, to) {
   const r = MR().receipts.find(x => x.id === rid); if (!r) return;

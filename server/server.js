@@ -260,6 +260,7 @@ function viewFor(u) {
     if (isStaffRole(u)) pub.mySalary = { monthly: db.salary.profiles[u.id]?.monthly ?? null, pays: db.salary.pays.filter(p => p.uid === u.id).map(p => salaryOut(p)) };
     if (can(u, "salary")) pub.salary = { profiles: db.salary.profiles, pays: db.salary.pays.map(p => salaryOut(p)) };
     if (can(u, "office") || can(u, "receipts") || can(u, "ledger")) pub.khata = db.khata.filter(x => !x.owner);
+    if (can(u, "receipts") || can(u, "ledger")) pub.dueReceipts = (db.dueReceipts?.list || []).slice(0, 3000).map(x => ({ ...x, received: { ...x.received, sigUrl: x.received?.sig && db.files[x.received.sig] ? `/api/files/${x.received.sig}` : "" } }));
     if (can(u, "receipts")) pub.mr = { accounts: db.mr.accounts, receipts: db.mr.receipts.map(r => mrOut(r)), charges: db.mr.charges };
     if (u.role === "admin") { const c = smtpConf(); pub.smtp = { host: c.host || "", port: c.port || 465, user: c.user || "", from: c.from || "", hasPass: !!c.pass, local: !!c.local }; }
   }

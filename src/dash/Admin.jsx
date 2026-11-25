@@ -10,7 +10,7 @@ import { downloadFile as dlFile } from "../actions.js";
 import { Rail, Tiles, Pill, Empty, Bars, Stars, Avatar, RoleBadges } from "../ui.jsx";
 import { StatusSelect, Field, Options, JobFields, blankJob } from "./shared.jsx";
 import { setClStatus, signOut } from "../actions.js";
-import { ReceiptsAdmin, SignatureBox } from "./Receipts.jsx";
+import { ReceiptsAdmin, SignatureBox, DueList } from "./Receipts.jsx";
 import { VisaAdmin, VisaPassportEntry } from "./Visa.jsx";
 import { FijiPassportEntry } from "./FijiPassports.jsx";
 import { HeadlinesAdmin } from "./Headlines.jsx";
@@ -40,7 +40,7 @@ function FilterButtons({ items, cur, onPick }) {
 }
 
 // sections inside "Payments & receipts" (each still needs its own staff permission)
-const PAY_SUB = [["receipts", "Money receipts", LuReceipt], ["ledger", "Agent accounts", LuWallet], ["office", "Main account", LuLandmark], ["txhist", "Transaction history", LuHistory], ["khata", "Other accounts", LuNotebookPen], ["delivery", "Passport Delivery List", LuStamp], ["salary", "Salary accounts", LuBanknote], ["statements", "Statements", LuScrollText], ["packages", "Employer packages", LuPackage]];
+const PAY_SUB = [["receipts", "Money receipts", LuReceipt], ["ledger", "Agent accounts", LuWallet], ["office", "Main account", LuLandmark], ["txhist", "Transaction history", LuHistory], ["khata", "Other accounts", LuNotebookPen], ["delivery", "Passport Delivery List", LuStamp], ["duelist", "Due Amount List", LuReceipt], ["salary", "Salary accounts", LuBanknote], ["statements", "Statements", LuScrollText], ["packages", "Employer packages", LuPackage]];
 // sections inside "Website" (each still needs its own staff permission)
 const WEB_SUB = [["content", "Website content", LuImage], ["headlines", "Headlines", LuMegaphone], ["about", "About page", LuInfo], ["slides", "Home slideshow", LuGalleryHorizontal], ["blog", "Blog", LuNewspaper], ["seo", "SEO", LuSearch], ["settings", "Site settings", LuSettings], ["staff", "Staff & permissions", LuUserCog], ["staffhist", "Staff history", LuHistory]];
 const TABS = [
@@ -54,7 +54,7 @@ export function Admin({ u }) {
   const chatUnread = useInboxUnread(isAdmin || !!u.perms?.includes("chat"));
   const can0 = k => k === "agents" ? ["clearance", "receipts", "ledger", "office", "visa"].some(can0) : k === "passports" ? can0("clearance") || can0("visa") : k === "mymoney" ? !!S.myMoney : k === "myaccounts" ? !S.myMoney : k === "overview" || k === "mysalary" || k === "attendance" || k === "mysettings" || isAdmin || (k !== "staff" && k !== "staffhist" && u.perms?.includes(k === "slides" || k === "about" ? "content" : k));
   // employer packages only matter when paid job posting is on (or orders are still open)
-  const paySubs = PAY_SUB.filter(([k]) => (k === "statements" ? ["ledger", "receipts", "salary", "office"].some(can0) : k === "txhist" || k === "khata" ? ["office", "ledger", "receipts"].some(can0) : k === "delivery" ? ["office", "ledger", "receipts", "clearance"].some(can0) : can0(k)) && (k !== "packages" || S.settings.paidPosting || S.orders.some(o => o.status === "pending")));
+  const paySubs = PAY_SUB.filter(([k]) => (k === "statements" ? ["ledger", "receipts", "salary", "office"].some(can0) : k === "txhist" || k === "khata" ? ["office", "ledger", "receipts"].some(can0) : k === "delivery" ? ["office", "ledger", "receipts", "clearance"].some(can0) : k === "duelist" ? ["ledger", "receipts"].some(can0) : can0(k)) && (k !== "packages" || S.settings.paidPosting || S.orders.some(o => o.status === "pending")));
   const webSubs = WEB_SUB.filter(([k]) => can0(k));
   const can = k => k === "pay" ? paySubs.length > 0 : k === "web" ? webSubs.length > 0 : PAY_SUB.some(x => x[0] === k) ? paySubs.some(x => x[0] === k) : can0(k);
   if (PAY_SUB.some(x => x[0] === ui.tab[R])) { ui.paySub = ui.tab[R]; ui.tab[R] = "pay"; } // old links to the separate sections
@@ -412,6 +412,7 @@ export function Admin({ u }) {
   if (t === "txhist") body = <TransactionHistory />;
   if (t === "khata") body = <OtherAccounts />;
   if (t === "delivery") body = <PassportDelivery />;
+  if (t === "duelist") body = <DueList />;
   if (t === "salary") body = <SalaryAdmin />;
   if (t === "mysalary") body = <MySalary />;
   if (t === "myaccounts") body = <OtherAccounts own title="My Accounts" />;

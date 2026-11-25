@@ -222,15 +222,19 @@ export function PassportDelivery() {
     return { id: c.id, at: c.card.sentAt, d: dhakaDay(c.card.sentAt), name: p.name || "", passport: String(p.passport || "").toUpperCase(), country: c.country || "", ic: c.icNo || c.ref || "", agent: p.via || "", fee: Number(c.card.fee || 0) }; })
     .sort((a, b) => a.at.localeCompare(b.at));
   const rows = all.filter(r => mode === "day" ? r.d === day : r.d.slice(0, 7) === month), total = rows.reduce((t, r) => t + r.fee, 0);
+  // per country: how many cards and their card fee, most cards first
+  const byCountry = Object.entries(rows.reduce((m, r) => { const k = r.country || "—"; m[k] = m[k] || { n: 0, fee: 0 }; m[k].n++; m[k].fee += r.fee; return m; }, {})).sort((a, b) => b[1].n - a[1].n || a[0].localeCompare(b[0]));
   const label = mode === "day" ? dayLabel(day) : monthName(month), addMonth = n => { const [y, m] = month.split("-").map(Number); const d = new Date(Date.UTC(y, m - 1 + n, 1)); return d.toISOString().slice(0, 7); };
   const head = ["SL", "Date", "Name", "Passport Number", "Country", "IC Number", "Agent Name", "Card fee (BDT)"];
-  const excel = () => xlsx("Passport delivery", [[{ v: "Mam & Mam Overseas Ltd. · Passport Delivery List", s: 3 }], [label], [], head.map(v => ({ v, s: 1 })),
+  const excel = () => xlsx("Passport delivery", [[{ v: "Mam & Mam Overseas Ltd. · Passport Delivery List", s: 3 }], [label], [],
+    [{ v: "Cards sent by country", s: 1 }], ...byCountry.map(([k, v]) => [k, v.n, { v: v.fee, s: 2 }]), [{ v: "Total", s: 1 }, { v: rows.length, s: 1 }, { v: total, s: 4 }], [], head.map(v => ({ v, s: 1 })),
     ...rows.map((r, i) => [i + 1, r.d, r.name, r.passport, r.country, r.ic, r.agent, { v: r.fee, s: 2 }]), ["", "", "", "", "", "", { v: "Total Amount", s: 1 }, { v: total, s: 4 }]],
     [6, 12, 28, 16, 14, 26, 26, 16], `passport-delivery-${mode === "day" ? day : month}.xlsx`);
   const print = () => {
     const e = v => String(v ?? "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
     const html = `<!doctype html><html><head><meta charset="utf-8"><title>Passport Delivery List · ${e(label)}</title><style>body{font:13px/1.4 Arial,sans-serif;margin:24px;color:#111}h1{font-size:20px;margin:0 0 2px;color:#006a4e}h2{font-size:14px;margin:0 0 14px;font-weight:600}table{width:100%;border-collapse:collapse}th,td{border:1px solid #9aa;padding:6px 8px;text-align:left}th{background:#e3efdc}td.n,th.n{text-align:right}tfoot td{font-weight:700;background:#e3efdc}@page{size:A4 landscape;margin:12mm}</style></head><body>
       <h1>Mam &amp; Mam Overseas Ltd. · Passport Delivery List</h1><h2>${e(label)} · ${rows.length} file(s)</h2>
+      <table style="width:auto;min-width:360px;margin-bottom:16px"><thead><tr><th>Country</th><th class="n">Cards sent</th><th class="n">Card fee (BDT)</th></tr></thead><tbody>${byCountry.map(([k, v]) => `<tr><td>${e(k)}</td><td class="n">${v.n}</td><td class="n">${tk(v.fee)}</td></tr>`).join("")}</tbody><tfoot><tr><td class="n">Total</td><td class="n">${rows.length}</td><td class="n">${tk(total)}</td></tr></tfoot></table>
       <table><thead><tr>${head.map((h, i) => `<th${i === 7 ? ' class="n"' : ""}>${e(h)}</th>`).join("")}</tr></thead><tbody>${rows.map((r, i) => `<tr><td>${i + 1}</td><td>${e(r.d.split("-").reverse().join("-"))}</td><td>${e(r.name)}</td><td>${e(r.passport)}</td><td>${e(r.country)}</td><td>${e(r.ic)}</td><td>${e(r.agent)}</td><td class="n">${tk(r.fee)}</td></tr>`).join("")}</tbody>
       <tfoot><tr><td colspan="7" class="n">Total Amount</td><td class="n">${tk(total)}</td></tr></tfoot></table><script>onload=()=>{print()}<\/script></body></html>`;
     const w = window.open(URL.createObjectURL(new Blob([html], { type: "text/html" })), "_blank"); if (!w) toast("Allow pop-ups for this site to print.");
@@ -252,6 +256,9 @@ export function PassportDelivery() {
       <button className="btn sm" disabled={!rows.length} onClick={print}><LuPrinter /> Print</button>
       <button className="btn sm" disabled={!rows.length} onClick={excel}><LuSheet /> Excel</button>
     </div>
+    {rows.length > 0 && <div className="card mt8"><h3 className="mb6">Cards sent by country</h3><div className="tbl"><table><thead><tr><th>Country</th><th style={{ textAlign: "right" }}>Cards sent</th><th style={{ textAlign: "right" }}>Card fee (BDT)</th></tr></thead><tbody>
+      {byCountry.map(([k, v]) => <tr key={k}><td className="b">{k}</td><td className="num" style={{ textAlign: "right" }}>{v.n}</td><td className="num" style={{ textAlign: "right" }}>{tk(v.fee)}</td></tr>)}
+    </tbody><tfoot><tr className="st-total"><td className="b" style={{ textAlign: "right" }}>Total</td><td className="num b" style={{ textAlign: "right" }}>{rows.length}</td><td className="num b" style={{ textAlign: "right" }}>{tk(total)}</td></tr></tfoot></table></div></div>}
     <div className="card mt8"><div className="tbl"><table><thead><tr>{head.map((h, i) => <th key={h} style={i === 7 ? { textAlign: "right" } : undefined}>{h}</th>)}</tr></thead><tbody>
       {rows.length ? rows.map((r, i) => <tr key={r.id}><td>{i + 1}</td><td className="nowrap">{r.d.split("-").reverse().join("-")}</td><td className="b" data-notr>{r.name}</td><td className="num" data-notr>{r.passport}</td><td>{r.country}</td><td className="num nowrap" data-notr>{r.ic}</td><td data-notr>{r.agent}</td><td className="num" style={{ textAlign: "right" }}>{tk(r.fee)}</td></tr>)
         : <tr><td colSpan={8}><Empty>{mode === "day" ? "No clearance card was sent on this day." : "No clearance card was sent in this month."}</Empty></td></tr>}
