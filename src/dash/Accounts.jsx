@@ -236,8 +236,10 @@ export function PassportDelivery() {
       <h1>Mam &amp; Mam Overseas Ltd. · Passport Delivery List</h1><h2>${e(label)} · ${rows.length} file(s)</h2>
       <table style="width:auto;min-width:360px;margin-bottom:16px"><thead><tr><th>Country</th><th class="n">Cards sent</th><th class="n">Card fee (BDT)</th></tr></thead><tbody>${byCountry.map(([k, v]) => `<tr><td>${e(k)}</td><td class="n">${v.n}</td><td class="n">${tk(v.fee)}</td></tr>`).join("")}</tbody><tfoot><tr><td class="n">Total</td><td class="n">${rows.length}</td><td class="n">${tk(total)}</td></tr></tfoot></table>
       <table><thead><tr>${head.map((h, i) => `<th${i === 7 ? ' class="n"' : ""}>${e(h)}</th>`).join("")}</tr></thead><tbody>${rows.map((r, i) => `<tr><td>${i + 1}</td><td>${e(r.d.split("-").reverse().join("-"))}</td><td>${e(r.name)}</td><td>${e(r.passport)}</td><td>${e(r.country)}</td><td>${e(r.ic)}</td><td>${e(r.agent)}</td><td class="n">${tk(r.fee)}</td></tr>`).join("")}</tbody>
-      <tfoot><tr><td colspan="7" class="n">Total Amount</td><td class="n">${tk(total)}</td></tr></tfoot></table><script>onload=()=>{print()}<\/script></body></html>`;
-    const w = window.open(URL.createObjectURL(new Blob([html], { type: "text/html" })), "_blank"); if (!w) toast("Allow pop-ups for this site to print.");
+      <tfoot><tr><td colspan="7" class="n">Total Amount</td><td class="n">${tk(total)}</td></tr></tfoot></table></body></html>`;
+    // no script tag inside the page text (the site's own code is inlined in a script tag); print once the window has loaded
+    const w = window.open(URL.createObjectURL(new Blob([html], { type: "text/html" })), "_blank"); if (!w) return toast("Allow pop-ups for this site to print.");
+    w.addEventListener("load", () => setTimeout(() => w.print(), 200));
   };
   return <>
     <h2>Passport Delivery List</h2>
