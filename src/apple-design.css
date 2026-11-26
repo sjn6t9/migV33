@@ -197,3 +197,23 @@ footer.bot .social a:hover{border-color:var(--ink);color:var(--ink)}
   .hf-row:not(.rt) .hf-date{grid-column:1/-1!important}}
 :root[data-theme="dark"] .hf-f input[type=date]{color-scheme:dark}
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .hf-f input[type=date]{color-scheme:dark}}
+
+/* ---------- file chooser: button + the chosen file shown small beside it ---------- */
+.fpick{display:flex;align-items:center;gap:10px;flex-wrap:wrap;min-width:0}
+.fpick-btn{position:relative;display:inline-flex;align-items:center;gap:8px;height:44px;padding:0 18px;border-radius:999px;border:1.5px dashed var(--logo-g,#05613e);background:rgba(5,97,62,.06);color:var(--brand);font-weight:600;font-size:15px;cursor:pointer;white-space:nowrap;transition:background .15s,border-color .15s}
+.fpick-btn:hover{background:rgba(5,97,62,.12)}
+.fpick-btn svg{width:18px;height:18px;flex:none}
+.fpick.has .fpick-btn{border-style:solid;background:var(--surface);color:var(--ink)}
+.fpick-btn:focus-within{outline:2px solid var(--logo-g,#05613e);outline-offset:2px}
+/* the real input stays in the form (so required still works) but is invisible */
+.fpick-in{position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer;font-size:0;padding:0!important;border:0!important;min-height:0!important}
+.fpick-files{display:flex;align-items:center;gap:8px;flex-wrap:wrap;min-width:0;flex:1}
+.fpick-item{display:flex;align-items:center;gap:8px;min-width:0;max-width:230px;background:var(--surface-2);border-radius:12px;padding:4px 10px 4px 4px}
+.fpick-item img,.fpick-doc{width:40px;height:40px;border-radius:9px;flex:none;object-fit:cover;background:var(--surface)}
+.fpick-doc{display:flex;flex-direction:column;align-items:center;justify-content:center;color:var(--accent,#fd0404);gap:0}
+.fpick-doc svg{width:18px;height:18px}.fpick-doc em{font-style:normal;font-size:9px;font-weight:700;line-height:1;color:var(--muted)}
+.fpick-meta{display:flex;flex-direction:column;min-width:0;line-height:1.25}
+.fpick-meta b{font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.fpick-meta span{font-size:12px;color:var(--muted)}
+.fpick-x{flex:none;width:30px;height:30px;border-radius:50%;border:1px solid var(--line);background:var(--surface);color:var(--muted);display:grid;place-items:center;cursor:pointer;padding:0}
+.fpick-x:hover{color:#fd0404;border-color:#fd0404}

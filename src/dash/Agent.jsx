@@ -6,7 +6,7 @@ import { LuLayoutDashboard, LuUser, LuUsers, LuStamp, LuBriefcase, LuWallet, LuB
 import { store, commit, worker, job, live, money, fdate, bdtFmt, balanceOf, unread, now, COUNTRIES, CL_DOCS, PAY_METHODS, loadState } from "../store.js";
 import { toast, formData, setTab, openModal, closeModal, confirmBox, withdraw, readUpload, act, DOC_TYPES, downloadFile, cardFileName } from "../actions.js";
 import { LuShieldCheck, LuDownload, LuMaximize2, LuMinimize2, LuRefreshCw, LuSearch, LuFileText, LuBanknote, LuCirclePlus, LuX } from "react-icons/lu";
-import { Rail, Tiles, Pill, Pipe, ClPipe, Empty, CardDownload, Avatar } from "../ui.jsx";
+import { FilePick, Rail, Tiles, Pill, Pipe, ClPipe, Empty, CardDownload, Avatar } from "../ui.jsx";
 import { AgentDatalist } from "./AgentBook.jsx";
 import { PreEcCheck } from "./PreEc.jsx";
 import { JobSlides } from "./JobSlides.jsx";
@@ -175,7 +175,7 @@ export function Agent({ u }) {
         <Field label="Transaction / reference no."><input type="text" name="ref" /></Field>
         <Field label="Payment date"><input type="date" name="date" defaultValue={now().slice(0, 10)} required /></Field>
         <Field label="Note" full><input type="text" name="desc" placeholder="e.g. Payment for Jamal Hossain clearance" /></Field>
-        <Field label="Payment proof (optional)" hint="Screenshot of the bKash / bank transfer or a photo of the receipt. JPG, PNG or PDF." full><input type="file" name="proof" accept="image/*,.pdf" /></Field>
+        <Field label="Payment proof (optional)" hint="Screenshot of the bKash / bank transfer or a photo of the receipt. JPG, PNG or PDF." full><FilePick name="proof" accept="image/*,.pdf" /></Field>
         <div className="full row"><button className="btn pri" type="submit"><LuWallet /> Submit payment</button><span className="muted small">The balance updates after the agency confirms receipt.</span></div>
       </form>
     </>;
@@ -399,9 +399,9 @@ function EcDocs({ k }) {
   return (
     <div className="fgrid">
       <Field label="Visa number"><input type="text" name={`visaNo_${k}`} /></Field>
-      <Field label="Upload passport copy" hint="PDF or JPG"><input type="file" name={`pass_${k}`} accept={DOC_TYPES} /></Field>
-      <Field label="Upload visa copy" hint="PDF or JPG"><input type="file" name={`visa_${k}`} accept={DOC_TYPES} /></Field>
-      <Field label="Upload employment contract (optional)" hint="PDF or JPG"><input type="file" name={`contract_${k}`} accept={DOC_TYPES} /></Field>
+      <Field label="Upload passport copy" hint="PDF or JPG"><FilePick name={`pass_${k}`} accept={DOC_TYPES} /></Field>
+      <Field label="Upload visa copy" hint="PDF or JPG"><FilePick name={`visa_${k}`} accept={DOC_TYPES} /></Field>
+      <Field label="Upload employment contract (optional)" hint="PDF or JPG"><FilePick name={`contract_${k}`} accept={DOC_TYPES} /></Field>
     </div>
   );
 }
@@ -427,7 +427,7 @@ export function ClPayForm({ cid }) {
         <Field label="Amount paid (BDT)"><input type="number" name="amount" min="1" step="any" required autoFocus /></Field>
         <Field label="Payment method"><select name="method"><Options list={PAY_METHODS} /></select></Field>
         <Field label="Transaction / reference no."><input type="text" name="ref" maxLength={80} /></Field>
-        <Field label="Payment receipt" hint="Photo or PDF of the receipt"><input type="file" name="receipt" accept={DOC_TYPES} required /></Field>
+        <Field label="Payment receipt" hint="Photo or PDF of the receipt"><FilePick name="receipt" accept={DOC_TYPES} required /></Field>
       </div>
       <div className="row"><button className="btn pri" type="submit" disabled={busy}><LuSend /> {busy ? "Uploading…" : "Submit"}</button><button className="btn" type="button" onClick={closeModal}>Cancel</button></div>
     </form>

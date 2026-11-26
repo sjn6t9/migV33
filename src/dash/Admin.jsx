@@ -7,7 +7,7 @@ import { FaWhatsapp, FaFacebookF, FaYoutube, FaLinkedinIn, FaTiktok } from "reac
 import { clStage, STAFF_PERMS, TEAM_DEPTS, store, commit, user, job, worker, company, live, money, num, fdate, bdtFmt, balanceOf, candOf, clPerson, clOpen, cardPending, now, COUNTRIES, STAGES, CL_STAGES, CL_DOCS, PAY_METHODS, PAGES, LABEL } from "../store.js";
 import { toast, formData, setTab, openModal, closeModal, confirmBox, deleteUser, act, readUpload, compressImage } from "../actions.js";
 import { downloadFile as dlFile } from "../actions.js";
-import { Rail, Tiles, Pill, Empty, Bars, Stars, Avatar, RoleBadges } from "../ui.jsx";
+import { FilePick, Rail, Tiles, Pill, Empty, Bars, Stars, Avatar, RoleBadges } from "../ui.jsx";
 import { StatusSelect, Field, Options, JobFields, blankJob } from "./shared.jsx";
 import { setClStatus, signOut } from "../actions.js";
 import { ReceiptsAdmin, SignatureBox, DueList } from "./Receipts.jsx";
@@ -108,7 +108,7 @@ export function Admin({ u }) {
         <Field label="PNR / booking reference"><input type="text" name="pnr" required /></Field>
         <Field label="Flight date"><input type="date" name="flightDate" defaultValue={sel.prefDate} required /></Field>
         <Field label="Fare (BDT)"><input type="number" name="fare" min="0" defaultValue={sel.flight?.price || ""} /></Field>
-        <Field label="Ticket copy *" hint="The e-ticket from WFTT: PDF or JPG. The agent / job seeker downloads it." full><input type="file" name="ticketFile" accept=".pdf,image/*" /></Field>
+        <Field label="Ticket copy *" hint="The e-ticket from WFTT: PDF or JPG. The agent / job seeker downloads it." full><FilePick name="ticketFile" accept=".pdf,image/*" /></Field>
         {sel.agentId && <label className="check full"><input type="checkbox" name="charge" defaultChecked /> Add the fare to the agent's account statement</label>}
         <div className="full row"><button className="btn pri" type="submit"><LuCheck /> Booking Confirm</button><button className="btn" type="button" onClick={() => { ui.bookTicket = null; commit(); }}>Close</button></div>
       </form>}
@@ -168,7 +168,7 @@ export function Admin({ u }) {
               <Field label="العربية"><input type="text" name="name_ar" lang="ar" dir="rtl" defaultValue={editM?.names?.ar} /></Field>
               <Field label="हिन्दी"><input type="text" name="name_hi" lang="hi" defaultValue={editM?.names?.hi} /></Field></div></details>
           <Field label="Display order" hint="Lower numbers show first. Also the end of the member ID on the visiting card: 12172026 + this number."><input type="number" name="order" min="0" max="999" defaultValue={editM?.order ?? 10} /></Field>
-          <Field label={editM?.photo ? "Replace photo" : "Photo (optional)"} hint="A clear, professional photo. Resized automatically."><input type="file" name="photo" accept="image/*" /></Field>
+          <Field label={editM?.photo ? "Replace photo" : "Photo (optional)"} hint="A clear, professional photo. Resized automatically."><FilePick name="photo" accept="image/*" /></Field>
           {editM?.photo && <label className="check"><input type="checkbox" name="removePhoto" /> Remove current photo</label>}
           <div className="full row"><button className="btn pri" type="submit">{editM ? "Save changes" : "Add team member"}</button>{editM && <button className="btn" type="button" onClick={() => { ui.editTeam = null; commit(); }}>Cancel</button>}</div>
         </form>
@@ -181,7 +181,7 @@ export function Admin({ u }) {
       <div className="card stack">
         <h3><LuImagePlus /> Photo gallery</h3>
         <form className="fgrid" onSubmit={addG}>
-          <Field label="Photo" hint="Photos are resized to 1200px JPEG. Use real photos of your office, departures or events."><input type="file" name="photo" accept="image/*" required /></Field>
+          <Field label="Photo" hint="Photos are resized to 1200px JPEG. Use real photos of your office, departures or events."><FilePick name="photo" accept="image/*" required /></Field>
           <Field label="Caption"><input type="text" name="caption" required placeholder="e.g. Workers departing for Riyadh" /></Field>
           <div className="full"><button className="btn pri" type="submit">Add photo</button></div>
         </form>
@@ -505,7 +505,7 @@ function SlidesAdmin() {
     <p className="muted">Pictures at the top of the home page. They change every few seconds and fill the screen on computers, tablets and phones. {shown} of {L.length} pictures are showing.</p>
     <form className="card fgrid" onSubmit={add}>
       <h3 className="full"><LuImagePlus /> Add a picture</h3>
-      <Field label="Picture (JPG or WebP)" hint="Wide landscape photos work best (at least 1600 px wide). Large photos are made smaller before upload." full><input type="file" name="file" accept="image/jpeg,image/png,image/webp" /></Field>
+      <Field label="Picture (JPG or WebP)" hint="Wide landscape photos work best (at least 1600 px wide). Large photos are made smaller before upload." full><FilePick name="file" accept="image/jpeg,image/png,image/webp" /></Field>
       <Field label="Description" hint="Read out by screen readers, e.g. Rice fields in Sylhet"><input type="text" name="alt" maxLength={140} /></Field>
       <Field label="Keep in view when cropped" hint="Phones show a narrower part of the picture"><select name="pos" defaultValue="50% 50%">{FOCUS.map(([v, l]) => <option key={v} value={v}>{l}</option>)}</select></Field>
       <div className="full"><button className="btn pri" type="submit" disabled={busy}><LuUpload /> {busy ? "Uploading…" : "Add to slideshow"}</button></div>
@@ -984,7 +984,7 @@ function DocForm({ d, onDone }) {
       <Field label="Issued by"><input type="text" name="issuer" defaultValue={d?.issuer} placeholder="e.g. Ministry of Expatriates' Welfare" maxLength={120} /></Field>
       <Field label="Number"><input type="text" name="number" defaultValue={d?.number} placeholder="e.g. RL 1217" maxLength={80} /></Field>
       <Field label="Valid until / date"><input type="text" name="valid" defaultValue={d?.valid} placeholder="e.g. 31 Dec 2028" maxLength={60} /></Field>
-      <Field label={d ? "Replace file (optional)" : "File (PDF or photo)"} full><input type="file" name="file" accept="application/pdf,image/*" /></Field>
+      <Field label={d ? "Replace file (optional)" : "File (PDF or photo)"} full><FilePick name="file" accept="application/pdf,image/*" /></Field>
       <div className="full row"><button className="btn pri" type="submit" disabled={busy}><LuCheck /> {busy ? "Uploading…" : d ? "Save" : "Add document"}</button><button type="button" className="btn" onClick={onDone}>Cancel</button></div>
     </form>
   );

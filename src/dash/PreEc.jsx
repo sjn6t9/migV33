@@ -1,6 +1,7 @@
 // Pre EC Check: the agency's RAIMS account checks a passport (BMET registration, finger, availability, alerts).
 // Admin/staff with the BMET clearance permission, and agents, can use it.
 import React from "react";
+import { FilePick } from "../ui.jsx";
 import { LuSearch, LuTriangleAlert, LuShieldCheck, LuX, LuCircleCheck, LuCircleX, LuListPlus, LuDownload, LuSend, LuFileCheck, LuCirclePlus } from "react-icons/lu";
 import { CountrySelect, agentsList } from "./Passports.jsx";
 import { AgentDatalist } from "./AgentBook.jsx";
@@ -67,10 +68,10 @@ function ApplyClearance({ res, onDone }) {
   return <form className="card fgrid mt10 preec-apply-form" onSubmit={submit} noValidate>
     <h4 className="full">{`Apply BMET Clearance · ${name || pp}`}</h4>
     <Field label="Country *" full><select name="country" defaultValue=""><option value="">Select country</option><ClCountryOptions /></select></Field>
-    <Field label="Passport copy *" hint="PDF or JPG"><input type="file" name="passport" accept=".pdf,image/*" /></Field>
-    <Field label="Visa copy *" hint="PDF or JPG"><input type="file" name="visa" accept=".pdf,image/*" /></Field>
-    <Field label="Employment contract (optional)"><input type="file" name="contract" accept=".pdf,image/*" /></Field>
-    <Field label="Other documents (optional)" hint="Up to 3 files"><input type="file" name="others" accept=".pdf,image/*" multiple /></Field>
+    <Field label="Passport copy *" hint="PDF or JPG"><FilePick name="passport" accept=".pdf,image/*" /></Field>
+    <Field label="Visa copy *" hint="PDF or JPG"><FilePick name="visa" accept=".pdf,image/*" /></Field>
+    <Field label="Employment contract (optional)"><FilePick name="contract" accept=".pdf,image/*" /></Field>
+    <Field label="Other documents (optional)" hint="Up to 3 files"><FilePick name="others" accept=".pdf,image/*" multiple /></Field>
     <div className="row full"><button className="btn pri" disabled={busy}><LuSend /> {busy ? "Submitting…" : "Submit Application"}</button><button type="button" className="btn" onClick={() => setOpen(false)}>Cancel</button></div>
   </form>;
 }

@@ -2,7 +2,7 @@ import React from "react";
 import { LuPlus, LuPencil, LuRotateCcw, LuEye, LuCheck, LuX, LuTrash2, LuUpload, LuSend, LuDownload, LuCamera, LuFileText, LuIdCard, LuFileBadge, LuShieldCheck, LuSearch, LuExternalLink } from "react-icons/lu";
 import { store, num, fdate, kb, bdtFmt, candOf, clPerson, job, STAGES, LABEL, CARD_TYPES, COUNTRIES, CATS, TYPES, BENEFITS, HOURLY } from "../store.js";
 import { openModal, setAppStatus, confirmPayment, confirmBox, toast, downloadFile, cardFileName, formData, act } from "../actions.js";
-import { Pill, Empty, Avatar } from "../ui.jsx";
+import { FilePick, Pill, Empty, Avatar } from "../ui.jsx";
 import { descriptionFor, requirementsFor, toLines, PASSPORT_LINE, TERM_BENEFITS } from "../jobtpl.js";
 import { HOURS_PER_DAY, CL_REGIONS } from "../constants.js";
 import { readUpload, fileExt } from "../actions.js";
@@ -127,7 +127,7 @@ export function RaimsCard({ c, who, compact }) {
     {compact && failed && <form className="stack mt8 card-manual" onSubmit={manual}>
       <b>Send the card manually</b>
       <p className="muted small">The card could not be taken from RAIMS. Upload the card file instead; the fees above go with it.</p>
-      <label className="f">Clearance card file<input type="file" name="card" accept={CARD_TYPES} required /><span className="hint">PDF, JPG or WebP, up to 1.5 MB</span></label>
+      <label className="f">Clearance card file<FilePick name="card" accept={CARD_TYPES} required /><span className="hint">PDF, JPG or WebP, up to 1.5 MB</span></label>
       <div><button className="btn pri" type="submit" disabled={!!busy || feeMissing}><LuUpload /> {busy === "manual" ? "Sending…" : `Upload & send to ${who}`}</button></div>
     </form>}
   </div>;
@@ -155,7 +155,7 @@ export function CardAdmin({ c }) {
       ) : <div className="notice">Approved. Upload the clearance card and send it to the {who}.</div>}
       <RaimsCard c={c} who={p.kind === "agent" ? "agent" : "job seeker"} />
       <form className="fgrid" onSubmit={send}>
-        <Field label={c.card ? "Replace card file" : "Upload Clearance Card"} hint="PDF, JPG or WebP, up to 1.5 MB"><input type="file" name="card" accept={CARD_TYPES} required /></Field>
+        <Field label={c.card ? "Replace card file" : "Upload Clearance Card"} hint="PDF, JPG or WebP, up to 1.5 MB"><FilePick name="card" accept={CARD_TYPES} required /></Field>
         {!(c.card?.fee > 0) && <Field label="Card fee (BDT)" hint={p.kind === "agent" ? "Added to the agent's account statement" : "Shown to the job seeker; mark it received when paid"}><input type="number" name="fee" min="0" defaultValue="0" /></Field>}
         <div className="full"><button className="btn pri" type="submit"><LuSend /> {c.card ? "Replace & notify" : `Upload & send to ${p.kind === "agent" ? "agent" : "job seeker"}`}</button></div>
       </form>

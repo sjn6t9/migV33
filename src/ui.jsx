@@ -1,5 +1,6 @@
 import React from "react";
 import { createPortal } from "react-dom";
+import { LuUpload, LuFileText, LuRefreshCw } from "react-icons/lu";
 import {
   LuBookmark, LuBookmarkCheck, LuMapPin, LuClock, LuBriefcase, LuX, LuHardHat, LuHotel, LuTruck, LuFactory,
   LuHeartPulse, LuShield, LuSparkles, LuWheat, LuShoppingBag, LuMonitor, LuStar, LuDownload, LuBadgeCheck, LuMenu, LuChevronDown
@@ -212,4 +213,28 @@ export function RoleBadges({ role, size = 16 }) {
   if (role === "admin") return <span className="badges"><AdminBadge size={size} /><VerifiedBadge size={size} /></span>;
   if (role === "staff") return <span className="badges"><StaffBadge size={size} /></span>;
   return null;
+}
+
+/* File chooser: a clear button, and the chosen file shown small beside it (photo thumbnail, or a document icon with name and size).
+   The real file input stays in the form, so forms read it as before. */
+const kb = n => n >= 1048576 ? `${(n / 1048576).toFixed(1)} MB` : `${Math.max(1, Math.round(n / 1024))} KB`;
+export function FilePick({ name, accept, multiple, required, label }) {
+  const ref = React.useRef(null); const [files, setFiles] = React.useState([]);
+  const urls = React.useMemo(() => files.map(f => (/^image\//.test(f.type) ? URL.createObjectURL(f) : "")), [files]);
+  React.useEffect(() => () => urls.forEach(u => u && URL.revokeObjectURL(u)), [urls]);
+  React.useEffect(() => { const form = ref.current?.form; if (!form) return; const r = () => setFiles([]); form.addEventListener("reset", r); return () => form.removeEventListener("reset", r); }, []);
+  const clear = () => { if (ref.current) ref.current.value = ""; setFiles([]); };
+  return <div className={`fpick${files.length ? " has" : ""}`}>
+    <label className="fpick-btn">
+      <input ref={ref} className="fpick-in" type="file" name={name} accept={accept} multiple={multiple} required={required} onChange={e => setFiles([...e.target.files])} />
+      {files.length ? <LuRefreshCw /> : <LuUpload />}<span>{files.length ? (multiple ? "Change files" : "Change file") : (label || (multiple ? "Choose files" : "Choose file"))}</span>
+    </label>
+    {files.length > 0 && <div className="fpick-files">
+      {files.slice(0, 4).map((f, i) => <div className="fpick-item" key={i} title={f.name}>
+        {urls[i] ? <img src={urls[i]} alt="" /> : <span className="fpick-doc"><LuFileText /><em>{(f.name.split(".").pop() || "").slice(0, 4).toUpperCase()}</em></span>}
+        <span className="fpick-meta"><b data-notr>{f.name}</b><span>{kb(f.size)}</span></span></div>)}
+      {files.length > 4 && <span className="fpick-more muted small">+{files.length - 4}</span>}
+      <button type="button" className="fpick-x" onClick={clear} aria-label="Remove file"><LuX /></button>
+    </div>}
+  </div>;
 }

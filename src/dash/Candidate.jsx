@@ -6,7 +6,7 @@ import {
 import { store, commit, job, live, company, money, isHourly, fdate, kb, completeness, unread, bdtFmt, COUNTRIES, CATS } from "../store.js";
 import { FlightSearch, FlightRequest, TicketFlight } from "./Flights.jsx";
 import { toast, formData, withdraw, setTab, openModal, readUpload, downloadFile, fileExt, act, DOC_TYPES } from "../actions.js";
-import { Rail, Tiles, Pipe, ClPipe, Pill, Empty, JobCard, CardDownload, Avatar } from "../ui.jsx";
+import { FilePick, Rail, Tiles, Pipe, ClPipe, Pill, Empty, JobCard, CardDownload, Avatar } from "../ui.jsx";
 import { NotifPanel, Field, Options, ClCountryOptions } from "./shared.jsx";
 
 const ui = store.ui;
@@ -172,10 +172,10 @@ function ClearanceForm({ u }) {
       <Field label="Select country"><select name="country" required defaultValue=""><option value="" disabled>Choose destination country</option><ClCountryOptions /></select></Field>
       <Field label="Full name (as in passport)"><input type="text" name="fullName" defaultValue={u.name.replace(" (sample)", "")} required /></Field>
       <Field label="Passport number"><input type="text" name="passportNo" defaultValue={p.passportNo} required /></Field>
-      <Field label="Upload passport copy" hint={p.passportFile ? `Leave empty to use the passport in your profile (${p.passportFile.name})` : "PDF or JPG"}><input type="file" name="passportCopy" accept={DOC_TYPES} required={!p.passportFile} /></Field>
-      <Field label="Upload visa copy" hint="PDF or JPG"><input type="file" name="visaCopy" accept={DOC_TYPES} required /></Field>
-      <Field label="Upload employment contract (optional)"><input type="file" name="contract" accept={DOC_TYPES} /></Field>
-      <Field label="Upload other documents (optional)" hint="Up to 3 files, e.g. training certificate, medical report"><input type="file" name="others" accept={DOC_TYPES} multiple /></Field>
+      <Field label="Upload passport copy" hint={p.passportFile ? `Leave empty to use the passport in your profile (${p.passportFile.name})` : "PDF or JPG"}><FilePick name="passportCopy" accept={DOC_TYPES} required={!p.passportFile} /></Field>
+      <Field label="Upload visa copy" hint="PDF or JPG"><FilePick name="visaCopy" accept={DOC_TYPES} required /></Field>
+      <Field label="Upload employment contract (optional)"><FilePick name="contract" accept={DOC_TYPES} /></Field>
+      <Field label="Upload other documents (optional)" hint="Up to 3 files, e.g. training certificate, medical report"><FilePick name="others" accept={DOC_TYPES} multiple /></Field>
       <div className="full"><button className="btn pri" type="submit" disabled={busy}><LuSend /> {busy ? "Uploading…" : "Submit application"}</button></div>
     </form>
   );
