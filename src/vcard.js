@@ -4,11 +4,14 @@
 import { translatorFor, LANGS } from "./i18n.js";
 import { drawQR } from "./qr.js";
 import { memberCode } from "./store.js";
+import { COMPANY, num, rl, word, nameIn } from "./vcardLocale.js";
 
 const W = 1050, H = 600;
-const GREEN = "#006a4e", DEEP = "#004d38", RED = "#d01c32", INK = "#14231d", MUTED = "#5b6b64";
-const DISPLAY = "Inter, 'Anek Bangla', 'Noto Kufi Arabic', Hind, Arial, sans-serif";
-const BODY = "Inter, 'Noto Sans Bengali', 'Noto Kufi Arabic', Hind, Arial, sans-serif";
+// the website's look: white and light grey, near-black text, the logo's green and red
+const GREEN = "#05613e", RED = "#fd0404", INK = "#1d1d1f", MUTED = "#6e6e73", SOFT = "#f5f5f7";
+const DISPLAY = "-apple-system, BlinkMacSystemFont, 'SF Pro Display', Inter, 'Anek Bangla', 'Noto Kufi Arabic', Hind, Arial, sans-serif";
+const BODY = "-apple-system, BlinkMacSystemFont, 'SF Pro Text', Inter, 'Noto Sans Bengali', 'Noto Kufi Arabic', Hind, Arial, sans-serif";
+const LATIN = "-apple-system, BlinkMacSystemFont, 'SF Pro Text', Inter, Arial, sans-serif";
 
 function loadImg(src) {
   return new Promise(res => { if (!src) return res(null); const i = new Image(); i.onload = () => res(i); i.onerror = () => res(null); i.src = src; });
@@ -39,95 +42,103 @@ function clip(g, text, max) { if (g.measureText(text).width <= max) return text;
 export const OFFICE_SITE = "www.mamandmam.bd", OFFICE_EMAIL = "info@mamandmam.bd";
 
 export async function drawVisitingCard(m, { lang = "en", side = "front", settings = {}, site = location.host, icons = {}, verifyUrl = "" } = {}) {
-  const t = await translatorFor(lang); const rtl = !!LANGS.find(l => l.code === lang)?.rtl;
+  const t0 = await translatorFor(lang); const rtl = !!LANGS.find(l => l.code === lang)?.rtl;
+  // every word in the card's language, numbers in its own digits; only the website and email stay as they are
+  const t = s => rl(t0(s), lang), N = s => num(s, lang), CO = COMPANY[lang] || COMPANY.en;
+  const address = (lang !== "en" && lang !== "fj" && settings.addresses?.[lang]) || settings.address || "";
   await fontsReady();
   const c = document.createElement("canvas"); c.width = W; c.height = H; const g = c.getContext("2d");
   g.direction = rtl ? "rtl" : "ltr";
-  // text in Latin letters only (names, numbers, the company name) is laid out left-to-right even on an Arabic card
+  // text in Latin letters only (the website, the email) is laid out left-to-right even on an Arabic card
   const _fill = g.fillText.bind(g);
   g.fillText = (str, x, y) => { if (rtl && /^[\x20-\x7E…]+$/.test(String(str))) { const d = g.direction; g.direction = "ltr"; _fill(str, x, y); g.direction = d; } else _fill(str, x, y); };
   const X = (x, w = 0) => (rtl ? W - x - w : x); // mirror for right-to-left
   const logo = await loadImg("/brand/logo-w320.webp?v=2");
+  // the logo's two colours, side by side, as a thin line along the bottom edge
+  const flagLine = (y, h) => { g.fillStyle = GREEN; g.fillRect(0, y, W * .72, h); g.fillStyle = RED; g.fillRect(W * .72, y, W * .28, h); };
 
   if (side === "back") {
-    const bg = g.createLinearGradient(0, 0, W, H); bg.addColorStop(0, GREEN); bg.addColorStop(1, DEEP); g.fillStyle = bg; g.fillRect(0, 0, W, H);
-    g.globalAlpha = .07; g.fillStyle = "#fff"; g.beginPath(); g.arc(W - 90, 60, 230, 0, Math.PI * 2); g.fill(); g.beginPath(); g.arc(80, H - 40, 170, 0, Math.PI * 2); g.fill(); g.globalAlpha = 1;
-    rr(g, W / 2 - 160, 58, 320, 200, 34); g.fillStyle = "#fff"; g.fill(); if (logo) g.drawImage(logo, W / 2 - 150, 64, 300, 188);
-    g.textAlign = "center"; g.fillStyle = "#fff";
-    fit(g, "MAM & MAM OVERSEAS LTD.", W - 120, 50, 800, DISPLAY); g.fillText("MAM & MAM OVERSEAS LTD.", W / 2, 322);
-    fit(g, t("Government licensed recruiting agency"), W - 160, 28, 500, BODY); g.globalAlpha = .92; g.fillText(t("Government licensed recruiting agency"), W / 2, 368); g.globalAlpha = 1;
-    rr(g, W / 2 - 150, 392, 300, 50, 25); g.fillStyle = RED; g.fill();
-    g.fillStyle = "#fff"; fit(g, t("Recruiting Licence RL 1217"), 280, 24, 700, BODY); g.fillText(t("Recruiting Licence RL 1217"), W / 2, 425);
-    g.font = `600 26px ${BODY}`; g.fillText(OFFICE_SITE, W / 2, 488);
-    g.font = `500 22px ${BODY}`; g.globalAlpha = .9; g.fillText(OFFICE_EMAIL, W / 2, 522); g.globalAlpha = 1;
-    if (settings.address) { g.font = `500 19px ${BODY}`; g.globalAlpha = .8; g.fillText(clip(g, settings.address, W - 160), W / 2, 558); g.globalAlpha = 1; }
-    g.fillStyle = RED; g.fillRect(0, H - 12, W, 12);
+    g.fillStyle = "#ffffff"; g.fillRect(0, 0, W, H);
+    rr(g, 34, 30, W - 68, H - 78, 34); g.fillStyle = SOFT; g.fill();
+    if (logo) { const lw = 300, lh = lw * logo.height / logo.width; g.drawImage(logo, W / 2 - lw / 2, 62, lw, lh); }
+    g.textAlign = "center"; g.fillStyle = INK;
+    fit(g, CO[2], W - 140, 46, 700, DISPLAY); g.fillText(CO[2], W / 2, 318);
+    g.fillStyle = MUTED; fit(g, t("Government licensed recruiting agency"), W - 180, 25, 400, BODY); g.fillText(t("Government licensed recruiting agency"), W / 2, 358);
+    const lic = t("Recruiting Licence RL 1217"); g.font = `600 22px ${BODY}`; const lw2 = Math.min(W - 200, g.measureText(lic).width + 56);
+    rr(g, W / 2 - lw2 / 2, 380, lw2, 46, 23); g.fillStyle = GREEN; g.fill(); g.fillStyle = "#fff"; fit(g, lic, lw2 - 40, 22, 600, BODY); g.fillText(lic, W / 2, 411);
+    g.fillStyle = INK; g.font = `600 24px ${LATIN}`; g.fillText(OFFICE_SITE, W / 2, 470);
+    g.fillStyle = MUTED; g.font = `400 20px ${LATIN}`; g.fillText(OFFICE_EMAIL, W / 2, 500);
+    if (address) { g.fillStyle = MUTED; g.font = `400 18px ${BODY}`; g.fillText(clip(g, N(address), W - 180), W / 2, 528); }
+    flagLine(H - 12, 12);
     return c;
   }
 
-  // front: agency band on one side, the person on the other
-  g.fillStyle = "#fff"; g.fillRect(0, 0, W, H);
+  // front: the agency on a light grey panel on one side, the person on white on the other
+  g.fillStyle = "#ffffff"; g.fillRect(0, 0, W, H);
   const BW = 330; const bx = X(0, BW);
-  const bg = g.createLinearGradient(bx, 0, bx + BW, H); bg.addColorStop(0, GREEN); bg.addColorStop(1, DEEP); g.fillStyle = bg; g.fillRect(bx, 0, BW, H);
-  g.fillStyle = RED; g.fillRect(rtl ? bx : BW - 8, 0, 8, H);
+  g.fillStyle = SOFT; g.fillRect(bx, 0, BW, H);
   const cx = bx + BW / 2;
-  rr(g, cx - 104, 30, 208, 132, 22); g.fillStyle = "#fff"; g.fill(); if (logo) g.drawImage(logo, cx - 100, 34, 200, 125);
-  g.textAlign = "center"; g.fillStyle = "#fff";
-  fit(g, "MAM & MAM", BW - 50, 34, 800, DISPLAY); g.fillText("MAM & MAM", cx, 204);
-  fit(g, "OVERSEAS LTD.", BW - 50, 25, 700, DISPLAY); g.fillText("OVERSEAS LTD.", cx, 234);
-  g.globalAlpha = .9; fit(g, t("Government licensed recruiting agency"), BW - 50, 16, 500, BODY);
-  const tag = t("Government licensed recruiting agency"); g.fillText(clip(g, tag, BW - 40), cx, 262); g.globalAlpha = 1;
-  g.font = `700 19px ${BODY}`; g.fillText("RL 1217", cx, 290);
-  // QR code (opens this member's verification page), between RL 1217 and the website
+  if (logo) { const lw = 188, lh = lw * logo.height / logo.width; g.drawImage(logo, cx - lw / 2, 30, lw, lh); }
+  g.textAlign = "center"; g.fillStyle = INK;
+  fit(g, CO[0], BW - 44, 30, 700, DISPLAY); g.fillText(CO[0], cx, 186);
+  fit(g, CO[1], BW - 44, 22, 600, DISPLAY); g.fillText(CO[1], cx, 216);
+  g.fillStyle = MUTED; fit(g, t("Government licensed recruiting agency"), BW - 44, 15, 400, BODY);
+  g.fillText(clip(g, t("Government licensed recruiting agency"), BW - 36), cx, 242);
+  const rlx = rl("RL 1217", lang); g.font = `600 16px ${BODY}`; const rw = g.measureText(rlx).width + 30;
+  rr(g, cx - rw / 2, 254, rw, 30, 15); g.fillStyle = GREEN; g.fill(); g.fillStyle = "#fff"; g.fillText(rlx, cx, 275);
+  // QR code (opens this member's verification page)
   const code = memberCode(m);
   if (verifyUrl) {
-    const QS = 150, qx = cx - QS / 2, qy = 310;
-    rr(g, qx - 6, qy - 6, QS + 12, QS + 12, 12); g.fillStyle = "#fff"; g.fill();
+    const QS = 140, qx = cx - QS / 2, qy = 304;
+    rr(g, qx - 10, qy - 10, QS + 20, QS + 20, 18); g.fillStyle = "#fff"; g.fill();
     drawQR(g, verifyUrl, qx, qy, QS, INK);
-    g.fillStyle = "#fff"; fit(g, t("Scan to verify"), BW - 60, 15, 600, BODY); g.fillText(t("Scan to verify"), cx, qy + QS + 30);
-    if (code) { g.globalAlpha = .9; g.font = `600 13px Inter, Arial, sans-serif`; g.fillText(`ID ${code}`, cx, qy + QS + 50); g.globalAlpha = 1; }
+    g.fillStyle = MUTED; fit(g, t("Scan to verify"), BW - 60, 14, 500, BODY); g.fillText(t("Scan to verify"), cx, qy + QS + 32);
+    if (code) { g.fillStyle = INK; g.font = `600 13px ${BODY}`; g.fillText(`${word("ID", lang)} ${N(code)}`, cx, qy + QS + 51); }
   }
-  g.font = `600 16px ${BODY}`; g.globalAlpha = .95; g.fillText(OFFICE_SITE, cx, 556);
-  g.font = `500 15px ${BODY}`; g.globalAlpha = .85; g.fillText(OFFICE_EMAIL, cx, 580); g.globalAlpha = 1;
+  g.fillStyle = INK; g.font = `600 16px ${LATIN}`; g.fillText(OFFICE_SITE, cx, 548);
+  g.fillStyle = MUTED; g.font = `400 14px ${LATIN}`; g.fillText(OFFICE_EMAIL, cx, 570);
 
   // person
   const L = BW + 52, R = W - 48, areaW = R - L;
   const photo = m.photo?.data ? await loadImg(m.photo.data) : null;
-  const PH = 132; let textW = areaW;
+  const PH = 128; let textW = areaW;
   if (photo) {
-    const px = X(R - PH, PH), py = 48; textW = areaW - PH - 24;
+    const px = X(R - PH, PH), py = 44; textW = areaW - PH - 24;
     g.save(); g.beginPath(); g.arc(px + PH / 2, py + PH / 2, PH / 2, 0, Math.PI * 2); g.clip();
     const s = Math.max(PH / photo.width, PH / photo.height), dw = photo.width * s, dh = photo.height * s;
     g.drawImage(photo, px + (PH - dw) / 2, py + (PH - dh) * 0.15, dw, dh); g.restore();
-    g.lineWidth = 5; g.strokeStyle = GREEN; g.beginPath(); g.arc(px + PH / 2, py + PH / 2, PH / 2 - 2, 0, Math.PI * 2); g.stroke();
+    g.lineWidth = 3; g.strokeStyle = "#e5e5ea"; g.beginPath(); g.arc(px + PH / 2, py + PH / 2, PH / 2 - 1, 0, Math.PI * 2); g.stroke();
   }
   g.textAlign = rtl ? "right" : "left"; const tx = rtl ? W - L : L;
-  g.fillStyle = INK; fit(g, m.name || "", textW, 46, 800, DISPLAY); g.fillText(clip(g, m.name || "", textW), tx, 108);
-  g.fillStyle = GREEN; fit(g, t(m.title || ""), textW, 28, 700, BODY); g.fillText(clip(g, t(m.title || ""), textW), tx, 150);
-  if (m.dept) { g.fillStyle = MUTED; fit(g, t(m.dept), textW, 21, 500, BODY); g.fillText(clip(g, t(m.dept), textW), tx, 184); }
-  g.fillStyle = RED; g.fillRect(X(L, 70), 206, 70, 6);
+  const nm = nameIn(m, lang);
+  g.fillStyle = INK; fit(g, nm, textW, 44, 700, DISPLAY); g.fillText(clip(g, nm, textW), tx, 104);
+  g.fillStyle = GREEN; fit(g, t(m.title || ""), textW, 26, 600, BODY); g.fillText(clip(g, t(m.title || ""), textW), tx, 144);
+  if (m.dept) { g.fillStyle = MUTED; fit(g, t(m.dept), textW, 20, 400, BODY); g.fillText(clip(g, t(m.dept), textW), tx, 176); }
+  g.fillStyle = RED; rr(g, X(L, 56), 198, 56, 5, 2.5); g.fill();
 
   const wa = String(m.whatsapp || "").replace(/\D/g, ""), ph = String(m.phone || "").replace(/\D/g, "");
   const rows = [
-    m.phone && ["phone", t("Mobile"), m.phone],
-    wa && wa.slice(-10) !== ph.slice(-10) && ["whatsapp", "WhatsApp", "+" + wa],
-    m.email && ["mail", t("Email"), m.email],
-    ["globe", t("Website"), (m.website || OFFICE_SITE).replace(/^https?:\/\//, "").replace(/\/$/, "")],
-    settings.address && ["pin", t("Office"), settings.address],
+    m.phone && ["phone", t("Mobile"), N(m.phone), false],
+    wa && wa.slice(-10) !== ph.slice(-10) && ["whatsapp", word("WhatsApp", lang), N("+" + wa), false],
+    m.email && ["mail", t("Email"), m.email, true],
+    ["globe", t("Website"), (m.website || OFFICE_SITE).replace(/^https?:\/\//, "").replace(/\/$/, ""), true],
+    address && ["pin", t("Office"), N(address), false],
   ].filter(Boolean).slice(0, 5);
   const iconImgs = {}; for (const k of ["phone", "whatsapp", "mail", "globe", "pin"]) iconImgs[k] = await svgImg(icons[k], "#ffffff");
-  let y = 252; const step = rows.length > 4 ? 64 : 72;
-  for (const [k, label, value] of rows) {
+  let y = 236; const step = rows.length > 4 ? 64 : 72;
+  for (const [k, label, value, latin] of rows) {
     const ix = X(L, 44);
-    g.fillStyle = k === "whatsapp" ? "#1a9e52" : GREEN; g.beginPath(); g.arc(ix + 22, y + 22, 22, 0, Math.PI * 2); g.fill();
+    g.fillStyle = GREEN; g.beginPath(); g.arc(ix + 22, y + 22, 22, 0, Math.PI * 2); g.fill();
     if (iconImgs[k]) g.drawImage(iconImgs[k], ix + 11, y + 11, 22, 22);
     const vx = rtl ? W - L - 60 : L + 60, vw = areaW - 60;
-    g.fillStyle = MUTED; g.font = `600 17px ${BODY}`; g.fillText(label, vx, y + 15);
-    g.fillStyle = INK; fit(g, value, vw, 25, 600, k === "phone" || k === "whatsapp" ? "Inter, Arial, sans-serif" : BODY);
-    g.fillText(clip(g, value, vw), vx, y + 44);
+    g.fillStyle = MUTED; g.font = `500 16px ${BODY}`; g.fillText(label, vx, y + 15);
+    g.fillStyle = INK; fit(g, value, vw, 24, 600, latin ? LATIN : BODY);
+    // phone numbers keep their left-to-right order on an Arabic card
+    if (rtl && (k === "phone" || k === "whatsapp")) { g.direction = "ltr"; g.textAlign = "right"; g.fillText(clip(g, value, vw).replace(/[^\d\u0660-\u0669]/g, c => "\u200E" + c + "\u200E"), vx, y + 44); g.direction = "rtl"; }
+    else g.fillText(clip(g, value, vw), vx, y + 44);
     y += step;
   }
-  g.fillStyle = GREEN; g.fillRect(rtl ? 0 : BW, H - 10, W - BW, 10);
+  flagLine(H - 10, 10);
   return c;
 }
 

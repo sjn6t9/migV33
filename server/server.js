@@ -1932,7 +1932,8 @@ A["admin.content"] = async (d, u) => {
     must(str(d.name) && str(d.title), "Enter the name and designation.");
     const data = { name: str(d.name, 80), title: str(d.title, 80), dept: TEAM_DEPTS.includes(d.dept) ? d.dept : TEAM_DEPTS[0], bio: str(d.bio, 600),
       expertise: String(d.expertise || "").split(",").map(x => str(x, 40)).filter(Boolean).slice(0, 8), years: d.years === "" || d.years == null ? "" : numv(d.years, 0, 60),
-      phone: str(d.phone, 30), whatsapp: str(d.whatsapp, 20).replace(/\D/g, ""), email: str(d.email, 120), website: webUrl(d.website), order: numv(d.order ?? 99, 0, 999) };
+      phone: str(d.phone, 30), whatsapp: str(d.whatsapp, 20).replace(/\D/g, ""), email: str(d.email, 120), website: webUrl(d.website), order: numv(d.order ?? 99, 0, 999),
+      names: { bn: str(d.name_bn, 80), ar: str(d.name_ar, 80), hi: str(d.name_hi, 80) } }; // the name in other languages (visiting cards)
     must(!str(d.website) || data.website, "Enter a valid website address, e.g. www.example.com");
     const m = d.op === "teamUpdate" ? db.team.find(x => x.id === d.id) : { id: id("tm") };
     must(m, "Team member not found.");
@@ -1984,6 +1985,7 @@ A["admin.settings"] = async (d, u) => {
   needPerm(u, "settings"); const s = db.settings;
   must(!str(d.email) || emailOk(str(d.email)), "Enter a valid office email, e.g. info@yourdomain.com");
   for (const k of ["facebook", "youtube", "linkedin", "tiktok"]) must(!str(d[k]) || webUrl(d[k]), { facebook: "Enter a valid Facebook link, e.g. facebook.com/yourpage", youtube: "Enter a valid YouTube link, e.g. youtube.com/@yourchannel", linkedin: "Enter a valid LinkedIn link, e.g. linkedin.com/company/yourpage", tiktok: "Enter a valid TikTok link, e.g. tiktok.com/@yourpage" }[k]);
+  s.addresses = { bn: str(d.address_bn, 300), ar: str(d.address_ar, 300), hi: str(d.address_hi, 300) }; // office address in other languages (visiting cards)
   Object.assign(s, { phone: str(d.phone, 40), email: str(d.email, 200), address: str(d.address, 300), hours: str(d.hours, 120), moderation: !!d.moderation, clearanceFee: numv(d.clearanceFee, 0, 1e7),
     whatsapp: str(d.whatsapp, 20).replace(/\D/g, ""), social: { facebook: webUrl(d.facebook), youtube: webUrl(d.youtube), linkedin: webUrl(d.linkedin), tiktok: webUrl(d.tiktok) } });
   s.rates = { ...s.rates }; for (const c of Object.values(COUNTRIES)) s.rates[c] = numv(d.rates?.[c], 0, 100000);

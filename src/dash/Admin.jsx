@@ -162,6 +162,11 @@ export function Admin({ u }) {
           <Field label="WhatsApp (optional)" hint="With country code, e.g. 8801XXXXXXXXX"><input type="tel" name="whatsapp" defaultValue={editM?.whatsapp} /></Field>
           <Field label="Email (optional)"><input type="email" name="email" defaultValue={editM?.email} /></Field>
           <Field label="Website (optional)" hint="e.g. www.example.com"><input type="text" name="website" defaultValue={editM?.website} /></Field>
+          <details className="full vf-det"><summary>Name in other languages (visiting card)</summary>
+            <p className="muted small">Common Bangladeshi names are written in Bangla, Arabic and Hindi by themselves. Write a name here only if it comes out wrong or is not written.</p>
+            <div className="fgrid mt8"><Field label="বাংলা"><input type="text" name="name_bn" lang="bn" defaultValue={editM?.names?.bn} /></Field>
+              <Field label="العربية"><input type="text" name="name_ar" lang="ar" dir="rtl" defaultValue={editM?.names?.ar} /></Field>
+              <Field label="हिन्दी"><input type="text" name="name_hi" lang="hi" defaultValue={editM?.names?.hi} /></Field></div></details>
           <Field label="Display order" hint="Lower numbers show first. Also the end of the member ID on the visiting card: 12172026 + this number."><input type="number" name="order" min="0" max="999" defaultValue={editM?.order ?? 10} /></Field>
           <Field label={editM?.photo ? "Replace photo" : "Photo (optional)"} hint="A clear, professional photo. Resized automatically."><input type="file" name="photo" accept="image/*" /></Field>
           {editM?.photo && <label className="check"><input type="checkbox" name="removePhoto" /> Remove current photo</label>}
@@ -388,6 +393,10 @@ export function Admin({ u }) {
         <Field label="Office phone"><input type="tel" name="phone" defaultValue={s.phone} placeholder="+880" /></Field>
         <Field label="Office email"><input type="email" inputMode="email" name="email" defaultValue={s.email} /></Field>
         <Field label="Office address" full><input type="text" name="address" defaultValue={s.address} /></Field>
+        <details className="full vf-det"><summary>Office address in other languages (visiting cards)</summary>
+          <div className="fgrid mt8"><Field label="বাংলা" full><input type="text" name="address_bn" lang="bn" defaultValue={s.addresses?.bn} /></Field>
+            <Field label="العربية" full><input type="text" name="address_ar" lang="ar" dir="rtl" defaultValue={s.addresses?.ar} /></Field>
+            <Field label="हिन्दी" full><input type="text" name="address_hi" lang="hi" defaultValue={s.addresses?.hi} /></Field></div></details>
         <Field label="Office hours" full><input type="text" name="hours" defaultValue={s.hours} /></Field>
         <Field label={<span className="row tight"><FaWhatsapp /> WhatsApp number</span>} hint="Used by the WhatsApp button (switch it on above). Include country code, e.g. 8801XXXXXXXXX"><input type="tel" name="whatsapp" defaultValue={s.whatsapp} /></Field>
         <Field label={<span className="row tight"><FaFacebookF /> Facebook page URL</span>}><input type="text" inputMode="url" name="facebook" defaultValue={s.social.facebook} placeholder="facebook.com/…" /></Field>
