@@ -2202,7 +2202,9 @@ function indexHtml(req) {
   // the aipraktor chat widget is registered for the public site only (it refuses other addresses)
   // its button sits in the bottom corner, so our WhatsApp / chat / "i" buttons move up above it
   const body = zone === "main" ? AI_WIDGET : "";
-  return fs.readFileSync(path.join(STATIC_DIR, "index.html"), "utf8").replace(/__ORIGIN__/g, escHtml(siteOrigin(req))).replace("</head>", head + "</head>").replace("</body>", body + "</body>");
+  // the page's own code (inlined) can hold these words in its text, so insert at the first </head> (before the code) and the last </body>
+  const html = fs.readFileSync(path.join(STATIC_DIR, "index.html"), "utf8").replace(/__ORIGIN__/g, escHtml(siteOrigin(req))).replace("</head>", () => head + "</head>");
+  const at = html.lastIndexOf("</body>"); return at < 0 ? html + body : html.slice(0, at) + body + html.slice(at);
 }
 function serveJobShare(req, res, jid) {
   const idx = path.join(STATIC_DIR, "index.html"); if (!fs.existsSync(idx)) return send(res, 503, "Site files are missing.", { "Content-Type": "text/plain" });
