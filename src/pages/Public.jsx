@@ -91,7 +91,7 @@ export function Home() {
       <section className={`hero${slides.length ? " has-slides" : ""}`}>{slides.length > 0 && <HeroSlides list={slides} sec={store.S.settings.slideSec} />}<div className="wrap">
         <div className="license"><LuBadgeCheck /> Government-licensed recruiting agency · <b>RL 1217</b></div>
         <h1>Overseas jobs with a licensed agency handling every step</h1>
-        <p className="lead">Search open job circulars, apply with one click, and follow your application from shortlist to visa and departure.</p>
+        <p className="lead">Find an overseas job, book your air ticket at live fares, and follow every step from application to visa and departure.</p>
         <HeroFlight />
       </div></section>
       <div className="wrap"><div className="stats">
