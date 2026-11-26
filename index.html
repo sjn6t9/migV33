@@ -2649,6 +2649,29 @@ html[data-apple=night]{--ap-bg:#000000;--ap-card:#1c1c1e;--ap-tx:#f5f5f7;--ap-mu
 #rpop.sm .dot.busy::after{left:4px;right:4px;top:7px}
 .p i.online{background:#30d158}.p i.away{background:#ff9f0a}.p i.busy{background:#ff453a}
 .p i.offline{background:#8e8e93}.p i.invisible{background:#8e8e93}
+
+/* clear-glass bottom navigation */
+:root[data-apple][data-apple][data-apple] body #bnav#bnav#bnav{height:64px;width:min(430px,calc(100% - 28px))}
+:root[data-apple][data-apple][data-apple] body #bnav#bnav#bnav .bg{-webkit-mask:none!important;mask:none!important;border-radius:999px!important;background:rgba(255,255,255,.14)!important;background-image:none!important;border:1px solid rgba(255,255,255,.30)!important;-webkit-backdrop-filter:blur(26px) saturate(190%)!important;backdrop-filter:blur(26px) saturate(190%)!important;box-shadow:0 10px 34px rgba(0,0,0,.28),inset 0 1px 0 rgba(255,255,255,.38),inset 0 -1px 0 rgba(255,255,255,.08)!important}
+:root[data-apple=day][data-apple] body #bnav#bnav#bnav .bg{background:rgba(255,255,255,.52)!important;border-color:rgba(255,255,255,.75)!important;box-shadow:0 10px 30px rgba(0,0,0,.16),inset 0 1px 0 #fff!important}
+:root[data-apple][data-apple][data-apple] body #bnav#bnav#bnav button{color:var(--ap-tx)!important;padding:0!important;gap:0!important}
+:root[data-apple][data-apple][data-apple] body #bnav#bnav#bnav button span{display:none!important}
+:root[data-apple][data-apple][data-apple] body #bnav#bnav#bnav button svg{width:26px!important;height:26px!important;stroke-width:2.1!important;filter:none!important;transform:none!important}
+:root[data-apple][data-apple][data-apple] body #bnav#bnav#bnav button.on{color:var(--ap-tx)!important}
+:root[data-apple][data-apple][data-apple] body #bnav#bnav#bnav button.on svg{filter:none!important;transform:none!important;fill:currentColor}
+:root[data-apple][data-apple][data-apple] body #bnav#bnav#bnav button.on[data-b=calls] svg,:root[data-apple][data-apple][data-apple] body #bnav#bnav#bnav button.on[data-b=reels] svg{fill:none}
+:root[data-apple][data-apple][data-apple] body #bnav#bnav#bnav button::before{content:"";position:absolute;inset:7px 5px;border-radius:999px;background:rgba(120,120,128,.30);opacity:0;transform:scale(.8);transition:opacity .25s,transform .3s cubic-bezier(.3,1.4,.5,1);z-index:-1}
+:root[data-apple][data-apple][data-apple] body #bnav#bnav#bnav button.on::before{opacity:1;transform:none}
+:root[data-apple][data-apple][data-apple] body #bnav#bnav#bnav .ind{display:none!important}
+:root[data-apple][data-apple][data-apple] body #bnav#bnav#bnav .fab .disc{position:static!important;margin:0!important;width:auto!important;height:auto!important;background:none!important;box-shadow:none!important;border-radius:0!important;transform:none!important}
+:root[data-apple][data-apple][data-apple] body #bnav#bnav#bnav .fab svg{width:26px!important;height:26px!important;color:var(--ap-tx)!important}
+:root[data-apple][data-apple][data-apple] body #bnav#bnav#bnav .fab.on .disc{box-shadow:none!important;transform:none!important}
+
+:root[data-apple][data-apple][data-apple] body #bnav#bnav#bnav#bnav#bnav button,:root[data-apple][data-apple][data-apple] body #bnav#bnav#bnav#bnav#bnav button.on,:root[data-apple][data-apple][data-apple] body #bnav#bnav#bnav#bnav#bnav .fab,:root[data-apple][data-apple][data-apple] body #bnav#bnav#bnav#bnav#bnav .fab.on,:root[data-apple][data-apple][data-apple] body #bnav#bnav#bnav#bnav#bnav button.on svg,:root[data-apple][data-apple][data-apple] body #bnav#bnav#bnav#bnav#bnav .fab svg,:root[data-apple][data-apple][data-apple] body #bnav#bnav#bnav#bnav#bnav .fab .disc svg{color:var(--ap-tx)!important;stroke:var(--ap-tx)!important}
+:root[data-apple][data-apple][data-apple] body #bnav#bnav#bnav#bnav#bnav button.on[data-b=home] svg{fill:var(--ap-tx)!important}
+:root[data-apple][data-apple][data-apple] body #bnav#bnav#bnav#bnav#bnav button:not([data-b=home]) svg{fill:none!important}
+:root[data-apple][data-apple][data-apple] body #bnav#bnav#bnav#bnav#bnav#bnav#bnav#bnav#bnav#bnav .fab svg,:root[data-apple][data-apple][data-apple] body #bnav#bnav#bnav#bnav#bnav#bnav#bnav#bnav#bnav#bnav .fab .disc svg,:root[data-apple][data-apple][data-apple] body #bnav#bnav#bnav#bnav#bnav#bnav#bnav#bnav#bnav#bnav .fab .disc{color:var(--ap-tx)!important;stroke:var(--ap-tx)!important;-webkit-text-fill-color:var(--ap-tx)!important}
+:root[data-apple][data-apple][data-apple] body #bnav#bnav#bnav#bnav#bnav#bnav#bnav#bnav#bnav#bnav .fab svg *,:root[data-apple][data-apple][data-apple] body #bnav#bnav#bnav#bnav#bnav#bnav#bnav#bnav#bnav#bnav .fab .disc svg *,:root[data-apple][data-apple][data-apple] body #bnav#bnav#bnav#bnav#bnav#bnav#bnav#bnav#bnav#bnav .fab.on svg *{stroke:var(--ap-tx)!important;fill:none!important}
 </style>
 </head>
 <body>
@@ -2709,7 +2732,7 @@ html[data-apple=night]{--ap-bg:#000000;--ap-card:#1c1c1e;--ap-tx:#f5f5f7;--ap-mu
 </div>
 <nav id="bnav" aria-label="Main"><div class="bg"></div><div class="ind" id="bind"><b></b></div>
   <button data-b="home" aria-label="Home"><svg viewBox="0 0 24 24"><path d="M4 11l8-7 8 7v8a1 1 0 0 1-1 1h-4v-6H9v6H5a1 1 0 0 1-1-1z"/></svg><span>Home</span></button>
-  <button data-b="friends" aria-label="Friends"><svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c0-3.6 2.9-6 6.5-6s6.5 2.4 6.5 6"/><path d="M16 5a3.3 3.3 0 0 1 0 6.3M18.5 14.4c1.7.8 3 2.7 3 5.6"/></svg><span>Friends</span></button>
+  <button data-b="calls" aria-label="Calls"><svg viewBox="0 0 24 24"><path d="M5 4h3.5l1.8 4.6-2.3 1.5a11 11 0 0 0 5.9 5.9l1.5-2.3L20 15.5V19a1 1 0 0 1-1 1A15 15 0 0 1 4 5a1 1 0 0 1 1-1z"/></svg><span>Calls</span></button>
   <button data-b="rooms" class="fab" aria-label="Chat Rooms"><em class="disc"><svg viewBox="0 0 24 24"><path d="M4 5h16a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1h-8l-5 4v-4H4a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1z"/></svg></em></button>
   <button data-b="reels" aria-label="Reels"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="5"/><path d="M3 9h18M9 3l3 6M15 3l3 6"/><path d="M10.5 12.8v4.4l3.6-2.2z" style="fill:currentColor"/></svg><span>Reels</span></button>
   <button data-b="profile" aria-label="Profile"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-7 8-7s8 2.6 8 7"/></svg><span>Profile</span></button>
@@ -3096,8 +3119,8 @@ $('sc').addEventListener('focus',()=>otpPaint());$('sc').addEventListener('blur'
 $('otp').addEventListener('click',()=>$('sc').focus());
 $('rsb').onclick=async()=>{$('rsb').disabled=true;const[r,d]=await post('/api/signup/start',{fullName:$('sf').value,name:$('su').value.trim(),email:$('se').value.trim(),gender:$('sg').value,pass:$('sp').value});$('err').textContent=r.ok?'A new code has been sent.':d.error;if(r.ok)otpTimer();else $('rsb').disabled=false};
 /* ---------- bottom bar ---------- */
-function bnSet(v,a){document.body.classList.toggle('bn',v!=='chat'&&v!=='funzone');document.body.classList.toggle('fzon',v==='funzone');const ix={home:0,friends:1,reels:3},mine=v==='profile'&&(!a||a===me);const i=mine?4:ix[v]??-1;document.querySelectorAll('#bnav button[data-b]').forEach(b=>{const k=b.dataset.b;b.classList.toggle('on',k==='rooms'?(v==='rooms'||v==='chat'):(i>=0&&['home','friends','','reels','profile'][i]===k))});const n=$('bind');n.style.opacity=i>=0?1:0;if(i>=0)n.style.left=i*20+'%'}
-$('bnav').onclick=e=>{const b=e.target.closest('[data-b]');if(!b)return;const k=b.dataset.b;go(k,k==='profile'?me:undefined)};
+function bnSet(v,a){document.body.classList.toggle('bn',v!=='chat'&&v!=='funzone');document.body.classList.toggle('fzon',v==='funzone');const ix={home:0,reels:3},mine=v==='profile'&&(!a||a===me);const i=mine?4:(v==='friends'&&window.FT==='calls')?1:ix[v]??-1;document.querySelectorAll('#bnav button[data-b]').forEach(b=>{const k=b.dataset.b;b.classList.toggle('on',k==='rooms'?(v==='rooms'||v==='chat'):(i>=0&&['home','calls','','reels','profile'][i]===k))});const n=$('bind');n.style.opacity=i>=0?1:0;if(i>=0)n.style.left=i*20+'%'}
+$('bnav').onclick=e=>{const b=e.target.closest('[data-b]');if(!b)return;const k=b.dataset.b;if(k==='calls'){window.FT='calls';go('friends');return}go(k,k==='profile'?me:undefined)};
 function statusSheet(anchor){const o=[['online','Online'],['away','Away'],['busy','Busy'],['offline','Offline']];if(['admin','staff'].includes(ST.role))o.push(['invisible','Invisible']);
   if(!anchor)anchor=$('mc')||$('ss')||document.body;
   popOpen(anchor,o.map(([k,t])=>`<button data-p="${k}"><span class="dot ${k}"></span><b>${t}</b>${(ST.presence||'online')===k?' ✓':''}</button>`).join(''),(e)=>{
