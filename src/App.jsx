@@ -294,13 +294,17 @@ function PanelSignIn({ kind }) {
     if (d.pass !== d.pass2) return toast("Passwords do not match. Type the same password in both fields.");
     const r = await act("auth.register", { ...d, role: "agent" }, { quiet: true });
     if (!r) return;
-    store.ui.tab.agent = "profile"; toast("Account created. The agency will approve it soon."); afterLogin(r);
+    store.ui.tab.agent = "profile";
+    // a 6-digit code goes to the agent's email; the account is made once the code is entered
+    if (r.verify) { openModal("verify", { uid: r.verify, email: r.email, sent: r.sent, code: r.code }); return; }
+    toast("Account created. The agency will approve it soon."); afterLogin(r);
   };
   const login = async e => {
     const [d] = formData(e);
     const r = await act("auth.login", { email: d.email, pass: d.pass });
     if (r?.otp) { openModal("otp", { otp: r.otp, email: r.email, code: r.code }); return; }
-    if (r && !r.verify) afterLogin(r);
+    if (r?.verify) { toast(r.msg); openModal("verify", { uid: r.verify, email: r.email }); return; } // registered but the email code was never entered
+    if (r) afterLogin(r);
   };
   const points = agent
     ? [[LuStamp, "BMET clearance applications and Pre EC Check"], [LuUsers, "Your workers, files and job applications"], [LuWallet, "Payments, account balance and money receipts"]]

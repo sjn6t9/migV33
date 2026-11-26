@@ -372,7 +372,13 @@ A["auth.register"] = async (d, u, ctx) => {
     return { verify: nu.id, email, sent, ...(SHOW_CODES ? { code: nu.verify.code } : {}) };
   }
   if (role === "employer") { must(str(d.company).length >= 2, "Enter your company name."); nu.company = { name: str(d.company, 150), country: "Saudi Arabia", city: "", industry: "Construction", website: "", licenseNo: "", about: "", verify: "none" }; nu.credits = 1; nu.featuredCredits = 0; }
-  if (role === "agent") { must(str(d.business).length >= 2, "Enter your business name."); nu.agent = { business: str(d.business, 150), phone: str(d.aphone, 30), district: "", address: "", docs: {} }; notifyAdmins(`New agent registration: ${nu.agent.business}.${(m => m.length ? ` Matches the Agents list: ${m.map(b => b.name).join(", ")} (joined on approval).` : "")(bookMatches(nu))}`, "users"); }
+  if (role === "agent") { // an agent confirms the email with a 6-digit code first; the agency is told once it is confirmed
+    must(str(d.business).length >= 2, "Enter your business name."); must(str(d.aphone, 30).replace(/\D/g, "").length >= 10, "Enter a valid mobile number, e.g. 01XXXXXXXXX.");
+    nu.agent = { business: str(d.business, 150), phone: str(d.aphone, 30), district: "", address: "", docs: {} }; nu.status = "unverified";
+    newCode(nu); db.users.push(nu);
+    const sent = await sendCode(nu);
+    return { verify: nu.id, email, sent, ...(SHOW_CODES ? { code: nu.verify.code } : {}) };
+  }
   if (role === "employer") notifyAdmins(`New employer registration: ${nu.company.name}.`, "users");
   db.users.push(nu); notify(nu.id, "Welcome! Your account will be activated after the agency approves it.");
   ctx.login(nu); return { msg: "Account created." };
@@ -383,7 +389,14 @@ A["auth.verify"] = async ({ uid, code }, u, ctx) => {
   must((x.verify.tries || 0) < 5, "Too many wrong codes. Send a new code.");
   must(Date.now() - Date.parse(x.verify.sentAt) < 30 * 60e3, "This code has expired. Send a new code.");
   if (str(code, 10) !== x.verify.code) { x.verify.tries = (x.verify.tries || 0) + 1; return { error: "That code is not correct. Check the email and try again." }; }
-  x.status = "active"; x.emailVerified = now(); delete x.verify; ctx.login(x); return { msg: "Email verified." };
+  x.emailVerified = now(); delete x.verify;
+  if (x.role === "agent") { // email confirmed: the agency checks and approves the agent next
+    x.status = "pending";
+    notifyAdmins(`New agent registration: ${x.agent?.business || x.name}.${(m => m.length ? ` Matches the Agents list: ${m.map(b => b.name).join(", ")} (joined on approval).` : "")(bookMatches(x))}`, "users");
+    notify(x.id, "Welcome! Your email is confirmed. Your account will be activated after the agency approves it.");
+    ctx.login(x); return { msg: "Email verified. The agency will approve your account soon." };
+  }
+  x.status = "active"; ctx.login(x); return { msg: "Email verified." };
 };
 A["auth.resend"] = async ({ uid }, u, ctx) => {
   limit(ctx.ip, "resend", 5, 3600e3);
@@ -941,7 +954,7 @@ A["admin.userState"] = async ({ id: xid, status }, u) => {
   const linked = status === "active" && x.role === "agent" ? linkAgentAccount(x) : [];
   return { msg: `Account ${status === "active" ? "activated" : "suspended"}.${linked.length ? ` Linked with ${linked.map(l => `${l.name} (${l.passports} passports, ${l.files} clearance files, ${l.receipts} receipts)`).join(", ")}.` : ""}` };
 };
-A["admin.markVerified"] = async ({ id: xid }, u) => { needPerm(u, "users"); const x = user(xid); must(x && x.status === "unverified", "Not needed."); x.status = "active"; x.emailVerified = now(); delete x.verify; return { msg: "Email marked as verified." }; };
+A["admin.markVerified"] = async ({ id: xid }, u) => { needPerm(u, "users"); const x = user(xid); must(x && x.status === "unverified", "Not needed."); x.status = x.role === "agent" ? "pending" : "active"; x.emailVerified = now(); delete x.verify; return { msg: "Email marked as verified." }; };
 A["admin.verifyCompany"] = async ({ id: xid }, u) => { needPerm(u, "users"); const x = user(xid); must(x?.company, "Not an employer."); x.company.verify = "verified"; if (x.status === "pending") x.status = "active"; notify(x.id, "Your company has been verified."); return { msg: "Company verified." }; };
 A["admin.deleteUser"] = async ({ id: xid }, u) => {
   needPerm(u, "users"); const x = user(xid); must(x && x.id !== u.id, "Not allowed."); must(u.role === "admin" || !["admin", "staff"].includes(x.role), "Only the admin can delete admin or staff accounts.", 403);
