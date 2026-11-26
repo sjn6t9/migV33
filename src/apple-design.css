@@ -95,7 +95,7 @@ section.sec:nth-of-type(even) .card,section.sec:nth-of-type(even) .stat,section.
 .cta.soft .btn:not(.pri){color:var(--bg);border-color:color-mix(in srgb,var(--bg) 50%,transparent)}
 
 /* dashboards: a quiet sidebar like a settings window */
-.dash{grid-template-columns:240px 1fr;gap:32px}
+@media (min-width:901px){.dash{grid-template-columns:240px 1fr;gap:32px}}
 .rail{gap:1px}
 .rail button{border-radius:8px;padding:7px 12px;font-size:14px;font-weight:400;color:var(--ink)}
 .rail button:hover{background:var(--surface-2)}
