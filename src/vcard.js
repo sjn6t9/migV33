@@ -77,6 +77,8 @@ export async function drawVisitingCard(m, { lang = "en", side = "front", setting
   g.fillStyle = "#ffffff"; g.fillRect(0, 0, W, H);
   const BW = 330; const bx = X(0, BW);
   g.fillStyle = SOFT; g.fillRect(bx, 0, BW, H);
+  // a thin green line where the grey panel meets the white side
+  g.fillStyle = GREEN; g.fillRect(rtl ? W - BW - 4 : BW, 0, 4, H);
   const cx = bx + BW / 2;
   if (logo) { const lw = 188, lh = lw * logo.height / logo.width; g.drawImage(logo, cx - lw / 2, 30, lw, lh); }
   g.textAlign = "center"; g.fillStyle = INK;
