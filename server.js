@@ -2510,6 +2510,12 @@ const ytId = raw => {   // video id from a youtube link, or '' when it is not a 
   if (u.pathname === '/watch') return ok(u.searchParams.get('v'));
   const m = u.pathname.match(/^\/(?:shorts|embed|live|v)\/([A-Za-z0-9_-]{11})(?:[/?]|$)/); return m ? m[1] : '';
 };
+const ytFind = raw => {   // pull the first YouTube link out of pasted text (e.g. "Song name https://youtu.be/xxxx?si=...")
+  const m = String(raw || '').match(/(?<![\w.\/@-])(?:https?:\/\/)?(?:[\w-]+\.)?(?:youtube\.com|youtu\.be|youtube-nocookie\.com)\/[^\s<>"']*/i);
+  if (!m) return { url: '', vid: '' };
+  const url = (/^https?:/i.test(m[0]) ? m[0] : 'https://' + m[0]).replace(/[)\].,;!?]+$/, '');
+  return { url, vid: ytId(url) };
+};
 const plGet = room => {
   let r = db.prepare('select list,cur,by from room_pl where room=?').get(room);
   if (!r) { const o = db.prepare('select url,vid,by from room_song where room=?').get(room);   // older single-song data
@@ -2546,7 +2552,7 @@ function onSong(ws, m) {
   const p = plGet(room), cur = p.list[p.cur], st = SONG.get(room);
   const go = (i, play) => { p.cur = i; p.by = ws.user; plSave(room, p); SONG.set(room, { playing: play, base: 0, at: Date.now() }); castSong(room); };
   if (m.t === 'song_add') {
-    const url = String(m.url || '').trim().slice(0, 300), vid = ytId(url);
+    const { url: found, vid } = ytFind(String(m.url || '').slice(0, 1000)), url = found.slice(0, 300);
     if (!vid) return songErr(ws, room, 'That is not a valid YouTube video link. Use a link like https://www.youtube.com/watch?v=... or https://youtu.be/...');
     if (p.list.length >= MAX_SONGS) return songErr(ws, room, 'The song list is full (' + MAX_SONGS + ' songs). Remove one first.');
     p.list.push({ url, vid, title: '' }); p.by = ws.user; plSave(room, p); songSay(room, '🎵 ' + ws.user + ' added a song.'); castSong(room); songTitle(room, vid); return;
