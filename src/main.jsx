@@ -3,6 +3,7 @@ import { createRoot } from "react-dom/client";
 import App from "./App.jsx";
 import { loadState, store } from "./store.js";
 import "./styles.css";
+import "./apple-design.css";
 import { initLang } from "./i18n.js";
 import { applyTheme } from "./theme.js";
 

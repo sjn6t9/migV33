@@ -1,0 +1,168 @@
+
+/* =====================================================================================
+   Apple-style design layer: white and light-grey surfaces, near-black text, large tight
+   headings, thin translucent bars, pill buttons, soft round cards, quiet tables.
+   Button colours are the logo's own: green #05613e (main buttons, outlines, links, selected)
+   and red #fd0404 (the strongest calls to action, counters, warnings).
+   ===================================================================================== */
+:root{
+  --bg:#ffffff; --surface:#ffffff; --surface-2:#f5f5f7; --ink:#1d1d1f; --muted:#6e6e73; --line:#d2d2d7;
+  --brand:#05613e; --brand-ink:#ffffff; --brand-deep:#03482e; --accent:#fd0404; --accent-ink:#ffffff; --soft:#f5f5f7;
+  --display:-apple-system,BlinkMacSystemFont,"SF Pro Display","Helvetica Neue","Inter","Anek Bangla","Hind","Noto Kufi Arabic",system-ui,sans-serif;
+  --body:-apple-system,BlinkMacSystemFont,"SF Pro Text","Helvetica Neue","Inter","Noto Sans Bengali","Hind","Noto Kufi Arabic",system-ui,sans-serif;
+  --r:18px; --r-sm:12px; --pill:980px;
+  --glass:rgba(255,255,255,.72); --glass-line:rgba(0,0,0,.08); --card-sh:0 2px 12px rgba(0,0,0,.04);
+}
+:root[data-theme="dark"]{
+  --bg:#000000; --surface:#161617; --surface-2:#1d1d1f; --ink:#f5f5f7; --muted:#a1a1a6; --line:#424245;
+  --brand:#1f9466; --brand-ink:#ffffff; --brand-deep:#05613e; --accent:#fd0404; --accent-ink:#ffffff; --soft:#1d1d1f;
+  --glass:rgba(22,22,23,.72); --glass-line:rgba(255,255,255,.1); --card-sh:none;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#000000; --surface:#161617; --surface-2:#1d1d1f; --ink:#f5f5f7; --muted:#a1a1a6; --line:#424245;
+  --brand:#1f9466; --brand-ink:#ffffff; --brand-deep:#05613e; --accent:#fd0404; --accent-ink:#ffffff; --soft:#1d1d1f;
+  --glass:rgba(22,22,23,.72); --glass-line:rgba(255,255,255,.1); --card-sh:none;
+}}
+body{font-size:17px;line-height:1.47;letter-spacing:-.022em;-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale}
+h1,h2,h3,h4{letter-spacing:-.025em;font-weight:600}
+h1{font-size:clamp(32px,5.2vw,56px);font-weight:700;letter-spacing:-.03em;line-height:1.07}
+h2{font-size:clamp(26px,3.4vw,40px);font-weight:700;line-height:1.1}
+h3{font-size:21px;font-weight:600}
+a{color:var(--brand)}
+.muted{color:var(--muted)}
+::selection{background:color-mix(in srgb,var(--brand) 22%,transparent)}
+:focus-visible{outline:2px solid var(--brand);outline-offset:2px}
+
+/* thin utility bar and translucent main bar */
+.utilbar{background:var(--surface-2);color:var(--muted);border-bottom:1px solid var(--glass-line);font-size:12px}
+.utilbar .util-l a,.utilbar .util-l .util-lic{color:var(--muted);opacity:1}
+.utilbar .util-r select,.utilbar .util-r button{background:transparent;color:var(--ink);border-color:var(--glass-line)}
+header.top{background:var(--glass);-webkit-backdrop-filter:saturate(180%) blur(20px);backdrop-filter:saturate(180%) blur(20px);border-bottom:1px solid var(--glass-line)}
+.topbar{min-height:52px;padding:4px 0}
+.logo b{font-weight:700;letter-spacing:-.01em}
+nav.main a{font-size:13px;font-weight:400;color:var(--ink);opacity:.82;padding:6px 10px;border-radius:var(--pill)}
+nav.main a:hover{background:none;opacity:1;color:var(--ink)}
+nav.main a.on{background:none;color:var(--ink);opacity:1;font-weight:600}
+
+/* pill buttons: deep green is the main action, red the strongest call to action */
+.btn{border-radius:var(--pill);padding:9px 18px;font-weight:500;font-size:15px;border:1px solid var(--line);background:var(--surface);color:var(--ink);transition:background .2s,border-color .2s,color .2s}
+.btn:hover{border-color:var(--ink)}
+.btn.pri{background:var(--brand);border-color:var(--brand);color:#fff}
+.btn.pri:hover{background:var(--brand-deep);border-color:var(--brand-deep);filter:none}
+.btn.acc,.hero .search .btn.pri,.cta.soft .btn.pri{background:var(--accent);border-color:var(--accent);color:#fff}
+.btn.acc:hover{filter:brightness(.92)}
+.btn.sm{padding:5px 13px;font-size:13px}
+.btn.link{color:var(--brand);font-weight:500}
+.btn.link:hover{text-decoration:underline}
+.btn:disabled{opacity:.42}
+input,select,textarea{border-radius:var(--r-sm)!important;border:1px solid var(--line);background:var(--surface);transition:border-color .2s,box-shadow .2s}
+input:focus,select:focus,textarea:focus{border-color:var(--brand);box-shadow:0 0 0 4px color-mix(in srgb,var(--brand) 18%,transparent);outline:none}
+
+/* cards: soft and round, no hard borders */
+.card,.tile,.stat,.steps li{border:0;border-radius:var(--r);background:var(--surface-2);box-shadow:none}
+.panel .card,.dash .card{background:var(--surface);border:1px solid var(--line);box-shadow:var(--card-sh)}
+.tile{background:var(--surface-2)}
+.tile b,.stat b{font-weight:700;letter-spacing:-.03em;color:var(--ink)}
+.tile.alert{border-inline-start:0;box-shadow:inset 0 0 0 1.5px var(--accent)}
+.steps li{border-top:0;padding:22px 20px}
+.steps li::before{color:var(--accent);font-weight:700}
+.eyebrow,.badge-feat{color:var(--accent);font-size:12px;letter-spacing:.06em;font-weight:600}
+section.sec{padding:clamp(56px,8vw,100px) 0}
+section.sec:nth-of-type(even){background:var(--surface-2)}
+section.sec:nth-of-type(even) .card,section.sec:nth-of-type(even) .stat,section.sec:nth-of-type(even) .steps li{background:var(--surface)}
+.sec-head{margin-bottom:28px}
+.sec-head h2{font-size:clamp(28px,3.6vw,44px)}
+
+/* hero: big centred words over the photos */
+.hero.has-slides{text-align:center}
+@media (min-width:761px){.hero.has-slides{min-height:clamp(560px,82vh,860px)}}
+.hero.has-slides>.wrap{display:flex;flex-direction:column;align-items:center}
+.hero.has-slides h1{max-width:980px;font-size:clamp(36px,6.4vw,80px);font-weight:700;letter-spacing:-.035em;margin:0 auto}
+.hero.has-slides p.lead{max-width:760px;margin:16px auto 0;font-size:clamp(17px,1.6vw,21px);opacity:.92}
+.slides-shade{background:linear-gradient(0deg,rgba(0,0,0,.62) 0%,rgba(0,0,0,.28) 45%,rgba(0,0,0,.42) 100%)!important}
+.hero .license{border:1px solid rgba(255,255,255,.4);border-radius:var(--pill);background:rgba(255,255,255,.12);-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px);padding:5px 14px;font-weight:500}
+.search{border-radius:var(--pill);padding:8px;box-shadow:0 20px 50px rgba(0,0,0,.25);margin-inline:auto}
+.search input,.search select{border:0;background:transparent;border-radius:var(--pill)!important}
+@media (max-width:760px){.search{border-radius:22px}}
+.stats{border:0;border-top:0;border-radius:var(--r);background:transparent;gap:12px;margin-top:-34px}
+.stat{background:var(--surface);box-shadow:0 4px 24px rgba(0,0,0,.08);border-radius:var(--r);padding:20px 22px}
+:root[data-theme="dark"] .stat{box-shadow:none;border:1px solid var(--line)}
+
+/* green band (For employers): Apple-like dark tile */
+.cta.soft{background:var(--ink);color:var(--bg);border:0;border-radius:var(--r)}
+.cta.soft .muted{color:color-mix(in srgb,var(--bg) 72%,transparent)}
+.cta.soft .eyebrow{color:#ff6b7d}
+.cta.soft .btn:not(.pri){color:var(--bg);border-color:color-mix(in srgb,var(--bg) 50%,transparent)}
+
+/* dashboards: a quiet sidebar like a settings window */
+.dash{grid-template-columns:240px 1fr;gap:32px}
+.rail{gap:1px}
+.rail button{border-radius:8px;padding:7px 12px;font-size:14px;font-weight:400;color:var(--ink)}
+.rail button:hover{background:var(--surface-2)}
+.rail button.on{background:var(--brand);color:#fff;font-weight:500}
+.count{background:var(--accent);color:#fff;font-weight:600}
+.panel{gap:22px}
+.panel>h2,.ec-head h2{font-size:clamp(26px,2.8vw,34px)}
+
+/* tables: hairlines only */
+.tbl{border:1px solid var(--line);border-radius:var(--r-sm);background:var(--surface)}
+th{background:transparent;color:var(--muted);font-size:12px;font-weight:600;text-transform:none;border-bottom:1px solid var(--line)}
+th,td{padding:12px 14px;border-color:color-mix(in srgb,var(--line) 70%,transparent)}
+tbody tr:hover td{background:color-mix(in srgb,var(--surface-2) 70%,transparent)}
+
+/* tabs, chips and badges as pills */
+.pay-tabs button,.vf-tabs button,.ec-tabs button,.seg button{border-radius:var(--pill)!important}
+.pay-tabs button.on,.vf-tabs button.on,.ec-tabs button.on{background:var(--ink)!important;color:var(--bg)!important;border-color:var(--ink)!important}
+.chip{border-radius:var(--pill);background:var(--surface-2);padding:3px 11px}
+.ec-badge{border-radius:var(--pill)}
+.notice{border:0;border-radius:var(--r-sm);background:var(--surface-2);box-shadow:inset 3px 0 0 var(--accent)}
+.notice.ok{box-shadow:inset 3px 0 0 var(--brand)}
+
+/* windows */
+.modal,.modal-box,.dialog{border-radius:22px!important;border:0!important;box-shadow:0 30px 80px rgba(0,0,0,.28)!important}
+.overlay,.modal-bg,.backdrop{-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px)}
+#toast,.toast{border-radius:var(--pill)!important}
+/* footer: small grey text on light grey, like apple.com */
+footer.bot{background:var(--surface-2);color:var(--muted);border-top:1px solid var(--line);font-size:12.5px;padding:40px 0 28px}
+footer.bot .muted,footer.bot .unset{color:var(--muted)}
+footer.bot h4,footer.bot .ink{color:var(--ink);font-size:12.5px;font-weight:600}
+footer.bot a{color:var(--muted)}
+footer.bot a:hover{color:var(--ink)}
+footer.bot .social a{color:var(--ink);border-color:var(--line)}
+footer.bot .social a:hover{border-color:var(--ink);color:var(--ink)}
+:root .utilbar,:root[data-theme="dark"] .utilbar{background:var(--surface-2)}
+:root .utilbar .langsel,:root .utilbar .btn.icon,:root .utilbar .panel-tools .bell-btn{background:transparent;border-color:var(--glass-line);color:var(--ink)}
+:root .utilbar .langsel svg,:root .utilbar .langsel select{color:var(--ink)}
+:root .utilbar .btn.icon:hover,:root .utilbar .langsel:hover,:root .utilbar .panel-tools .bell-btn:hover{border-color:var(--ink)}
+:root .utilbar .wrap{min-height:34px}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .utilbar{background:var(--surface-2)}}
+
+:root[data-theme="dark"] footer.bot{background:var(--surface-2)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) footer.bot{background:var(--surface-2)}}
+/* phones: the words sit under the photo on a near-black panel */
+@media (max-width:760px){:root .hero.has-slides,:root[data-theme="dark"] .hero.has-slides{background:#000}}
+/* dark call-to-action tiles (For employers, Talk to our team) in both modes */
+:root .cta.soft,:root .card.cta.soft,:root[data-theme="dark"] .cta.soft{background:#1d1d1f;color:#f5f5f7;border:0}
+:root .cta.soft .muted,:root[data-theme="dark"] .cta.soft .muted{color:#a1a1a6}
+:root .cta.soft h2,:root .cta.soft h3{color:#f5f5f7}
+:root .cta.soft .eyebrow,:root[data-theme="dark"] .cta.soft .eyebrow{color:#ff6b7d}
+:root .cta.soft .btn:not(.pri){background:transparent;color:#f5f5f7;border-color:rgba(255,255,255,.4)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .cta.soft{background:#1d1d1f}}
+
+/* the logo's two colours on every button: green fill for main actions, green outline for the rest, red for the strongest */
+.btn:not(.pri):not(.acc):not(.link):not(.danger):not(.icon){color:var(--brand);border-color:color-mix(in srgb,var(--brand) 55%,transparent)}
+.btn:not(.pri):not(.acc):not(.link):not(.danger):not(.icon):hover{background:var(--brand);border-color:var(--brand);color:#fff}
+.btn.acc:hover,.hero .search .btn.pri:hover{background:#d60000;border-color:#d60000;filter:none}
+.btn.danger{color:var(--accent)}
+:root[data-theme="dark"] .btn:not(.pri):not(.acc):not(.link):not(.danger):not(.icon){color:#5fc396;border-color:rgba(95,195,150,.5)}
+:root[data-theme="dark"] .btn:not(.pri):not(.acc):not(.link):not(.danger):not(.icon):hover{background:#05613e;color:#fff;border-color:#05613e}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .btn:not(.pri):not(.acc):not(.link):not(.danger):not(.icon){color:#5fc396;border-color:rgba(95,195,150,.5)}}
+
+/* green fills always use the logo green with white text (in Night mode the lighter green is only for green text) */
+:root{--logo-g:#05613e;--logo-r:#fd0404}
+.btn.pri,.rail button.on{background:var(--logo-g);border-color:var(--logo-g);color:#fff}
+.btn.pri:hover{background:#03482e;border-color:#03482e}
+:root .cta.soft .btn:not(.pri):not(.acc){color:#f5f5f7;border-color:rgba(255,255,255,.4)}
+:root .cta.soft .btn:not(.pri):not(.acc):hover{background:#f5f5f7;color:#1d1d1f;border-color:#f5f5f7}
+:root[data-theme="dark"] .btn.danger,:root[data-theme="dark"] .btn.link.danger{color:#ff5d5d}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .btn.danger{color:#ff5d5d}}
