@@ -21,7 +21,7 @@ import { LANGS, getLang, setLang, t, onLang } from "./i18n.js";
 import { VisitingCard, VerifyMember, VerifyBody } from "./VCard.jsx";
 import { currentTheme, toggleTheme } from "./theme.js";
 import { SITE } from "./site.js";
-import { LuExternalLink, LuShieldCheck, LuUpload, LuTrash2, LuLock, LuEye, LuEyeOff, LuStamp, LuPlaneTakeoff, LuWallet, LuUsers, LuFileCheck2, LuBadgeCheck } from "react-icons/lu";
+import { LuUser, LuBuilding2, LuExternalLink, LuShieldCheck, LuUpload, LuTrash2, LuLock, LuEye, LuEyeOff, LuStamp, LuPlaneTakeoff, LuWallet, LuUsers, LuFileCheck2, LuBadgeCheck } from "react-icons/lu";
 import { AgentBookEdit } from "./dash/AgentBook.jsx";
 
 let navSeq = 0, dashSeq = -1, dashFromAddr = false; // navSeq counts address changes (link, Back/Forward); dashSeq is the last one applied to the dashboard
@@ -287,7 +287,15 @@ async function agentSignOut() {
 
 function PanelSignIn({ kind }) {
   const busy = store.ui.busy; const agent = kind === "agent";
-  const [show, setShow] = useState(false), [caps, setCaps] = useState(false);
+  const [show, setShow] = useState(false), [caps, setCaps] = useState(false), [reg, setReg] = useState(false);
+  // a new agent registers right here on the agent panel (no trip to the main website)
+  const register = async e => {
+    const [d] = formData(e);
+    if (d.pass !== d.pass2) return toast("Passwords do not match. Type the same password in both fields.");
+    const r = await act("auth.register", { ...d, role: "agent" }, { quiet: true });
+    if (!r) return;
+    store.ui.tab.agent = "profile"; toast("Account created. The agency will approve it soon."); afterLogin(r);
+  };
   const login = async e => {
     const [d] = formData(e);
     const r = await act("auth.login", { email: d.email, pass: d.pass });
@@ -307,7 +315,23 @@ function PanelSignIn({ kind }) {
           <ul>{points.map(([I, l]) => <li key={l}><span><I /></span>{l}</li>)}</ul></div>
         <p className="signin-foot"><LuBadgeCheck /> Licensed by the Government of Bangladesh · RL 1217</p>
       </aside>
-      <form className="signin-form" onSubmit={login}>
+      {agent && reg ? <form className="signin-form" onSubmit={register} key="reg">
+        <div className="signin-mlogo"><Logo size={56} /></div>
+        <h1>Create an agent account</h1>
+        <p className="muted">Register your office. The agency checks and approves new agent accounts.</p>
+        <label className="signin-f"><span>Full name</span><div className="signin-in"><LuUser aria-hidden="true" /><input type="text" name="name" required autoFocus autoComplete="name" placeholder="Your full name" /></div></label>
+        <label className="signin-f"><span>Business / office name</span><div className="signin-in"><LuBuilding2 aria-hidden="true" /><input type="text" name="business" required autoComplete="organization" placeholder="e.g. Malek Travels" /></div></label>
+        <label className="signin-f"><span>Mobile number</span><div className="signin-in"><LuPhone aria-hidden="true" /><input type="tel" name="aphone" required autoComplete="tel" placeholder="01XXXXXXXXX" inputMode="tel" /></div></label>
+        <label className="signin-f"><span>Email</span><div className="signin-in"><LuMail aria-hidden="true" /><input type="email" name="email" required autoComplete="email" placeholder="name@example.com" inputMode="email" /></div></label>
+        <div className="signin-two">
+          <label className="signin-f"><span>Password</span><div className="signin-in"><LuLock aria-hidden="true" /><input type={show ? "text" : "password"} name="pass" minLength={6} required autoComplete="new-password" placeholder="Min. 6 characters" />
+            <button type="button" className="signin-eye" onClick={() => setShow(x => !x)} aria-label={show ? "Hide password" : "Show password"} title={show ? "Hide password" : "Show password"}>{show ? <LuEyeOff /> : <LuEye />}</button></div></label>
+          <label className="signin-f"><span>Confirm password</span><div className="signin-in"><LuLock aria-hidden="true" /><input type={show ? "text" : "password"} name="pass2" minLength={6} required autoComplete="new-password" placeholder="Type it again" /></div></label>
+        </div>
+        <button className="btn pri signin-btn" type="submit" disabled={busy}>{busy ? <span className="boot-dots sm"><i /><i /><i /></span> : <><LuUserPlus /> Create agent account</>}</button>
+        <p className="muted small signin-alt">Already have an account? <a href="#" onClick={e => { e.preventDefault(); setReg(false); }}>Sign in</a></p>
+      </form> :
+      <form className="signin-form" onSubmit={login} key="login">
         <div className="signin-mlogo"><Logo size={56} /></div>
         <h1>{agent ? "Agent sign in" : "Welcome back"}</h1>
         <p className="muted">{agent ? "Sign in with your registered agent account." : "For the agency's admin and staff only."}</p>
@@ -317,10 +341,10 @@ function PanelSignIn({ kind }) {
           {caps && <em className="signin-caps">Caps Lock is on.</em>}</label>
         <button className="btn pri signin-btn" type="submit" disabled={busy}>{busy ? <span className="boot-dots sm"><i /><i /><i /></span> : <><LuLogIn /> Sign in</>}</button>
         <p className="signin-safe"><LuShieldCheck /> You stay signed in on this device for 30 days, or until you sign out.</p>
-        {SITE.main && (agent
-          ? <p className="muted small signin-alt">New agent? <a href={`${SITE.main}/#home`}>Register on the website</a></p>
+        {(agent || SITE.main) && (agent
+          ? <p className="muted small signin-alt">New agent? <a href="#" onClick={e => { e.preventDefault(); setReg(true); }}>Create an agent account</a></p>
           : <p className="muted small signin-alt">Job seeker, employer or agent? <a href={SITE.main}>Go to the website</a></p>)}
-      </form>
+      </form>}
     </div></section>
   );
 }

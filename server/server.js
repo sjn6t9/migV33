@@ -354,9 +354,10 @@ A["auth.handoff"] = async ({ token: t }, u, ctx) => {
 };
 A["auth.logout"] = async (_, u, ctx) => { ctx.logout(); return {}; };
 A["auth.register"] = async (d, u, ctx) => {
-  must(ctx.zone !== "admin" && ctx.zone !== "agent", zoneMsg(ctx.zone), 403);
+  // the agent panel takes new agent accounts only; the admin panel takes none
+  must(ctx.zone !== "admin" && (ctx.zone !== "agent" || d.role === "agent"), zoneMsg(ctx.zone), 403);
   limit(ctx.ip, "register", 6, 3600e3);
-  const role = ["candidate", "employer", "agent"].includes(d.role) ? d.role : "candidate";
+  const role = ctx.zone === "agent" ? "agent" : ["candidate", "employer", "agent"].includes(d.role) ? d.role : "candidate";
   const email = str(d.email, 200).toLowerCase(), name = str(d.name, 120);
   must(name.length >= 2, "Enter your full name."); must(emailOk(email), "Enter a valid email address.");
   must(String(d.pass || "").length >= 6, "Password must be at least 6 characters."); must(d.pass === d.pass2, "Passwords do not match.");

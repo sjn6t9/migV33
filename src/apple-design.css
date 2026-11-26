@@ -237,3 +237,7 @@ footer.bot .social a:hover{border-color:var(--ink);color:var(--ink)}
 .rail button{font-size:15.5px;font-weight:600;padding:8px 12px}
 .rail button.on{font-weight:700}
 .rail.rail-drawer button{font-size:16px;font-weight:600}
+
+/* agent panel registration: the two password fields side by side */
+.signin-two{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+@media (max-width:560px){.signin-two{grid-template-columns:1fr}}
