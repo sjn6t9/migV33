@@ -2614,6 +2614,12 @@ html[data-apple=night]{--ap-bg:#000000;--ap-card:#1c1c1e;--ap-tx:#f5f5f7;--ap-mu
 :root[data-apple][data-apple][data-apple] body #pop#pop#pop#pop#pop#pop#pop#pop button.o,:root[data-apple][data-apple][data-apple] body #pop#pop#pop#pop#pop#pop#pop#pop button.pr{background:var(--ap-ac)!important;background-image:none!important;color:#fff!important;border:0!important;box-shadow:none!important;border-radius:980px!important}
 :root[data-apple][data-apple][data-apple] body #pop#pop#pop#pop#pop#pop#pop#pop input:not([type=checkbox]),:root[data-apple][data-apple][data-apple] body #pop#pop#pop#pop#pop#pop#pop#pop textarea,:root[data-apple][data-apple][data-apple] body #pop#pop#pop#pop#pop#pop#pop#pop select{background:var(--ap-fill)!important;color:var(--ap-tx)!important;-webkit-text-fill-color:var(--ap-tx)!important;border:0!important}
 :root[data-apple][data-apple][data-apple] body #callui#callui#callui#callui#callui#callui#callui#callui .cc .cav,:root[data-apple][data-apple][data-apple] body #callui#callui#callui#callui#callui#callui#callui#callui .cc .cav *{color:#fff!important}
+
+/* stories / reels layout */
+:root[data-apple][data-apple][data-apple] body #view#view#view .stor[hidden],:root[data-apple][data-apple][data-apple] body #view#view#view .rls[hidden]{display:none!important}
+:root[data-apple][data-apple][data-apple] body #view#view#view#view#view .srw{max-width:none!important;width:100%!important;margin:10px 0 0!important;box-sizing:border-box}
+:root[data-apple][data-apple][data-apple] body #view#view#view#view#view .srw .stor,:root[data-apple][data-apple][data-apple] body #view#view#view#view#view .srw .rls{max-width:none!important;width:100%!important;margin:0!important;padding:12px!important;box-sizing:border-box}
+:root[data-apple][data-apple][data-apple] body #view#view#view#view#view .cmpx,:root[data-apple][data-apple][data-apple] body #view#view#view#view#view .tagbar{max-width:none!important;width:100%!important;margin-left:0!important;margin-right:0!important;box-sizing:border-box}
 </style>
 </head>
 <body>
@@ -4003,6 +4009,7 @@ function songVol(anchor){let v=$('svol');if(v){v.remove();clearTimeout(songVolT)
   const hide=()=>{clearTimeout(songVolT);songVolT=setTimeout(()=>{const x=$('svol');if(x)x.remove()},5000)},set=n=>{songVolPct=Math.max(0,Math.min(100,Math.round(n)));try{localStorage.songvol=songVolPct}catch{}v.querySelector('input').value=songVolPct;$('svp').textContent=songVolPct+'%';songApplyVol();if(songVolPct>0&&songMuted){songMuted=false;try{ytP.unMute()}catch{}songBar()}hide()};
   v.querySelector('input').oninput=e=>set(+e.target.value);v.onclick=e=>{const d=e.target.closest('[data-d]');if(d)set(songVolPct+ +d.dataset.d)};v.onpointerdown=hide;hide()}
 function songStop(){try{ytP&&ytP.stopVideo()}catch{}songBlocked=false}
+let songMLast=null;setInterval(()=>{if(room!==songMLast){songMLast=room;songMuted=true;try{ytP&&ytReady&&ytP.mute()}catch{}try{songBar()}catch{}}},300);
 function songOn(m){SONG[m.room]=m;if(m.room!==room)return;
   if(!m.vid||!m.playing){songStop();ytWant=null;songBar();if(songOpen())songSheet(1);return}
   ytWant=m;ytLoad(()=>{
@@ -4482,7 +4489,9 @@ V.peoples=async()=>{
     if(d){const k=d.dataset.pg,box=$('view').querySelector(`[data-pl="${k}"]`),g=G.find(x=>x.k===k),open=box.style.display==='none';d.classList.toggle('cl',!open);
       if(open&&!box.dataset.f){box.dataset.f=1;box.innerHTML=g.list.length?g.list.map((u,i)=>row(u,i,k==='top')).join(''):'<div class="card mu" style="text-align:center">Nobody here yet.</div>'}
       box.style.display=open?'':'none';return}
-    const c=e.target.closest('[data-u]');if(c)go('profile',c.dataset.u)}};
+    const c=e.target.closest('[data-u]');if(c)go('profile',c.dataset.u)};
+  /* show every group's IDs by default */
+  G.forEach(g=>{const d=$('view').querySelector(`[data-pg="${g.k}"]`);if(d)d.click()})};
 /* ---------- contests ---------- */
 const CTS={pending:'Waiting for approval',rejected:'Not approved',cancelled:'Cancelled',expired:'Expired',ended:'Ended'};
 const ctState=c=>c.status==='approved'?(Date.now()<c.starts?'Upcoming':'Live'):(CTS[c.status]||c.status);
