@@ -37,7 +37,7 @@ export function resetZoom() {
   if (/maximum-scale/.test(c)) { m.setAttribute("content", "width=device-width, initial-scale=1"); requestAnimationFrame(() => m.setAttribute("content", c)); return; }
   m.setAttribute("content", c + ", maximum-scale=1"); setTimeout(() => m.setAttribute("content", c), 300);
 }
-export function afterLogin(r) { if (!r) return; ui.modal = null; document.activeElement?.blur?.(); resetZoom(); touch(); go("dashboard"); window.scrollTo(0, 0); }
+export function afterLogin(r) { if (!r) return; ui.modal = null; flightTab(); document.activeElement?.blur?.(); resetZoom(); touch(); go("dashboard"); window.scrollTo(0, 0); }
 
 /* ---- job seeker ---- */
 export async function toggleSave(jid) {
@@ -114,3 +114,8 @@ export function formData(e) {
   const fd = new FormData(e.currentTarget);
   return [Object.fromEntries(fd.entries()), fd];
 }
+
+/* a flight searched on the home page opens in the Air tickets section (job seeker, agent, or staff who handle tickets) */
+export function flightTab() { const u = me(); if (!ui.flQ || !u) return false;
+  if (u.role === "candidate" || u.role === "agent" || u.role === "admin" || (u.role === "staff" && (u.perms || []).includes("tickets"))) { ui.tab[u.role] = "tickets"; ui.flHide = false; return true; }
+  ui.flQ = null; return false; }

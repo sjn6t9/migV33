@@ -7,12 +7,13 @@ import {
   LuFileSearch, LuTicket, LuPlaneTakeoff, LuShieldCheck, LuScale, LuNetwork, LuHeadset, LuSearchCheck, LuQuote, LuBriefcase, LuLanguages
 } from "react-icons/lu";
 import { FaWhatsapp } from "react-icons/fa6";
+import { LuPlaneLanding, LuArrowLeftRight, LuCalendarDays, LuArmchair } from "react-icons/lu";
 import { LuAward, LuUsersRound, LuGlobe, LuChevronLeft, LuChevronRight, LuFileText, LuEye, LuDownload, LuX, LuReceipt, LuWallet } from "react-icons/lu";
 import {
   store, touch, me, user, job, live, money, num, bdtMin, bdtMax, isHourly, HOURS_PER_MONTH, fdate, filteredJobs,
   COUNTRIES, CATS, TYPES, BENEFITS, EMPTY_FILTERS, worker, company, LABEL, TEAM_DEPTS
 , memberCode } from "../store.js";
-import { apply, openModal, go, toast, formData, act } from "../actions.js";
+import { apply, openModal, go, toast, formData, act, flightTab } from "../actions.js";
 import { ShareButton } from "../Share.jsx";
 import { JobCard, SaveButton, Pill, Empty, Val, Md, CAT_ICON, Pipe, ClPipe, Stars, Avatar , Logo } from "../ui.jsx";
 
@@ -22,13 +23,51 @@ const ui = store.ui;
 const setF = patch => { ui.F = { ...ui.F, ...patch }; touch(); };
 
 /* ---------------- Home ---------------- */
+// airports workers fly to most; any other airport can be typed as "City (CODE)"
+const AIRPORTS = [["Dhaka", "DAC"], ["Chattogram", "CGP"], ["Sylhet", "ZYL"], ["Riyadh", "RUH"], ["Jeddah", "JED"], ["Dammam", "DMM"], ["Madinah", "MED"], ["Dubai", "DXB"], ["Abu Dhabi", "AUH"], ["Sharjah", "SHJ"],
+  ["Doha", "DOH"], ["Kuwait", "KWI"], ["Muscat", "MCT"], ["Bahrain", "BAH"], ["Kuala Lumpur", "KUL"], ["Singapore", "SIN"], ["Male", "MLE"], ["Nadi", "NAN"], ["Bucharest", "OTP"], ["Belgrade", "BEG"], ["Tokyo", "NRT"], ["Seoul", "ICN"]].map(([c, k]) => `${c} (${k})`);
+const isoDay = (n = 0) => { const d = new Date(Date.now() + n * 864e5); return new Date(d - d.getTimezoneOffset() * 6e4).toISOString().slice(0, 10); };
+/* the home page's flight search: the search itself runs in the Air tickets section, after sign-in */
+function HeroFlight() {
+  const [q, setQ] = React.useState({ round: false, from: "Dhaka (DAC)", to: "", date: "", returnDate: "", adults: 1, cabin: "economy" });
+  const set = p => setQ(x => ({ ...x, ...p }));
+  const submit = e => {
+    e.preventDefault();
+    if (!/\([A-Z]{3}\)\s*$/.test(q.from.trim()) && !/^[A-Za-z]{3}$/.test(q.from.trim())) return toast("Choose where you fly from, e.g. Dhaka (DAC).");
+    if (!/\([A-Z]{3}\)\s*$/.test(q.to.trim()) && !/^[A-Za-z]{3}$/.test(q.to.trim())) return toast("Choose where to fly, e.g. Riyadh (RUH).");
+    if (!q.date) return toast("Choose the travel date.");
+    if (q.round && !q.returnDate) return toast("Choose the return date.");
+    const fix = v => /^[A-Za-z]{3}$/.test(v.trim()) ? `(${v.trim().toUpperCase()})` : v.trim();
+    ui.flQ = { ...q, from: fix(q.from), to: fix(q.to), returnDate: q.round ? q.returnDate : "", children: 0, infants: 0 };
+    if (me()) { if (flightTab()) go("dashboard"); else toast("Flight search is for job seekers and agents."); }
+    else { toast("Sign in to see live fares — your search opens right after."); openModal("auth", { mode: "login" }); }
+  };
+  return <form className="hf" role="search" aria-label="Search flights" onSubmit={submit} noValidate>
+    <div className="hf-top">
+      <span className="hf-tag"><LuPlane /> Air tickets</span>
+      <div className="hf-trip" role="radiogroup" aria-label="Trip type">{[[false, "One way"], [true, "Round trip"]].map(([v, l]) =>
+        <button key={l} type="button" role="radio" aria-checked={q.round === v} className={q.round === v ? "on" : ""} onClick={() => set({ round: v })}>{l}</button>)}</div>
+    </div>
+    <datalist id="hf-airports">{AIRPORTS.map(a => <option key={a} value={a} />)}</datalist>
+    <div className={`hf-row${q.round ? " rt" : ""}`}>
+      <label className="hf-f hf-from"><span><LuPlaneTakeoff /> From</span><input type="text" list="hf-airports" value={q.from} onChange={e => set({ from: e.target.value })} placeholder="City or airport" autoComplete="off" /></label>
+      <button type="button" className="hf-swap" aria-label="Swap From and To" onClick={() => set({ from: q.to, to: q.from })}><LuArrowLeftRight /></button>
+      <label className="hf-f hf-to"><span><LuPlaneLanding /> To</span><input type="text" list="hf-airports" value={q.to} onChange={e => set({ to: e.target.value })} placeholder="City or airport" autoComplete="off" /></label>
+      <label className="hf-f hf-date"><span><LuCalendarDays /> Travel date</span><input type="date" min={isoDay()} value={q.date} onChange={e => set({ date: e.target.value })} /></label>
+      {q.round && <label className="hf-f"><span><LuCalendarDays /> Return</span><input type="date" min={q.date || isoDay()} value={q.returnDate} onChange={e => set({ returnDate: e.target.value })} /></label>}
+      <label className="hf-f"><span><LuUsers /> Adults</span><select value={q.adults} onChange={e => set({ adults: +e.target.value })}>{[1, 2, 3, 4, 5, 6, 7, 8, 9].map(n => <option key={n} value={n}>{n}</option>)}</select></label>
+      <label className="hf-f"><span><LuArmchair /> Class</span><select value={q.cabin} onChange={e => set({ cabin: e.target.value })}><option value="economy">Economy</option><option value="premium">Premium economy</option><option value="business">Business</option><option value="first">First</option></select></label>
+      <button className="btn pri hf-go" type="submit"><LuSearch /> Search flights</button>
+    </div>
+  </form>;
+}
+
 export function Home() {
   const slides = store.loaded ? (store.S.scenery || []).filter(x => !x.hidden)
     : SCENES.map(x => ({ id: x.name, alt: x.alt, pos: x.pos, src: `/scenery/${x.name}-1280.webp`, srcSet: `/scenery/${x.name}-768.webp 768w, /scenery/${x.name}-1280.webp 1280w, /scenery/${x.name}-1920.webp 1920w` }));
   const S = store.S; const L = live();
   const countries = [...new Set(L.map(j => j.country))];
   const feat = L.filter(j => j.featured).slice(0, 6);
-  const onSearch = e => { const [d] = formData(e); ui.F = { ...EMPTY_FILTERS, q: d.q, country: d.country, cat: d.cat }; go("jobs"); };
   const steps = [
     [LuUserPlus, "Application", "Create a profile, upload your CV and apply online, or through one of our agents."],
     [LuFileSearch, "CV screening", "We check experience and documents against the employer's requirements."],
@@ -53,12 +92,7 @@ export function Home() {
         <div className="license"><LuBadgeCheck /> Government-licensed recruiting agency · <b>RL 1217</b></div>
         <h1>Overseas jobs with a licensed agency handling every step</h1>
         <p className="lead">Search open job circulars, apply with one click, and follow your application from shortlist to visa and departure.</p>
-        <form className="search" role="search" onSubmit={onSearch}>
-          <input type="text" name="q" placeholder="Job title or trade, e.g. electrician" aria-label="Job title or trade" />
-          <select name="country" aria-label="Country"><option value="">All countries</option>{Object.keys(COUNTRIES).map(c => <option key={c}>{c}</option>)}</select>
-          <select name="cat" aria-label="Category"><option value="">All categories</option>{CATS.map(c => <option key={c}>{c}</option>)}</select>
-          <button className="btn pri" type="submit"><LuSearch /> Search jobs</button>
-        </form>
+        <HeroFlight />
       </div></section>
       <div className="wrap"><div className="stats">
         {[[L.length, "Open job circulars"], [L.reduce((s, j) => s + Number(j.vacancies), 0), "Total vacancies"], [countries.length, "Destination countries"],

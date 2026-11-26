@@ -82,7 +82,7 @@ export function FlightCard({ f, staff, onPick, picked, compact }) {
 
 /* search form + results; onPick(flight, query) for the request */
 export function FlightSearch({ staff, onPick, pickedId }) {
-  const [q, setQ] = React.useState({ from: "Dhaka (DAC)", to: "", date: "", returnDate: "", round: false, adults: 1, children: 0, infants: 0, cabin: "economy" });
+  const [q, setQ] = React.useState(() => ({ from: "Dhaka (DAC)", to: "", date: "", returnDate: "", round: false, adults: 1, children: 0, infants: 0, cabin: "economy", ...(store.ui.flQ || {}) }));
   const [busy, setBusy] = React.useState(false), [res, setRes] = React.useState(null), [sort, setSort] = React.useState("price"), [air, setAir] = React.useState("");
   const ready = store.S.flightsReady;
   const go = async e => {
@@ -91,6 +91,8 @@ export function FlightSearch({ staff, onPick, pickedId }) {
   };
   const list = (res?.list || []).filter(f => !air || f.airline === air).sort((a, b) => sort === "time" ? (a.legs[0]?.minutes || 0) - (b.legs[0]?.minutes || 0) : sort === "stops" ? (a.legs[0]?.stops || 0) - (b.legs[0]?.stops || 0) || a.price - b.price : a.price - b.price);
   const airlines = [...new Set((res?.list || []).map(f => f.airline))];
+  // a search started on the home page runs as soon as this opens
+  React.useEffect(() => { if (store.ui.flQ && ready) { store.ui.flQ = null; go(); } else store.ui.flQ = null; }, []);
   if (!ready) return <div className="notice">Flight search opens when the agency connects its ticketing account. You can still send a request below.</div>;
   return <div className="card fl-search">
     <h3 className="bulk-h"><LuSearch /> Search flights</h3>
