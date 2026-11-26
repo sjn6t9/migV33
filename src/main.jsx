@@ -40,3 +40,9 @@ setInterval(async () => {
   } catch { /* offline: try again next second */ }
   checking = false;
 }, 1000);
+
+// the sticky side menu starts just below the sticky header, whatever height the header has on this screen
+(() => { let ro = null, seen = null;
+  const watch = () => { const h = document.querySelector("header.top"); if (h === seen) return; seen = h; ro?.disconnect(); if (!h) return;
+    ro = new ResizeObserver(() => document.documentElement.style.setProperty("--hdr-h", `${Math.ceil(h.getBoundingClientRect().height)}px`)); ro.observe(h); };
+  new MutationObserver(watch).observe(document.body, { childList: true, subtree: true }); watch(); })();

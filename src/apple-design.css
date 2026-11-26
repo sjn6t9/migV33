@@ -229,3 +229,11 @@ footer.bot .social a:hover{border-color:var(--ink);color:var(--ink)}
 /* an Approved file: one green bar, white text (the row itself keeps the normal colour) */
 .ec-approved{display:inline-flex;align-items:center;gap:6px;background:var(--logo-g,#05613e);color:#fff;font-weight:600;font-size:13.5px;padding:7px 14px;border-radius:var(--pill,999px);white-space:nowrap}
 .ec-approved svg{width:16px;height:16px;color:#fff}
+
+/* side menu: sits below the sticky header (no part of it slides under), scrolls on its own if taller than the screen; bold, a bit larger */
+@media (min-width:901px){
+  .rail:not(.rail-drawer){top:calc(var(--hdr-h,84px) + 14px);max-height:calc(100vh - var(--hdr-h,84px) - 28px);overflow-y:auto;overscroll-behavior:contain;scrollbar-width:thin;padding-bottom:6px}
+}
+.rail button{font-size:15.5px;font-weight:600;padding:8px 12px}
+.rail button.on{font-weight:700}
+.rail.rail-drawer button{font-size:16px;font-weight:600}
