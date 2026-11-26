@@ -2706,6 +2706,18 @@ html[data-apple=night]{--ap-bg:#000000;--ap-card:#1c1c1e;--ap-tx:#f5f5f7;--ap-mu
 
 :root[data-apple][data-apple][data-apple] body #rlw#rlw#rlw .rltop #rlvw#rlvw{background:rgba(0,0,0,.45)!important;border:1px solid rgba(255,255,255,.4)!important;-webkit-backdrop-filter:blur(8px)!important;backdrop-filter:blur(8px)!important;box-shadow:none!important;border-radius:999px!important}
 :root[data-apple][data-apple][data-apple] body #rlw#rlw#rlw .rltop #rlvw#rlvw #rlmu#rlmu{background:none!important;border:0!important}
+
+.prl{position:relative;background:#000;cursor:pointer;display:block;overflow:hidden}
+.prl video{display:block;width:100%;max-height:520px;object-fit:cover;pointer-events:none;background:#000}
+.prl .prp{position:absolute;inset:0;margin:auto;width:64px;height:64px;border-radius:50%;background:rgba(0,0,0,.45);border:1px solid rgba(255,255,255,.5);display:grid;place-items:center}
+.prl .prp svg{width:30px;height:30px;fill:#fff}
+.prl .prt{position:absolute;left:10px;top:10px;padding:3px 10px;border-radius:99px;background:rgba(0,0,0,.5);color:#fff;font-size:12px;font-weight:700}
+.fbp .prl+.acts{margin-top:8px}
+:root[data-apple][data-apple][data-apple] body #rlw#rlw#rlw .rltop #rlbk{background:rgba(0,0,0,.42)!important;color:#fff!important;border:1px solid rgba(255,255,255,.4)!important;width:34px!important;min-width:34px!important;height:34px!important;padding:0 0 3px!important;border-radius:50%!important;font-size:26px;line-height:1;margin-right:2px}
+/* reels: clear the bottom nav, thinner borders */
+:root[data-apple][data-apple][data-apple] body #rlw#rlw#rlw .rla{bottom:84px!important}
+:root[data-apple][data-apple][data-apple] body #rlw#rlw#rlw .rlin{padding-bottom:78px!important}
+:root[data-apple][data-apple][data-apple] body #rlw#rlw#rlw .rla .rlb{border-width:.5px!important;border-color:rgba(255,255,255,.28)!important;background:rgba(0,0,0,.24)!important}
 </style>
 </head>
 <body>
@@ -3106,7 +3118,7 @@ function callOn(m){
 function closeDrawer(){const d=document.getElementById('drawer');if(!d||!d.classList.contains('open'))return;if(innerWidth>=1000){d.classList.remove('open');return}
   d.classList.add('closing');clearTimeout(closeDrawer.t);closeDrawer.t=setTimeout(()=>{d.classList.remove('open','closing')},260)}
 async function go(v,a){GOV=v;if(v!=='funzone')document.body.classList.remove('fztb');if(v&&v!=='chat'){mSeen(v);if(v==='notifs')mSeen('notifs');if(!Object.keys(MNEW).length){mFlash(false);try{delete localStorage.mfl}catch{}}}if(EMB&&!(v==='chat'&&a===EMBR)){try{parent.postMessage(v==='chat'?{t:'open',room:a}:v==='rooms'?{t:'closeme'}:{t:'go',v,a},'*')}catch{}return}if(!EMB&&v==='chat'&&innerWidth>=1000){if(a)openWin(a);return}document.body.classList.toggle('inchat',v==='chat');try{drawTabs()}catch{}try{TNE=TNE||$('tn');CNE=CNE||$('coins');if(v!=='chat'){placeHdr(false);document.querySelectorAll('#hdr #rbw,#hdr #srow,#hdr #rbt').forEach(n=>n.remove())}}catch{}document.body.style.overflow='';document.documentElement.style.overflow='';$('view')&&($('view').style.overflowY='');if(cur==='chat'&&$('log')&&room&&OPEN.includes(room)&&!room.startsWith('dm:'))LOGC[room]=$('log').innerHTML;if(cur==='funzone'&&v!=='funzone'){try{tx({t:'ludo',a:'unsub'})}catch{}}if(cur&&cur!==v)PREV={v:cur,a:CURA};cur=v;CURA=a;try{if(v!=='chat')sessionStorage.lastv=JSON.stringify([v,a===undefined?null:a])}catch{}closeDrawer();bnSet(v,a);
-  $('th').classList.toggle('on',v==='home');$('tf').classList.toggle('on',v==='friends');$('trl').classList.toggle('on',v==='reels');document.body.classList.toggle('onreels',v==='reels');if(v!=='reels')document.body.classList.remove('nvh');if(v!=='reels')document.querySelectorAll('#rl video').forEach(x=>{x.pause();x.removeAttribute('src');x.load()});$('tr').classList.toggle('on',v==='rooms'||v==='chat');
+  $('th').classList.toggle('on',v==='home');$('tf').classList.toggle('on',v==='friends');$('trl').classList.toggle('on',v==='reels');document.body.classList.toggle('onreels',v==='reels');if(v!=='reels'){document.body.classList.remove('nvh');if(RLHOME&&v!=='home'){RLHOME=false}}if(v!=='reels')document.querySelectorAll('#rl video').forEach(x=>{x.pause();x.removeAttribute('src');x.load()});$('tr').classList.toggle('on',v==='rooms'||v==='chat');
   if(innerWidth>=1000)drawNav();$('view').scrollTop=0;$('stt').textContent=TT[v]||'';document.body.classList.toggle('onhome',v==='home');$('strip').style.display='none';$('view').onclick=null;document.body.classList.remove('hb');try{await refreshVer();await V[v](a)}catch(e){fail(e)}}
 addEventListener('resize',()=>{if(me&&innerWidth>=1000)drawNav()});$('th').onclick=()=>go('home');$('tf').onclick=()=>go('friends');$('trl').onclick=()=>go('reels');$('tr').onclick=()=>go('rooms');$('mb').onclick=()=>{mFlash(false);try{delete localStorage.mfl}catch{}if(innerWidth>=1000){const off=document.body.classList.toggle('nav-off');try{localStorage.navoff=off?1:''}catch(e){}if(!off){drawNav();setTimeout(navAnim,120)}return}drawNav();$('drawer').classList.add('open');navAnim()};
 $('drawer').onclick=e=>{if(e.target.id==='drawer')closeDrawer()};
@@ -3283,9 +3295,11 @@ function rlMuteBtn(){const b=$('rlmu'),m=RMUTE||RVOL===0;if(b)b.innerHTML=m?RLI.
 async function rlMore(){if(RLEND||RLBUSY)return;RLBUSY=true;try{const l=await api('GET','/reels?limit=8'+(RLLAST?'&before='+RLLAST:''));if(l.length<8)RLEND=true;const seen=new Set([...document.querySelectorAll('#rl .rli')].map(e=>+e.dataset.id)),n=l.filter(x=>!seen.has(x.id));if(l.length)RLLAST=l[l.length-1].id;const box=$('rl');if(!box)return;box.querySelector('.rlem')?.remove();box.insertAdjacentHTML('beforeend',n.map(rlItem).join(''));n.forEach(x=>{const e=box.querySelector(`.rli[data-id="${x.id}"]`);e&&RLIO&&RLIO.observe(e)});
   if(!box.children.length)box.innerHTML=`<div class="rlem"><div>🎬</div><h3>No reels yet</h3><p>Be the first to share a short video.</p><button class="o" data-a="new">＋ Create Reel</button></div>`}
  catch(e){fail(e)}finally{RLBUSY=false}}
-V.reels=async function(a){RLEND=false;RLBUSY=false;RLLAST=0;RLMAP={};if(RLIO)RLIO.disconnect();
- $('view').innerHTML=`<div id="rlw"><div class="rltop"><b><svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="5"/><path d="M3 9h18M9 3l3 6M15 3l3 6"/><path d="M10.5 12.8v4.4l3.6-2.2z" class="f"/></svg>Reels</b><span><div id="rlvw"><input type="range" id="rlvol" min="0" max="1" step="0.05" value="1" aria-label="Volume"><span id="rlmu" role="button" aria-label="Sound">${RLI.off}</span></div><button id="rlnew" data-a="new">＋ <em>Create</em></button></span></div><div id="rl"></div></div>`;
- rlSize();const box=$('rl');
+let RLHOME=false;
+addEventListener('popstate',()=>{if(RLHOME&&cur==='reels'){RLHOME=false;go('home')}});
+V.reels=async function(a){const fromHome=RLHOME;RLEND=false;RLBUSY=false;RLLAST=0;RLMAP={};if(RLIO)RLIO.disconnect();
+ $('view').innerHTML=`<div id="rlw"><div class="rltop"><b>${RLHOME?`<button id="rlbk" aria-label="Back">‹</button>`:''}<svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="5"/><path d="M3 9h18M9 3l3 6M15 3l3 6"/><path d="M10.5 12.8v4.4l3.6-2.2z" class="f"/></svg>Reels</b><span><div id="rlvw"><input type="range" id="rlvol" min="0" max="1" step="0.05" value="1" aria-label="Volume"><span id="rlmu" role="button" aria-label="Sound">${RLI.off}</span></div><button id="rlnew" data-a="new">＋ <em>Create</em></button></span></div><div id="rl"></div></div>`;
+ rlSize();const box=$('rl');{const bk=$('rlbk');if(bk)bk.onclick=()=>history.back()}
  document.body.classList.remove('nvh');{let lt=box.scrollTop;box.addEventListener('scroll',()=>{const t=box.scrollTop,d=t-lt;if(Math.abs(d)<8)return;lt=t;document.body.classList.toggle('nvh',d>0)},{passive:true})}
  RLIO=new IntersectionObserver(es=>{es.forEach(e=>{if(e.isIntersecting&&e.intersectionRatio>=.6){box.querySelectorAll('.rli.cur').forEach(s=>s.classList.remove('cur'));e.target.classList.add('cur');rlAct(e.target)}else if(!e.isIntersecting){e.target.querySelector('video')?.pause()}})},{root:box,threshold:[0,.6]});
  $('rlnew').onclick=()=>rlCreate();let vt=0;const vOpen=()=>{$('rlvw').classList.add('open');clearTimeout(vt);vt=setTimeout(()=>{const w=$('rlvw');w&&w.classList.remove('open')},5000)};const rlMob=()=>innerWidth<1000||matchMedia('(pointer:coarse)').matches;$('rlmu').onclick=()=>{if(rlMob()){if(RMUTE||RVOL===0){RMUTE=false;RVOL=1}else RMUTE=true;try{localStorage.rvol=RVOL}catch{}rlMuteBtn();return}  /* phones: the button only turns sound on/off (the phone's own volume keys set the level) */
@@ -3314,8 +3328,11 @@ function rlDo(a,b){const sec=b.closest('.rli'),id=sec&&+sec.dataset.id;
  if(a==='shr')return rlShare(id);
  if(a==='more')return rlMenu(id,sec)}
 async function rlFollow(u,b){b.style.pointerEvents='none';try{const x=Object.values(RLMAP).find(r=>r.user===u),acc=b.textContent==='Accept';await api('POST','/friends/'+(acc?'accept':'request'),{name:u});const ns=acc?'friends':'sent';Object.values(RLMAP).forEach(r=>{if(r.user===u)r.fs=ns});document.querySelectorAll('#rl .rli').forEach(sec=>{const r=RLMAP[sec.dataset.id];if(r&&r.user===u){const o=sec.querySelector('.rlfo');if(o)o.outerHTML=rlFol(r)}});toast(acc?'✅ You are friends now':'✅ Follow request sent')}catch(e){b.style.pointerEvents='';fail(e)}}
-async function rlShare(id){const u=location.origin+'/#reel='+id;try{if(navigator.share){await navigator.share({title:'Reel by '+RLMAP[id].user,url:u});return}}catch(e){if(e&&e.name==='AbortError')return}
- try{await navigator.clipboard.writeText(u);toast('🔗 Link copied')}catch{popup({icon:'🔗',title:'Reel link',html:`<div class="pb" style="user-select:all;word-break:break-all">${esc(u)}</div>`})}}
+function rlShare(id){sheetOpen(`<h2>Share reel</h2><div class="rlmn"><button data-m="feed">📰 Share to Feed</button><button data-m="link">🔗 Copy / send link</button></div>`);
+ $('sh').onclick=async e=>{const m=e.target.closest('[data-m]');if(!m)return;$('sheet').classList.remove('open');
+  if(m.dataset.m==='feed'){try{await api('POST','/posts',{reel:id,text:''});toast('✅ Shared to your Feed')}catch(er){fail(er)}return}
+  const u=location.origin+'/#reel='+id;try{if(navigator.share){await navigator.share({title:'Reel by '+RLMAP[id].user,url:u});return}}catch(er){if(er&&er.name==='AbortError')return}
+  try{await navigator.clipboard.writeText(u);toast('🔗 Link copied')}catch{popup({icon:'🔗',title:'Reel link',html:`<div class="pb" style="user-select:all;word-break:break-all">${esc(u)}</div>`})}}}
 function rlMenu(id,sec){const x=RLMAP[id],can=x.mine||rlMod();
  sheetOpen(`<h2>Reel</h2><div class="rlmn"><button data-m="link">🔗 Copy link</button><button data-m="user">👤 View ${esc(x.user)}'s profile</button>${can?'<button data-m="del" class="dg">🗑️ Delete reel</button>':''}</div>`);
  $('sh').onclick=async e=>{const m=e.target.closest('[data-m]');if(!m)return;const k=m.dataset.m;$('sheet').classList.remove('open');
@@ -3389,6 +3406,7 @@ function postHTML(p,i){const mod=['staff','admin'].includes(ST.role),own=p.user=
   return `<article class="fbp post${p.pinned?' pinned':''}" data-id="${p.id}">${p.pinned?'<div class="pin">📌 Pinned post</div>':''}
   <header>${av(p.user,44)}<div class="who"><div class="nm" style="color:${nc(p.user)}"><span data-u="${esc(p.user)}">${esc(p.user)}</span>${rt(p.role,p.user)}<span class="lvp">${lvi(lv(p.xp),16)}Lv ${lv(p.xp)}</span></div><div class="meta">${ago(p.ts)}${p.edited?' · Edited':''} · 🌐</div></div><button class="pm" data-a="menu" aria-label="Post options">⋯</button></header>
   ${p.text&&tbgOf(p.bg)&&!p.image?`<div class="tbg" style="background:${tbgOf(p.bg)[0]};color:${tcol(p.bg)};font-size:${tbgFs(p.text.length)}px${tbgOf(p.bg)[2]?';text-shadow:0 2px 10px rgba(0,0,0,.45)':''}"><span>${rich(p.text)}</span></div>`:p.text?`<div class="txt${!p.image&&p.text.length<70?' xl':''}">${rich(p.text)}</div>`:''}
+  ${p.rurl?`<div class="prl" data-reel="${p.reel}" role="button" aria-label="Play reel"><video muted playsinline preload="metadata" ${p.rposter?`poster="${esc(p.rposter)}" `:''}src="${esc(p.rurl)}#t=0.1"></video><i class="prp"><svg viewBox="0 0 24 24"><path d="M8 5.5v13l11-6.5z"/></svg></i><span class="prt">Reel</span></div>`:''}
   ${p.image?`<img class="pimg" src="${esc(p.image)}" loading="lazy" alt="Photo">`:''}
   <div class="acts fbx"><div class="ac"><button data-a="react" class="${p.mine?'on':''}" aria-label="React">${p.mine?(EM[p.mine]||LIKE_IMG):FBI.like}</button><button class="cnt" data-w="react" data-n="${p.reacts}" title="Who reacted">${p.reacts||''}</button><div class="rpk" hidden>${reactList().map(([k,e])=>`<button data-k="${k}" class="${p.mine===k?'on':''}" title="${k}">${e}</button>`).join('')}</div></div>
   <div class="ac"><button data-a="comment" aria-label="Comment">${p.locked?'🔒':FBI.cm}</button><button class="cnt" data-w="comment" title="Who commented">${p.comments||''}</button></div>
@@ -3500,6 +3518,7 @@ async function feedClick(e){
   if(!e.target.closest('.ac'))document.querySelectorAll('.rpk').forEach(x=>x.hidden=true);
   const u=e.target.closest('[data-u]');if(u&&!e.target.closest('#sh')){go('profile',u.dataset.u);return}
   const tg=e.target.closest('[data-tag]');if(tg){go('home',tg.dataset.tag);return}
+  const rv=e.target.closest('.prl');if(rv){RLHOME=true;try{history.pushState({rl:1},'')}catch{}go('reels',rv.dataset.reel);return}
   if(e.target.classList.contains('pimg')){lightbox(e.target.src);return}
   const w=e.target.closest('[data-w]'),art=e.target.closest('.post'),id=art?.dataset.id;
   if(w&&w.dataset.w!=='comment'){if(+(w.dataset.n??w.textContent)>0)whoSheet(id,w.dataset.w);return}

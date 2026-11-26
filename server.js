@@ -482,7 +482,7 @@ app.post('/api/password', auth, ok((q, r) => {
 }));
 
 for (const a of ["alter table posts add column image text default ''", 'alter table posts add column pinned int default 0', 'alter table posts add column locked int default 0',
-  'alter table posts add column edited int default 0', "alter table posts add column bg text default ''", "alter table reacts add column kind text default 'like'"]) { try { db.exec(a); } catch {} }
+  'alter table posts add column edited int default 0', "alter table posts add column bg text default ''", 'alter table posts add column reel int default 0', "alter table reacts add column kind text default 'like'"]) { try { db.exec(a); } catch {} }
 db.exec(`create table if not exists post_shares(post int, user text, ts int, primary key(post,user));
 create table if not exists post_hidden(user text, post int, primary key(user,post));`);
 db.exec(`create table if not exists stories(id integer primary key, user text, image text default '', text text default '', bg int default 0, ts int);
@@ -494,7 +494,7 @@ const imgUrl = u => typeof u === 'string' && MEDIA_URL.test(u) && /\.(jpg|png|gi
 function dropFile(u) { if (u && MEDIA_URL.test(u) && !db.prepare('select 1 from posts where image=?').get(u) && !db.prepare('select 1 from stories where image=?').get(u) && !db.prepare('select 1 from users where avatar=? or avatar_art=?').get(u, u) && !db.prepare('select 1 from user_photos where url=?').get(u)) fs.unlink('.' + u, () => {}); }
 app.get('/api/feed', auth, ok((q, r) => {
   const tag = String(q.query.tag || '').replace(/[^A-Za-z0-9_]/g, '').slice(0, 30);
-  const rows = db.prepare(`select p.id,p.user,p.text,p.image,p.bg,p.pinned,p.locked,p.edited,p.ts, p.shares + (select count(*) from post_shares where post=p.id) shares,
+  const rows = db.prepare(`select p.id,p.user,p.text,p.image,p.bg,p.reel,(select url from reels where id=p.reel) rurl,(select poster from reels where id=p.reel) rposter,p.pinned,p.locked,p.edited,p.ts, p.shares + (select count(*) from post_shares where post=p.id) shares,
     (select xp from users where name=p.user) xp, (select role from users where name=p.user) role,
     (select count(*) from reacts where post=p.id) reacts, (select kind from reacts where post=p.id and user=@me) mine,
     (select group_concat(kind) from (select kind from reacts where post=p.id group by kind order by count(*) desc limit 3)) rks,
@@ -507,7 +507,7 @@ app.get('/api/feed', auth, ok((q, r) => {
 app.get('/api/users/:n/posts', auth, ok((q, r) => {
   const u = String(q.params.n || '').replace(/[^A-Za-z0-9._-]/g, '').slice(0, 20);
   if (!db.prepare('select 1 from users where name=?').get(u)) return r.json([]);
-  const rows = db.prepare(`select p.id,p.user,p.text,p.image,p.bg,p.pinned,p.locked,p.edited,p.ts, p.shares + (select count(*) from post_shares where post=p.id) shares,
+  const rows = db.prepare(`select p.id,p.user,p.text,p.image,p.bg,p.reel,(select url from reels where id=p.reel) rurl,(select poster from reels where id=p.reel) rposter,p.pinned,p.locked,p.edited,p.ts, p.shares + (select count(*) from post_shares where post=p.id) shares,
     (select xp from users where name=p.user) xp, (select role from users where name=p.user) role,
     (select count(*) from reacts where post=p.id) reacts, (select kind from reacts where post=p.id and user=@me) mine,
     (select group_concat(kind) from (select kind from reacts where post=p.id group by kind order by count(*) desc limit 3)) rks,
@@ -568,7 +568,14 @@ app.post('/api/support', auth, ok((q, r) => {
 }));
 app.post('/api/posts', auth, ok((q, r) => {
   const text = String(q.body?.text || '').trim().slice(0, 500), image = imgUrl(q.body?.image) ? q.body.image : '';
-  if (!text && !image) return bad(r, 'Write something or add a photo first');
+  const reelId = parseInt(q.body?.reel, 10) || 0;
+  if (!text && !image && !reelId) return bad(r, 'Write something or add a photo first');
+  const reel = parseInt(q.body?.reel, 10) || 0;
+  if (reel) {
+    if (!db.prepare('select 1 from reels where id=?').get(reel)) return bad(r, 'Reel not found', 404);
+    const pid = db.prepare("insert into posts(user,text,image,bg,reel,ts) values(?,?,'','',?,?)").run(q.user, text, reel, Date.now()).lastInsertRowid;
+    grantAct(q.user, 'post', pid); return r.json({ ok: true });
+  }
   const bg = !image && /^g([1-9]|[12]\d|3[0-8])(\.[0-9a-f]{6})?$/i.test(String(q.body?.bg || '')) ? q.body.bg : '';   // coloured text-post style
   const pid = db.prepare('insert into posts(user,text,image,bg,ts) values(?,?,?,?,?)').run(q.user, text, image, bg, Date.now()).lastInsertRowid;
   grantAct(q.user, 'post', pid); notifyMentions(text, q.user, 'in a post', 'post:' + pid); r.json({ ok: true });
@@ -1605,6 +1612,7 @@ function reelDrop(id) {
   if (!x) return;
   db.prepare('delete from reel_likes where reel=?').run(id); db.prepare('delete from reel_views where reel=?').run(id);
   db.prepare('delete from reel_comments where reel=?').run(id); db.prepare('delete from reels where id=?').run(id);
+  for (const p of db.prepare('select id from posts where reel=?').all(id)) { for (const t of ['reacts', 'comments', 'post_shares', 'post_hidden']) db.prepare(`delete from ${t} where post=?`).run(p.id); db.prepare('delete from posts where id=?').run(p.id); }
   for (const u of [x.url, x.poster]) if (u && (REEL_VID.test(u) || REEL_POS.test(u))) { db.prepare('delete from reel_files where url=?').run(u); fs.unlink('.' + u, () => {}); }
 }
 app.post('/api/reels/media', auth, express.raw({ type: () => true, limit: '40mb' }), (q, r) => {
