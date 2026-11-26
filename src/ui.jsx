@@ -1,4 +1,5 @@
 import React from "react";
+import { createPortal } from "react-dom";
 import {
   LuBookmark, LuBookmarkCheck, LuMapPin, LuClock, LuBriefcase, LuX, LuHardHat, LuHotel, LuTruck, LuFactory,
   LuHeartPulse, LuShield, LuSparkles, LuWheat, LuShoppingBag, LuMonitor, LuStar, LuDownload, LuBadgeCheck, LuMenu, LuChevronDown
@@ -133,12 +134,13 @@ export function Drawer({ open, onClose, title, children, label = "Menu" }) {
     document.addEventListener("keydown", esc); const o = document.body.style.overflow; document.body.style.overflow = "hidden"; document.body.classList.add("drawer-on");
     return () => { document.removeEventListener("keydown", esc); document.body.style.overflow = o; document.body.classList.remove("drawer-on"); };
   }, [open]);
-  return <div className={`drawer-bg${open ? " open" : ""}`} onClick={e => { if (e.target === e.currentTarget) onClose(); }} aria-hidden={!open}>
+  // drawn on the page body: inside the glass header (backdrop-filter) a fixed layer would only be as tall as the header
+  return createPortal(<div className={`drawer-bg${open ? " open" : ""}`} onClick={e => { if (e.target === e.currentTarget) onClose(); }} aria-hidden={!open}>
     <aside className="drawer" role="dialog" aria-modal="true" aria-label={label}>
       <div className="drawer-head">{title}<button type="button" className="btn sm drawer-x" onClick={onClose} aria-label="Close menu"><LuX /></button></div>
       <div className="drawer-body">{open && children}</div>
     </aside>
-  </div>;
+  </div>, document.body);
 }
 
 export function Rail({ role, items, foot = [] }) {
