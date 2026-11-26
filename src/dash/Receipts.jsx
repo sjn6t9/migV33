@@ -106,10 +106,10 @@ export function DueList() {
         <b>{`Total due: ${tk(total)} BDT`}</b></div>
       {list.length ? <div className="tbl mt8"><table><thead><tr><th>SL</th><th>Agent Name</th><th>Full Name</th><th>Mobile Number</th><th>Email Address</th><th style={{ textAlign: "right" }}>Due (BDT)</th><th>Last due receipt</th><th>Actions</th></tr></thead><tbody>
         {list.map((a, i) => { const l = lastDue(a); return <tr key={a.k + a.id}><td>{i + 1}</td><td className="b" data-notr>{a.name}</td><td data-notr>{a.fullName || "—"}</td><td data-notr>{a.mobile || "—"}</td><td data-notr>{a.email || "—"}</td>
-          <td className="num b" style={{ textAlign: "right" }}>{tk(a.due)}</td><td className="small nowrap">{l ? <span data-notr>{`${l.no} · ${rDate(l.date)}${l.mailed ? " · emailed" : ""}`}</span> : <span className="muted">None</span>}</td>
+          <td className="num b due-red" style={{ textAlign: "right" }}>{tk(a.due)}</td><td className="small nowrap">{l ? <span data-notr>{`${l.no} · ${rDate(l.date)}${l.mailed ? " · emailed" : ""}`}</span> : <span className="muted">None</span>}</td>
           <td><span className="row6 nowrap"><button className="btn sm pri" disabled={!a.email || busy === a.k + a.id} title={a.email ? undefined : "This agent has no email address"} onClick={() => send(a)}><LuMail /> {busy === a.k + a.id ? "Sending…" : "Send Due Receipt"}</button>
             <button className="btn sm" onClick={() => openModal("dueView", { agentKey: `${a.k}:${a.id}` })}><LuEye /> View Due Receipt</button></span></td></tr>; })}
-      </tbody><tfoot><tr className="st-total"><td colSpan={5} className="b" style={{ textAlign: "right" }}>Total</td><td className="num b" style={{ textAlign: "right" }}>{tk(total)}</td><td colSpan={2} /></tr></tfoot></table></div>
+      </tbody><tfoot><tr className="st-total"><td colSpan={5} className="b" style={{ textAlign: "right" }}>Total</td><td className="num b due-red" style={{ textAlign: "right" }}>{tk(total)}</td><td colSpan={2} /></tr></tfoot></table></div>
         : <Empty>{q.trim() ? "No agent with due matches this search." : "No agent owes the office now."}</Empty>}
     </div>
   </>;

@@ -217,3 +217,15 @@ footer.bot .social a:hover{border-color:var(--ink);color:var(--ink)}
 .fpick-meta span{font-size:12px;color:var(--muted)}
 .fpick-x{flex:none;width:30px;height:30px;border-radius:50%;border:1px solid var(--line);background:var(--surface);color:var(--muted);display:grid;place-items:center;cursor:pointer;padding:0}
 .fpick-x:hover{color:#fd0404;border-color:#fd0404}
+
+/* amounts still owed */
+.due-red{color:#e00000!important}
+:root[data-theme="dark"] .due-red{color:#ff6b6b!important}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .due-red{color:#ff6b6b!important}}
+/* the open tab button (black): white text */
+.btn.dark,.btn.dark svg{color:#fff!important}
+:root[data-theme="dark"] .btn.dark,:root[data-theme="dark"] .btn.dark svg{color:#111!important}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .btn.dark,:root:not([data-theme="light"]) .btn.dark svg{color:#111!important}}
+/* an Approved file: one green bar, white text (the row itself keeps the normal colour) */
+.ec-approved{display:inline-flex;align-items:center;gap:6px;background:var(--logo-g,#05613e);color:#fff;font-weight:600;font-size:13.5px;padding:7px 14px;border-radius:var(--pill,999px);white-space:nowrap}
+.ec-approved svg{width:16px;height:16px;color:#fff}

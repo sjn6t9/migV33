@@ -1025,7 +1025,7 @@ A["admin.clStatus"] = async (d, u) => {
   const c = db.clearances.find(x => x.id === d.id), ic = c && icOf(c);
   if (c && ic && d.group !== false && u?.id !== "raims") {
     let n = 0;
-    for (const x of icFiles(ic)) { if (x === c || (x.status === "approved" && x.card)) continue;
+    for (const x of icFiles(ic)) { if (x === c || x.status === "approved") continue; // an Approved file keeps its status
       if (x.status === c.status && (c.status !== "custom" || x.statusText === c.statusText)) continue;
       await clStatusOne({ id: x.id, status: c.status, text: c.statusText }, u); n++; }
     if (n && r?.msg) r.msg += ` ${n} more file(s) with ${ic} changed too.`;
@@ -1042,6 +1042,7 @@ function clApprovedNotice(c, extra = "") {
 }
 async function clStatusOne({ id: cid, status, text }, u) {
   needPerm(u, "clearance"); const c = db.clearances.find(x => x.id === cid); must(c, "File not found."); must([...CL_STAGES, "rejected", "custom"].includes(status), "Unknown status.");
+  if (c.status === "approved" && status !== "approved") return must(false, "This file is Approved — its status can no longer be changed.");
   const name = c.workerId ? worker(c.workerId)?.name : c.fullName || user(c.candidateId)?.name;
   if (status === "custom") { // a status written by the agency, e.g. "Fingerprint taken"; the progress bar stays at the last stage
     const t = str(text, 80); must(t.length >= 2, "Write the status (at least 2 letters).");

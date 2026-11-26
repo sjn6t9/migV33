@@ -647,7 +647,7 @@ function RaimsDay() {
     const cur = H[H.length - 1]; if (c.status === "approved" || c.status === "rejected" || !/^pending .+approval$/i.test(String(cur?.t || LABEL[cur?.s] || ""))) continue;
     const pv = H[first - 1], nw = H[lastI], p = clPerson(c);
     if (!/^pending .+approval$/i.test(String(pv ? pv.t || LABEL[pv.s] || "" : ""))) continue; // Last Position must already be a Pending … Approval stage (from Pending Section Approval on)
-    rows.push({ id: c.id, name: p.name, passport: p.passport || "—", ic: c.icNo || c.ref, from: pv ? pv.t || LABEL[pv.s] || pv.s : "—", to: nw.t || LABEL[nw.s] || nw.s, at: nw.at }); }
+    rows.push({ id: c.id, name: p.name, passport: p.passport || "—", country: c.country || "—", ic: c.icNo || c.ref, from: pv ? pv.t || LABEL[pv.s] || pv.s : "—", to: nw.t || LABEL[nw.s] || nw.s, at: nw.at }); }
   rows.sort((a, b) => String(b.at).localeCompare(String(a.at)));
   const cnt = {}; for (const r of rows) cnt[r.to] = (cnt[r.to] || 0) + 1;
   const label = new Date(day + "T00:00:00Z").toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" });
@@ -655,8 +655,8 @@ function RaimsDay() {
     <div className="row6"><button className="btn sm" onClick={() => step(-1)} disabled={day <= new Date(Date.parse(today) - 30 * 864e5).toISOString().slice(0, 10)}><LuChevronLeft /> Previous day</button>
       <b className="small">{day === today ? `Today · ${label}` : label}</b>
       <button className="btn sm" onClick={() => step(1)} disabled={day >= today}>Next day <LuChevronRight /></button></div>
-    {rows.length ? <><div className="tbl mt8"><table><thead><tr><th>Name</th><th>Passport No</th><th>IC No</th><th>Last Position</th><th>Current Position</th></tr></thead><tbody>
-      {rows.map(r => <tr key={r.id}><td data-notr><b>{r.name}</b></td><td className="num" data-notr>{r.passport}</td><td className="num" data-notr>{r.ic}</td><td>{r.from}</td><td className="b">{r.to}</td></tr>)}</tbody></table></div>
+    {rows.length ? <><div className="tbl mt8"><table><thead><tr><th>Name</th><th>Passport No</th><th>Country</th><th>IC No</th><th>Last Position</th><th>Current Position</th></tr></thead><tbody>
+      {rows.map(r => <tr key={r.id}><td data-notr><b>{r.name}</b></td><td className="num" data-notr>{r.passport}</td><td>{r.country}</td><td className="num" data-notr>{r.ic}</td><td>{r.from}</td><td className="b">{r.to}</td></tr>)}</tbody></table></div>
       <p className="muted small mt6" data-notr>{`Statuses on RAIMS that day: ${Object.entries(cnt).sort((a, b) => b[1] - a[1]).map(([k, v]) => `${k} (${v})`).join(", ")}`}</p></>
       : <p className="muted small mt6">No status changes from RAIMS that day.</p>}
   </div>;
@@ -746,7 +746,7 @@ function AdminClearanceList({ apps }) {
     </div>
     <div className="tbl ec-tbl grid"><table><thead><tr><th>SL</th><th>Worker name</th><th>Passport No</th><th>{apps ? "IC number · Send to BMET" : "EC Ref No"}</th><th>Country</th><th>Status</th><th>Submission</th><th>Download Documents</th></tr></thead><tbody>
       {shown.length ? shown.map(({ c, p }, i) => (
-        <tr key={c.id} className={c.status === "approved" ? "row-approved" : undefined}>
+        <tr key={c.id}>
           <td>{(pg - 1) * per + i + 1}</td>
           <td><b>{p.name}</b>{apps && c.preEc && <div className="muted small">From Pre EC Check</div>}</td>
           <td className="num" data-notr>{p.passport || "—"}</td>
@@ -856,6 +856,8 @@ export function StatusCell({ c, wide, only }) {
   const [custom, setCustom] = React.useState(false); const [v, setV] = React.useState(c.status === "custom" ? c.statusText || "" : "");
   const pick = val => { if (val === "custom") { setV(c.status === "custom" ? c.statusText || "" : ""); setCustom(true); } else { setCustom(false); setClStatus(c.id, val); } };
   const saveCustom = async () => { if (await act("admin.clStatus", { id: c.id, status: "custom", text: v })) setCustom(false); };
+  // an Approved file is final: a green Approved bar instead of the status list
+  if (c.status === "approved") return <div className={`stack6${wide ? "" : " ec-status"}`}><span className="ec-approved"><LuCircleCheck /> {LABEL.approved}</span></div>;
   return (
     <div className={`stack6${wide ? "" : " ec-status"}`}>
       <select className="auto slim" value={custom ? "custom" : c.status} onChange={e => pick(e.target.value)} aria-label="Clearance status">
