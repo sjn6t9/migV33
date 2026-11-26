@@ -494,7 +494,7 @@ const imgUrl = u => typeof u === 'string' && MEDIA_URL.test(u) && /\.(jpg|png|gi
 function dropFile(u) { if (u && MEDIA_URL.test(u) && !db.prepare('select 1 from posts where image=?').get(u) && !db.prepare('select 1 from stories where image=?').get(u) && !db.prepare('select 1 from users where avatar=? or avatar_art=?').get(u, u) && !db.prepare('select 1 from user_photos where url=?').get(u)) fs.unlink('.' + u, () => {}); }
 app.get('/api/feed', auth, ok((q, r) => {
   const tag = String(q.query.tag || '').replace(/[^A-Za-z0-9_]/g, '').slice(0, 30);
-  const rows = db.prepare(`select p.id,p.user,p.text,p.image,p.bg,p.reel,(select url from reels where id=p.reel) rurl,(select poster from reels where id=p.reel) rposter,p.pinned,p.locked,p.edited,p.ts, p.shares + (select count(*) from post_shares where post=p.id) shares,
+  const rows = db.prepare(`select p.id,p.user,p.text,p.image,p.bg,p.reel,(select url from reels where id=p.reel) rurl,(select poster from reels where id=p.reel) rposter,(select user from reels where id=p.reel) ruser,(select xp from users where name=(select user from reels where id=p.reel)) rxp,(select role from users where name=(select user from reels where id=p.reel)) rrole,p.pinned,p.locked,p.edited,p.ts, p.shares + (select count(*) from post_shares where post=p.id) shares,
     (select xp from users where name=p.user) xp, (select role from users where name=p.user) role,
     (select count(*) from reacts where post=p.id) reacts, (select kind from reacts where post=p.id and user=@me) mine,
     (select group_concat(kind) from (select kind from reacts where post=p.id group by kind order by count(*) desc limit 3)) rks,
@@ -507,7 +507,7 @@ app.get('/api/feed', auth, ok((q, r) => {
 app.get('/api/users/:n/posts', auth, ok((q, r) => {
   const u = String(q.params.n || '').replace(/[^A-Za-z0-9._-]/g, '').slice(0, 20);
   if (!db.prepare('select 1 from users where name=?').get(u)) return r.json([]);
-  const rows = db.prepare(`select p.id,p.user,p.text,p.image,p.bg,p.reel,(select url from reels where id=p.reel) rurl,(select poster from reels where id=p.reel) rposter,p.pinned,p.locked,p.edited,p.ts, p.shares + (select count(*) from post_shares where post=p.id) shares,
+  const rows = db.prepare(`select p.id,p.user,p.text,p.image,p.bg,p.reel,(select url from reels where id=p.reel) rurl,(select poster from reels where id=p.reel) rposter,(select user from reels where id=p.reel) ruser,(select xp from users where name=(select user from reels where id=p.reel)) rxp,(select role from users where name=(select user from reels where id=p.reel)) rrole,p.pinned,p.locked,p.edited,p.ts, p.shares + (select count(*) from post_shares where post=p.id) shares,
     (select xp from users where name=p.user) xp, (select role from users where name=p.user) role,
     (select count(*) from reacts where post=p.id) reacts, (select kind from reacts where post=p.id and user=@me) mine,
     (select group_concat(kind) from (select kind from reacts where post=p.id group by kind order by count(*) desc limit 3)) rks,

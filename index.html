@@ -2718,6 +2718,17 @@ html[data-apple=night]{--ap-bg:#000000;--ap-card:#1c1c1e;--ap-tx:#f5f5f7;--ap-mu
 :root[data-apple][data-apple][data-apple] body #rlw#rlw#rlw .rla{bottom:84px!important}
 :root[data-apple][data-apple][data-apple] body #rlw#rlw#rlw .rlin{padding-bottom:78px!important}
 :root[data-apple][data-apple][data-apple] body #rlw#rlw#rlw .rla .rlb{border-width:.5px!important;border-color:rgba(255,255,255,.28)!important;background:rgba(0,0,0,.24)!important}
+
+.prl .prp{transition:opacity .25s,transform .2s;cursor:pointer;z-index:2}
+.prl .prp:active{transform:scale(.9)}
+.prl .prp .sq{display:none}
+.prl.playing .prp .sp{display:none}.prl.playing .prp .sq{display:block}
+.prl.playing .prp{opacity:0}.prl.playing:hover .prp,.prl.playing:active .prp{opacity:1}
+.prl .prw{position:absolute;left:10px;top:10px;right:10px;display:flex;align-items:center;gap:6px;max-width:calc(100% - 20px);padding:4px 10px 4px 4px;border-radius:99px;background:rgba(0,0,0,.45);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);color:#fff;font-size:13px;width:fit-content;z-index:2;pointer-events:none;overflow:hidden;white-space:nowrap}
+.prl .prw b{font-weight:700;overflow:hidden;text-overflow:ellipsis}
+.prl .prw small{display:inline-flex;align-items:center;gap:3px;font-size:11px;opacity:.9;color:#fff}
+.prl .prw .av,.prl .prw img{flex:none}
+.prl video{transition:opacity .3s}
 </style>
 </head>
 <body>
@@ -3406,7 +3417,7 @@ function postHTML(p,i){const mod=['staff','admin'].includes(ST.role),own=p.user=
   return `<article class="fbp post${p.pinned?' pinned':''}" data-id="${p.id}">${p.pinned?'<div class="pin">📌 Pinned post</div>':''}
   <header>${av(p.user,44)}<div class="who"><div class="nm" style="color:${nc(p.user)}"><span data-u="${esc(p.user)}">${esc(p.user)}</span>${rt(p.role,p.user)}<span class="lvp">${lvi(lv(p.xp),16)}Lv ${lv(p.xp)}</span></div><div class="meta">${ago(p.ts)}${p.edited?' · Edited':''} · 🌐</div></div><button class="pm" data-a="menu" aria-label="Post options">⋯</button></header>
   ${p.text&&tbgOf(p.bg)&&!p.image?`<div class="tbg" style="background:${tbgOf(p.bg)[0]};color:${tcol(p.bg)};font-size:${tbgFs(p.text.length)}px${tbgOf(p.bg)[2]?';text-shadow:0 2px 10px rgba(0,0,0,.45)':''}"><span>${rich(p.text)}</span></div>`:p.text?`<div class="txt${!p.image&&p.text.length<70?' xl':''}">${rich(p.text)}</div>`:''}
-  ${p.rurl?`<div class="prl" data-reel="${p.reel}" role="button" aria-label="Play reel"><video muted playsinline preload="metadata" ${p.rposter?`poster="${esc(p.rposter)}" `:''}src="${esc(p.rurl)}#t=0.1"></video><i class="prp"><svg viewBox="0 0 24 24"><path d="M8 5.5v13l11-6.5z"/></svg></i><span class="prt">Reel</span></div>`:''}
+  ${p.rurl?`<div class="prl" data-reel="${p.reel}" role="button" aria-label="Play reel"><video muted playsinline preload="metadata" ${p.rposter?`poster="${esc(p.rposter)}" `:''}src="${esc(p.rurl)}#t=0.1"></video><i class="prp" role="button" aria-label="Play"><svg class="sp" viewBox="0 0 24 24"><path d="M8 5.5v13l11-6.5z"/></svg><svg class="sq" viewBox="0 0 24 24"><path d="M7 5h3.5v14H7zM13.5 5H17v14h-3.5z"/></svg></i>${p.ruser&&p.ruser!==p.user?`<span class="prw">${av(p.ruser,26)}<b style="color:${nc(p.ruser)}">${esc(p.ruser)}</b>${rt(p.rrole,p.ruser)}<small>${lvi(lv(p.rxp),14)}Lv ${lv(p.rxp)}</small></span>`:`<span class="prt">Reel</span>`}</div>`:''}
   ${p.image?`<img class="pimg" src="${esc(p.image)}" loading="lazy" alt="Photo">`:''}
   <div class="acts fbx"><div class="ac"><button data-a="react" class="${p.mine?'on':''}" aria-label="React">${p.mine?(EM[p.mine]||LIKE_IMG):FBI.like}</button><button class="cnt" data-w="react" data-n="${p.reacts}" title="Who reacted">${p.reacts||''}</button><div class="rpk" hidden>${reactList().map(([k,e])=>`<button data-k="${k}" class="${p.mine===k?'on':''}" title="${k}">${e}</button>`).join('')}</div></div>
   <div class="ac"><button data-a="comment" aria-label="Comment">${p.locked?'🔒':FBI.cm}</button><button class="cnt" data-w="comment" title="Who commented">${p.comments||''}</button></div>
@@ -3513,12 +3524,17 @@ function reactPop(anchor,id,mine){const old=$('rpick');if(old){const same=old._a
   setTimeout(()=>document.addEventListener('pointerdown',off,true),0);
   p.onclick=async e=>{const b=e.target.closest('[data-k]');if(!b)return;p.remove();document.removeEventListener('pointerdown',off,true);
     try{await api('POST',`/posts/${id}/react`,{kind:b.dataset.k});loadFeed()}catch(er){fail(er)}}}
+function prlToggle(w){const v=w.querySelector('video');if(!v)return;
+ if(v.paused){document.querySelectorAll('.prl video').forEach(o=>{if(o!==v)o.pause()});v.muted=false;v.play().catch(()=>{v.muted=true;v.play().catch(()=>{})})}else v.pause()}
+if(!window.PRLIO&&'IntersectionObserver'in window){window.PRLIO=new IntersectionObserver(es=>es.forEach(e=>{if(!e.isIntersecting){const v=e.target.querySelector('video');v&&!v.paused&&v.pause()}}),{threshold:.25});
+ new MutationObserver(()=>document.querySelectorAll('.prl:not([data-o])').forEach(w=>{w.dataset.o=1;PRLIO.observe(w);const v=w.querySelector('video');v.addEventListener('play',()=>w.classList.add('playing'));v.addEventListener('pause',()=>w.classList.remove('playing'));v.addEventListener('ended',()=>{w.classList.remove('playing');v.currentTime=0})})).observe(document.body,{childList:true,subtree:true})}
 async function feedClick(e){
   if(e.target.closest('#cpo')){window._openCp&&window._openCp();return}if(e.target.closest('#cpp')){window._openCp&&window._openCp(true);return}
   if(!e.target.closest('.ac'))document.querySelectorAll('.rpk').forEach(x=>x.hidden=true);
   const u=e.target.closest('[data-u]');if(u&&!e.target.closest('#sh')){go('profile',u.dataset.u);return}
   const tg=e.target.closest('[data-tag]');if(tg){go('home',tg.dataset.tag);return}
-  const rv=e.target.closest('.prl');if(rv){RLHOME=true;try{history.pushState({rl:1},'')}catch{}go('reels',rv.dataset.reel);return}
+  const pp=e.target.closest('.prp');if(pp){prlToggle(pp.closest('.prl'));return}
+  const rv=e.target.closest('.prl');if(rv){document.querySelectorAll('.prl video').forEach(v=>v.pause());RLHOME=true;try{history.pushState({rl:1},'')}catch{}go('reels',rv.dataset.reel);return}
   if(e.target.classList.contains('pimg')){lightbox(e.target.src);return}
   const w=e.target.closest('[data-w]'),art=e.target.closest('.post'),id=art?.dataset.id;
   if(w&&w.dataset.w!=='comment'){if(+(w.dataset.n??w.textContent)>0)whoSheet(id,w.dataset.w);return}
