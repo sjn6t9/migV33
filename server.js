@@ -356,6 +356,7 @@ function lbPay() {
   db.prepare('delete from lb_day where day<?').run(dayKey(Date.now() - 5 * DAYMS));
 }
 setInterval(() => { try { lbPay(); payRoomOwners(); } catch (e) { console.error('[daily]', e); } }, 30e3).unref();
+const selfProfile = n => { const p = profile(n); if (p && isInv(n)) p.presence = 'invisible'; return p; };
 const profile = n => { const u = db.prepare('select name,full_name,gender,country,bio,status_text,presence,xp,coins,role,joined,cover,avatar,avatar_art,avatar_mode from users where name=?').get(n); if (!u) return u; const { avatar, avatar_art, avatar_mode, ...rest } = u; return { ...rest, presence: livePres(u.name, u.presence), level: level(u.xp), hasPhoto: !!avatar, hasArt: !!avatar_art, avatarMode: avatar_mode === 'avatar' && avatar_art ? 'avatar' : 'photo' }; };
 const ok = fn => (q, r) => { const f = e => { console.error(e); if (!r.headersSent) bad(r, 'Server error', 500); }; try { const x = fn(q, r); if (x && x.catch) x.catch(f); } catch (e) { f(e); } };
 app.get('/api/lb', auth, ok((q, r) => {
@@ -385,13 +386,14 @@ const fstate = (a, b) => {
   return !x ? 'none' : x.status === 'accepted' ? 'friends' : x.a === a ? 'sent' : 'incoming';
 };
 
-app.get('/api/me', auth, ok((q, r) => { const x = db.prepare('select email,mobile,mpin,sec_q from users where name=?').get(q.user); r.json({ ...profile(q.user), email: x.email, mobile: x.mobile, hasPin: !!x.mpin, secQ: x.sec_q || '', secQs: SEC_QS, unlimited: isMain(q.user) }); }));
+app.get('/api/me', auth, ok((q, r) => { const x = db.prepare('select email,mobile,mpin,sec_q from users where name=?').get(q.user); r.json({ ...selfProfile(q.user), email: x.email, mobile: x.mobile, hasPin: !!x.mpin, secQ: x.sec_q || '', secQs: SEC_QS, unlimited: isMain(q.user) }); }));
 app.put('/api/me', auth, ok((q, r) => {
   const { bio, status_text, presence } = q.body || {};
   if (typeof bio === 'string') db.prepare('update users set bio=? where name=?').run(bio.slice(0, 200), q.user);
   if (typeof status_text === 'string') db.prepare('update users set status_text=? where name=?').run(status_text.slice(0, 60), q.user);
-  if (['online', 'away', 'busy', 'offline'].includes(presence)) { db.prepare('update users set presence=? where name=?').run(presence, q.user); online(); userRooms(q.user).forEach(castRoster); }
-  r.json(profile(q.user));
+  if (presence === 'invisible' && !['admin', 'staff'].includes(roleOf(q.user))) return bad(r, 'Only staff and admins can go invisible.', 403);
+  if (['online', 'away', 'busy', 'offline', 'invisible'].includes(presence)) { db.prepare('update users set presence=? where name=?').run(presence, q.user); online(); userRooms(q.user).forEach(castRoster); }
+  r.json(selfProfile(q.user));
 }));
 db.exec('create table if not exists footprints(owner text, visitor text, ts int, primary key(owner,visitor))');
 // ---- Badges & Achievements: level badges 1-300, social badges and activity achievements ----
@@ -454,13 +456,14 @@ app.get('/api/users/:n/list/:k', auth, ok((q, r) => {
 app.get('/api/users/:n', auth, ok((q, r) => {
   const p = profile(q.params.n); if (!p) return bad(r, 'User not found', 404);
   delete p.coins;   // coin balances are private: profiles never show them
+  if (p.presence === 'invisible' && p.name !== q.user) p.presence = 'offline';
   if (p.name !== q.user) {
     const prev = db.prepare('select ts from footprints where owner=? and visitor=?').get(p.name, q.user);
     db.prepare('insert into footprints(owner,visitor,ts) values(?,?,?) on conflict(owner,visitor) do update set ts=excluded.ts').run(p.name, q.user, Date.now());
     if (!prev || Date.now() - prev.ts > 6 * 3600e3) notify(p.name, 'social', `${q.user} viewed your profile`, 'user:' + q.user);   // one alert per visitor per 6 hours
   }
-  const inRooms = (() => { if (p.presence === 'offline') return []; const set = new Set(); for (const [rm, ws] of members) if (rm && !/^dm:/.test(rm) && [...ws].some(w => w.user === p.name)) set.add(rm); for (const w of wss.clients) if (w.user === p.name && w.tabs) for (const rm of w.tabs) if (rm && !/^dm:/.test(rm)) set.add(rm); return [...set].filter(roomOk).map(rm => ({ name: rm, count: roomNames(rm).size })); })();
-  const inRoom = (() => { if (p.presence === 'offline') return null; const rm = curRoom(p.name); return rm && roomOk(rm) ? { name: rm, count: roomNames(rm).size } : null; })();
+  const inRooms = (() => { if (p.presence === 'offline') return []; const set = new Set(); for (const [rm, ws] of members) if (rm && !/^dm:/.test(rm) && [...ws].some(w => w.user === p.name)) set.add(rm); for (const w of wss.clients) if (w.user === p.name && w.tabs) for (const rm of w.tabs) if (rm && !/^dm:/.test(rm)) set.add(rm); return [...set].filter(roomOk).map(rm => ({ name: rm, count: roomNamesV(rm).size })); })();
+  const inRoom = (() => { if (p.presence === 'offline') return null; const rm = curRoom(p.name); return rm && roomOk(rm) ? { name: rm, count: roomNamesV(rm).size } : null; })();
   const fc = db.prepare("select count(*) c from friends where status='accepted' and (a=? or b=?)").get(p.name, p.name).c;
   r.json({ ...p, gifts: db.prepare('select gift,n from gift_inv where user=? order by n desc').all(p.name).map(x => { const g = allGiftsAny(x.gift); return g && { key: x.gift, n: x.n, name: g.n, e: g.e, img: g.img }; }).filter(Boolean), friends: fc, inRoom, inRooms, stats: userStats(p.name, p), state: q.user === p.name ? 'me' : fstate(q.user, p.name) });
 }));
@@ -679,7 +682,7 @@ app.delete('/api/stories/:id', auth, ok((q, r) => {
 app.get('/api/headline', auth, ok((q, r) => {
   const now = Date.now();
   const rooms = db.prepare('select name from rooms').all();
-  const chatting = rooms.reduce((n, x) => n + roomNames(x.name).size, 0);
+  const chatting = rooms.reduce((n, x) => n + roomNamesV(x.name).size, 0);
   const seen = new Set(); wss.clients.forEach(w => { if (w.user) seen.add(w.user); });
   let onlineN = 0; for (const u of seen) if (livePres(u, db.prepare('select presence from users where name=?').get(u)?.presence) !== 'offline') onlineN++;
   const live = db.prepare("select name,ends from contests where status='approved' and settled=0 and starts<=? and ends>? order by ends limit 4").all(now, now);
@@ -709,7 +712,7 @@ app.get('/api/rooms', auth, ok((q, r) => {
   const own = new Map(), isStaffOwner = o => { if (!o) return false; if (!own.has(o)) own.set(o, ['staff', 'admin'].includes(roleOf(o))); return own.get(o); };
   r.json(db.prepare('select name,cat,cap,owner,flag from rooms').all().map(x => {
     const cat = (gameOf(x.name) || x.cat === 'game') ? 'game' : (x.cat === 'official' || isStaffOwner(x.owner)) ? 'official' : 'user';
-    return { name: x.name, cat, cap: x.cap, owner: x.owner, flag: x.flag || '', count: roomNames(x.name).size, fav: fav.has(x.name), lvl: roomLevel(roomXpOf(x.name)), xp: Math.floor(roomXpOf(x.name)) };
+    return { name: x.name, cat, cap: x.cap, owner: x.owner, flag: x.flag || '', count: roomNamesV(x.name).size, fav: fav.has(x.name), lvl: roomLevel(roomXpOf(x.name)), xp: Math.floor(roomXpOf(x.name)) };
   }).sort((a, b) => b.count - a.count || a.name.localeCompare(b.name)));
 }));
 app.post('/api/rooms', auth, ok((q, r) => {
@@ -1053,7 +1056,7 @@ app.post('/api/tag', auth, ok((q, r) => {
 const ROOM_TABLES = [['rooms', 'name'], ['favs', 'room'], ['bans', 'room'], ['room_mods', 'room'], ['room_cfg', 'room'], ['mutes', 'room'], ['msgs', 'room'], ['room_game', 'room'], ['tp_pending', 'room'], ['rb_pending', 'room'], ['lc_pending', 'room']];
 app.get('/api/admin/rooms', auth, ok((q, r) => {
   if (!staffOnly(q, r)) return;
-  r.json(db.prepare('select name,cat,owner,cap from rooms order by cat,name').all().map(x => ({ ...x, count: roomNames(x.name).size, game: gameOf(x.name) })));
+  r.json(db.prepare('select name,cat,owner,cap from rooms order by cat,name').all().map(x => ({ ...x, count: roomNamesV(x.name).size, game: gameOf(x.name) })));
 }));
 app.post('/api/admin/rooms/rename', auth, ok(async (q, r) => {
   if (!staffOnly(q, r)) return;
@@ -2099,7 +2102,10 @@ const cast = (room, o) => {
 const goneAt = new Map();
 const AWAY_MS = 15 * 60e3;   // minimised / dropped: shown Away this long, then Offline; rooms are kept for one more AWAY_MS
 const hasSock = n => [...wss.clients].some(w => w.user === n && !w.emb && w.readyState === 1 && !(w.hiddenAt && Date.now() - w.hiddenAt > AWAY_MS));
-const livePres = (n, p) => { if (p === 'offline') return 'offline'; if (hasSock(n)) return p || 'online'; const g = goneAt.get(n); return g && Date.now() - g < AWAY_MS ? (!p || p === 'online' ? 'away' : p) : 'offline'; };
+// 'invisible' (staff/admin only): looks offline to everyone else, but the user can still use every room and feature
+const isInv = n => db.prepare('select presence from users where name=?').get(n)?.presence === 'invisible';
+const roomNamesV = room => new Set([...roomNames(room)].filter(n => !isInv(n)));
+const livePres = (n, p) => { if (p === 'offline' || p === 'invisible') return 'offline'; if (hasSock(n)) return p || 'online'; const g = goneAt.get(n); return g && Date.now() - g < AWAY_MS ? (!p || p === 'online' ? 'away' : p) : 'offline'; };
 const withPres = u => (u && u.name ? { ...u, presence: livePres(u.name, u.presence) } : u);
 const online = () => {
   const l = [...new Set([...wss.clients].filter(w => w.user).map(w => w.user))]
@@ -2151,7 +2157,7 @@ const castRoster = room => { if (room && !/^dm:/.test(room)) cast(room, { t: 'me
 // 'has left' is only announced for someone whose 'has entered' was announced: a dropped/re-opened connection no longer repeats 'left' with no 'entered'
 const ENT = new Set();
 const entMark = (u, r) => ENT.add(u + '\u0001' + r);
-const entTake = (u, r) => ENT.delete(u + '\u0001' + r);
+const entTake = (u, r) => ENT.delete(u + '\u0001' + r) && !isInv(u);
 const leaveRoom = (ws, quiet = false) => {
   const r0 = ws.room; if (!r0) return; members.get(r0)?.delete(ws); ws.room = null;
   if (!quiet && !r0.startsWith('dm:') && ws.user && ![...(members.get(r0) || [])].some(w => w.user === ws.user)) { try { db.prepare('delete from room_seen where user=? and room=?').run(ws.user, r0); db.prepare('delete from room_since where user=? and room=?').run(ws.user, r0); } catch {} } 
@@ -3057,7 +3063,7 @@ function onWsMessage(ws, raw) {
       const hist = db.prepare('select user,text,kind,ts,(select role from users where name=msgs.user) role,(select xp from users where name=msgs.user) xp from msgs where room=? and not exists(select 1 from blocks where (a=? and b=msgs.user) or (b=? and a=msgs.user)) order by id desc limit 50').all(m.room, ws.user, ws.user).reverse();
       const roomHist = (!isDm && sinceTs && !m.have) ? db.prepare('select user,text,kind,ts,(select role from users where name=msgs.user) role,(select xp from users where name=msgs.user) xp from msgs where room=? and ts>=? and not exists(select 1 from blocks where (a=? and b=msgs.user) or (b=? and a=msgs.user)) order by id desc limit 100').all(m.room, sinceTs, ws.user, ws.user).reverse() : [];
       send(ws, { t: 'history', room: m.room, items: isDm ? hist : roomHist });   // rooms: you only see what is said while you are inside
-      if (!isDm) { if (!wasHere) entMark(ws.user, m.room); if (!wasHere) cast(m.room, { t: 'enter', room: m.room, user: ws.user, role: roleOf(ws.user), xp: xpOf(ws.user), ts: Date.now() }); castRoster(m.room); }
+      if (!isDm) { if (!wasHere && !isInv(ws.user)) entMark(ws.user, m.room); if (!wasHere && !isInv(ws.user)) cast(m.room, { t: 'enter', room: m.room, user: ws.user, role: roleOf(ws.user), xp: xpOf(ws.user), ts: Date.now() }); castRoster(m.room); }
       if (tp && isTpRoom(m.room)) { ensureTp(m.room); setTimeout(() => send(ws, { t: 'tp', room: m.room, view: tp.getView(m.room, ws.user) }), 50); }
       if (!isDm && gameOf(m.room) && gameOf(m.room) !== 'tp') { ws._gp = null; gpSend(m.room, ws); }
       if (games.has(m.room)) send(ws, unoState(games.get(m.room), ws.user));
