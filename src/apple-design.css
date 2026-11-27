@@ -242,3 +242,31 @@ footer.bot .social a:hover{border-color:var(--ink);color:var(--ink)}
 .signin-two{display:grid;grid-template-columns:1fr 1fr;gap:12px}
 @media (max-width:560px){.signin-two{grid-template-columns:1fr}}
 .team-fab.tc-away{display:none}
+
+/* ---------- Overview: staff ranking ---------- */
+.sr-head{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.sr-head h3{display:flex;align-items:center;gap:8px;margin:0}
+.sr-head h3 svg{color:#c99a06}
+.sr-seg{display:inline-flex;background:var(--surface-2);border-radius:999px;padding:3px}
+.sr-seg button{border:0;background:transparent;color:var(--muted);font:inherit;font-size:13.5px;font-weight:600;padding:7px 15px;border-radius:999px;cursor:pointer}
+.sr-seg button.on{background:var(--logo-g,#05613e);color:#fff}
+.sr-grid{display:grid;grid-template-columns:1fr 1fr;gap:22px;margin-top:14px}
+@media (max-width:900px){.sr-grid{grid-template-columns:1fr}}
+.sr-col h4{display:flex;align-items:center;gap:7px;margin:0 0 2px;font-size:16px}
+.sr-col h4 svg{color:var(--brand)}
+.sr-list{list-style:none;margin:10px 0 0;padding:0;display:flex;flex-direction:column;gap:8px}
+.sr-list li{display:grid;grid-template-columns:30px minmax(0,1fr) auto;align-items:center;column-gap:10px;row-gap:5px;padding:10px 12px;border-radius:14px;background:var(--surface-2)}
+.sr-list li.me{outline:2px solid var(--logo-g,#05613e);outline-offset:-2px}
+.sr-place{width:28px;height:28px;border-radius:50%;display:grid;place-items:center;font-weight:700;font-size:13px;background:var(--surface);color:var(--muted);border:1px solid var(--line)}
+.sr-place.p1{background:linear-gradient(135deg,#f7d64a,#d4a20b);color:#3d2c00;border:0}
+.sr-place.p2{background:linear-gradient(135deg,#e6e8ea,#a9afb5);color:#2b2f33;border:0}
+.sr-place.p3{background:linear-gradient(135deg,#efb27c,#b8692c);color:#3a1d05;border:0}
+.sr-who{display:flex;align-items:center;gap:9px;min-width:0}
+.sr-nm{display:flex;flex-direction:column;min-width:0;line-height:1.25}
+.sr-nm b{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sr-you{font-size:11px;font-weight:700;color:var(--brand)}
+.sr-val{display:flex;flex-direction:column;align-items:flex-end;line-height:1.2;white-space:nowrap}
+.sr-val b{font-size:17px}
+.sr-bar{grid-column:2/4;height:6px;border-radius:99px;background:var(--line);overflow:hidden}
+.sr-bar i{display:block;height:100%;border-radius:99px;background:linear-gradient(90deg,var(--logo-g,#05613e),#1f9466)}
+.sr-areas{grid-column:2/4}

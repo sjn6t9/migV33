@@ -1,3 +1,4 @@
+import { StaffRank } from "./StaffRank.jsx";
 import React from "react";
 import {
   LuLayoutDashboard, LuSend, LuHistory, LuChevronLeft, LuChevronRight, LuUsers, LuBriefcase, LuFileText, LuStamp, LuWallet, LuPackage, LuNewspaper, LuSearch, LuSettings, LuMessageSquare,
@@ -201,6 +202,7 @@ export function Admin({ u }) {
       <h2>System overview</h2>
       <Tiles items={[[S.users.filter(x => x.role === "candidate").length, "Candidates"], [S.users.filter(x => x.role === "employer").length, "Employers"], [agents.length, "Agents"], [live().length, "Live jobs"], [S.applications.length, "Applications"], [S.applications.filter(a => a.status === "hired").length, "Hired"], [S.clearances.filter(openCl).length, "Clearances in progress"]]} />
       {queue.length ? <div className="tiles">{queue.map(([n, l, tab]) => <button key={tab} className="tile alert tilebtn" onClick={() => go(tab)}><b>{n}</b><span>{l} →</span></button>)}</div> : <div className="notice ok">Nothing waiting for review.</div>}
+      <StaffRank />
       <div className="grid g2"><div className="card"><h3 className="mb12">Applications by stage</h3><Bars rows={byStatus} /></div><div className="card"><h3 className="mb12">Live jobs by country</h3>{byCountry.length ? <Bars rows={byCountry} /> : <p className="muted">No live jobs.</p>}</div></div>
       {!isAdmin && <div className="notice">Signed in as staff. You can open: {STAFF_PERMS.filter(([k]) => can(k)).map(p => p[1]).join(", ") || "overview only"}.</div>}
     </>;

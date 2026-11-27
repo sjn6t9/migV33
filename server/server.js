@@ -2755,6 +2755,29 @@ function attTouch(u, ip0) {
   for (const d of Object.keys(ATT.ipLog)) if (d < new Date(Date.now() - 60 * 864e5).toISOString().slice(0, 10)) { delete ATT.ipLog[d]; changed = true; }
   if (changed) save();
 }
+/* staff ranking for the Overview: work done (changes they made) and who reaches the office first — today, this week (from Saturday), this month */
+A["staff.rank"] = async ({ period }, u) => {
+  must(isStaffRole(u), "Not allowed.", 403);
+  const today = bdDay(), bd = iso => new Date(Date.parse(iso) + 6 * 3600e3).toISOString();
+  let from = today;
+  if (period === "week") { const d = new Date(today + "T00:00:00Z"); from = new Date(d - ((d.getUTCDay() + 1) % 7) * 864e5).toISOString().slice(0, 10); }
+  else if (period === "month") from = today.slice(0, 8) + "01";
+  const inRange = day => day >= from && day <= today;
+  const people = db.users.filter(x => x.role === "staff" && x.status !== "suspended");
+  const ids = new Set(people.map(x => x.id)), work = {};
+  for (const e of db.staffLog) { if (!ids.has(e.uid) || e.area === "Sign-in" || !inRange(bd(e.at).slice(0, 10))) continue;
+    const w = (work[e.uid] ||= { n: 0, areas: {} }); w.n++; w.areas[e.area] = (w.areas[e.area] || 0) + 1; }
+  const rows = people.map(x => {
+    // arrival: the time the office network first saw them that day (automatic or their own tick); a tick an admin made has no arrival time
+    const mins = Object.entries(ATT.marks[x.id] || {}).filter(([d, m]) => inRange(d) && m?.at && (m.by === "auto" || m.by === "self"))
+      .map(([, m]) => { const t = bd(m.at); return +t.slice(11, 13) * 60 + +t.slice(14, 16); });
+    const w = work[x.id] || { n: 0, areas: {} };
+    const m = x.memberId && db.team.find(y => y.id === x.memberId);
+    return { id: x.id, name: x.name, title: m?.title || x.title || "", memberId: m?.id || "", work: w.n, areas: Object.entries(w.areas).sort((a, b) => b[1] - a[1]).slice(0, 3),
+      days: mins.length, avg: mins.length ? Math.round(mins.reduce((a, b) => a + b, 0) / mins.length) : null, first: mins.length ? Math.min(...mins) : null };
+  });
+  return { from, to: today, period: ["week", "month"].includes(period) ? period : "day", rows };
+};
 A["attendance.tick"] = async (d, u, ctx) => {
   must(isStaffRole(u), "Not allowed.", 403);
   const day = attDay(), target = d.uid && d.uid !== u.id ? d.uid : u.id, date = okDate(d.date);
