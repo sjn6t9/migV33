@@ -309,3 +309,11 @@ footer.bot .social a:hover{border-color:var(--ink);color:var(--ink)}
 .sr-mdate{font-size:12.5px;font-weight:700;color:var(--muted);min-width:46px}
 .sr-mtext{flex:1;min-width:0}
 .sr-mcount{color:var(--brand)}
+/* Website › RAIMS IDs */
+.ri-list{display:flex;flex-direction:column;gap:12px}
+.ri-card{display:flex;flex-direction:column;gap:8px}
+.ri-top{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.ri-who{display:flex;flex-direction:column;min-width:0}
+.ri-st{display:inline-flex;align-items:center;gap:6px;font-size:13px;font-weight:600}
+.ri-st svg{width:16px;height:16px}.ri-st.ok{color:var(--brand)}.ri-st.bad{color:#e00000}
+.ri-pass{display:flex;align-items:center;gap:6px}.ri-pass input{flex:1}

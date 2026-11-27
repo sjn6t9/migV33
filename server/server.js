@@ -8,6 +8,7 @@ import fs from "node:fs";
 import path from "node:path";
 import crypto from "node:crypto";
 import { fileURLToPath } from "node:url";
+import { AsyncLocalStorage } from "node:async_hooks";
 import { COUNTRIES, HOURLY, STAGES, CL_STAGES, STAFF_PERMS, LABEL, INITIAL, TEAM_DEPTS, VISA_FIELDS, VISA_DATES, clCountryOk, CL_REGIONS } from "../src/constants.js";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
@@ -252,6 +253,8 @@ function viewFor(u) {
     if (can(u, "ledger") || can(u, "office") || can(u, "receipts")) pub.leaders = leaders().map(({ k, name, title }) => ({ k, name, title }));
     if (can(u, "clearance") || u.role === "agent") pub.raimsReady = !!db.raims?.pass;
     if (can(u, "tickets")) { pub.wftt = db.wftt ? { ...(u.role === "admin" ? { email: db.wftt.email } : {}), since: db.wftt.since || null, ready: !!db.wftt.token, markup: Number(db.settings.ticketMarkup || 0) } : null; pub.flightsReady = !!db.wftt?.token; }
+    if (u.role === "admin") pub.raimsIds = { main: db.raims ? { email: db.raims.email, since: db.raims.since || null, last: db.raims.last ? { at: db.raims.last.at, ok: db.raims.last.ok, rows: db.raims.last.rows, updated: db.raims.last.updated?.length || 0, error: db.raims.last.error || "" } : null } : null,
+      list: (db.raimsAccounts || []).map(a => ({ id: a.id, email: a.email, label: a.label || "", auto: a.auto !== false, since: a.since || null, added: a.added, last: a.last ? { at: a.last.at, ok: a.last.ok, rows: a.last.rows, matched: a.last.matched, updated: a.last.updated?.length || 0, error: a.last.error || "" } : null })) };
     if (can(u, "clearance")) pub.raims = db.raims ? { ...(u.role === "admin" ? { email: db.raims.email } : {}), auto: db.raims.auto, saved: !!db.raims.pass, since: db.raims.since || null, last: db.raims.last || null } : null;
     if (PP_PERMS.some(k => can(u, k))) { pub.passports = db.passports; pub.agentBook = db.agentBook; pub.bookMatch = Object.fromEntries(db.users.filter(x => x.role === "agent" && x.status !== "active").map(x => [x.id, bookMatches(x).map(b => b.name)]).filter(([, v]) => v.length)); }
     if (can(u, "visa")) pub.visa = db.visa;
@@ -1114,14 +1117,21 @@ function raimsRows(html, json) {
   return { head, rows, links };
 }
 /* a signed-in RAIMS session, kept for 15 minutes so several checks in a row do not sign in each time */
-let raimsSess = null; // the admin's RAIMS sign-in: kept until the admin logs out of RAIMS (also across restarts); signed in again by itself if RAIMS ends it
-function raimsRestore() { if (raimsSess || !db.raims?.cookies) return; try { const J = jar(); Object.assign(J.c, JSON.parse(unseal(db.raims.cookies))); raimsSess = { J, at: Date.now(), email: db.raims.email }; } catch {} }
-function raimsKeep(J) { raimsSess = { J, at: Date.now(), email: db.raims.email }; try { db.raims.cookies = seal(JSON.stringify(J.c)); db.raims.since = db.raims.since || now(); save(); } catch {} }
+/* several RAIMS IDs: the first (db.raims) is the main one; more are in db.raimsAccounts. Each request runs with one account
+   (raimsCtx), and each account keeps its own sign-in (SS, by email) */
+
+const raimsCtx = new AsyncLocalStorage();
+const RA = () => raimsCtx.getStore() || db.raims;
+const SS = {}; const sk = () => raimsCtx.getStore()?.email || "";
+const withRaims = (acc, fn) => raimsCtx.run(acc, fn);
+// the admin's RAIMS sign-in: kept until the admin logs out of RAIMS (also across restarts); signed in again by itself if RAIMS ends it
+function raimsRestore() { if (SS[sk()] || !RA()?.cookies) return; try { const J = jar(); Object.assign(J.c, JSON.parse(unseal(RA().cookies))); SS[sk()] = { J, at: Date.now(), email: RA().email }; } catch {} }
+function raimsKeep(J) { SS[sk()] = { J, at: Date.now(), email: RA().email }; try { RA().cookies = seal(JSON.stringify(J.c)); RA().since = RA().since || now(); save(); } catch {} }
 async function raimsLogin(fresh = false) {
-  const R = db.raims; must(R?.email && R?.pass, "The admin has not signed in to RAIMS yet (BMET clearance › RAIMS).");
+  const R = RA(); must(R?.email && R?.pass, "The admin has not signed in to RAIMS yet (BMET clearance › RAIMS).");
   raimsRestore();
-  if (!fresh && raimsSess && raimsSess.email === R.email) return raimsSess.J;
-  raimsSess = null; const J = jar();
+  if (!fresh && SS[sk()] && SS[sk()].email === R.email) return SS[sk()].J;
+  SS[sk()] = null; const J = jar();
   try {
     const lp = await rq(J, "/agency/login");
     const tok = (/name="_token"[^>]*value="([^"]+)"/.exec(lp.text) || /name="csrf-token"[^>]*content="([^"]+)"/.exec(lp.text) || [])[1];
@@ -1129,7 +1139,7 @@ async function raimsLogin(fresh = false) {
     must(tok, "The RAIMS sign-in page did not load. The site may be down or blocking this server.");
     const li = await rq(J, action.replace(/&amp;/g, "&"), { method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded", Referer: lp.url }, body: new URLSearchParams({ _token: tok, email: R.email, password: unseal(R.pass), remember: "on" }).toString() });
     must(!(/name="password"/i.test(li.text) && /login/i.test(li.url)), "RAIMS did not accept the sign-in. Check the RAIMS email and password.");
-    db.raims.since = now(); raimsKeep(J); return J;
+    RA().since = now(); raimsKeep(J); return J;
   } catch (e) { if (e instanceof Fail) throw e; must(false, `Could not reach RAIMS: ${e.message}`); }
 }
 /* label → value pairs of a RAIMS page (labels with inputs, or label / value boxes), and its alert messages */
@@ -1230,7 +1240,7 @@ async function preEcCheck({ passport, returnee, otherPassport }) {
   for (let attempt = 0; attempt < 2; attempt++) {
     const J = await raimsLogin(attempt > 0);
     const pg = await rq(J, "/agency/employee/pre-ec-check");
-    if (/name="password"/i.test(pg.text) && /login/i.test(pg.url)) { raimsSess = null; continue; }
+    if (/name="password"/i.test(pg.text) && /login/i.test(pg.url)) { SS[sk()] = null; continue; }
     const tok = (/name="_token"[^>]*value="([^"]+)"/.exec(pg.text) || /name="csrf-token"[^>]*content="([^"]+)"/.exec(pg.text) || [])[1] || "";
     // the form on the page: its address and the names of its fields
     const form = [...pg.text.matchAll(/<form\b([^>]*)>([\s\S]*?)<\/form>/gi)].find(f => /passport/i.test(f[2])) || null;
@@ -1309,7 +1319,7 @@ async function preEcCheck({ passport, returnee, otherPassport }) {
 }
 /* signs in and reads the EC application list; throws a Fail with a plain message when something is wrong */
 async function raimsOpen(search = "") {
-  must(db.raims?.email && db.raims?.pass, "The admin has not signed in to RAIMS yet (BMET clearance › RAIMS).");
+  must(RA()?.email && RA()?.pass, "The admin has not signed in to RAIMS yet (BMET clearance › RAIMS).");
   try {
     let J = await raimsLogin(), lst = await rq(J, "/agency/ec/application/list");
     if (/name="password"/i.test(lst.text) && /login/i.test(lst.url)) { J = await raimsLogin(true); lst = await rq(J, "/agency/ec/application/list"); }
@@ -1354,7 +1364,7 @@ async function raimsApiList(search = "") {
   for (let attempt = 0; attempt < 2; attempt++) {
     const J = await raimsLogin(attempt > 0);
     const pg = await rq(J, "/agency/ec/application/list");
-    if (/name="password"/i.test(pg.text) && /login/i.test(pg.url)) { raimsSess = null; continue; }
+    if (/name="password"/i.test(pg.text) && /login/i.test(pg.url)) { SS[sk()] = null; continue; }
     const key = raimsApiKey(pg.text);
     must(key, "RAIMS list page gave no API key.");
     const rows = [], raw = []; let total = Infinity;
@@ -1376,7 +1386,7 @@ async function raimsApiList(search = "") {
   must(false, "RAIMS signed out.");
 }
 async function raimsSync(by = "auto") {
-  const R = db.raims, out = { at: now(), by, rows: 0, matched: 0, updated: [], statuses: {} };
+  const R = RA(), out = { at: now(), by, rows: 0, matched: 0, updated: [], statuses: {} };
   try {
     // the list page fills its table from the RAIMS API (api/v1/agency/ec/apllication/list, Bearer = the page's jsUtlt apiKey)
     let parsed = null; try { parsed = await raimsApiList(); out.via = "api"; } catch (e) { out.apiError = e.message; }
@@ -1415,11 +1425,48 @@ async function raimsSync(by = "auto") {
     }
     out.ok = true;
   } catch (e) { out.ok = false; out.error = e instanceof Fail ? e.message : `Could not reach RAIMS: ${e.message}`; }
-  if (db.raims) db.raims.last = out; save(); return out;
+  if (RA()) RA().last = out; save(); return out;
 }
 // every 15 minutes while RAIMS is signed in (unless the admin turned automatic sync off); and shortly after a file is Sent to BMET
 let syncing = false, soonT = null;
-const autoSync = () => { if (syncing || !db.raims || db.raims.auto === false || !(db.raims.pass || db.raims.cookies)) return; syncing = true; raimsSync("auto").catch(() => {}).finally(() => { syncing = false; }); };
+/* the other RAIMS IDs (Website › RAIMS IDs): their EC application lists are read the same way, one after another */
+if (!db.raimsAccounts) db.raimsAccounts = [];
+async function syncOtherRaims(by) {
+  const out = [];
+  for (const acc of db.raimsAccounts) { if (!acc.pass) continue; const r = await withRaims(acc, () => raimsSync(by)); r.email = acc.email; out.push(r); }
+  return out;
+}
+const autoSync = () => {
+  if (syncing) return;
+  const main = db.raims && db.raims.auto !== false && (db.raims.pass || db.raims.cookies), more = db.raimsAccounts.some(a => a.pass && a.auto !== false);
+  if (!main && !more) return; syncing = true;
+  (async () => { if (main) await raimsSync("auto").catch(() => {}); for (const acc of db.raimsAccounts) if (acc.pass && acc.auto !== false) await withRaims(acc, () => raimsSync("auto")).catch(() => {}); })().finally(() => { syncing = false; });
+};
+A["admin.raimsIds"] = async (d, u) => {
+  must(u?.role === "admin", "Only the admin can manage RAIMS IDs.", 403);
+  const acc = d.id ? db.raimsAccounts.find(a => a.id === d.id) : null;
+  if (d.op === "add") {
+    const email = str(d.email, 120).toLowerCase(); must(/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email), "Enter the RAIMS email.");
+    must(String(d.password || "").length >= 1, "Enter the RAIMS password.");
+    must(email !== db.raims?.email && !db.raimsAccounts.some(a => a.email === email), "This RAIMS ID is already added.");
+    const a = { id: id("ra"), email, label: str(d.label, 80), pass: seal(String(d.password).slice(0, 200)), auto: d.auto !== false, added: now(), by: u.id };
+    await withRaims(a, () => raimsLogin(true)); // checks the email and password with RAIMS first
+    db.raimsAccounts.push(a);
+    const r = await withRaims(a, () => raimsSync(u.name));
+    return { msg: `Signed in to RAIMS as ${email}.${r.ok ? ` ${r.rows} files read, ${r.updated.length} updated.` : ""}` };
+  }
+  must(acc, "RAIMS ID not found.");
+  if (d.op === "sync") { const r = await withRaims(acc, () => raimsSync(u.name)); return r.ok ? { msg: `${acc.email}: ${r.rows} files read, ${r.matched} matched, ${r.updated.length} updated.` } : { problem: r.error }; }
+  if (d.op === "edit") { acc.label = str(d.label, 80); if (d.auto !== undefined) acc.auto = d.auto !== false;
+    if (d.password) { acc.pass = seal(String(d.password).slice(0, 200)); delete acc.cookies; SS[acc.email] = null; await withRaims(acc, () => raimsLogin(true)); }
+    return { msg: "RAIMS ID saved." }; }
+  if (d.op === "del") {
+    await withRaims(acc, async () => { try { raimsRestore(); const S0 = SS[sk()]; if (S0) { const pg = await rq(S0.J, "/agency/dashboard"); const tok = (/name="csrf-token"[^>]*content="([^"]+)"/.exec(pg.text) || /name="_token"[^>]*value="([^"]+)"/.exec(pg.text) || [])[1] || "";
+      const act = (/<form[^>]*action="([^"]*logout[^"]*)"/i.exec(pg.text) || [])[1] || "/agency/logout"; await rq(S0.J, act.replace(/&amp;/g, "&"), { method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded" }, body: new URLSearchParams({ _token: tok }).toString() }); } } catch {} });
+    delete SS[acc.email]; db.raimsAccounts = db.raimsAccounts.filter(a => a !== acc); return { msg: `Logged out of RAIMS and removed ${acc.email}.` };
+  }
+  must(false, "Unknown request.");
+};
 setInterval(autoSync, 15 * 60e3).unref();
 const syncSoon = () => { clearTimeout(soonT); soonT = setTimeout(autoSync, 20e3); soonT.unref?.(); };
 const lastRaims = new Map(); // the last RAIMS page read, for the admin to download when a page is not read right
@@ -1547,7 +1594,7 @@ async function clearanceCheck({ q, by }) {
   for (let attempt = 0; attempt < 2; attempt++) {
     const J = await raimsLogin(attempt > 0);
     const pg = await rq(J, "/agency/employee/clearance-check");
-    if (/name="password"/i.test(pg.text) && /login/i.test(pg.url)) { raimsSess = null; continue; }
+    if (/name="password"/i.test(pg.text) && /login/i.test(pg.url)) { SS[sk()] = null; continue; }
     const tok = (/name="_token"[^>]*value="([^"]+)"/.exec(pg.text) || /name="csrf-token"[^>]*content="([^"]+)"/.exec(pg.text) || [])[1] || "";
     const tried = []; let got = null, raw = "";
     // 0) what the page itself does: POST clearance_input_type (1 passport, 2 Clearance ID) + passport_or_clearance_no, X-CSRF-TOKEN from the meta tag
@@ -1635,16 +1682,16 @@ A["admin.raims"] = async (d, u) => {
     const email = str(d.email, 120).toLowerCase(); must(/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email), "Enter the RAIMS email.");
     db.raims = { ...(db.raims || {}), email, auto: d.auto !== false, ...(d.password ? { pass: seal(String(d.password).slice(0, 200)) } : {}) };
     must(db.raims.pass, "Enter the RAIMS password.");
-    raimsSess = null; delete db.raims.cookies;
+    SS[sk()] = null; delete db.raims.cookies;
     try { await raimsLogin(true); } catch (e) { delete db.raims.pass; throw e; }
     return { msg: `Signed in to RAIMS as ${email}.` };
   }
   if (d.op === "rawPage") { must(u.role === "admin", "Only the admin can download this.", 403); const x = lastRaims.get("page"); must(x, "Search RAIMS first."); return { url: x.url, html: x.html }; }
   if (d.op === "remove" || d.op === "logout") {
     must(u.role === "admin", "Only the admin can change the RAIMS sign-in.", 403);
-    try { raimsRestore(); if (raimsSess) { const pg = await rq(raimsSess.J, "/agency/dashboard"); const tok = (/name="csrf-token"[^>]*content="([^"]+)"/.exec(pg.text) || /name="_token"[^>]*value="([^"]+)"/.exec(pg.text) || [])[1] || "";
-      const act = (/<form[^>]*action="([^"]*logout[^"]*)"/i.exec(pg.text) || [])[1] || "/agency/logout"; await rq(raimsSess.J, act.replace(/&amp;/g, "&"), { method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded" }, body: new URLSearchParams({ _token: tok }).toString() }); } } catch {}
-    raimsSess = null; delete db.raims; return { msg: "Logged out of RAIMS." };
+    try { raimsRestore(); if (SS[sk()]) { const pg = await rq(SS[sk()].J, "/agency/dashboard"); const tok = (/name="csrf-token"[^>]*content="([^"]+)"/.exec(pg.text) || /name="_token"[^>]*value="([^"]+)"/.exec(pg.text) || [])[1] || "";
+      const act = (/<form[^>]*action="([^"]*logout[^"]*)"/i.exec(pg.text) || [])[1] || "/agency/logout"; await rq(SS[sk()].J, act.replace(/&amp;/g, "&"), { method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded" }, body: new URLSearchParams({ _token: tok }).toString() }); } } catch {}
+    SS[sk()] = null; delete db.raims; return { msg: "Logged out of RAIMS." };
   }
   /* Add bulk: an IC number or application ID → every worker under it (name, passport, country, IC number) */
   if (d.op === "lookup") {
@@ -1766,7 +1813,13 @@ A["admin.raims"] = async (d, u) => {
     }
     return out;
   }
-  if (d.op === "sync") { const r = await raimsSync(u.name); return r.ok ? { msg: `RAIMS: ${r.rows} files read, ${r.matched} matched, ${r.updated.length} updated.` } : { problem: r.error }; }
+  if (d.op === "sync") { // the main RAIMS ID, then every other RAIMS ID added in Website › RAIMS IDs
+    const r = db.raims ? await raimsSync(u.name) : null, more = await syncOtherRaims(u.name);
+    const all = [r, ...more].filter(Boolean), ok = all.filter(x => x.ok);
+    if (!ok.length) return { problem: (r || more[0])?.error || "No RAIMS ID is signed in." };
+    const sum = k => ok.reduce((t, x) => t + (k === "updated" ? x.updated.length : x[k]), 0);
+    return { msg: `RAIMS${all.length > 1 ? ` (${ok.length}/${all.length} IDs)` : ""}: ${sum("rows")} files read, ${sum("matched")} matched, ${sum("updated")} updated.${all.length > ok.length ? " Some RAIMS IDs could not be read — see Website › RAIMS IDs." : ""}` };
+  }
   must(false, "Unknown request.");
 };
 /* change the agent (reference) of a clearance file: a registered agent, or a name (Self, a book agent …).
@@ -1834,7 +1887,7 @@ async function raimsCardFile(no) {
       if (b.slice(1, 4).toString() === "PNG") { buf = b; type = "image/png"; break; }
       if (/name="password"/i.test(b.toString("utf8", 0, 20000))) signedOut = true; why = "not a card";
     }
-    if (!buf && !signedOut) break; if (signedOut) raimsSess = null;
+    if (!buf && !signedOut) break; if (signedOut) SS[sk()] = null;
   }
   must(buf, why === "not a card" || /^4/.test(why) ? `RAIMS did not give a card for ${no}. Check the Clearance ID.` : "RAIMS signed out. Sign in to RAIMS again from BMET clearance › RAIMS.");
   const ext = type === "application/pdf" ? "pdf" : type === "image/png" ? "png" : "jpg";

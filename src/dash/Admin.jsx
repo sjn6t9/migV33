@@ -1,3 +1,4 @@
+import { RaimsIds } from "./RaimsIds.jsx";
 import React from "react";
 import {
   LuLayoutDashboard, LuSend, LuHistory, LuChevronLeft, LuChevronRight, LuUsers, LuBriefcase, LuFileText, LuStamp, LuWallet, LuPackage, LuNewspaper, LuSearch, LuSettings, LuMessageSquare,
@@ -28,7 +29,7 @@ import { ClearanceCheck } from "./ClearanceCheck.jsx";
 import { FlightSearch, FlightCard, TicketFlight } from "./Flights.jsx";
 import { agentRows } from "../statement.js";
 import { MFS, BANKS } from "../banks.js";
-import { LuNotebookPen, LuReceipt, LuLandmark, LuBanknote, LuScrollText, LuBookUser, LuFileCheck2, LuHandCoins, LuPlaneTakeoff, LuCalendarCheck, LuSettings2, LuLogOut, LuMegaphone, LuCirclePlus, LuListPlus, LuContact, LuGlobe, LuRefreshCw, LuShieldCheck, LuLogIn, LuCircleCheck } from "react-icons/lu";
+import { LuKeyRound, LuNotebookPen, LuReceipt, LuLandmark, LuBanknote, LuScrollText, LuBookUser, LuFileCheck2, LuHandCoins, LuPlaneTakeoff, LuCalendarCheck, LuSettings2, LuLogOut, LuMegaphone, LuCirclePlus, LuListPlus, LuContact, LuGlobe, LuRefreshCw, LuShieldCheck, LuLogIn, LuCircleCheck } from "react-icons/lu";
 import { ShareButton, storeCard } from "../Share.jsx";
 import { ChatInbox, useInboxUnread } from "../LiveChat.jsx";
 
@@ -42,7 +43,7 @@ function FilterButtons({ items, cur, onPick }) {
 // sections inside "Payments & receipts" (each still needs its own staff permission)
 const PAY_SUB = [["receipts", "Money receipts", LuReceipt], ["ledger", "Agent accounts", LuWallet], ["office", "Main account", LuLandmark], ["txhist", "Transaction history", LuHistory], ["khata", "Other accounts", LuNotebookPen], ["delivery", "Passport Delivery List", LuStamp], ["duelist", "Due Amount List", LuReceipt], ["salary", "Salary accounts", LuBanknote], ["statements", "Statements", LuScrollText], ["packages", "Employer packages", LuPackage]];
 // sections inside "Website" (each still needs its own staff permission)
-const WEB_SUB = [["content", "Website content", LuImage], ["headlines", "Headlines", LuMegaphone], ["about", "About page", LuInfo], ["slides", "Home slideshow", LuGalleryHorizontal], ["blog", "Blog", LuNewspaper], ["seo", "SEO", LuSearch], ["settings", "Site settings", LuSettings], ["staff", "Staff & permissions", LuUserCog], ["staffhist", "Staff history", LuHistory]];
+const WEB_SUB = [["content", "Website content", LuImage], ["headlines", "Headlines", LuMegaphone], ["about", "About page", LuInfo], ["slides", "Home slideshow", LuGalleryHorizontal], ["blog", "Blog", LuNewspaper], ["seo", "SEO", LuSearch], ["settings", "Site settings", LuSettings], ["staff", "Staff & permissions", LuUserCog], ["staffhist", "Staff history", LuHistory], ["raimsids", "RAIMS IDs", LuKeyRound]];
 const TABS = [
   ["overview", "Overview", LuLayoutDashboard], ["users", "Accounts", LuUsers], ["jobs", "Job moderation", LuBriefcase], ["apps", "Applications", LuFileText],
   ["clearance", "BMET clearance", LuStamp], ["passports", "Passport Entry", LuBookUser], ["agents", "Agents", LuContact], ["visa", "Visa applications", LuPlaneTakeoff], ["tickets", "Air tickets", LuTicket], ["pay", "Payments & receipts", LuReceipt], ["mysalary", "My salary", LuWallet], ["myaccounts", "My Accounts", LuNotebookPen], ["mymoney", "Money with me", LuHandCoins], ["attendance", "Office attendance", LuCalendarCheck],
@@ -429,6 +430,7 @@ export function Admin({ u }) {
   if (t === "mysettings") body = <MySettings />;
   if (t === "headlines") body = <HeadlinesAdmin />;
   if (t === "attendance") body = <Attendance />;
+  if (t === "raimsids") body = <RaimsIds />;
   if (t === "statements") body = <StatementsAdmin can={can0} />;
   if (t === "messages") body = <>
     <h2>Contact messages</h2>
