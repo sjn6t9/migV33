@@ -26,7 +26,7 @@ export function StaffRank() {
   const away = rows ? rows.filter(r => r.avg == null) : [];
   const Who = ({ r }) => <div className="sr-who"><Avatar name={r.name} src={photo(r)} size={36} /><div className="sr-nm"><b data-notr>{r.name}</b>{r.id === me ? <span className="sr-you">{t("You")}</span> : null}{r.title ? <span className="muted small">{t(r.title)}</span> : null}</div></div>;
   return (
-    <section className="card sr mt16" aria-labelledby="sr-h">
+    <section className="card sr mt16 mb16" aria-labelledby="sr-h">
       <div className="sr-head">
         <h3 id="sr-h"><LuTrophy /> Staff ranking</h3>
         <div className="sr-seg" role="tablist" aria-label="Period">{PERIODS.map(([k, l]) => <button key={k} type="button" role="tab" aria-selected={period === k} className={period === k ? "on" : ""} onClick={() => setPeriod(k)}>{l}</button>)}</div>

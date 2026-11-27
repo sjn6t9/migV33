@@ -1,3 +1,4 @@
+import { StaffRank } from "./StaffRank.jsx";
 // Admin / staff: own Settings (signature, Day/Night/System, password, language, log out), Office attendance, and the admin's attendance settings.
 import React from "react";
 import { LuPenLine, LuSunMoon, LuSun, LuMoon, LuMonitor, LuKeyRound, LuLanguages, LuLogOut, LuChevronLeft, LuChevronRight, LuCheck, LuWifi, LuTrash2, LuPlus, LuRefreshCw } from "react-icons/lu";
@@ -57,6 +58,7 @@ export function Attendance() {
   return <>
     <div className="ec-head"><div><h2>Office attendance</h2><p className="muted small">Signing in from the office network ticks the day by itself. You can also tick today yourself; a past day cannot be changed. Friday and government holidays are off.</p></div></div>
     {admin && <nav className="pay-tabs" aria-label="Attendance view"><button className={view === "me" ? "on" : ""} onClick={() => setView("me")}>By person</button><button className={view === "all" ? "on" : ""} onClick={() => setView("all")}>Everyone</button></nav>}
+    <StaffRank /> {/* staff ranking: work done and first to the office */}
     <div className="card">
       <div className="att-top">
         <button className="btn sm" onClick={() => setYm(shift(ym, -1))} aria-label="Previous month"><LuChevronLeft /></button>
