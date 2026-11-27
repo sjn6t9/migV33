@@ -388,7 +388,9 @@ const fstate = (a, b) => {
 
 app.get('/api/me', auth, ok((q, r) => { const x = db.prepare('select email,mobile,mpin,sec_q from users where name=?').get(q.user); r.json({ ...selfProfile(q.user), email: x.email, mobile: x.mobile, hasPin: !!x.mpin, secQ: x.sec_q || '', secQs: SEC_QS, unlimited: isMain(q.user) }); }));
 app.put('/api/me', auth, ok((q, r) => {
-  const { bio, status_text, presence } = q.body || {};
+  const { bio, status_text, presence, full_name, gender } = q.body || {};
+  if (typeof full_name === 'string' && full_name.trim()) db.prepare('update users set full_name=? where name=?').run(full_name.trim().slice(0, 40), q.user);
+  if (['Male', 'Female', 'Other'].includes(gender)) db.prepare('update users set gender=? where name=?').run(gender, q.user);
   if (typeof bio === 'string') db.prepare('update users set bio=? where name=?').run(bio.slice(0, 200), q.user);
   if (typeof status_text === 'string') db.prepare('update users set status_text=? where name=?').run(status_text.slice(0, 60), q.user);
   if (presence === 'invisible' && !['admin', 'staff'].includes(roleOf(q.user))) return bad(r, 'Only staff and admins can go invisible.', 403);
