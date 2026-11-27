@@ -2748,6 +2748,10 @@ html[data-apple=night]{--ap-bg:#000000;--ap-card:#1c1c1e;--ap-tx:#f5f5f7;--ap-mu
 #svol .svi{width:24px;height:24px;display:block;cursor:pointer;color:#fff}
 #svol .svi svg{width:24px;height:24px;fill:none;stroke:#fff;stroke-width:2;stroke-linejoin:round;stroke-linecap:round}
 #svol .svi svg path:first-child{fill:#fff}
+
+.fbp .nm [style*=vipOrbit]{vertical-align:middle}
+.fbp .shr .shh .nm,.fbp>header .nm{display:flex;align-items:center;flex-wrap:wrap;gap:2px 6px}
+.fbp .shr .shh .meta{margin-top:3px}
 </style>
 </head>
 <body>
@@ -3433,13 +3437,13 @@ cm:'<svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentC
 sh:'<svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4.500 21.500 12 14 19.500v-4.300c-5.500-.2-8.800 1.500-10.700 5 .5-6.200 4-10.400 10.700-11.200z"/></svg>'};
 const pTxt=x=>x.text&&tbgOf(x.bg)&&!x.image?`<div class="tbg" style="background:${tbgOf(x.bg)[0]};color:${tcol(x.bg)};font-size:${tbgFs(x.text.length)}px${tbgOf(x.bg)[2]?';text-shadow:0 2px 10px rgba(0,0,0,.45)':''}"><span>${rich(x.text)}</span></div>`:x.text?`<div class="txt${!x.image&&!x.rurl&&x.text.length<70?' xl':''}">${rich(x.text)}</div>`:'';
 const pMedia=(x,tag)=>(x.rurl?`<div class="prl" data-reel="${x.reel}" role="button" aria-label="Play reel"><video muted playsinline preload="metadata" ${x.rposter?`poster="${esc(x.rposter)}" `:''}src="${esc(x.rurl)}#t=0.1"></video><i class="prp" role="button" aria-label="Play"><svg class="sp" viewBox="0 0 24 24"><path d="M8 5.5v13l11-6.5z"/></svg><svg class="sq" viewBox="0 0 24 24"><path d="M7 5h3.5v14H7zM13.5 5H17v14h-3.5z"/></svg></i>${tag?'<span class="prt">Reel</span>':''}</div>`:'')+(x.image?`<img class="pimg" src="${esc(x.image)}" loading="lazy" alt="Photo">`:'');
-const pNest=o=>`<div class="shr"><div class="shh">${av(o.user,40)}<div class="who"><div class="nm" style="color:${nc(o.user)}"><span data-u="${esc(o.user)}">${esc(o.user)}</span>${rt(o.role,o.user)}<span class="lvp">${lvi(lv(o.xp),16)}Lv ${lv(o.xp)}</span></div><div class="meta">${ago(o.ts)} · 🌐</div></div></div>${pTxt(o)}${pMedia(o,false)}</div>`;
+const pNest=o=>`<div class="shr"><div class="shh">${av(o.user,40)}<div class="who"><div class="nm"><span data-u="${esc(o.user)}" style="color:${nc(o.user)}">${esc(o.user)}</span>${rt(o.role,o.user)}<span class="lvp">${lvi(lv(o.xp),16)}Lv ${lv(o.xp)}</span></div><div class="meta">${ago(o.ts)} · 🌐</div></div></div>${pTxt(o)}${pMedia(o,false)}</div>`;
 function postHTML(p,i){const mod=['staff','admin'].includes(ST.role),own=p.user===me,canC=!p.locked||own||mod;
   const stack=(p.rks||'').split(',').filter(Boolean).map(k=>EM[k]).join('')||LIKE_IMG;
   const o=p.o||(p.rurl&&p.ruser&&p.ruser!==p.user?{user:p.ruser,xp:p.rxp,role:p.rrole,ts:p.rts||p.ts,text:p.rcap||'',reel:p.reel,rurl:p.rurl,rposter:p.rposter}:null);
   const body=o?`${pTxt(p)}${pNest(o)}`:`${pTxt(p)}${pMedia(p,true)}`;
   return `<article class="fbp post${p.pinned?' pinned':''}${o?' shd':''}" data-id="${p.id}">${p.pinned?'<div class="pin">📌 Pinned post</div>':''}
-  <header>${av(p.user,44)}<div class="who"><div class="nm" style="color:${nc(p.user)}"><span data-u="${esc(p.user)}">${esc(p.user)}</span>${rt(p.role,p.user)}<span class="lvp">${lvi(lv(p.xp),16)}Lv ${lv(p.xp)}</span></div><div class="meta">${ago(p.ts)}${p.edited?' · Edited':''} · 🌐</div></div><button class="pm" data-a="menu" aria-label="Post options">⋯</button></header>
+  <header>${av(p.user,44)}<div class="who"><div class="nm"><span data-u="${esc(p.user)}" style="color:${nc(p.user)}">${esc(p.user)}</span>${rt(p.role,p.user)}<span class="lvp">${lvi(lv(p.xp),16)}Lv ${lv(p.xp)}</span></div><div class="meta">${ago(p.ts)}${p.edited?' · Edited':''} · 🌐</div></div><button class="pm" data-a="menu" aria-label="Post options">⋯</button></header>
   ${body}
   <div class="acts fbx"><div class="ac"><button data-a="react" class="${p.mine?'on':''}" aria-label="React">${p.mine?(EM[p.mine]||LIKE_IMG):FBI.like}</button><button class="cnt" data-w="react" data-n="${p.reacts}" title="Who reacted">${p.reacts||''}</button><div class="rpk" hidden>${reactList().map(([k,e])=>`<button data-k="${k}" class="${p.mine===k?'on':''}" title="${k}">${e}</button>`).join('')}</div></div>
   <div class="ac"><button data-a="comment" aria-label="Comment">${p.locked?'🔒':FBI.cm}</button><button class="cnt" data-w="comment" title="Who commented">${p.comments||''}</button></div>
