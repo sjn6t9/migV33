@@ -297,3 +297,15 @@ footer.bot .social a:hover{border-color:var(--ink);color:var(--ink)}
 .sr-nav{display:flex;align-items:center;justify-content:center;gap:10px;flex-wrap:wrap;margin-top:12px}
 .sr-when{min-width:170px;text-align:center}
 @media (max-width:600px){.att-cell .att-t small{display:none}}
+/* staff ranking: manual work */
+.sr-manual{margin-top:18px;padding-top:14px;border-top:1px solid var(--line)}
+.sr-manual h4{display:flex;align-items:center;gap:7px;margin:0;font-size:16px}
+.sr-manual h4 svg{color:var(--brand)}
+.sr-form{display:grid;grid-template-columns:1.2fr 1fr 1.2fr .7fr;gap:10px;margin:12px 0;padding:14px;border-radius:14px;background:var(--surface-2)}
+.sr-form .sr-note{grid-column:1/-1}.sr-form .sr-btns{grid-column:1/-1}
+@media (max-width:700px){.sr-form{grid-template-columns:1fr 1fr}}
+.sr-mlist{list-style:none;margin:10px 0 0;padding:0;display:flex;flex-direction:column;gap:6px}
+.sr-mlist li{display:flex;align-items:center;gap:10px;padding:8px 12px;border-radius:12px;background:var(--surface-2)}
+.sr-mdate{font-size:12.5px;font-weight:700;color:var(--muted);min-width:46px}
+.sr-mtext{flex:1;min-width:0}
+.sr-mcount{color:var(--brand)}

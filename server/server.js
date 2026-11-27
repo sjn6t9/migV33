@@ -2771,16 +2771,33 @@ A["staff.rank"] = async ({ period, back }, u) => {
   const ids = new Set(people.map(x => x.id)), work = {};
   for (const e of db.staffLog) { if (!ids.has(e.uid) || e.area === "Sign-in" || !inRange(bd(e.at).slice(0, 10))) continue;
     const w = (work[e.uid] ||= { n: 0, areas: {} }); w.n++; w.areas[e.area] = (w.areas[e.area] || 0) + 1; }
+  // work an admin added by hand (done outside the panel) counts the same
+  for (const e of db.manualWork || []) { if (!ids.has(e.uid) || !inRange(e.date)) continue;
+    const w = (work[e.uid] ||= { n: 0, areas: {} }); w.n += e.count; w.manual = (w.manual || 0) + e.count; w.areas[e.area] = (w.areas[e.area] || 0) + e.count; }
   const rows = people.map(x => {
     // arrival: the time the office network first saw them that day (automatic or their own tick); a tick an admin made has no arrival time
     const mins = Object.entries(ATT.marks[x.id] || {}).filter(([d, m]) => inRange(d) && m?.at && (m.by === "auto" || m.by === "self"))
       .map(([, m]) => { const t = bd(m.at); return +t.slice(11, 13) * 60 + +t.slice(14, 16); });
     const w = work[x.id] || { n: 0, areas: {} };
     const m = x.memberId && db.team.find(y => y.id === x.memberId);
-    return { id: x.id, name: x.name, title: m?.title || x.title || "", memberId: m?.id || "", work: w.n, areas: Object.entries(w.areas).sort((a, b) => b[1] - a[1]).slice(0, 3),
+    return { id: x.id, name: x.name, title: m?.title || x.title || "", memberId: m?.id || "", work: w.n, manual: w.manual || 0, areas: Object.entries(w.areas).sort((a, b) => b[1] - a[1]).slice(0, 3),
       days: mins.length, avg: mins.length ? Math.round(mins.reduce((a, b) => a + b, 0) / mins.length) : null, first: mins.length ? Math.min(...mins) : null };
   });
-  return { from, to, back: B, period: ["week", "month"].includes(period) ? period : "day", rows };
+  const manual = (db.manualWork || []).filter(e => ids.has(e.uid) && inRange(e.date)).sort((a, b) => (b.date + b.at).localeCompare(a.date + a.at))
+    .map(e => ({ ...e, name: user(e.uid)?.name || "", byName: user(e.by)?.name || "" }));
+  return { from, to, back: B, period: ["week", "month"].includes(period) ? period : "day", rows, manual, areas: [...ST_AREA.map(a => a[1]).filter(a => a !== "Sign-in"), "Other"] };
+};
+/* admin: add (or remove) work a staff member did by hand, outside the panel — it counts in the staff ranking */
+if (!db.manualWork) db.manualWork = [];
+A["admin.manualWork"] = async (d, u) => {
+  must(u?.role === "admin", "Only an admin can add manual work.", 403);
+  if (d.op === "del") { const i = db.manualWork.findIndex(e => e.id === d.id); must(i >= 0, "Entry not found."); db.manualWork.splice(i, 1); return { msg: "Manual work removed." }; }
+  const x = user(d.uid); must(x && x.role === "staff", "Choose a staff member.");
+  const date = okDate(d.date) || bdDay(); must(date <= bdDay(), "The date cannot be in the future.");
+  const count = Math.floor(+d.count || 0); must(count >= 1 && count <= 500, "Enter how many (1–500).");
+  const area = str(d.area, 60) || "Other", note = str(d.note, 200); must(note.length >= 2, "Write what the work was.");
+  db.manualWork.push({ id: id("mw"), uid: x.id, date, area, note, count, by: u.id, at: now() });
+  return { msg: `Added ${count} manual ${count === 1 ? "task" : "tasks"} for ${x.name}.` };
 };
 A["attendance.tick"] = async (d, u, ctx) => {
   must(isStaffRole(u), "Not allowed.", 403);
