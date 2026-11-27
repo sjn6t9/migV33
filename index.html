@@ -2859,6 +2859,22 @@ html[data-apple=night]{--ap-bg:#000000;--ap-card:#1c1c1e;--ap-tx:#f5f5f7;--ap-mu
 :root[data-apple=day][data-apple][data-apple] body #tp#tp#tp#tp#tp#tp#tp .turnbar{background:#e4f6e6!important;border-color:#9bd9a0!important;color:#1d6b2a!important}
 :root[data-apple=day][data-apple][data-apple] body #tp#tp#tp#tp#tp#tp#tp .tpsub{color:#6b7686!important}
 :root[data-apple=day][data-apple][data-apple] body #tp#tp#tp#tp#tp#tp#tp .felt .tpsub,:root[data-apple=day][data-apple][data-apple] body #tp#tp#tp#tp#tp#tp#tp .felt .seat{color:#eaf5ea!important}
+:root[data-apple][data-apple][data-apple] body #gp#gp#gp#gp#gp#gp#gp#gp#gp .gtb,:root[data-apple][data-apple][data-apple] body #gp#gp#gp#gp#gp#gp#gp#gp#gp .gmin,:root[data-apple][data-apple][data-apple] body #tp#tp#tp#tp#tp#tp#tp#tp#tp .ib,:root[data-apple][data-apple][data-apple] body #tp#tp#tp#tp#tp#tp#tp#tp#tp .tpmin{width:42px!important;height:42px!important;min-width:42px!important}
+:root[data-apple][data-apple][data-apple] body #gp#gp#gp#gp#gp#gp#gp#gp#gp .gtb .ic,:root[data-apple][data-apple][data-apple] body #gp#gp#gp#gp#gp#gp#gp#gp#gp .gmin .ic{width:16px!important;height:16px!important}
+:root[data-apple][data-apple][data-apple] body #gp#gp#gp#gp#gp#gp#gp#gp#gp .gtb .sx,:root[data-apple][data-apple][data-apple] body #tp#tp#tp#tp#tp#tp#tp#tp#tp .ib .sx{width:20px!important;height:20px!important}
+:root[data-apple][data-apple][data-apple] body #gp#gp#gp#gp#gp#gp#gp#gp#gp .gtb .ic-i::before{width:4px!important;height:4px!important}
+:root[data-apple][data-apple][data-apple] body #gp#gp#gp#gp#gp#gp#gp#gp#gp .gtb .ic-i::after{top:6.5px!important;width:3.2px!important;height:9px!important}
+:root[data-apple][data-apple][data-apple] body #tp#tp#tp#tp#tp#tp#tp#tp#tp .ib .ti,:root[data-apple][data-apple][data-apple] body #tp#tp#tp#tp#tp#tp#tp#tp#tp .tpmin .ti{width:17px!important;height:17px!important}
+:root[data-apple][data-apple][data-apple] body #gp#gp#gp#gp#gp#gp#gp#gp#gp .gtl{gap:7px!important}
+:root[data-apple][data-apple][data-apple] body #gp#gp#gp#gp#gp#gp#gp#gp#gp .gh>span:first-child,:root[data-apple][data-apple][data-apple] body #tp#tp#tp#tp#tp#tp#tp#tp#tp .tph>span:first-child{width:38px!important;height:38px!important;min-width:38px!important;padding:0!important;margin:0!important;background:none!important;border:0!important;box-shadow:none!important;border-radius:0!important;display:inline-flex!important;align-items:center!important;justify-content:center!important;font-size:20px!important;flex:none}
+:root[data-apple][data-apple][data-apple] body #gp#gp#gp#gp#gp#gp#gp#gp#gp .gh>span:first-child .ei,:root[data-apple][data-apple][data-apple] body #tp#tp#tp#tp#tp#tp#tp#tp#tp .tph>span:first-child .ei{width:38px!important;height:38px!important;margin:0!important;border-radius:12px!important;font-size:21px!important;display:inline-flex!important;align-items:center!important;justify-content:center!important;vertical-align:middle!important}
+:root[data-apple][data-apple][data-apple] body #gp#gp#gp#gp#gp#gp#gp#gp#gp .gh>span:first-child .ei-s,:root[data-apple][data-apple][data-apple] body #tp#tp#tp#tp#tp#tp#tp#tp#tp .tph>span:first-child .ei-s{width:21px!important;height:21px!important;margin:0!important}
+:root[data-apple][data-apple][data-apple] body #gp#gp#gp#gp#gp#gp#gp#gp#gp#gp .gmin .ic{width:12px!important;height:12px!important}
+:root[data-apple][data-apple][data-apple] body #tp#tp#tp#tp#tp#tp#tp#tp#tp#tp {padding:9px 9px 10px!important;margin:6px 8px 4px!important}
+:root[data-apple][data-apple][data-apple] body #tp#tp#tp#tp#tp#tp#tp#tp#tp#tp#tp .tph{gap:6px!important}
+:root[data-apple][data-apple][data-apple] body #tp#tp#tp#tp#tp#tp#tp#tp#tp#tp#tp .tph b{white-space:nowrap!important;font-size:13.5px!important;flex:0 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis}
+:root[data-apple][data-apple][data-apple] body #tp#tp#tp#tp#tp#tp#tp#tp#tp#tp#tp .ib,:root[data-apple][data-apple][data-apple] body #tp#tp#tp#tp#tp#tp#tp#tp#tp#tp#tp .tpmin{width:40px!important;height:40px!important;min-width:40px!important}
+:root[data-apple][data-apple][data-apple] body #tp#tp#tp#tp#tp#tp#tp#tp#tp#tp#tp .tph .chip{padding:0 8px!important;font-size:12px!important}
 </style>
 </head>
 <body>
@@ -3717,12 +3733,13 @@ const GS=(function(){
   function hit(){const a=ctx();if(a){const t=a.currentTime,n=a.createBuffer(1,Math.floor(a.sampleRate*.09),a.sampleRate),d=n.getChannelData(0);for(let i=0;i<d.length;i++)d[i]=(Math.random()*2-1)*Math.pow(1-i/d.length,4);
     const s=a.createBufferSource();s.buffer=n;const bp=a.createBiquadFilter();bp.type='bandpass';bp.frequency.value=2200;bp.Q.value=.9;const g=a.createGain();g.gain.value=.9;s.connect(bp).connect(g).connect(a.destination);s.start(t);
     const o=a.createOscillator(),e=a.createGain();o.type='sine';o.frequency.setValueAtTime(260,t);o.frequency.exponentialRampToValueAtTime(90,t+.12);e.gain.setValueAtTime(.5,t);e.gain.exponentialRampToValueAtTime(.0001,t+.14);o.connect(e).connect(a.destination);o.start(t);o.stop(t+.16)}vib([40])}
-  function demo(){const m=mode();if(m===0)beep(1);else if(m===1)vib([60])}
+  function flip(){const a=ctx();if(a){try{const t=a.currentTime,n=a.createBuffer(1,Math.floor(a.sampleRate*.06),a.sampleRate),d=n.getChannelData(0);for(let i=0;i<d.length;i++)d[i]=(Math.random()*2-1)*Math.pow(1-i/d.length,3);const s=a.createBufferSource();s.buffer=n;const f=a.createBiquadFilter();f.type='highpass';f.frequency.value=1800;const g=a.createGain();g.gain.value=.5;s.connect(f).connect(g).connect(a.destination);s.start(t);tone(a,620,0,.05,.08)}catch{}}vib([12])}
+   function demo(){const m=mode();if(m===0)beep(1);else if(m===1)vib([60])}
   // own-turn countdown: Beep Beep every second during the last 4 seconds
   function turn(key,active,deadline,skew){clearInterval(turn._t);if(!active||!deadline)return;
     const chk=()=>{const left=Math.ceil((deadline-(Date.now()+skew))/1000);if(left>=1&&left<=4){const k=key+':'+deadline+':'+left;if(k!==warnKey){warnKey=k;beep(2)}}};
     turn._t=setInterval(chk,250);chk()}
-  return{mode,setMode,ctx,beep,win,hit,turn,demo,vib,cycle(){const m=(mode()+1)%3;setMode(m);demo();return m}}
+  return{mode,setMode,ctx,beep,win,hit,flip,turn,demo,vib,cycle(){const m=(mode()+1)%3;setMode(m);demo();return m}}
 })();
 document.addEventListener('pointerdown',()=>{try{const a=GS.ctx();a&&a.state==='suspended'&&a.resume()}catch{}},{passive:true});
 const Panel = (function () {
@@ -3947,7 +3964,7 @@ const GP=(function(){
     const RV=window._rv||(window._rv={k:'',t0:0,tm:[]});let rvN=6,rvDone=true;
     if(L&&st!=='betting'){const key=JSON.stringify(L.hands);
       if(RV.k!==key){RV.k=key;RV.tm.forEach(clearTimeout);RV.tm=[];const late=st==='between'&&v.since&&(Date.now()+skew-v.since)>2500;RV.t0=late?0:Date.now();
-        if(!late)for(let k=1;k<=8;k++)RV.tm.push(setTimeout(()=>{try{draw()}catch{}},k*650+(k>6?350:0)))}
+        if(!late)for(let k=1;k<=8;k++)RV.tm.push(setTimeout(()=>{try{if(k<=6)GS.flip();draw()}catch{}},k*650+(k>6?350:0)))}
       if(RV.t0){const e=Date.now()-RV.t0;rvN=Math.min(6,Math.floor(e/650));rvDone=e>=6*650+400}}
     const hand=side=>{if(!L)return '';const off=side==='blue'?1:0;return `<div class="mh">${L.hands[side].map((c,i)=>{const o=i*2+off;return o<rvN?`<span class="${o===rvN-1&&!rvDone?'cin':''}">${card(c)}</span>`:`<span>${card('?','bk')}</span>`}).join('')}</div><span class="tl">${rvDone?E(L.handLabel[side]):'&nbsp;'}</span>`};
     const tl=s=>v.tot[s]?`${K(v.tot[s])} bet`+(v.mine[s]?` · you ${K(v.mine[s])}`:''):'';
