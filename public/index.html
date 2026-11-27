@@ -2738,16 +2738,14 @@ html[data-apple=night]{--ap-bg:#000000;--ap-card:#1c1c1e;--ap-tx:#f5f5f7;--ap-mu
 .fbp .shr .pimg,.fbp .shr .prl{width:100%;margin:0;border-radius:0}
 .fbp.shd>.txt{padding-bottom:2px}
 
-#svol{position:fixed;z-index:80;width:56px;height:236px;box-sizing:border-box;display:flex;flex-direction:column;align-items:center;gap:8px;padding:12px 0 10px;border-radius:28px;color:#fff;background:rgba(16,22,36,.9);-webkit-backdrop-filter:blur(18px) saturate(160%);backdrop-filter:blur(18px) saturate(160%);border:1px solid rgba(255,255,255,.22);box-shadow:0 10px 30px rgba(0,0,0,.35);animation:svin .18s ease-out;touch-action:none}
-@keyframes svin{from{opacity:0;transform:translateY(-6px) scale(.96)}to{opacity:1;transform:none}}
-#svol #svp{font-size:13px;font-weight:700;letter-spacing:0;line-height:1;min-height:14px}
-#svol .svt{position:relative;flex:1;width:44px;cursor:pointer;touch-action:none}
-#svol .svt::before{content:"";position:absolute;left:50%;top:0;bottom:0;width:8px;margin-left:-4px;border-radius:99px;background:rgba(255,255,255,.22)}
-#svol .svt i{position:absolute;left:50%;bottom:0;width:8px;margin-left:-4px;border-radius:99px;background:linear-gradient(180deg,#7dd3fc,#3b82f6);min-height:0}
-#svol .svt u{position:absolute;left:50%;width:22px;height:22px;margin-left:-11px;border-radius:50%;background:#fff;box-shadow:0 2px 8px rgba(0,0,0,.45);text-decoration:none}
-#svol .svi{width:24px;height:24px;display:block;cursor:pointer;color:#fff}
-#svol .svi svg{width:24px;height:24px;fill:none;stroke:#fff;stroke-width:2;stroke-linejoin:round;stroke-linecap:round}
-#svol .svi svg path:first-child{fill:#fff}
+#svol{position:fixed;z-index:80;width:58px;height:210px;box-sizing:border-box;border-radius:29px;overflow:hidden;background:rgba(110,110,118,.5);-webkit-backdrop-filter:blur(22px) saturate(180%);backdrop-filter:blur(22px) saturate(180%);box-shadow:0 8px 28px rgba(0,0,0,.28),inset 0 0 0 .5px rgba(255,255,255,.25);animation:svin .2s cubic-bezier(.2,.9,.3,1);touch-action:none;cursor:pointer;transition:transform .15s,opacity .18s;outline:0}
+#svol.drag{transform:scale(1.04)}#svol.out{opacity:0;transform:scale(.94)}
+@keyframes svin{from{opacity:0;transform:scale(.92)}to{opacity:1;transform:none}}
+#svol #svf{position:absolute;left:0;right:0;bottom:0;background:#fff;height:0;transition:height .06s linear}
+#svol .svi{position:absolute;left:0;right:0;bottom:12px;height:26px;display:grid;place-items:center;pointer-events:none}
+#svol .svi svg{width:26px;height:26px;fill:none;stroke:#6e6e73;stroke-width:2;stroke-linejoin:round;stroke-linecap:round}
+#svol .svi svg path:first-child{fill:#6e6e73}
+#svol.lo .svi svg{stroke:#fff}#svol.lo .svi svg path:first-child{fill:#fff}
 
 .fbp .nm [style*=vipOrbit]{vertical-align:middle}
 .fbp .shr .shh .nm,.fbp>header .nm{display:flex;align-items:center;flex-wrap:wrap;gap:2px 6px}
@@ -4153,17 +4151,17 @@ const songApplyVol=()=>{try{ytP&&ytP.setVolume&&ytP.setVolume(songVolPct)}catch{
 function songVol(anchor){let v=$('svol');if(v){v.remove();clearTimeout(songVolT);return}
   v=document.createElement('div');v.id='svol';const r=anchor.getBoundingClientRect(),W=innerWidth;
   v.style.top=Math.round(r.bottom+8)+'px';v.style.left=Math.max(8,Math.min(W-64,Math.round(r.left+r.width/2-28)))+'px';
-  v.innerHTML='<b id="svp">'+songVolPct+'</b><div class="svt" id="svt" aria-label="Volume" role="slider" aria-valuemin="0" aria-valuemax="100" aria-valuenow="'+songVolPct+'"><i id="svf"></i><u id="svk"></u></div><span class="svi" id="svi"></span>';
+  v.setAttribute('role','slider');v.setAttribute('aria-label','Volume');v.setAttribute('aria-valuemin','0');v.setAttribute('aria-valuemax','100');v.tabIndex=0;
+  v.innerHTML='<i id="svf"></i><span class="svi" id="svi"></span>';
   document.body.appendChild(v);
-  const T=$('svt'),hide=()=>{clearTimeout(songVolT);songVolT=setTimeout(()=>{const x=$('svol');if(x)x.remove()},4500)};
-  const paint=()=>{$('svp').textContent=songVolPct;$('svf').style.height=songVolPct+'%';$('svk').style.bottom='calc('+songVolPct+'% - 11px)';T.setAttribute('aria-valuenow',songVolPct);$('svi').innerHTML=songVolPct===0?SI.mute:SI.vol};
+  const hide=()=>{clearTimeout(songVolT);songVolT=setTimeout(()=>{const x=$('svol');if(x){x.classList.add('out');setTimeout(()=>x.remove(),180)}},3000)};
+  const paint=()=>{$('svf').style.height=songVolPct+'%';v.setAttribute('aria-valuenow',songVolPct);v.classList.toggle('lo',songVolPct<18);$('svi').innerHTML=songVolPct===0?SI.mute:SI.vol};
   const set=n=>{songVolPct=Math.max(0,Math.min(100,Math.round(n)));try{localStorage.songvol=songVolPct}catch{}paint();songApplyVol();if(songVolPct>0&&AUD!==room){AUD=room;const m=SONG[room];if(m&&m.vid&&m.playing)songPlay(m);songBar()}hide()};
-  const at=e=>{const b=T.getBoundingClientRect();set((1-(e.clientY-b.top)/b.height)*100)};
-  T.onpointerdown=e=>{e.preventDefault();try{T.setPointerCapture(e.pointerId)}catch{}T.dataset.d=1;at(e)};
-  T.onpointermove=e=>{if(T.dataset.d)at(e)};T.onpointerup=T.onpointercancel=()=>{delete T.dataset.d};
-  T.tabIndex=0;T.onkeydown=e=>{const d=e.key==='ArrowUp'||e.key==='ArrowRight'?5:e.key==='ArrowDown'||e.key==='ArrowLeft'?-5:0;if(d){e.preventDefault();set(songVolPct+d)}};
-  $('svi').onclick=()=>set(songVolPct===0?60:0);
-  v.onpointerdown=hide;paint();hide()}
+  const at=e=>{const b=v.getBoundingClientRect();set((1-(e.clientY-b.top)/b.height)*100)};
+  v.onpointerdown=e=>{e.preventDefault();try{v.setPointerCapture(e.pointerId)}catch{}v.dataset.d=1;v.classList.add('drag');at(e)};
+  v.onpointermove=e=>{if(v.dataset.d)at(e)};v.onpointerup=v.onpointercancel=()=>{delete v.dataset.d;v.classList.remove('drag');hide()};
+  v.onkeydown=e=>{const d=e.key==='ArrowUp'||e.key==='ArrowRight'?6:e.key==='ArrowDown'||e.key==='ArrowLeft'?-6:0;if(d){e.preventDefault();set(songVolPct+d)}};
+  paint();hide()}
 function songStop(){try{ytP&&ytP.stopVideo()}catch{}songBlocked=false}
 function songOn(m){m._t=Date.now();SONG[m.room]=m;
   if(m.room===AUD){if(!m.vid||!m.playing){songStop();ytWant=null}else songPlay(m)}
