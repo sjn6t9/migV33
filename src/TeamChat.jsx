@@ -4,6 +4,7 @@ import { LuX, LuArrowLeft, LuUsers, LuPlus, LuSearch, LuReply, LuTrash2, LuSetti
 import { Composer, Thread as LiveThread, chatGet, chatPost } from "./LiveChat.jsx";
 import { RoleBadges } from "./ui.jsx";
 import { toast, confirmBox } from "./actions.js";
+import { store } from "./store.js";
 import { t } from "./i18n.js";
 
 async function api(path, body) {
@@ -33,6 +34,8 @@ export function TeamChatWidget({ me }) {
   const [view, setView] = useState("list"); const [cur, setCur] = useState(null); const [q, setQ] = useState("");
   const [cust, setCust] = useState(null); const [csel, setCsel] = useState(null);
   const cus = canCustomers(me);
+  // on the Live chat and Messages pages the round button would sit on the message box's send/mic button, so it steps aside there
+  const onChatPage = /^#dashboard/.test(location.hash || "") && ["chat", "messages"].includes(store.ui.tab?.[me.role]);
   const [wide, setWide] = useState(() => window.innerWidth > 760);
   useEffect(() => { const f = () => setWide(window.innerWidth > 760); window.addEventListener("resize", f); return () => window.removeEventListener("resize", f); }, []);
   const two = full && wide; // list and conversation side by side
@@ -74,7 +77,7 @@ export function TeamChatWidget({ me }) {
   const right = tab === "team" ? teamRight : custRight;
 
   return <>
-    <button className="fab team-fab" onClick={() => (open ? close() : setOpen(true))} aria-label={open ? "Close messages" : "Open messages"} aria-expanded={open} title="Messages">
+    <button className={`fab team-fab${!open && onChatPage ? " tc-away" : ""}`} onClick={() => (open ? close() : setOpen(true))} aria-label={open ? "Close messages" : "Open messages"} aria-expanded={open} title="Messages">
       {open ? <LuX /> : <LuMessageCircle />}{!open && total > 0 && <span className="fab-badge">{total > 99 ? "99+" : total}</span>}
     </button>
     {open && <div className={`chat live team-chat${full ? " full" : ""}${right ? " has-right" : ""}`} role="dialog" aria-label="Messages">

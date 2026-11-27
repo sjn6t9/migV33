@@ -241,3 +241,4 @@ footer.bot .social a:hover{border-color:var(--ink);color:var(--ink)}
 /* agent panel registration: the two password fields side by side */
 .signin-two{display:grid;grid-template-columns:1fr 1fr;gap:12px}
 @media (max-width:560px){.signin-two{grid-template-columns:1fr}}
+.team-fab.tc-away{display:none}
