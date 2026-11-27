@@ -2738,12 +2738,12 @@ html[data-apple=night]{--ap-bg:#000000;--ap-card:#1c1c1e;--ap-tx:#f5f5f7;--ap-mu
 .fbp .shr .pimg,.fbp .shr .prl{width:100%;margin:0;border-radius:0}
 .fbp.shd>.txt{padding-bottom:2px}
 
-#svol{position:fixed;z-index:80;width:58px;height:210px;box-sizing:border-box;border-radius:29px;overflow:hidden;background:rgba(110,110,118,.5);-webkit-backdrop-filter:blur(22px) saturate(180%);backdrop-filter:blur(22px) saturate(180%);box-shadow:0 8px 28px rgba(0,0,0,.28),inset 0 0 0 .5px rgba(255,255,255,.25);animation:svin .2s cubic-bezier(.2,.9,.3,1);touch-action:none;cursor:pointer;transition:transform .15s,opacity .18s;outline:0}
-#svol.drag{transform:scale(1.04)}#svol.out{opacity:0;transform:scale(.94)}
+#svol{position:fixed;z-index:80;width:38px;height:140px;box-sizing:border-box;border-radius:19px;overflow:hidden;background:rgba(110,110,118,.5);-webkit-backdrop-filter:blur(22px) saturate(180%);backdrop-filter:blur(22px) saturate(180%);box-shadow:0 8px 28px rgba(0,0,0,.28),inset 0 0 0 .5px rgba(255,255,255,.25);animation:svin .2s cubic-bezier(.2,.9,.3,1);touch-action:none;cursor:pointer;transition:transform .15s,opacity .18s;outline:0}
+#svol.drag{transform:scale(1.03)}#svol.out{opacity:0;transform:scale(.94)}
 @keyframes svin{from{opacity:0;transform:scale(.92)}to{opacity:1;transform:none}}
-#svol #svf{position:absolute;left:0;right:0;bottom:0;background:#fff;height:0;transition:height .06s linear}
-#svol .svi{position:absolute;left:0;right:0;bottom:12px;height:26px;display:grid;place-items:center;pointer-events:none}
-#svol .svi svg{width:26px;height:26px;fill:none;stroke:#6e6e73;stroke-width:2;stroke-linejoin:round;stroke-linecap:round}
+#svol #svf{position:absolute;left:0;right:0;bottom:0;background:#fff;height:0;transition:height .22s cubic-bezier(.22,.8,.3,1)}#svol.drag #svf{transition:height .09s linear}
+#svol .svi{position:absolute;left:0;right:0;bottom:9px;height:20px;display:grid;place-items:center;pointer-events:none}
+#svol .svi svg{width:20px;height:20px;fill:none;stroke:#6e6e73;stroke-width:2;stroke-linejoin:round;stroke-linecap:round}
 #svol .svi svg path:first-child{fill:#6e6e73}
 #svol.lo .svi svg{stroke:#fff}#svol.lo .svi svg path:first-child{fill:#fff}
 
@@ -4150,7 +4150,7 @@ let songVolPct=+(localStorage.songvol||100),songVolT=0;
 const songApplyVol=()=>{try{ytP&&ytP.setVolume&&ytP.setVolume(songVolPct)}catch{}};
 function songVol(anchor){let v=$('svol');if(v){v.remove();clearTimeout(songVolT);return}
   v=document.createElement('div');v.id='svol';const r=anchor.getBoundingClientRect(),W=innerWidth;
-  v.style.top=Math.round(r.bottom+8)+'px';v.style.left=Math.max(8,Math.min(W-64,Math.round(r.left+r.width/2-28)))+'px';
+  v.style.top=Math.round(r.bottom+8)+'px';v.style.left=Math.max(8,Math.min(W-46,Math.round(r.left+r.width/2-19)))+'px';
   v.setAttribute('role','slider');v.setAttribute('aria-label','Volume');v.setAttribute('aria-valuemin','0');v.setAttribute('aria-valuemax','100');v.tabIndex=0;
   v.innerHTML='<i id="svf"></i><span class="svi" id="svi"></span>';
   document.body.appendChild(v);
