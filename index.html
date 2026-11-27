@@ -4141,10 +4141,10 @@ function songBar(){const l=$('sbl'),r=$('sbr');if(!l||!r)return;const S=SONG[roo
   const tt=songBlocked?'Tap to listen':sTitle(c);l.innerHTML=`<button type="button" class="sbt${S.playing?' on':''}" id="sbtx" title="${esc(tt)}"><span class="mq" style="--d:${Math.max(8,Math.round(tt.length*.28))}s">🎵 ${esc(tt)}</span></button>`;
   const mod=!!canSong0();
   r.innerHTML=(mod?`<button type="button" data-k="prev" aria-label="Previous song">${SI.prev}</button><button type="button" data-k="pp" class="pp" aria-label="${S.playing?'Pause':'Play'}">${S.playing?SI.pause:SI.play}</button><button type="button" data-k="next" aria-label="Next song">${SI.next}</button>`:'')+`<button type="button" data-k="mute" class="${AUD!==room?'off':''}" aria-label="Mute">${AUD!==room?SI.mute:SI.vol}</button><button type="button" data-k="vol" aria-label="Volume">${SI.mix}</button>`;
-  $('sbtx').onclick=()=>{if(songBlocked){songBlocked=false;try{ytP&&ytP.playVideo()}catch{}songBar()}else if(mod)songSheet()};
+  $('sbtx').onclick=()=>{if(AUD!==room&&S.vid&&S.playing){songAudible(room);songBar();return}if(songBlocked){songBlocked=false;try{ytP&&ytP.playVideo()}catch{}songBar()}else if(mod)songSheet()};
   r.onclick=e=>{const b=e.target.closest('[data-k]');if(!b)return;e.stopPropagation();const k=b.dataset.k;
     if(k==='vol'){songVol(b);return}
-    if(k==='mute'){if(AUD===room){AUD=null;try{ytP.mute()}catch{}}else songAudible(room);songBar();return}
+    if(k==='mute'){if(AUD===room){AUD=null;try{ytP.pauseVideo()}catch{}}else songAudible(room);songBar();return}
     if(k==='pp')tx({t:'song_play',room,on:!S.playing});else tx({t:'song_'+k,room})}}
 const songOpen=()=>$('sheet').classList.contains('open')&&$('songsh');
 let songVolPct=+(localStorage.songvol||100),songVolT=0;
@@ -4169,20 +4169,24 @@ function songOn(m){m._t=Date.now();SONG[m.room]=m;if(m.vid&&!ytP)ytLoad(()=>{if(
   if(m.room===AUD||(AUD==null&&m.room===room)){if(!m.vid||!m.playing){songStop();ytWant=null}else songPlay(m)}
   if(m.room===room){songBar();if(songOpen())songSheet(1)}}
 function ytMake(){if(ytP||window.YT===undefined||!YT.Player)return;let h=$('ytbox');if(!h){h=document.createElement('div');h.id='ytbox';h.style.cssText='position:fixed;right:0;bottom:0;width:200px;height:200px;opacity:.01;pointer-events:none;z-index:-1;overflow:hidden';h.innerHTML='<div id="ytp"></div>';document.body.appendChild(h)}
-  const m=ytWant;ytP=new YT.Player('ytp',{width:'200',height:'200',videoId:m?m.vid:undefined,playerVars:{autoplay:m?1:0,mute:1,playsinline:1,controls:0},events:{onReady:()=>{ytReady=1;songApplyVol();songGo()},onStateChange:e=>{
-    if(e.data===-1)setTimeout(()=>{try{if(ytWant&&![1,3].includes(ytP.getPlayerState())){songBlocked=true;songBar()}}catch{}},1500);
+  const m=ytWant,au=!!m&&AUD===m.room;ytP=new YT.Player('ytp',{width:'200',height:'200',videoId:m?m.vid:undefined,playerVars:{autoplay:au?1:0,playsinline:1,controls:0},events:{onReady:()=>{ytReady=1;songApplyVol();songGo()},onStateChange:e=>{
+    if(e.data===-1&&ytWant&&AUD===ytWant.room)setTimeout(()=>{try{if(ytWant&&AUD===ytWant.room&&![1,3].includes(ytP.getPlayerState())){songBlocked=true;songBar()}}catch{}},1500);
     if(e.data===1&&songBlocked){songBlocked=false;songBar()}
-    if(e.data===0&&ytWant)tx({t:'song_end',room:ytWant.room,vid:ytWant.vid})},onError:()=>{const w=ytWant;if(w)setTimeout(()=>{if(ytWant&&ytWant.vid===w.vid)tx({t:'song_end',room:w.room,vid:w.vid})},3200)}}})}
+    if(e.data===0&&ytWant&&AUD===ytWant.room)tx({t:'song_end',room:ytWant.room,vid:ytWant.vid})},onError:()=>{const w=ytWant;if(w&&AUD===w.room)setTimeout(()=>{if(ytWant&&ytWant.vid===w.vid)tx({t:'song_end',room:w.room,vid:w.vid})},3200)}}})}
 function songPlay(m){ytWant=m;ytLoad(()=>{if(ytWant!==m)return;if(!ytP)ytMake();else if(ytReady)songGo()})}
-/* phones only allow sound after a touch: the player is created as soon as a room has a song, and the first touch anywhere starts it */
-function songAudible(r){AUD=r;const m=SONG[r];if(!m||!m.vid||!m.playing){ytWant=null;return}
-  if(ytP&&ytReady&&ytWant&&ytWant.room===r&&ytWant.vid===m.vid){try{ytP.unMute();ytP.playVideo();songApplyVol()}catch{}}else songPlay(m)}
+/* Phones only play sound after a touch. Until you unmute, the player just holds the room's song ready (cued, silent);
+   unmute = play it right inside the tap. The first touch anywhere also starts it if the audible room's song is waiting. */
+const songLivePos=m=>(m.pos||0)+(m._t?(Date.now()-m._t)/1000:0);
+function songAudible(r){AUD=r;const m=SONG[r];if(!m||!m.vid||!m.playing){ytWant=null;try{ytP&&ytP.pauseVideo()}catch{}return}
+  if(ytP&&ytReady&&ytWant&&ytWant.room===r&&ytWant.vid===m.vid){ytWant=m;try{ytP.unMute();ytP.seekTo(songLivePos(m),true);ytP.playVideo();songApplyVol()}catch{}}else songPlay(m)}
 function songUnlock(){if(!ytWant||!ytP||!ytReady||AUD!==ytWant.room)return;try{const s=ytP.getPlayerState();if(s!==1&&s!==3){ytP.unMute();ytP.playVideo();songApplyVol()}}catch{}}
 ['pointerdown','touchend','click'].forEach(ev=>document.addEventListener(ev,songUnlock,{capture:true,passive:true}));
-function songGo(){const m=ytWant;if(!m||!ytP)return;try{const pos=(m.pos||0)+(m._t?(Date.now()-m._t)/1000:0);const id=ytP.getVideoData&&ytP.getVideoData().video_id;if(id!==m.vid){(AUD===m.room?ytP.unMute():ytP.mute());ytP.loadVideoById(m.vid,pos)}else{const d=Math.abs((ytP.getCurrentTime?ytP.getCurrentTime():0)-pos);if(d>2.5||ytP.getPlayerState()===2||ytP.getPlayerState()===5)ytP.seekTo(pos,true);ytP.playVideo()}AUD===m.room?ytP.unMute():ytP.mute();songApplyVol()}catch{}}
-setInterval(()=>{if(AUD&&!OPEN.includes(AUD)){AUD=null;try{ytP&&ytP.mute()}catch{}try{songBar()}catch{}return}
-  if(ytWant&&ytReady&&ytP){try{const st=ytP.getPlayerState();if(st===2||st===5||st===-1)ytP.playVideo()}catch{}}},2500);
-document.addEventListener('visibilitychange',()=>{if(!document.hidden&&ytWant&&ytReady&&ytP)try{ytP.playVideo()}catch{}});
+function songGo(){const m=ytWant;if(!m||!ytP)return;try{const pos=songLivePos(m),id=ytP.getVideoData&&ytP.getVideoData().video_id;
+  if(AUD===m.room){if(id!==m.vid){ytP.unMute();ytP.loadVideoById(m.vid,pos)}else{const d=Math.abs((ytP.getCurrentTime?ytP.getCurrentTime():0)-pos);if(d>2.5||ytP.getPlayerState()===2||ytP.getPlayerState()===5)ytP.seekTo(pos,true);ytP.unMute();ytP.playVideo()}songApplyVol()}
+  else{if(id!==m.vid)ytP.cueVideoById(m.vid,pos);else if(ytP.getPlayerState()===1)ytP.pauseVideo()}}catch{}}
+setInterval(()=>{if(AUD&&!OPEN.includes(AUD)){AUD=null;try{ytP&&ytP.pauseVideo()}catch{}try{songBar()}catch{}return}
+  if(ytWant&&AUD===ytWant.room&&ytReady&&ytP){try{const st=ytP.getPlayerState();if(st===2||st===5||st===-1)ytP.playVideo()}catch{}}},2500);
+document.addEventListener('visibilitychange',()=>{if(!document.hidden&&ytWant&&AUD===ytWant.room&&ytReady&&ytP)try{ytP.playVideo()}catch{}});
 function songSheet(keep){const S=SONG[room]||{},L=S.list||[];
   if(!canSong()){if(!keep)toast('Only the room admin or moderators can use Play Song');return}
   sheetOpen(`<div id="songsh"><h2>🎵 Play Song · ${esc(room)}</h2>
