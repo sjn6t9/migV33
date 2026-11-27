@@ -2756,13 +2756,17 @@ function attTouch(u, ip0) {
   if (changed) save();
 }
 /* staff ranking for the Overview: work done (changes they made) and who reaches the office first — today, this week (from Saturday), this month */
-A["staff.rank"] = async ({ period }, u) => {
+A["staff.rank"] = async ({ period, back }, u) => {
   must(isStaffRole(u), "Not allowed.", 403);
   const today = bdDay(), bd = iso => new Date(Date.parse(iso) + 6 * 3600e3).toISOString();
-  let from = today;
-  if (period === "week") { const d = new Date(today + "T00:00:00Z"); from = new Date(d - ((d.getUTCDay() + 1) % 7) * 864e5).toISOString().slice(0, 10); }
-  else if (period === "month") from = today.slice(0, 8) + "01";
-  const inRange = day => day >= from && day <= today;
+  const B = Math.max(0, Math.min(400, Math.floor(+back || 0))); // 0 = today / this week / this month; 1 = the one before …
+  const ymd = d => d.toISOString().slice(0, 10), T = new Date(today + "T00:00:00Z");
+  let from = today, to = today;
+  if (period === "week") { const st = new Date(T - ((T.getUTCDay() + 1) % 7) * 864e5 - B * 7 * 864e5); from = ymd(st); to = ymd(new Date(+st + 6 * 864e5)); }
+  else if (period === "month") { const st = new Date(Date.UTC(T.getUTCFullYear(), T.getUTCMonth() - B, 1)); from = ymd(st); to = ymd(new Date(Date.UTC(st.getUTCFullYear(), st.getUTCMonth() + 1, 0))); }
+  else { from = to = ymd(new Date(+T - B * 864e5)); }
+  if (to > today) to = today;
+  const inRange = day => day >= from && day <= to;
   const people = db.users.filter(x => x.role === "staff" && x.status !== "suspended");
   const ids = new Set(people.map(x => x.id)), work = {};
   for (const e of db.staffLog) { if (!ids.has(e.uid) || e.area === "Sign-in" || !inRange(bd(e.at).slice(0, 10))) continue;
@@ -2776,7 +2780,7 @@ A["staff.rank"] = async ({ period }, u) => {
     return { id: x.id, name: x.name, title: m?.title || x.title || "", memberId: m?.id || "", work: w.n, areas: Object.entries(w.areas).sort((a, b) => b[1] - a[1]).slice(0, 3),
       days: mins.length, avg: mins.length ? Math.round(mins.reduce((a, b) => a + b, 0) / mins.length) : null, first: mins.length ? Math.min(...mins) : null };
   });
-  return { from, to: today, period: ["week", "month"].includes(period) ? period : "day", rows };
+  return { from, to, back: B, period: ["week", "month"].includes(period) ? period : "day", rows };
 };
 A["attendance.tick"] = async (d, u, ctx) => {
   must(isStaffRole(u), "Not allowed.", 403);

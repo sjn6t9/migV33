@@ -69,19 +69,27 @@ export function Attendance() {
         {view === "me" && <span className="vf-pill ok">{`Present ${present} / ${work.length} working days`}</span>}
       </div>
       {view === "all" && admin ? <AllGrid A={A} days={days} hol={hol} /> :
-        <ul className="att-list">{days.map(d => {
-          const h = hol(d), m = marks[d], today = d === A.today, past = d < A.today, future = d > A.today;
-          const canTick = !h && !m && ((today && person.id === u.id) || (admin && !future));
-          const before = d < since;
-          return <li key={d} className={`att-row${h ? " off" : ""}${today ? " today" : ""}`}>
-            <span className="att-day"><b>{DAYS[dow(d)]}</b><span className="muted small">{new Date(d + "T00:00:00Z").toLocaleDateString("en-GB", { day: "2-digit", month: "short", timeZone: "UTC" })}</span></span>
-            {h ? <span className="muted small">{h}</span> : <>
-              {before && !m ? <span className="muted small">Before attendance started</span> : <><button type="button" className={`att-box${m ? " on" : ""}`} disabled={!canTick} aria-pressed={!!m} aria-label={`${DAYS[dow(d)]} ${d}: ${m ? "present" : "not ticked"}`} onClick={() => canTick && tick(d)}>{m && <LuCheck />}</button>
-              <span className="small muted att-note">{m ? `${timeOf(m.at)} · ${m.by === "auto" ? "office network" : m.by === "self" ? (m.office ? "ticked at the office" : "ticked outside the office") : `by ${m.by.replace(/^admin:/, "")}`}` : past && d >= since ? <span className="att-abs">Absent</span> : today ? "Tick to mark present" : ""}</span>
-              </>}
-              {admin && m && <button type="button" className="btn sm link danger" onClick={() => confirmBox(`Remove the tick of ${person.name} for ${d}?`, () => tick(d, true), "Remove")} aria-label="Remove tick"><LuTrash2 /></button>}
-            </>}
-          </li>; })}</ul>}
+        <div className="att-cal" role="grid" aria-label={`${monthTitle(ym)} attendance`}>
+          {/* the week runs Saturday to Friday, as at the office */}
+          {[6, 0, 1, 2, 3, 4, 5].map(i => <div key={i} className={`att-wd${i === 5 ? " off" : ""}`} role="columnheader">{DAYS[i].slice(0, 3)}</div>)}
+          {Array.from({ length: (dow(days[0]) + 1) % 7 }, (_, i) => <div key={`e${i}`} className="att-cell empty" aria-hidden="true" />)}
+          {days.map(d => {
+            const h = hol(d), m = marks[d], today = d === A.today, past = d < A.today, future = d > A.today;
+            const canTick = !h && !m && ((today && person.id === u.id) || (admin && !future));
+            const before = d < since, absent = !h && !m && past && !before;
+            const how = m ? (m.by === "auto" ? "office network" : m.by === "self" ? (m.office ? "ticked at the office" : "ticked outside the office") : `by ${m.by.replace(/^admin:/, "")}`) : "";
+            return <div key={d} role="gridcell" className={`att-cell${h ? " off" : ""}${today ? " today" : ""}${m ? " on" : ""}${absent ? " abs" : ""}${future ? " fut" : ""}`}
+              title={h || (m ? `${timeOf(m.at)} · ${how}` : absent ? "Absent" : "")}>
+              <span className="att-n">{+d.slice(8)}</span>
+              {h ? <span className="att-h">{h === "Weekly holiday" ? "Holiday" : h}</span>
+                : before && !m ? <span className="att-h">—</span>
+                : <>
+                  <button type="button" className={`att-box${m ? " on" : ""}`} disabled={!canTick} aria-pressed={!!m} aria-label={`${DAYS[dow(d)]} ${d}: ${m ? "present" : absent ? "absent" : "not ticked"}`} onClick={() => canTick && tick(d)}>{m && <LuCheck />}</button>
+                  {m ? <span className="att-t">{String(timeOf(m.at)).replace(/^0/, "").replace(/\s*(AM|PM)$/i, "")}<small> {(String(timeOf(m.at)).match(/(AM|PM)$/i) || [""])[0]}</small></span> : absent ? <span className="att-abs">Absent</span> : today ? <span className="att-t">Tick</span> : null}
+                  {admin && m && <button type="button" className="att-del" onClick={() => confirmBox(`Remove the tick of ${person.name} for ${d}?`, () => tick(d, true), "Remove")} aria-label="Remove tick"><LuTrash2 /></button>}
+                </>}
+            </div>; })}
+        </div>}
     </div>
   </>;
 }

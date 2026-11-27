@@ -1,25 +1,30 @@
 import React, { useState, useEffect } from "react";
-import { LuTrophy, LuClock, LuActivity } from "react-icons/lu";
+import { LuTrophy, LuClock, LuActivity, LuChevronLeft, LuChevronRight } from "react-icons/lu";
 import { store } from "../store.js";
 import { Avatar } from "../ui.jsx";
 import { t } from "../i18n.js";
 
 /* Overview: how the staff rank by work done and by who reaches the office first — today, this week, this month */
-const PERIODS = [["day", "Today"], ["week", "This week"], ["month", "This month"]];
+const PERIODS = [["day", "Daily"], ["week", "Weekly"], ["month", "Monthly"]];
 const hm = m => { const h = Math.floor(m / 60), mm = String(m % 60).padStart(2, "0"); return `${((h + 11) % 12) + 1}:${mm} ${h < 12 ? "AM" : "PM"}`; };
 const Place = ({ n }) => <span className={`sr-place${n <= 3 ? ` p${n}` : ""}`}>{n}</span>;
 
 export function StaffRank() {
-  const [period, setPeriod] = useState("day"); const [d, setD] = useState(null); const [err, setErr] = useState("");
+  const [period, setPeriod] = useState("day"), [back, setBack] = useState(0); const [d, setD] = useState(null); const [err, setErr] = useState("");
   useEffect(() => {
     let live = true; setErr("");
-    fetch("/api/act", { method: "POST", credentials: "same-origin", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ type: "staff.rank", payload: { period } }) })
+    fetch("/api/act", { method: "POST", credentials: "same-origin", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ type: "staff.rank", payload: { period, back } }) })
       .then(r => r.json()).then(j => { if (!live) return; if (j.error) setErr(j.error); else setD(j); }).catch(() => live && setErr("Could not load the ranking."));
     return () => { live = false; };
-  }, [period]);
+  }, [period, back]);
   const team = store.S.team || [], me = store.S.me?.id;
   const photo = r => team.find(m => m.id === r.memberId)?.photo?.data;
-  const rows = d?.period === period ? d.rows : null;
+  const rows = d?.period === period && d?.back === back ? d.rows : null;
+  const isToday = period === "day" && back === 0;
+  const fmt = (x, o) => new Date(x + "T00:00:00Z").toLocaleDateString("en-GB", { timeZone: "UTC", ...o });
+  const label = !d || d.period !== period || d.back !== back ? "…" : period === "day" ? `${back === 0 ? `${t("Today")} · ` : back === 1 ? `${t("Yesterday")} · ` : ""}${fmt(d.from, { weekday: "short", day: "numeric", month: "short", year: "numeric" })}`
+    : period === "week" ? `${fmt(d.from, { day: "numeric", month: "short" })} – ${fmt(d.to, { day: "numeric", month: "short", year: "numeric" })}` : fmt(d.from, { month: "long", year: "numeric" });
+  const PREV = { day: "Previous day", week: "Previous week", month: "Previous month" }[period], NEXT = { day: "Next day", week: "Next week", month: "Next month" }[period];
   const work = rows ? [...rows].sort((a, b) => b.work - a.work || a.name.localeCompare(b.name)) : [];
   const top = Math.max(1, ...work.map(r => r.work));
   const arrive = rows ? [...rows].filter(r => r.avg != null).sort((a, b) => a.avg - b.avg || b.days - a.days) : [];
@@ -29,7 +34,12 @@ export function StaffRank() {
     <section className="card sr mt16 mb16" aria-labelledby="sr-h">
       <div className="sr-head">
         <h3 id="sr-h"><LuTrophy /> Staff ranking</h3>
-        <div className="sr-seg" role="tablist" aria-label="Period">{PERIODS.map(([k, l]) => <button key={k} type="button" role="tab" aria-selected={period === k} className={period === k ? "on" : ""} onClick={() => setPeriod(k)}>{l}</button>)}</div>
+        <div className="sr-seg" role="tablist" aria-label="Period">{PERIODS.map(([k, l]) => <button key={k} type="button" role="tab" aria-selected={period === k} className={period === k ? "on" : ""} onClick={() => { setPeriod(k); setBack(0); }}>{l}</button>)}</div>
+      </div>
+      <div className="sr-nav">
+        <button type="button" className="btn sm" onClick={() => setBack(b => b + 1)}><LuChevronLeft /> {PREV}</button>
+        <b className="sr-when">{label}</b>
+        <button type="button" className="btn sm" disabled={back === 0} onClick={() => setBack(b => Math.max(0, b - 1))}>{NEXT} <LuChevronRight /></button>
       </div>
       {err ? <div className="notice mt12">{err}</div> : !rows ? <p className="muted mt12">Loading…</p> : !rows.length ? <p className="muted mt12">No staff IDs yet.</p> :
       <div className="sr-grid">
@@ -45,13 +55,13 @@ export function StaffRank() {
         </div>
         <div className="sr-col">
           <h4><LuClock /> First to the office</h4>
-          <p className="muted small">{period === "day" ? "Time each staff member reached the office today." : "Average arrival time on the days they came to the office."}</p>
+          <p className="muted small">{period === "day" ? (isToday ? "Time each staff member reached the office today." : "Time each staff member reached the office that day.") : "Average arrival time on the days they came to the office."}</p>
           {arrive.length ? <ol className="sr-list">{arrive.map((r, i) => <li key={r.id} className={r.id === me ? "me" : ""}>
             <Place n={i + 1} /><Who r={r} />
             <div className="sr-val"><b className="num">{hm(r.avg)}</b><span className="muted small">{period === "day" ? t("arrived") : `${t("average")} · ${r.days} ${r.days === 1 ? t("day") : t("days")}`}</span></div>
             {period !== "day" && <div className="sr-areas muted small">{t("Earliest")} {hm(r.first)}</div>}
-          </li>)}</ol> : <p className="muted mt8">{period === "day" ? "Nobody has reached the office yet today." : "No office arrivals in this period."}</p>}
-          {away.length > 0 && <p className="muted small mt8">{t("Not at the office")}{period === "day" ? ` ${t("today")}` : ""}: <span data-notr>{away.map(r => r.name).join(", ")}</span></p>}
+          </li>)}</ol> : <p className="muted mt8">{isToday ? "Nobody has reached the office yet today." : "No office arrivals in this period."}</p>}
+          {away.length > 0 && <p className="muted small mt8">{t("Not at the office")}{isToday ? ` ${t("today")}` : ""}: <span data-notr>{away.map(r => r.name).join(", ")}</span></p>}
         </div>
       </div>}
     </section>

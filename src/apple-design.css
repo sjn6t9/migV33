@@ -270,3 +270,30 @@ footer.bot .social a:hover{border-color:var(--ink);color:var(--ink)}
 .sr-bar{grid-column:2/4;height:6px;border-radius:99px;background:var(--line);overflow:hidden}
 .sr-bar i{display:block;height:100%;border-radius:99px;background:linear-gradient(90deg,var(--logo-g,#05613e),#1f9466)}
 .sr-areas{grid-column:2/4}
+
+/* ---------- Office attendance: month calendar (Saturday to Friday) ---------- */
+.att-cal{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:6px;margin-top:12px}
+.att-wd{text-align:center;font-size:12.5px;font-weight:700;color:var(--muted);padding:4px 0;text-transform:uppercase;letter-spacing:.03em}
+.att-wd.off{color:#d23}
+.att-cell{position:relative;min-height:92px;border-radius:14px;background:var(--surface-2);padding:8px;display:flex;flex-direction:column;align-items:center;gap:5px;border:1.5px solid transparent}
+.att-cell.empty{background:transparent}
+.att-cell .att-n{align-self:flex-start;font-weight:700;font-size:14px;line-height:1}
+.att-cell.today{border-color:var(--logo-g,#05613e);background:var(--surface)}
+.att-cell.today .att-n{color:var(--brand)}
+.att-cell.on{background:rgba(5,97,62,.10)}
+.att-cell.abs{background:rgba(253,4,4,.07)}
+.att-cell.off{background:repeating-linear-gradient(135deg,var(--surface-2),var(--surface-2) 6px,transparent 6px,transparent 12px)}
+.att-cell.fut{opacity:.55}
+.att-cell .att-box{width:30px;height:30px;margin:0}
+.att-cell .att-t{font-size:12px;color:var(--muted);font-weight:600;white-space:nowrap}
+.att-cell .att-h{font-size:11.5px;color:var(--muted);text-align:center;line-height:1.2;margin-top:6px}
+.att-cell .att-abs{font-size:12px;font-weight:700}
+.att-del{position:absolute;top:5px;inset-inline-end:5px;width:22px;height:22px;border:0;border-radius:50%;background:transparent;color:var(--muted);display:grid;place-items:center;cursor:pointer;padding:0;opacity:.7}
+.att-del:hover{color:#e00000;opacity:1}
+.att-del svg{width:13px;height:13px}
+@media (max-width:600px){.att-cal{gap:3px}.att-cell{min-height:70px;padding:5px 2px;border-radius:10px;gap:3px}.att-cell .att-n{font-size:12px;padding-inline-start:3px}
+  .att-cell .att-box{width:24px;height:24px}.att-cell .att-t,.att-cell .att-abs{font-size:10px}.att-cell .att-h{font-size:9.5px}.att-wd{font-size:10.5px}.att-del{top:2px;inset-inline-end:1px}}
+/* staff ranking: previous / next */
+.sr-nav{display:flex;align-items:center;justify-content:center;gap:10px;flex-wrap:wrap;margin-top:12px}
+.sr-when{min-width:170px;text-align:center}
+@media (max-width:600px){.att-cell .att-t small{display:none}}
