@@ -441,6 +441,8 @@ class RoyaleBattle {
         } catch (e) { console.error('[RoyaleBattle] onRound hook failed', e); }
       }
 
+      // let the panel reveal the cards one by one first, then post the result to the chat
+      await new Promise((res) => setTimeout(res, 5800));
       this.send(
         `🔴 Red: ${show('red')}\n🔵 Blue: ${show('blue')}\n\n` +
         `${icon} ${OPTION_LABEL[r.winner]} wins with ${catLabel}!\n` +

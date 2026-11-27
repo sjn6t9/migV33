@@ -440,6 +440,8 @@ class RoyaleBattle {
         hands: { red: r.hands.red.map(cardStr), blue: r.hands.blue.map(cardStr) },
         handLabel: { red: HAND_LABEL[r.evals.red.type], blue: HAND_LABEL[r.evals.blue.type] },
         payouts: payouts.map((p) => ({ userId: p.userId, amount: p.amount })) };
+      // let the panel reveal the cards one by one first, then post the result to the chat
+      await new Promise((res) => setTimeout(res, 5800));
       this.send(
         `🔴 Red: ${show('red')}\n🔵 Blue: ${show('blue')}\n\n` +
         `${icon} ${OPTION_LABEL[r.winner]} wins with ${catLabel}!\n` +
