@@ -253,7 +253,7 @@ function viewFor(u) {
     if (can(u, "ledger") || can(u, "office") || can(u, "receipts")) pub.leaders = leaders().map(({ k, name, title }) => ({ k, name, title }));
     if (can(u, "clearance") || u.role === "agent") pub.raimsReady = !!db.raims?.pass;
     if (can(u, "tickets")) { pub.wftt = db.wftt ? { ...(u.role === "admin" ? { email: db.wftt.email } : {}), since: db.wftt.since || null, ready: !!db.wftt.token, markup: Number(db.settings.ticketMarkup || 0) } : null; pub.flightsReady = !!db.wftt?.token; }
-    if (u.role === "admin") pub.raimsIds = { main: db.raims ? { email: db.raims.email, since: db.raims.since || null, last: db.raims.last ? { at: db.raims.last.at, ok: db.raims.last.ok, rows: db.raims.last.rows, updated: db.raims.last.updated?.length || 0, error: db.raims.last.error || "" } : null } : null,
+    if (u.role === "admin") pub.raimsIds = { main: db.raims ? { email: db.raims.email, auto: db.raims.auto !== false, since: db.raims.since || null, last: db.raims.last ? { at: db.raims.last.at, ok: db.raims.last.ok, rows: db.raims.last.rows, updated: db.raims.last.updated?.length || 0, error: db.raims.last.error || "" } : null } : null,
       list: (db.raimsAccounts || []).map(a => ({ id: a.id, email: a.email, label: a.label || "", auto: a.auto !== false, since: a.since || null, added: a.added, last: a.last ? { at: a.last.at, ok: a.last.ok, rows: a.last.rows, matched: a.last.matched, updated: a.last.updated?.length || 0, error: a.last.error || "" } : null })) };
     if (can(u, "clearance")) pub.raims = db.raims ? { ...(u.role === "admin" ? { email: db.raims.email } : {}), auto: db.raims.auto, saved: !!db.raims.pass, since: db.raims.since || null, last: db.raims.last || null } : null;
     if (PP_PERMS.some(k => can(u, k))) { pub.passports = db.passports; pub.agentBook = db.agentBook; pub.bookMatch = Object.fromEntries(db.users.filter(x => x.role === "agent" && x.status !== "active").map(x => [x.id, bookMatches(x).map(b => b.name)]).filter(([, v]) => v.length)); }
@@ -1425,7 +1425,12 @@ async function raimsSync(by = "auto") {
     }
     out.ok = true;
   } catch (e) { out.ok = false; out.error = e instanceof Fail ? e.message : `Could not reach RAIMS: ${e.message}`; }
-  if (RA()) RA().last = out; save(); return out;
+  const acc = RA();
+  if (acc) { acc.last = out;
+    // RAIMS asks for a new password every so often: tell the admin once, until a sync works again
+    if (!out.ok && /did not accept/i.test(out.error || "") && !acc.pwWarned) { acc.pwWarned = now(); notifyAdmins(`RAIMS did not accept the password of ${acc.email}. If it was changed on RAIMS, enter the new password in Website › RAIMS IDs.`, "settings"); }
+    if (out.ok) delete acc.pwWarned; }
+  save(); return out;
 }
 // every 15 minutes while RAIMS is signed in (unless the admin turned automatic sync off); and shortly after a file is Sent to BMET
 let syncing = false, soonT = null;
@@ -1458,7 +1463,10 @@ A["admin.raimsIds"] = async (d, u) => {
   must(acc, "RAIMS ID not found.");
   if (d.op === "sync") { const r = await withRaims(acc, () => raimsSync(u.name)); return r.ok ? { msg: `${acc.email}: ${r.rows} files read, ${r.matched} matched, ${r.updated.length} updated.` } : { problem: r.error }; }
   if (d.op === "edit") { acc.label = str(d.label, 80); if (d.auto !== undefined) acc.auto = d.auto !== false;
-    if (d.password) { acc.pass = seal(String(d.password).slice(0, 200)); delete acc.cookies; SS[acc.email] = null; await withRaims(acc, () => raimsLogin(true)); }
+    if (d.password) { // a new password: kept only if RAIMS accepts it
+      const old = { pass: acc.pass, cookies: acc.cookies }; acc.pass = seal(String(d.password).slice(0, 200)); delete acc.cookies; SS[acc.email] = null;
+      try { await withRaims(acc, () => raimsLogin(true)); } catch (e) { Object.assign(acc, old); SS[acc.email] = null; throw e; }
+      delete acc.last; return { msg: `New RAIMS password saved for ${acc.email}.` }; }
     return { msg: "RAIMS ID saved." }; }
   if (d.op === "del") {
     await withRaims(acc, async () => { try { raimsRestore(); const S0 = SS[sk()]; if (S0) { const pg = await rq(S0.J, "/agency/dashboard"); const tok = (/name="csrf-token"[^>]*content="([^"]+)"/.exec(pg.text) || /name="_token"[^>]*value="([^"]+)"/.exec(pg.text) || [])[1] || "";
@@ -1680,10 +1688,13 @@ A["admin.raims"] = async (d, u) => {
   if (d.op === "save") {
     must(u.role === "admin", "Only the admin can change the RAIMS sign-in.", 403);
     const email = str(d.email, 120).toLowerCase(); must(/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email), "Enter the RAIMS email.");
+    // a new password (RAIMS asks for a change every so often): if RAIMS does not accept it, the old sign-in is kept
+    const before = db.raims ? { ...db.raims } : null;
     db.raims = { ...(db.raims || {}), email, auto: d.auto !== false, ...(d.password ? { pass: seal(String(d.password).slice(0, 200)) } : {}) };
     must(db.raims.pass, "Enter the RAIMS password.");
     SS[sk()] = null; delete db.raims.cookies;
-    try { await raimsLogin(true); } catch (e) { delete db.raims.pass; throw e; }
+    try { await raimsLogin(true); } catch (e) { if (before?.pass && before.email === email) { db.raims = before; SS[sk()] = null; } else delete db.raims.pass; throw e; }
+    if (before?.pass && before.email === email && d.password) { delete db.raims.last; return { msg: `New RAIMS password saved for ${email}.` }; }
     return { msg: `Signed in to RAIMS as ${email}.` };
   }
   if (d.op === "rawPage") { must(u.role === "admin", "Only the admin can download this.", 403); const x = lastRaims.get("page"); must(x, "Search RAIMS first."); return { url: x.url, html: x.html }; }

@@ -317,3 +317,8 @@ footer.bot .social a:hover{border-color:var(--ink);color:var(--ink)}
 .ri-st{display:inline-flex;align-items:center;gap:6px;font-size:13px;font-weight:600}
 .ri-st svg{width:16px;height:16px}.ri-st.ok{color:var(--brand)}.ri-st.bad{color:#e00000}
 .ri-pass{display:flex;align-items:center;gap:6px}.ri-pass input{flex:1}
+.ri-newpw{display:flex;flex-direction:column;gap:6px;padding:12px 14px;border-radius:14px;background:var(--surface-2)}
+.ri-newpw b{display:flex;align-items:center;gap:6px}
+.ri-pwrow{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.ri-pwrow .ri-pass,.ri-pwrow>input{flex:1 1 200px}
+.ri-hint{color:#e00000;font-size:13px;font-weight:600}
