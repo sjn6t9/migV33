@@ -482,7 +482,7 @@ app.post('/api/password', auth, ok((q, r) => {
 }));
 
 for (const a of ["alter table posts add column image text default ''", 'alter table posts add column pinned int default 0', 'alter table posts add column locked int default 0',
-  'alter table posts add column edited int default 0', "alter table posts add column bg text default ''", 'alter table posts add column reel int default 0', "alter table reacts add column kind text default 'like'"]) { try { db.exec(a); } catch {} }
+  'alter table posts add column edited int default 0', "alter table posts add column bg text default ''", 'alter table posts add column reel int default 0', 'alter table posts add column orig int default 0', "alter table reacts add column kind text default 'like'"]) { try { db.exec(a); } catch {} }
 db.exec(`create table if not exists post_shares(post int, user text, ts int, primary key(post,user));
 create table if not exists post_hidden(user text, post int, primary key(user,post));`);
 db.exec(`create table if not exists stories(id integer primary key, user text, image text default '', text text default '', bg int default 0, ts int);
@@ -492,32 +492,35 @@ const REACTS = ['like', 'love', 'haha', 'wow', 'sad', 'angry', 'wink', 'cool', '
 const getPost = id => db.prepare('select * from posts where id=?').get(id);
 const imgUrl = u => typeof u === 'string' && MEDIA_URL.test(u) && /\.(jpg|png|gif|webp)$/.test(u);
 function dropFile(u) { if (u && MEDIA_URL.test(u) && !db.prepare('select 1 from posts where image=?').get(u) && !db.prepare('select 1 from stories where image=?').get(u) && !db.prepare('select 1 from users where avatar=? or avatar_art=?').get(u, u) && !db.prepare('select 1 from user_photos where url=?').get(u)) fs.unlink('.' + u, () => {}); }
+const ORIGQ = `select p.id,p.user,p.text,p.image,p.bg,p.reel,p.ts,(select url from reels where id=p.reel) rurl,(select poster from reels where id=p.reel) rposter,
+  (select xp from users where name=p.user) xp,(select role from users where name=p.user) role from posts p where p.id=?`;
+function withOrig(rows) { return rows.filter(x => { if (!x.orig) return true; const o = db.prepare(ORIGQ).get(x.orig); if (!o) return false; x.o = o; return true; }); }
 app.get('/api/feed', auth, ok((q, r) => {
   const tag = String(q.query.tag || '').replace(/[^A-Za-z0-9_]/g, '').slice(0, 30);
-  const rows = db.prepare(`select p.id,p.user,p.text,p.image,p.bg,p.reel,(select url from reels where id=p.reel) rurl,(select poster from reels where id=p.reel) rposter,(select user from reels where id=p.reel) ruser,(select xp from users where name=(select user from reels where id=p.reel)) rxp,(select role from users where name=(select user from reels where id=p.reel)) rrole,p.pinned,p.locked,p.edited,p.ts, p.shares + (select count(*) from post_shares where post=p.id) shares,
+  const rows = db.prepare(`select p.id,p.user,p.text,p.image,p.bg,p.reel,p.orig,(select ts from reels where id=p.reel) rts,(select caption from reels where id=p.reel) rcap,(select url from reels where id=p.reel) rurl,(select poster from reels where id=p.reel) rposter,(select user from reels where id=p.reel) ruser,(select xp from users where name=(select user from reels where id=p.reel)) rxp,(select role from users where name=(select user from reels where id=p.reel)) rrole,p.pinned,p.locked,p.edited,p.ts, p.shares + (select count(*) from post_shares where post=p.id) shares,
     (select xp from users where name=p.user) xp, (select role from users where name=p.user) role,
     (select count(*) from reacts where post=p.id) reacts, (select kind from reacts where post=p.id and user=@me) mine,
     (select group_concat(kind) from (select kind from reacts where post=p.id group by kind order by count(*) desc limit 3)) rks,
     (select count(*) from comments where post=p.id) comments
     from posts p where p.id not in (select post from post_hidden where user=@me) ${tag ? "and (p.text like '%#'||@tag||'%')" : ''}
     order by p.pinned desc, p.id desc limit 40`).all(tag ? { me: q.user, tag } : { me: q.user });
-  r.json(rows);
+  r.json(withOrig(rows));
 }));
 // A profile's posts: what the user wrote plus what they shared (newest first)
 app.get('/api/users/:n/posts', auth, ok((q, r) => {
   const u = String(q.params.n || '').replace(/[^A-Za-z0-9._-]/g, '').slice(0, 20);
   if (!db.prepare('select 1 from users where name=?').get(u)) return r.json([]);
-  const rows = db.prepare(`select p.id,p.user,p.text,p.image,p.bg,p.reel,(select url from reels where id=p.reel) rurl,(select poster from reels where id=p.reel) rposter,(select user from reels where id=p.reel) ruser,(select xp from users where name=(select user from reels where id=p.reel)) rxp,(select role from users where name=(select user from reels where id=p.reel)) rrole,p.pinned,p.locked,p.edited,p.ts, p.shares + (select count(*) from post_shares where post=p.id) shares,
+  const rows = db.prepare(`select p.id,p.user,p.text,p.image,p.bg,p.reel,p.orig,(select ts from reels where id=p.reel) rts,(select caption from reels where id=p.reel) rcap,(select url from reels where id=p.reel) rurl,(select poster from reels where id=p.reel) rposter,(select user from reels where id=p.reel) ruser,(select xp from users where name=(select user from reels where id=p.reel)) rxp,(select role from users where name=(select user from reels where id=p.reel)) rrole,p.pinned,p.locked,p.edited,p.ts, p.shares + (select count(*) from post_shares where post=p.id) shares,
     (select xp from users where name=p.user) xp, (select role from users where name=p.user) role,
     (select count(*) from reacts where post=p.id) reacts, (select kind from reacts where post=p.id and user=@me) mine,
     (select group_concat(kind) from (select kind from reacts where post=p.id group by kind order by count(*) desc limit 3)) rks,
     (select count(*) from comments where post=p.id) comments,
     case when p.user=@u then '' else @u end sharedBy,
     coalesce((select ts from post_shares where post=p.id and user=@u), p.ts) at
-    from posts p where (p.user=@u or p.id in (select post from post_shares where user=@u))
+    from posts p where (p.user=@u or p.id in (select post from post_shares ps where user=@u and not exists(select 1 from posts s where s.user=@u and s.orig=ps.post)))
     and p.id not in (select post from post_hidden where user=@me)
     order by at desc limit 40`).all({ me: q.user, u });
-  r.json(rows);
+  r.json(withOrig(rows));
 }));
 app.get('/api/users-suggest', auth, ok((q, r) => {
   const s = String(q.query.q || '').replace(/[^A-Za-z0-9._-]/g, '').slice(0, 16);
@@ -590,6 +593,7 @@ app.put('/api/posts/:id', auth, ok((q, r) => {
 app.delete('/api/posts/:id', auth, ok((q, r) => {
   const p = getPost(q.params.id); if (!p) return bad(r, 'Post not found', 404);
   if (p.user !== q.user && !isMod(q.user)) return bad(r, 'You cannot delete this post', 403);
+  for (const sp of db.prepare('select id from posts where orig=?').all(p.id)) { for (const t of ['reacts', 'comments', 'post_shares', 'post_hidden']) db.prepare(`delete from ${t} where post=?`).run(sp.id); db.prepare('delete from posts where id=?').run(sp.id); }
   for (const t of ['reacts', 'comments', 'post_shares', 'post_hidden']) db.prepare(`delete from ${t} where post=?`).run(p.id);
   db.prepare('delete from posts where id=?').run(p.id); dropFile(p.image); r.json({ ok: true });
 }));
@@ -634,8 +638,10 @@ app.post('/api/posts/:id/comments', auth, ok((q, r) => {
   db.prepare('insert into comments(post,user,text,ts) values(?,?,?,?)').run(q.params.id, q.user, text, Date.now()); if (p.user !== q.user) { grantAct(q.user, 'comment', p.id); notify(p.user, 'social', `${q.user} commented on your post`, 'post:' + p.id); } notifyMentions(text, q.user, 'in a comment', 'post:' + p.id); r.json({ ok: true });
 }));
 app.post('/api/posts/:id/share', auth, ok((q, r) => {
-  const gp = getPost(q.params.id); if (!gp) return bad(r, 'Post not found', 404);
-  const ch = db.prepare('insert or ignore into post_shares values(?,?,?)').run(q.params.id, q.user, Date.now()).changes; if (ch && gp.user !== q.user) { grantAct(q.user, 'share', gp.id); notify(gp.user, 'social', `${q.user} shared your post`, 'post:' + gp.id); } r.json({ ok: true });
+  let gp = getPost(q.params.id); if (!gp) return bad(r, 'Post not found', 404);
+  if (gp.orig) gp = getPost(gp.orig) || gp;   // sharing a share = sharing the original post
+  const ch = db.prepare('insert or ignore into post_shares values(?,?,?)').run(gp.id, q.user, Date.now()).changes;
+  if (ch) db.prepare("insert into posts(user,text,image,bg,orig,ts) values(?,'','','',?,?)").run(q.user, gp.id, Date.now()); if (ch && gp.user !== q.user) { grantAct(q.user, 'share', gp.id); notify(gp.user, 'social', `${q.user} shared your post`, 'post:' + gp.id); } r.json({ ok: true });
 }));
 
 // ---------- Stories (disappear after 24 hours) ----------
