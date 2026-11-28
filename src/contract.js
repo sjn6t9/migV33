@@ -79,7 +79,7 @@ export const CONTRACTS = {
       // Arabic sized from the height of an alif in the form (about 24 px), whatever Arabic font the browser has
       const az = arSize(g, 24);
       g.direction = "rtl"; g.textAlign = "right";
-      fit(`${(d.companyAr || "").trim()} بصفته صاحب العمل .`, 2347, 554, 860, az, ARAB);
+      fit((d.companyAr || "").trim(), 2347, 554, 860, az, ARAB);
       fit(d.nameAr, 2196, 721, 690, az, ARAB); fit(d.jobAr, 1654, 1050, 210, az, ARAB);
       g.direction = "ltr"; g.textAlign = "right"; fit(d.visaNo, 2007, 890, 400, 37, SERIF);
       // "وعنوانه:" then the address in Arabic letters (the form's "(المنطقة: الشارع: المبنى: )" are cleared)
