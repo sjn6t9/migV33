@@ -6,7 +6,7 @@ import { LuDownload, LuSave, LuSignature, LuRefreshCw, LuUpload, LuX, LuTriangle
 import { store } from "../store.js";
 import { act, toast, closeModal, readAsDataUrl } from "../actions.js";
 import { Field } from "./shared.jsx";
-import { drawContract, canvasPdf, inkFrom, nameAr, jobAr, companyAr, newBarcodes, contractFor, pdfPicture } from "../contract.js";
+import { drawContract, canvasPdf, inkFrom, nameAr, jobAr, companyAr, addrAr, newBarcodes, contractFor, pdfPicture } from "../contract.js";
 import { isImgCopy } from "./Passports.jsx";
 
 const saveBlob = (blob, name) => { const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 4000); };
@@ -27,7 +27,7 @@ function SigCrop({ src, crop, setCrop }) {
 export function ContractMaker({ v, sig: sig0 }) {
   const J = v.job || {}, T = contractFor(v.country);
   const [d, setD] = React.useState(() => ({ ...newBarcodes(), ...J, name: J.nameEn || v.name || "", nameAr: J.nameAr || nameAr(J.nameEn || v.name), sigSalt: String(J.sigSalt || ""), jobAr: J.jobAr || jobAr(J.jobTitle), companyAr: J.companyAr || companyAr(J.company),
-    visaNo: J.visaNo || "", jobTitle: J.jobTitle || "", company: J.company || "", ...(J.attNo ? { attNo: J.attNo } : {}), ...(J.contractNo ? { contractNo: J.contractNo } : {}) }));
+    visaNo: J.visaNo || "", address: v.bmet?.address || "", addressAr: addrAr(v.bmet?.address || ""), jobTitle: J.jobTitle || "", company: J.company || "", ...(J.attNo ? { attNo: J.attNo } : {}), ...(J.contractNo ? { contractNo: J.contractNo } : {}) }));
   const [sig, setSig] = React.useState(!!sig0), [crop, setCropS] = React.useState([0.05, 0.62, 0.42, 0.14]), [cropDone, setCropDone] = React.useState(0);
   const [coSig, setCoSig] = React.useState(null), [url, setUrl] = React.useState(""), [busy, setBusy] = React.useState(false), canvas = React.useRef(null);
   const copy = v.ppCopy?.data ? v.ppCopy : v.ppCopyRef || null;
@@ -72,7 +72,8 @@ export function ContractMaker({ v, sig: sig0 }) {
           <Field label="Company (English)"><input type="text" value={d.company} onChange={e => set({ company: e.target.value, companyAr: companyAr(e.target.value) })} /></Field>
           <Field label="Company (Arabic)"><input type="text" dir="rtl" value={d.companyAr} onChange={e => set({ companyAr: e.target.value })} placeholder="اسم الشركة" /></Field>
           <Field label="Visa / ID number"><input type="text" value={d.visaNo} onChange={e => set({ visaNo: e.target.value.replace(/\s+/g, "") })} /></Field>
-          <Field label="Company address" hint="Zone, street, building numbers"><input type="text" value={d.companyAddress || ""} onChange={e => set({ companyAddress: e.target.value })} /></Field>
+          <Field label="Worker's address" hint="From RAIMS Pre EC Check (the passport entry)"><input type="text" value={d.address} onChange={e => set({ address: e.target.value, addressAr: addrAr(e.target.value) })} /></Field>
+          <Field label="Worker's address (Arabic)"><input type="text" dir="rtl" value={d.addressAr} onChange={e => set({ addressAr: e.target.value })} /></Field>
           <Field label="Barcode (left) — attestation no."><div className="row6"><input type="text" inputMode="numeric" value={d.attNo} onChange={e => set({ attNo: e.target.value.replace(/\D/g, "").slice(0, 20) })} /></div></Field>
           <Field label="Barcode (right) — contract no."><div className="row6"><input type="text" inputMode="numeric" value={d.contractNo} onChange={e => set({ contractNo: e.target.value.replace(/\D/g, "").slice(0, 20) })} />
             <button type="button" className="btn sm" title="New numbers" onClick={() => set(newBarcodes())}><LuRefreshCw /></button></div></Field>

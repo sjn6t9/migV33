@@ -64,9 +64,10 @@ export const CONTRACTS = {
       g.fillStyle = "#111";
       drawBarcode(g, d.attNo, 81, 208, 300, 99, 341, `32px ${SERIF}`);
       drawBarcode(g, d.contractNo, 2061, 208, 337, 99, 341, `32px ${SERIF}`);
-      const A = qaAddr(d.companyAddress);
       // left (Bangla form, Latin values)
-      g.textAlign = "left"; fit(A.zone, 330, 611, 46, 36, LATIN); fit(A.street, 491, 611, 80, 36, LATIN); fit(A.bldg, 691, 611, 60, 36, LATIN);
+      // "ঠিকানাঃ এলাকাঃ" then the worker's home address (the form's ", রোডঃ … বিল্ডিংঃ" are cleared)
+      g.fillStyle = "#fff"; g.fillRect(334, 572, 1225 - 334, 56); g.fillStyle = "#111";
+      g.textAlign = "left"; fit(d.address, 342, 611, 870, 34, LATIN);
       fit(d.name.toUpperCase(), 340, 720, 870, 39, LATIN); fit(d.visaNo, 526, 882, 680, 38, LATIN);
       // the job title at its own size; the rest of the line ("পদে চাকুরী করবে") moves right or left to follow it
       { const job = String(d.jobTitle || "").toUpperCase(), L = 606, gap = 18, rx = 772, rw = 1060 - rx, ry = 1005, rh = 60, maxRight = 1232; // 1240: the line between the columns
@@ -81,7 +82,9 @@ export const CONTRACTS = {
       fit(`${(d.companyAr || "").trim()} بصفته صاحب العمل .`, 2347, 554, 860, az, ARAB);
       fit(d.nameAr, 2196, 721, 690, az, ARAB); fit(d.jobAr, 1654, 1050, 210, az, ARAB);
       g.direction = "ltr"; g.textAlign = "right"; fit(d.visaNo, 2007, 890, 400, 37, SERIF);
-      g.textAlign = "center"; fit(A.zone, 2098, 615, 60, 37, SERIF); fit(A.street, 1930, 615, 110, 37, SERIF); fit(A.bldg, 1774, 615, 60, 37, SERIF);
+      // "وعنوانه:" then the address in Arabic letters (the form's "(المنطقة: الشارع: المبنى: )" are cleared)
+      g.fillStyle = "#fff"; g.fillRect(1330, 580, 2242 - 1330, 52); g.fillStyle = "#111";
+      g.direction = "rtl"; g.textAlign = "right"; fit(d.addressAr, 2236, 615, 890, az, ARAB); g.direction = "ltr";
       g.textAlign = "left";
     },
     sig: { worker: [230, 2830, 520, 190], company: [1700, 2820, 620, 170], companyText: [2010, 3045] }
@@ -261,4 +264,19 @@ export function companyEn(ar) {
   // "شركة النور للمقاولات" reads "Al Noor Contracting Company" in English
   while (out.length > 1 && /^(Company|Group|Establishment)$/.test(out[0])) { const t = out.shift(); out.splice(out[out.length - 1] === "W.L.L" ? out.length - 1 : out.length, 0, t); }
   return out.join(" ").replace(/\s+/g, " ").trim();
+}
+
+/* the worker's home address in Arabic letters (the contract's Arabic side): address words translated, places written out */
+const ADDR_AR = { vill: "قرية", village: "قرية", gram: "قرية", po: "مكتب البريد", post: "مكتب البريد", "post office": "مكتب البريد", ps: "مركز الشرطة", thana: "ثانة", upazila: "أوبازيلا", upozila: "أوبازيلا",
+  district: "محافظة", dist: "محافظة", zila: "محافظة", division: "قسم", road: "شارع", house: "منزل", ward: "حي", union: "اتحاد", bangladesh: "بنغلاديش", dhaka: "دكا", chittagong: "شيتاغونغ", chattogram: "شيتاغونغ",
+  sylhet: "سيلهيت", khulna: "خولنا", rajshahi: "راجشاهي", barisal: "باريسال", rangpur: "رانغبور", mymensingh: "ميمنسينغ", comilla: "كوميلا", cumilla: "كوميلا", tangail: "تانجايل", gazipur: "غازيبور",
+  narayanganj: "نارايانغانج", noakhali: "نواخالي", feni: "فيني", brahmanbaria: "براهمانباريا", chandpur: "شاندبور", lakshmipur: "لاكشميبور", bogura: "بوجرا", bogra: "بوجرا", pabna: "بابنا", jessore: "جيسور", jashore: "جيسور",
+  kishoreganj: "كيشورغانج", sirajganj: "سيراجغانج", faridpur: "فريدبور", munshiganj: "مونشيغانج", narsingdi: "نارسينغدي", habiganj: "حبيغانج", moulvibazar: "مولفي بازار", sunamganj: "سونامغانج", cox: "كوكس", bazar: "بازار" };
+export function addrAr(en) {
+  return String(en || "").replace(/[,;]+/g, " ، ").split(/\s+/).filter(Boolean).map(w => {
+    if (w === "،") return w;
+    const k = w.toLowerCase().replace(/[.:\-]+$/g, "").replace(/^[.:\-]+/, ""), tail = /[:\-]$/.test(w) ? ":" : "";
+    if (!k) return ""; if (/^\d+[\w/-]*$/.test(k)) return k; if (/[^\x00-\x7F]/.test(w)) return w; // numbers and other scripts as they are
+    return (ADDR_AR[k] || nameAr(k)) + tail;
+  }).filter(Boolean).join(" ").replace(/\s+،/g, "،").replace(/،\s*$/, "").trim();
 }
