@@ -72,6 +72,7 @@ function Fields({ v, set, idx }) {
   const ags = agentsList(), refAgent = v.agentId && ags.find(a => a.id === v.agentId);
   const [busy, setBusy] = React.useState(false);
   const B = v.bmet || {}, setB = x => set({ bmet: { ...B, ...x } });
+  const ready = !!v.country && String(v.passport || "").replace(/\s+/g, "").length >= 6;
   const fill = async () => { // the passport's details from RAIMS (Pre EC Check)
     const pp = String(v.passport || "").replace(/\s+/g, ""); if (pp.length < 6) return toast("Enter the passport number first.");
     setBusy(true); const r = await act("raims.preEc", { passport: pp, returnee: "no" }, { quiet: true }); setBusy(false);
@@ -80,10 +81,11 @@ function Fields({ v, set, idx }) {
     toast("Filled from RAIMS Pre EC Check.");
   };
   return <>
-    <Field label="Full name"><input type="text" value={v.name} onChange={e => set({ name: e.target.value })} maxLength={120} placeholder="As in the passport" aria-label={`Full name${idx ? ` ${idx}` : ""}`} /></Field>
+    <Field label="Country"><CountrySelect value={v.country} onChange={c => set({ country: c })} /></Field>
     <Field label="Passport number"><div className="preec-pp"><input type="text" value={v.passport} onChange={e => set({ passport: e.target.value.toUpperCase() })} maxLength={20} placeholder="A01234567" style={{ textTransform: "uppercase" }} />
       {store.S.raimsReady && <button type="button" className="btn sm" disabled={busy} title="Fill from RAIMS Pre EC Check" onClick={fill}><LuShieldCheck /> {busy ? "…" : "Pre EC"}</button>}</div></Field>
-    <Field label="Country"><CountrySelect value={v.country} onChange={c => set({ country: c })} /></Field>
+    {!ready ? <p className="full muted small pp-wait">Choose the country and enter the passport number — the other fields for that country then show here.</p> : <>
+    <Field label="Full name"><input type="text" value={v.name} onChange={e => set({ name: e.target.value })} maxLength={120} placeholder="As in the passport" aria-label={`Full name${idx ? ` ${idx}` : ""}`} /></Field>
     <Field label="Male/Female"><div className="seg2" role="radiogroup">{["Male", "Female"].map(g => <button key={g} type="button" role="radio" aria-checked={v.gender === g} className={v.gender === g ? "on" : ""} onClick={() => set({ gender: g })}>{g}</button>)}</div></Field>
     <Field label="BMET Registration No"><input type="text" value={B.regNo || ""} maxLength={40} onChange={e => setB({ regNo: e.target.value.toUpperCase() })} placeholder="RBM2026…" /></Field>
     <Field label="NID Number"><input type="text" inputMode="numeric" value={B.nid || ""} maxLength={20} onChange={e => setB({ nid: e.target.value })} /></Field>
@@ -97,6 +99,7 @@ function Fields({ v, set, idx }) {
       <input type="text" value={v.ref} list="pp-ref-agents" onChange={e => { const a = ags.find(x => x.name === e.target.value); set({ ref: e.target.value, agentId: a ? a.id : "" }); }} maxLength={120} placeholder="Agent or reference" /></Field>
     <Field label="Worker's address" hint="Filled from RAIMS Pre EC Check" full><input type="text" value={B.address || ""} maxLength={600} onChange={e => setB({ address: e.target.value })} placeholder="Village, post office, upazila, district" /></Field>
     <JobFields v={v} set={set} />
+  </>}
   </>;
 }
 export const isImgCopy = c => !!c && (/^data:image\//.test(c.data || "") || (/^\/api\/files\//.test(c.data || "") && !/\.pdf$/i.test(c.name || "")));
@@ -111,12 +114,13 @@ function JobFields({ v, set }) {
   const fromMoi = m => {
     setJ({ ...(m.visaNo ? { visaNo: m.visaNo } : {}), ...(m.nameAr ? { nameAr: m.nameAr } : {}), ...(m.company ? { company: m.company } : {}), ...(m.companyAr || m.company ? { companyAr: m.companyAr || coAr(m.company) } : {}) });
     if (!v.passport && m.passport) set({ passport: m.passport }); };
+  const T = contractFor(v.country);
   return <>
-    <div className="full pp-sec"><b>Work & company</b><span className="muted small"> — optional; used in the employment contract</span>
-      <MoiFetch passport={v.passport} onFill={fromMoi} />
+    {T && <><div className="full pp-sec"><b>{`Work & company · ${v.country}`}</b><span className="muted small"> — optional; used in the employment contract</span>
+      {v.country === "Qatar" && <MoiFetch passport={v.passport} onFill={fromMoi} />}
     </div>
     {JOB_FIELDS.map(([k, l, ph]) => <Field key={k} label={l} full={k === "companyAddress" || k === "company"}><input type={k === "companyEmail" ? "email" : k === "companyMobile" ? "tel" : "text"} value={J[k] || ""} maxLength={k === "companyAddress" ? 300 : 160} placeholder={ph}
-      onChange={e => setJ({ [k]: k === "visaNo" ? e.target.value.replace(/\s+/g, "") : e.target.value })} /></Field>)}
+      onChange={e => setJ({ [k]: k === "visaNo" ? e.target.value.replace(/\s+/g, "") : e.target.value })} /></Field>)}</>}
     <Field label="Passport copy (optional)" hint="A photo or scan of the passport page; its signature can go on the contract" full>
       <div className="fpick has-or-not">
         <label className="fpick-btn"><input className="fpick-in" type="file" accept=".jpg,.jpeg,.png,.webp,.pdf" onChange={pick} /><LuUpload /><span>{copy ? "Change file" : "Choose file"}</span></label>
@@ -163,7 +167,7 @@ function PassportForm() {
     <AgentDatalist id="pp-ref-agents" />
     <div className="row6 mt8"><button type="button" className="btn sm" onClick={() => { const l = rows[rows.length - 1]; setRows([...rows, blank(undefined, l.country)]); }}><LuPlus /> Add another passport</button></div>
     <div className="mt14 pp-save-row"><button className="btn pri" disabled={busy}>{rows.length > 1 ? `Save ${rows.length} passports` : "Save passport"}</button>
-      {rows.length === 1 && <ContractBar v={rows[0]} id={passports().find(p => p.passport === rows[0].passport.replace(/\s+/g, ""))?.id} />}</div>
+      {rows.length === 1 && contractFor(rows[0].country) && <ContractBar v={rows[0]} id={passports().find(p => p.passport === rows[0].passport.replace(/\s+/g, ""))?.id} />}</div>
   </form>;
 }
 function EditRow({ p, onDone }) {
@@ -173,7 +177,7 @@ function EditRow({ p, onDone }) {
   return <tr className="sel"><td colSpan={13}><div className="fgrid pp-edit"><Fields v={v} set={x => setV({ ...v, ...x })} />
     <AgentDatalist id="pp-ref-agents" />
     <div className="full row6 pp-save-row"><button type="button" className="btn sm pri" onClick={save}><LuCheck /> Save</button><button type="button" className="btn sm" onClick={onDone}><LuX /> Cancel</button>
-      <ContractBar v={v} id={p.id} /></div></div></td></tr>;
+      {contractFor(v.country) && <ContractBar v={v} id={p.id} />}</div></div></td></tr>;
 }
 
 /* a small search to pick a passport; used in account entry forms ("details" gets the passport line) */
