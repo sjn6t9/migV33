@@ -2813,19 +2813,23 @@ A["admin.setLevel"] = async ({ id: uid, level }, u) => {
   must(u?.role === "admin", "Only an admin can set a level.", 403);
   const x = user(uid); must(x && x.role === "admin", "Levels are set by hand only for admin IDs. Staff levels grow with XP.");
   const lv = Math.floor(+level); must(lv >= 1 && lv <= LEVEL_MAX, `Choose a level from 1 to ${LEVEL_MAX}.`);
-  x.level = lv; return { msg: `${x.name} is now Level ${lv}.` };
+  x.level = lv; x.levelXp = xpAll()[x.id]?.xp || 0; // XP from now on lifts the level from here
+  return { msg: `${x.name} is now Level ${lv}.` };
 };
 /* ---- staff XP and levels ----
    daily sign-in 10 · each piece of work 50 (what the Work done ranking counts, manual work too) · a reply in live chat 10 per customer per day ·
-   first to the office 100 / second 50 / third 20 that day. Levels: 400 XP each, from 1 to 1000.
+   first to the office 100 / second 50 / third 20 that day. Levels 1–1000: 100, 200, 400, then 400 more each level.
    Admin IDs: the level is set by hand. History older than the kept staff log is carried in db.xpCarry so XP never drops. */
 if (!db.xpCarry) db.xpCarry = {};
 const bdDate = iso => new Date(Date.parse(iso) + 6 * 3600e3).toISOString().slice(0, 10);
 function xpCarryOut(gone) { for (const e of gone) { const c = (db.xpCarry[e.uid] ||= { work: 0, days: [] }); if (e.area !== "Sign-in") c.work++; const d = bdDate(e.at); if (!c.days.includes(d)) c.days.push(d); } }
-// every level takes 400 XP; levels go from 1 to 1000
-const LEVEL_XP = 400, LEVEL_MAX = 1000;
-function levelOf(xp) { const x = Math.max(0, Math.floor(xp)), lv = Math.min(LEVEL_MAX, 1 + Math.floor(x / LEVEL_XP));
-  return lv >= LEVEL_MAX ? { level: LEVEL_MAX, into: LEVEL_XP, need: LEVEL_XP, max: true } : { level: lv, into: x - (lv - 1) * LEVEL_XP, need: LEVEL_XP }; }
+// XP for the next level, from level n: 1→2 100, 2→3 200, 3→4 400, then 400 more each level (4→5 800, 5→6 1200, 6→7 1600, 7→8 2000 …); levels 1 to 1000
+const LEVEL_MAX = 1000;
+const LEVEL_NEED = n => n <= 1 ? 100 : n === 2 ? 200 : 400 * (n - 2);
+// from a starting level (1 for staff; the level an admin set by hand) climb with the XP earned since then
+function levelOf(xp, from = 1) { let lv = Math.max(1, Math.min(LEVEL_MAX, Math.floor(from))), left = Math.max(0, Math.floor(xp));
+  while (lv < LEVEL_MAX && left >= LEVEL_NEED(lv)) { left -= LEVEL_NEED(lv); lv++; }
+  return lv >= LEVEL_MAX ? { level: LEVEL_MAX, into: 0, need: 0, max: true } : { level: lv, into: left, need: LEVEL_NEED(lv) }; }
 let xpMemo = { key: "", map: null };
 function xpAll() {
   const key = `${REV}|${bdDay()}`; if (xpMemo.key === key) return xpMemo.map;
@@ -2859,7 +2863,10 @@ function idCard(x) {
   // name, photo and designation come from the Expert Team profile the ID is linked to
   const base = { username: x.username || "", title: m?.title || x.title || (x.role === "admin" ? "Admin" : "Staff"), photo: m?.photo ? `/api/files/${m.photo.id}` : "", member: m?.id || "" };
   // admin: the level set by hand; the XP bar shows the XP earned the same way as staff, toward the next level
-  if (x.role === "admin") { const xp = xpAll()[x.id]?.xp || 0, lv = x.level || 1; return { ...base, kind: "admin", level: lv, xp, into: xp % LEVEL_XP, need: LEVEL_XP, max: lv >= LEVEL_MAX }; }
+  // admin: starts from the level set by hand and climbs with the XP earned after it was set
+  if (x.role === "admin") { const xp = xpAll()[x.id]?.xp || 0;
+    if (x.level && x.levelXp == null) { x.levelXp = xp; save(); } // a level set before this rule: climbs from today
+    const l = levelOf(x.level ? xp - x.levelXp : xp, x.level || 1); return { ...base, kind: "admin", xp, ...l }; }
   const l = xpAll()[x.id] || { xp: 0, ...levelOf(0) };
   return { ...base, kind: "staff", level: l.level, xp: l.xp, into: l.into, need: l.need, parts: l.parts };
 }

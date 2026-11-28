@@ -2771,3 +2771,4 @@ P110|E dolava na WhatsApp vei +{0}
 2737|Rename
 2738|Only the office sees this name; the agent still sees their own agency name.
 2739|Agency name (from the agent)
+2740|Set a starting level (1 to 1000). From there the level grows with XP, like staff: the next level takes 100, 200, 400 XP, then 400 more each level (800, 1200, 1600 …).
