@@ -2,6 +2,7 @@ import React from "react";
 import { createRoot } from "react-dom/client";
 import App from "./App.jsx";
 import { loadState, store } from "./store.js";
+import { toast } from "./actions.js";
 import "./styles.css";
 import "./apple-design.css";
 import { initLang } from "./i18n.js";
@@ -36,6 +37,8 @@ setInterval(async () => {
     const r = await fetch("/api/rev", { credentials: "same-origin", cache: "no-store" }); const j = await r.json();
     const meNow = store.S.session || null;
     if (j.rev !== store.S.rev || (j.me || null) !== meNow) waiting = true;
+    // signed out by the server (6 hours with no work done): say so once
+    if (meNow && !j.me && !store.ui.signingOut) { const who = store.S.users?.find(x => x.id === meNow); if (who && ["admin", "staff", "agent"].includes(who.role)) setTimeout(() => toast("You were signed out after 6 hours without any work. Sign in again."), 400); }
     if (waiting && !typing()) { waiting = false; await loadState(); }
   } catch { /* offline: try again next second */ }
   checking = false;

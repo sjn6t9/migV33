@@ -339,7 +339,7 @@ function PanelSignIn({ kind }) {
         <div className="signin-mlogo"><Logo size={56} /></div>
         <h1>{agent ? "Agent sign in" : "Welcome back"}</h1>
         <p className="muted">{agent ? "Sign in with your registered agent account." : "For the agency's admin and staff only."}</p>
-        <label className="signin-f"><span>Email</span><div className="signin-in"><LuMail aria-hidden="true" /><input type="email" name="email" required autoComplete="username" autoFocus placeholder="name@example.com" inputMode="email" /></div></label>
+        <label className="signin-f"><span>{agent ? "Email" : "Email or username"}</span><div className="signin-in"><LuMail aria-hidden="true" /><input type={agent ? "email" : "text"} name="email" required autoComplete="username" autoCapitalize="none" spellCheck={false} autoFocus placeholder={agent ? "name@example.com" : "name@example.com or username"} inputMode="email" /></div></label>
         <label className="signin-f"><span>Password</span><div className="signin-in"><LuLock aria-hidden="true" /><input type={show ? "text" : "password"} name="pass" required autoComplete="current-password" placeholder="Your password" onKeyUp={capsKey} onKeyDown={capsKey} />
           <button type="button" className="signin-eye" onClick={() => setShow(x => !x)} aria-label={show ? "Hide password" : "Show password"} title={show ? "Hide password" : "Show password"}>{show ? <LuEyeOff /> : <LuEye />}</button></div>
           {caps && <em className="signin-caps">Caps Lock is on.</em>}</label>
@@ -465,7 +465,7 @@ function Auth({ mode, role: initialRole }) {
       <div className="tabs2">{tabBtn("login", "Sign in")}{tabBtn("register", "Register")}</div>
       {mode === "login" ? (
         <form className="stack12" onSubmit={login}>
-          <label className="f">Email<input type="email" name="email" required autoComplete="username" autoFocus /></label>
+          <label className="f">Email or username<input type="text" name="email" required autoComplete="username" autoCapitalize="none" spellCheck={false} autoFocus /></label>
           <label className="f">Password<input type="password" name="pass" required autoComplete="current-password" /></label>
           <button className="btn pri" type="submit" disabled={busy}><LuLogIn /> Sign in</button>
           <p className="muted small">Forgot your password? Contact the office and we will reset it.</p>

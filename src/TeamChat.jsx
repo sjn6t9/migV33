@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { LuX, LuArrowLeft, LuUsers, LuPlus, LuSearch, LuReply, LuTrash2, LuSettings2, LuLogOut, LuMessagesSquare, LuCheckCheck, LuCheck, LuMessageCircle, LuMaximize2, LuMinimize2 } from "react-icons/lu";
 import { Composer, Thread as LiveThread, chatGet, chatPost } from "./LiveChat.jsx";
-import { RoleBadges } from "./ui.jsx";
+import { RoleBadges, IdName } from "./ui.jsx";
 import { toast, confirmBox } from "./actions.js";
 import { store } from "./store.js";
 import { t } from "./i18n.js";
@@ -59,7 +59,7 @@ export function TeamChatWidget({ me }) {
       : <p className="muted small tc-none">No groups yet.</p>}
     <div className="tc-sec"><span>Admin & staff</span></div>
     {people.filter(p => match(p.name) || match(p.title)).map(p => { const c = dmWith(p.id); return <button key={p.id} className={`tc-row${c && cur === c.id && view === "chat" ? " on" : ""}`} onClick={() => openDm(p.id)}>
-      <Av p={p} /><span className="tc-main"><b>{p.name}<RoleBadges role={p.role} size={15} /></b>
+      <Av p={p} /><span className="tc-main"><span className="tc-idn"><IdName name={p.name} idc={p.idc} compact title={false} /><RoleBadges role={p.role} size={15} /></span>
         <small className={p.online ? "tc-on" : ""}>{c?.lastText ? `${c.lastFrom === me.id ? "You: " : ""}${c.lastText}` : p.online ? "Online" : ago(p.seen)}</small></span>
       {c?.unread > 0 && <span className="count">{c.unread}</span>}</button>; })}
     {!people.length && <p className="muted small tc-none">No other admin or staff IDs yet. Create them in Staff &amp; permissions.</p>}
@@ -174,7 +174,7 @@ function Thread({ id, me, person, members, full, onBack, onGone }) {
 function Pick({ people, sel, setSel }) {
   return <div className="tc-pick">{people.map(p => <label key={p.id} className="tc-row tc-check">
     <input type="checkbox" checked={sel.includes(p.id)} onChange={() => setSel(sel.includes(p.id) ? sel.filter(x => x !== p.id) : [...sel, p.id])} />
-    <Av p={p} size={32} /><span className="tc-main"><b>{p.name}<RoleBadges role={p.role} size={14} /></b><small>{p.title || (p.role === "admin" ? "Admin" : "Staff")}</small></span></label>)}</div>;
+    <Av p={p} size={32} /><span className="tc-main"><span className="tc-idn"><IdName name={p.name} idc={p.idc} compact title={false} /><RoleBadges role={p.role} size={14} /></span><small>{p.title || (p.role === "admin" ? "Admin" : "Staff")}</small></span></label>)}</div>;
 }
 function GroupForm({ me, people, onBack, onDone }) {
   const [name, setName] = useState(""); const [sel, setSel] = useState([]); const [busy, setBusy] = useState(false);

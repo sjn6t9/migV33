@@ -1,7 +1,7 @@
 import { StaffRank } from "./StaffRank.jsx";
 // Admin / staff: own Settings (signature, Day/Night/System, password, language, log out), Office attendance, and the admin's attendance settings.
 import React from "react";
-import { LuPenLine, LuSunMoon, LuSun, LuMoon, LuMonitor, LuKeyRound, LuLanguages, LuLogOut, LuChevronLeft, LuChevronRight, LuCheck, LuWifi, LuTrash2, LuPlus, LuRefreshCw } from "react-icons/lu";
+import { LuAtSign, LuPenLine, LuSunMoon, LuSun, LuMoon, LuMonitor, LuKeyRound, LuLanguages, LuLogOut, LuChevronLeft, LuChevronRight, LuCheck, LuWifi, LuTrash2, LuPlus, LuRefreshCw } from "react-icons/lu";
 import { store, user, loadState } from "../store.js";
 import { act, toast, formData, signOut, confirmBox } from "../actions.js";
 import { Field } from "./shared.jsx";
@@ -25,6 +25,7 @@ export function MySettings() {
       <div className="seg3" role="radiogroup" aria-label="Day or night mode">{[["light", "Day", LuSun], ["dark", "Night", LuMoon], ["", "System", LuMonitor]].map(([k, l, I]) =>
         <button key={l} type="button" role="radio" aria-checked={theme === k} className={theme === k ? "on" : ""} onClick={() => { setTheme(k); setN(n => n + 1); }}><I /> {l}</button>)}</div>
       <p className="small muted mt8">System follows the setting of this phone or computer.</p></div>
+    {u.idc && <UsernameBox u={u} />}
     <div className="card set-sec"><h3><LuKeyRound /> Change password</h3>
       <form className="stack12" onSubmit={pw}>
         <Field label="Current password"><input type="password" name="old" required autoComplete="current-password" /></Field>
@@ -151,4 +152,19 @@ export function AttendanceSettings() {
     <div className="row6 mt8 att-add"><input type="date" value={d} onChange={e => setD(e.target.value)} aria-label="Holiday date" /><input type="text" value={n} onChange={e => setN(e.target.value)} placeholder="e.g. Victory Day" maxLength={80} aria-label="Holiday name" />
       <button className="btn sm" disabled={!d || !n.trim()} onClick={async () => { if (await act("admin.attendance", { op: "holidayAdd", date: d, name: n })) { setD(""); setN(""); } }}><LuPlus /> Add holiday</button></div>
   </div>;
+}
+
+/* admin / staff: a username (3–15 characters) — shown under the name, and usable instead of the email to sign in */
+function UsernameBox({ u }) {
+  const [v, setV] = React.useState(u.username || "");
+  const ok = /^[a-z0-9._]{3,15}$/.test(v) && /[a-z]/.test(v);
+  const save = async e => { e.preventDefault(); await act("me.username", { username: v }); };
+  return <div className="card set-sec"><h3><LuAtSign /> {u.username ? "Username" : "Add username"}</h3>
+    <form className="stack12" onSubmit={save}>
+      <Field label="Username"><div className="un-in"><span>@</span><input type="text" value={v} maxLength={15} autoComplete="username" autoCapitalize="none" spellCheck={false} placeholder="e.g. sujon"
+        onChange={e => setV(e.target.value.toLowerCase().replace(/[^a-z0-9._]/g, ""))} /></div></Field>
+      <p className="small muted">3 to 15 characters: letters, numbers, dot (.) or underscore (_). It is shown under your name, and you can sign in with it instead of your email.</p>
+      <div className="row"><button className="btn pri" type="submit" disabled={!ok || v === (u.username || "")}>{u.username ? "Save username" : "Add username"}</button>
+        {u.username && <button type="button" className="btn" onClick={() => { setV(""); act("me.username", { username: "" }); }}>Remove</button>}</div>
+    </form></div>;
 }

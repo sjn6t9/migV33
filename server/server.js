@@ -196,11 +196,12 @@ const fileRef = r => (r && r.id ? { id: r.id, name: r.name, size: r.size, data: 
 
 /* ======================= state sent to the browser ======================= */
 const cleanUser = (u, full) => {
-  if (!u) return u; const { pass, verify, ...x } = u;
+  if (!u) return u; const { pass, verify, otpOk, ...x } = u;
   if (x.photo) x.photo = fileRef(x.photo);
   if (x.profile) x.profile = { ...x.profile, photo: fileRef(x.profile.photo), passportFile: fileRef(x.profile.passportFile), cv: fileRef(x.profile.cv) };
   if (x.agent?.docs) x.agent = { ...x.agent, docs: Object.fromEntries(Object.entries(x.agent.docs).map(([k, v]) => [k, fileRef(v)])) };
   if (!full) { delete x.email; if (x.profile) delete x.profile.passportFile; if (x.agent) x.agent = { business: x.agent.business, phone: x.agent.phone }; delete x.perms; }
+  if (isStaffRole(u)) x.idc = idCard(u); // badge, level, username, title
   return x;
 };
 const cleanCl = c => ({ ...c, files: c.files ? { passport: fileRef(c.files.passport), visa: fileRef(c.files.visa), contract: fileRef(c.files.contract), others: (c.files.others || []).map(fileRef) } : c.files, card: c.card ? { ...c.card, data: `/api/files/${c.card.id}` } : null, payment: c.payment ? { ...c.payment, file: fileRef(c.payment.file) } : null });
@@ -304,16 +305,20 @@ const A = {};
 /* ---- account ---- */
 A["auth.login"] = async ({ email, pass }, u, ctx) => {
   limit(ctx.ip, "login", 10, 15 * 60e3);
-  const x = db.users.find(y => y.email === str(email, 200).toLowerCase());
-  must(x && checkPass(pass, x.pass), "Email or password is wrong.");
+  const who = str(email, 200).toLowerCase().replace(/^@/, "");
+  // admin and staff may sign in with their username instead of the email
+  const x = db.users.find(y => y.email === who) || (!who.includes("@") ? db.users.find(y => isStaffRole(y) && y.username === who) : null);
+  must(x && checkPass(pass, x.pass), "Email/username or password is wrong.");
   must(zoneAllows(ctx.zone, x) || (ctx.zone === "main" && AGENT_HOST && x.role === "agent"), zoneMsg(ctx.zone), ctx.zone === "main" ? 400 : 403);
   must(x.status !== "suspended", "This account is suspended. Contact the agency.");
   if (x.status === "unverified") return { verify: x.id, email: x.email, msg: "Verify your email address to continue." };
-  if (isStaffRole(x) && LOGIN_OTP && await getMailer()) return startOtp(x); // admin and staff: a one-time code by email as well
+  // admin and staff: a one-time code by email at the first sign-in of the day from a network; after that, the same day from the same network, no code
+  if (isStaffRole(x) && LOGIN_OTP && !otpDoneToday(x, ctx.ip) && await getMailer()) return startOtp(x);
   ctx.login(x); return { msg: `Signed in as ${x.name}` };
 };
 /* admin / staff sign-in, step 2: the code from the email (LOGIN_OTP=off in the server settings turns this off) */
 const LOGIN_OTP = !/^(0|off|no|false)$/i.test(process.env.LOGIN_OTP || "on");
+const otpDoneToday = (x, ip) => x.otpOk?.day === bdDay() && x.otpOk.nets.includes(netOf(ip));
 const otps = new Map(); // ticket -> { uid, code, exp, tries, sent }
 const maskMail = e => String(e).replace(/^(.)(.*)(.@.*)$/, (_, a, b, c) => a + "*".repeat(Math.min(6, b.length)) + c);
 async function startOtp(x) {
@@ -338,6 +343,7 @@ A["auth.otp"] = async ({ otp, code }, u, ctx) => {
   o.tries++; if (o.tries > 5) { otps.delete(String(otp)); must(false, "Too many wrong codes. Sign in again."); }
   must(String(code || "").replace(/\D/g, "") === o.code, "The code is not correct. Check the email and try again.");
   otps.delete(String(otp)); const x = user(o.uid); must(x && x.status !== "suspended", "This account is suspended. Contact the agency.");
+  const day = bdDay(), net = netOf(ctx.ip); x.otpOk = x.otpOk?.day === day ? { day, nets: [...new Set([...x.otpOk.nets, net])].slice(-10) } : { day, nets: [net] };
   ctx.login(x); return { msg: `Signed in as ${x.name}` };
 };
 A["auth.otpResend"] = async ({ otp }, u, ctx) => {
@@ -1528,7 +1534,7 @@ function staffTrail(type, d, out, who, ip, ua) {
     const pick = [who2, d.passport, d.name, d.ref, d.ic, d.status, d.op, d.amount ?? d.rate, d.date].filter(v => v !== undefined && v !== null && v !== "" && typeof v !== "object").map(v => String(v).slice(0, 60));
     const detail = pre ? `Pre EC Check · ${ppNorm(d.passport)}${out?.ok ? "" : ` · ${out?.problem || "no result"}`}` : login ? "Signed in" : `${out.msg}${pick.length ? ` (${pick.join(" · ")})` : ""}`;
     const e = { id: id("sh"), at: now(), uid: who.id, type, area: (ST_AREA.find(([re]) => re.test(type)) || [0, "Other"])[1], detail: str(detail, 300), ip: String(ip || "").replace(/^::ffff:/, ""), device: device(ua), office: isOffice(netOf(ip)) };
-    db.staffLog.push(e); if (db.staffLog.length > 30000) db.staffLog.splice(0, db.staffLog.length - 30000);
+    db.staffLog.push(e); if (db.staffLog.length > 30000) xpCarryOut(db.staffLog.splice(0, db.staffLog.length - 30000));
   } catch (err) { console.error("staffTrail", err); }
 }
 A["admin.staffLog"] = async (d, u) => {
@@ -2138,8 +2144,11 @@ function sessionUser(req) {
   const t = cookies(req).mam_s; const s = t && db.sessions[t];
   if (!s || Date.parse(s.exp) < Date.now()) return { token: null, u: null };
   const u = user(s.uid); if (!u || u.status === "suspended" || u.status === "unverified") return { token: null, u: null };
+  // admin, staff and agent IDs sign out by themselves after 6 hours with no work done
+  if (IDLE_ROLES.has(u.role)) { if (!s.last) s.last = new Date().toISOString(); else if (Date.now() - Date.parse(s.last) > IDLE_MS) { delete db.sessions[t]; save(); return { token: null, u: null, idle: true }; } }
   return { token: t, u };
 }
+const IDLE_MS = (+process.env.IDLE_HOURS || 6) * 3600e3, IDLE_ROLES = new Set(["admin", "staff", "agent"]);
 function send(res, code, body, headers = {}) {
   const data = typeof body === "string" || Buffer.isBuffer(body) ? body : JSON.stringify(body);
   res.writeHead(code, { ...baseHeaders, "Content-Type": "application/json; charset=utf-8", "Cache-Control": "no-store", ...headers }); res.end(data);
@@ -2170,6 +2179,7 @@ const secure = req => req.headers["x-forwarded-proto"] === "https";
 async function handleApi(req, res, url) {
   const zone = hostZone(req);
   let { token, u } = sessionUser(req);
+  if (token && req.method === "POST" && db.sessions[token]) db.sessions[token].last = new Date().toISOString(); // work done: the 6-hour sign-out clock starts again
   if (u && isStaffRole(u)) { seen.set(u.id, Date.now()); attTouch(u, clientIp(req)); } // online / offline in the team chat; office attendance
   if (u && !zoneAllows(zone, u)) { token = null; u = null; } // a session from the other site does not count here
   if (req.method === "GET" && url.pathname === "/api/state") return send(res, 200, { ...viewFor(u), rev: REV });
@@ -2451,7 +2461,7 @@ const isOnline = uid => Date.now() - (seen.get(uid) || 0) < 70e3;
 const teamMembers = () => db.users.filter(x => isStaffRole(x) && x.status !== "suspended");
 function teamPerson(x) {
   const m = x.memberId && db.team.find(t => t.id === x.memberId);
-  return { id: x.id, name: x.name, role: x.role, title: m?.title || "", photo: m?.photo?.data || "", online: isOnline(x.id), seen: seen.has(x.id) ? new Date(seen.get(x.id)).toISOString() : x.lastSeen || "" };
+  return { id: x.id, name: x.name, role: x.role, title: m?.title || "", idc: idCard(x), photo: m?.photo?.data || "", online: isOnline(x.id), seen: seen.has(x.id) ? new Date(seen.get(x.id)).toISOString() : x.lastSeen || "" };
 }
 const tUnread = (c, uid) => c.msgs.filter(m => m.from !== uid && m.at > (c.reads?.[uid] || "")).length;
 function tSummary(c, uid) {
@@ -2773,6 +2783,58 @@ function salaryAtt(uid, date, period) {
 }
 /* ---------- office attendance: a tick per working day; signing in from the office IP ticks it by itself ---------- */
 if (!db.attendance) db.attendance = { marks: {}, ipLog: {}, holidays: [{ date: "2026-12-16", name: "Victory Day" }, { date: "2026-12-25", name: "Christmas" }], office: { mode: "auto", ip: "", autoIp: "" } };
+/* admin / staff: a username (3–15 letters, numbers, . or _) to sign in with and to show under the name */
+A["me.username"] = async ({ username }, u) => {
+  must(u && isStaffRole(u), "Only admin and staff IDs have a username.", 403);
+  const v = str(username, 40).toLowerCase().replace(/^@/, "");
+  if (!v) { delete u.username; return { msg: "Username removed." }; }
+  must(/^[a-z0-9._]{3,15}$/.test(v), "A username has 3 to 15 characters: letters, numbers, dot (.) or underscore (_).");
+  must(/[a-z]/.test(v), "Use at least one letter in the username.");
+  must(!db.users.some(y => y.id !== u.id && (y.username === v || y.email === v)), "This username is taken. Try another.");
+  u.username = v; return { msg: `Your username is now @${v}.` };
+};
+/* admin: the level of an admin ID is set by hand (staff levels come from XP) */
+A["admin.setLevel"] = async ({ id: uid, level }, u) => {
+  must(u?.role === "admin", "Only an admin can set a level.", 403);
+  const x = user(uid); must(x && x.role === "admin", "Levels are set by hand only for admin IDs. Staff levels grow with XP.");
+  const lv = Math.floor(+level); must(lv >= 1 && lv <= 100, "Choose a level from 1 to 100.");
+  x.level = lv; return { msg: `${x.name} is now Level ${lv}.` };
+};
+/* ---- staff XP and levels ----
+   daily sign-in 10 · each piece of work 50 (what the Work done ranking counts, manual work too) · a reply in live chat 10 per customer per day ·
+   first to the office 100 / second 50 / third 20 that day. Levels: 1→2 100 XP, 2→3 200, 3→4 400, then +200 per level (… 9→10 1600).
+   Admin IDs: the level is set by hand. History older than the kept staff log is carried in db.xpCarry so XP never drops. */
+if (!db.xpCarry) db.xpCarry = {};
+const bdDate = iso => new Date(Date.parse(iso) + 6 * 3600e3).toISOString().slice(0, 10);
+function xpCarryOut(gone) { for (const e of gone) { const c = (db.xpCarry[e.uid] ||= { work: 0, days: [] }); if (e.area !== "Sign-in") c.work++; const d = bdDate(e.at); if (!c.days.includes(d)) c.days.push(d); } }
+const LEVEL_STEP = i => [100, 200, 400, 600, 800, 1000, 1200, 1400, 1600][i] ?? 1600 + 200 * (i - 8);
+function levelOf(xp) { let lv = 1, left = Math.max(0, xp); for (let i = 0; i < 200; i++) { const need = LEVEL_STEP(i); if (left < need) return { level: lv, into: left, need }; left -= need; lv++; } return { level: lv, into: 0, need: 0 }; }
+let xpMemo = { key: "", map: null };
+function xpAll() {
+  const key = `${REV}|${bdDay()}`; if (xpMemo.key === key) return xpMemo.map;
+  const map = {}, staff = db.users.filter(x => x.role === "staff"), ids = new Set(staff.map(x => x.id));
+  const W = uid => (map[uid] ||= { days: new Set(db.xpCarry[uid]?.days || []), work: db.xpCarry[uid]?.work || 0, replies: new Set(), office: 0 });
+  for (const x of staff) W(x.id);
+  for (const e of db.staffLog) if (ids.has(e.uid)) { const w = W(e.uid); w.days.add(bdDate(e.at)); if (e.area !== "Sign-in") w.work++; }
+  for (const e of db.manualWork || []) if (ids.has(e.uid)) W(e.uid).work += e.count;
+  for (const c of db.chats || []) for (const m of c.msgs || []) if (m.from === "agency" && ids.has(m.by)) W(m.by).replies.add(`${c.id}|${bdDate(m.at)}`);
+  const byDay = {};
+  for (const [uid, days] of Object.entries(ATT.marks || {})) { if (!ids.has(uid)) continue;
+    for (const [d, m] of Object.entries(days)) { if (!m) continue; W(uid).days.add(d); if (m.at && (m.by === "auto" || m.by === "self")) (byDay[d] ||= []).push([m.at, uid]); } }
+  for (const list of Object.values(byDay)) list.sort((a, b) => a[0].localeCompare(b[0])).slice(0, 3).forEach(([, uid], i) => { W(uid).office += [100, 50, 20][i]; });
+  for (const [uid, w] of Object.entries(map)) { const xp = w.days.size * 10 + w.work * 50 + w.replies.size * 10 + w.office;
+    map[uid] = { xp, ...levelOf(xp), parts: { login: w.days.size * 10, work: w.work * 50, replies: w.replies.size * 10, office: w.office } }; }
+  xpMemo = { key, map }; return map;
+}
+/* what is shown with a staff / admin name: badge kind, level (and XP for staff), username, job title */
+function idCard(x) {
+  if (!x || !isStaffRole(x)) return null;
+  const m = x.memberId && db.team.find(y => y.id === x.memberId);
+  const base = { username: x.username || "", title: m?.title || x.title || (x.role === "admin" ? "Admin" : "Staff") };
+  if (x.role === "admin") return { ...base, kind: "admin", level: x.level || 1 };
+  const l = xpAll()[x.id] || { xp: 0, ...levelOf(0) };
+  return { ...base, kind: "staff", level: l.level, xp: l.xp, into: l.into, need: l.need, parts: l.parts };
+}
 const ATT = db.attendance;
 const attDay = () => process.env.ATT_DAY || bdDay(); // ATT_DAY: tests only
 if (!ATT.since) ATT.since = attDay(); // days before this are not counted
@@ -2844,7 +2906,7 @@ A["staff.rank"] = async ({ period, back }, u) => {
       .map(([, m]) => { const t = bd(m.at); return +t.slice(11, 13) * 60 + +t.slice(14, 16); });
     const w = work[x.id] || { n: 0, areas: {} };
     const m = x.memberId && db.team.find(y => y.id === x.memberId);
-    return { id: x.id, name: x.name, title: m?.title || x.title || "", memberId: m?.id || "", work: w.n, manual: w.manual || 0, areas: Object.entries(w.areas).sort((a, b) => b[1] - a[1]).slice(0, 3),
+    return { id: x.id, name: x.name, idc: idCard(x), title: m?.title || x.title || "", memberId: m?.id || "", work: w.n, manual: w.manual || 0, areas: Object.entries(w.areas).sort((a, b) => b[1] - a[1]).slice(0, 3),
       days: mins.length, avg: mins.length ? Math.round(mins.reduce((a, b) => a + b, 0) / mins.length) : null, first: mins.length ? Math.min(...mins) : null };
   });
   const manual = (db.manualWork || []).filter(e => ids.has(e.uid) && inRange(e.date)).sort((a, b) => (b.date + b.at).localeCompare(a.date + a.at))

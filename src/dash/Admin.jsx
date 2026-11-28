@@ -8,7 +8,7 @@ import { FaWhatsapp, FaFacebookF, FaYoutube, FaLinkedinIn, FaTiktok } from "reac
 import { clStage, STAFF_PERMS, TEAM_DEPTS, store, commit, user, job, worker, company, live, money, num, fdate, bdtFmt, balanceOf, candOf, clPerson, clOpen, cardPending, now, COUNTRIES, STAGES, CL_STAGES, CL_DOCS, PAY_METHODS, PAGES, LABEL } from "../store.js";
 import { toast, formData, setTab, openModal, closeModal, confirmBox, deleteUser, act, readUpload, compressImage } from "../actions.js";
 import { downloadFile as dlFile } from "../actions.js";
-import { FilePick, Rail, Tiles, Pill, Empty, Bars, Stars, Avatar, RoleBadges } from "../ui.jsx";
+import { FilePick, MeCard, IdName, Rail, Tiles, Pill, Empty, Bars, Stars, Avatar, RoleBadges } from "../ui.jsx";
 import { StatusSelect, Field, Options, JobFields, blankJob } from "./shared.jsx";
 import { setClStatus, signOut } from "../actions.js";
 import { ReceiptsAdmin, SignatureBox, DueList } from "./Receipts.jsx";
@@ -447,7 +447,7 @@ export function Admin({ u }) {
     <div className="wrap dash">
       {can0("clearance") && <ClearanceSounds />}
       <Rail role={R} items={TABS.filter(([k]) => can(k)).map(([k, l, I]) => [k, l, I, { users: pendU, jobs: pendJ, apps: pendA, clearance: pendC, tickets: pendT, mysalary: (S.mySalary?.pays || []).filter(p => !p.void && p.status === "pending").length, mymoney: (S.myMoney?.entries || []).filter(e => e.status === "pending" && !e.accepted?.includes(S.myMoney.me?.k)).length, attendance: S.attendance && !S.attendance.marks?.[u.id]?.[S.attendance.today] && new Date(S.attendance.today + "T00:00:00Z").getUTCDay() !== 5 && !(S.attendance.holidays || []).some(h => h.date === S.attendance.today) ? 1 : 0, pay: (can("ledger") ? pendP : 0) + (can("packages") ? pendO : 0) + (can("receipts") ? pendR : 0), messages: newMsg, chat: chatUnread }[k]])}
-        foot={[["mysettings", "Settings", LuSettings2], ["logout", "Log out", LuLogOut, 0, signOut]]} />
+        foot={[["mysettings", "Settings", LuSettings2], ["logout", "Log out", LuLogOut, 0, signOut]]} head={<MeCard />} />
       <div className="panel">{top === "pay" && <nav className="pay-tabs" aria-label="Payments & receipts">
         {paySubs.map(([k, l, I]) => { const n = { ledger: pendP, packages: pendO, receipts: pendR }[k]; return <button key={k} className={t === k ? "on" : ""} aria-current={t === k ? "page" : undefined} onClick={() => { ui.paySub = k; commit(); }}><I /> {l}{n > 0 && <span className="count">{n}</span>}</button>; })}
       </nav>}{top === "web" && <nav className="pay-tabs" aria-label="Website">
@@ -1026,7 +1026,9 @@ function StaffAdmin({ u }) {
     </form>
     {ids.length ? ids.map(x => { const tm = member(x); return (
       <div className="card stack8" key={x.id}>
-        <div className="row between"><div className="row">{tm?.photo?.data ? <img className="mr-av" src={tm.photo.data} alt="" /> : <Avatar name={x.name} size={40} />}<div><b data-notr>{x.name}</b><RoleBadges role={x.role} /> <span className="ec-badge">{x.role === "admin" ? "Admin" : "Staff"}</span><div className="muted small" data-notr>{[tm?.title, x.email].filter(Boolean).join(" · ")}</div></div><Pill s={x.status} /></div>
+        <div className="row between"><div className="row">{tm?.photo?.data ? <img className="mr-av" src={tm.photo.data} alt="" /> : <Avatar name={x.name} size={40} />}<div><IdName name={x.name} idc={x.idc} /><RoleBadges role={x.role} /> <span className="ec-badge">{x.role === "admin" ? "Admin" : "Staff"}</span><div className="muted small" data-notr>{x.email}</div>
+          {x.role === "admin" && <label className="lv-set small">Level <select value={x.idc?.level || 1} onChange={e => act("admin.setLevel", { id: x.id, level: +e.target.value })}>{Array.from({ length: 100 }, (_, i) => <option key={i} value={i + 1}>{i + 1}</option>)}</select></label>}
+          {x.role === "staff" && x.idc && <span className="muted small">{`Level ${x.idc.level} · ${x.idc.xp} XP`}</span>}</div><Pill s={x.status} /></div>
           <div className="row tight">{x.status === "active" ? <button className="btn sm" onClick={() => act("admin.userState", { id: x.id, status: "suspended" })}><LuBan /> Suspend</button> : <button className="btn sm" onClick={() => act("admin.userState", { id: x.id, status: "active" })}>Reactivate</button>}<button className="btn sm danger" onClick={() => deleteUser(x.id)} aria-label={`Delete ${x.name}`}><LuTrash2 /></button></div></div>
         <label className="f mr-link">Expert Team member<select value={x.memberId || ""} onChange={e => act("admin.staff", { op: "member", id: x.id, memberId: e.target.value })}><option value="">— Not linked —</option>
           {team.map(t => <option key={t.id} value={t.id} disabled={taken.has(t.id) && t.id !== x.memberId} data-notr>{`${t.name} · ${t.title}`}</option>)}</select></label>

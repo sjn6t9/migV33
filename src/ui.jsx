@@ -1,6 +1,7 @@
 import React from "react";
 import { createPortal } from "react-dom";
 import { LuUpload, LuFileText, LuRefreshCw } from "react-icons/lu";
+import { HiCheckBadge } from "react-icons/hi2";
 import {
   LuBookmark, LuBookmarkCheck, LuMapPin, LuClock, LuBriefcase, LuX, LuHardHat, LuHotel, LuTruck, LuFactory,
   LuHeartPulse, LuShield, LuSparkles, LuWheat, LuShoppingBag, LuMonitor, LuStar, LuDownload, LuBadgeCheck, LuMenu, LuChevronDown
@@ -144,7 +145,7 @@ export function Drawer({ open, onClose, title, children, label = "Menu" }) {
   </div>, document.body);
 }
 
-export function Rail({ role, items, foot = [] }) {
+export function Rail({ role, items, foot = [], head = null }) {
   const cur = store.ui.tab[role]; const [open0, setOpen0] = React.useState(false);
   const inPanel = !!(SITE.admin || SITE.agent); // the panels open this drawer from the ☰ button in their header
   const open = inPanel ? !!store.ui.railOpen : open0;
@@ -156,7 +157,7 @@ export function Rail({ role, items, foot = [] }) {
       <span className="rail-l">{Icon && <Icon />}{label}</span><Count n={c} />
     </button>);
   // foot: Settings and Log out sit at the bottom of the menu
-  const list = cls => <nav className={cls} aria-label="Dashboard sections">{items.map(btn)}{foot.length > 0 && <><hr className="rail-sep rail-foot-item" />{foot.map(x => btn(x, true))}</>}</nav>;
+  const list = cls => <nav className={cls} aria-label="Dashboard sections">{head}{items.map(btn)}{foot.length > 0 && <><hr className="rail-sep rail-foot-item" />{foot.map(x => btn(x, true))}</>}</nav>;
   return <>
     {list(`rail rail-desk${inPanel ? " in-panel" : ""}`)}
     {!inPanel && <button type="button" className="rail-mob" onClick={() => setOpen(true)} aria-label="Open dashboard menu" aria-expanded={open}>
@@ -237,4 +238,35 @@ export function FilePick({ name, accept, multiple, required, label }) {
       <button type="button" className="fpick-x" onClick={clear} aria-label="Remove file"><LuX /></button>
     </div>}
   </div>;
+}
+
+/* An admin / staff ID as it is shown: Name, badge, Level — then @username — then the job title.
+   Admin: the blue Verified badge, name in the same blue. Staff: a badge in the colour of their level, name in that colour. */
+export const levelTier = lv => (lv >= 11 ? "ruby" : lv >= 9 ? "violet" : lv >= 7 ? "emerald" : lv >= 5 ? "gold" : lv >= 3 ? "silver" : "bronze");
+export function IdName({ name, idc, compact = false, title = true, as: Tag = "span" }) {
+  if (!idc) return <Tag className="idn" data-notr>{name}</Tag>;
+  const tier = idc.kind === "admin" ? "verified" : levelTier(idc.level || 1);
+  return <Tag className={`idn idn-${tier}${compact ? " compact" : ""}`}>
+    <span className="idn-top"><b className="idn-name" data-notr>{name}</b>
+      <HiCheckBadge className="idn-badge" aria-label={idc.kind === "admin" ? "Verified admin" : `Staff badge, level ${idc.level}`} />
+      <span className="idn-lv" title={idc.kind === "staff" ? `${idc.xp} XP` : undefined}>Lv {idc.level}</span></span>
+    {idc.username && <span className="idn-user" data-notr>@{idc.username}</span>}
+    {title && idc.title && <span className="idn-title">{idc.title}</span>}
+  </Tag>;
+}
+/* level progress for a staff ID: XP into this level, XP needed for the next */
+export function XpBar({ idc }) {
+  if (!idc || idc.kind !== "staff") return null;
+  const pct = idc.need ? Math.min(100, Math.round((idc.into / idc.need) * 100)) : 100;
+  return <div className={`xpbar idn-${levelTier(idc.level)}`} title={`${idc.xp} XP in all`}>
+    <div className="xpbar-t"><span>Lv {idc.level}</span><span className="num">{idc.into} / {idc.need} XP</span><span>Lv {idc.level + 1}</span></div>
+    <div className="xpbar-b"><i style={{ width: `${pct}%` }} /></div>
+  </div>;
+}
+
+/* admin / staff: who is signed in, at the top of the side menu (name, badge, level, @username, title; XP for staff) */
+export function MeCard() {
+  const u = me(); if (!u?.idc) return null;
+  const photo = (store.S.team || []).find(m => m.id === u.memberId)?.photo?.data;
+  return <div className="me-card"><Avatar name={u.name} src={photo} size={44} /><div className="me-card-x"><IdName name={u.name} idc={u.idc} /><XpBar idc={u.idc} /></div></div>;
 }

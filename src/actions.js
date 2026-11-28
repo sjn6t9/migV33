@@ -29,7 +29,7 @@ export async function act(type, payload = {}, { quiet = false } = {}) {
 }
 
 /* ---- account ---- */
-export async function signOut() { ui.apply = null; ui.modal = null; const r = await act("auth.logout", {}, { quiet: true }); if (r) { toast("Signed out."); go("home"); } }
+export async function signOut() { ui.apply = null; ui.modal = null; ui.signingOut = true; const r = await act("auth.logout", {}, { quiet: true }); if (r) { toast("Signed out."); go("home"); } }
 /* a phone that zoomed in while a field was being typed goes back to normal size */
 export function resetZoom() {
   const m = document.querySelector('meta[name="viewport"]'); if (!m) return; const c = m.getAttribute("content");
@@ -37,7 +37,9 @@ export function resetZoom() {
   if (/maximum-scale/.test(c)) { m.setAttribute("content", "width=device-width, initial-scale=1"); requestAnimationFrame(() => m.setAttribute("content", c)); return; }
   m.setAttribute("content", c + ", maximum-scale=1"); setTimeout(() => m.setAttribute("content", c), 300);
 }
-export function afterLogin(r) { if (!r) return; ui.modal = null; flightTab(); document.activeElement?.blur?.(); resetZoom(); touch(); go("dashboard"); window.scrollTo(0, 0); }
+export function afterLogin(r) { if (!r) return; ui.modal = null; flightTab(); document.activeElement?.blur?.(); resetZoom(); touch(); go("dashboard"); window.scrollTo(0, 0);
+  // admin, staff and agent: a fresh start — the page loads everything again after signing in
+  const u = me(); if (u && ["admin", "staff", "agent"].includes(u.role) && !r.redirect) { try { sessionStorage.setItem("mam_fresh", "1"); } catch {} setTimeout(() => location.reload(), 60); } }
 
 /* ---- job seeker ---- */
 export async function toggleSave(jid) {

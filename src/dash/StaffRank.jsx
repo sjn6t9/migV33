@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { LuTrophy, LuClock, LuActivity, LuChevronLeft, LuChevronRight, LuPlus, LuTrash2, LuX, LuHand } from "react-icons/lu";
 import { store, me as meUser } from "../store.js";
-import { Avatar } from "../ui.jsx";
+import { Avatar, IdName } from "../ui.jsx";
 import { act, confirmBox, formData } from "../actions.js";
 import { t } from "../i18n.js";
 
@@ -32,7 +32,7 @@ export function StaffRank() {
   const top = Math.max(1, ...work.map(r => r.work));
   const arrive = rows ? [...rows].filter(r => r.avg != null).sort((a, b) => a.avg - b.avg || b.days - a.days) : [];
   const away = rows ? rows.filter(r => r.avg == null) : [];
-  const Who = ({ r }) => <div className="sr-who"><Avatar name={r.name} src={photo(r)} size={36} /><div className="sr-nm"><b data-notr>{r.name}</b>{r.id === me ? <span className="sr-you">{t("You")}</span> : null}{r.title ? <span className="muted small">{t(r.title)}</span> : null}</div></div>;
+  const Who = ({ r }) => <div className="sr-who"><Avatar name={r.name} src={photo(r)} size={36} /><div className="sr-nm"><IdName name={r.name} idc={r.idc} compact />{r.id === me ? <span className="sr-you">{t("You")}</span> : null}</div></div>;
   return (
     <section className="card sr mt16 mb16" aria-labelledby="sr-h">
       <div className="sr-head">
