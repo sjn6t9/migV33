@@ -1209,6 +1209,14 @@ function preEcView(j, pp) {
   const alerts = [];
   for (const k of ["message", "msg", "alert", "warning"]) if (m[k] && !/success/i.test(m[k])) alerts.push(String(m[k]));
   if (Array.isArray(j?.alerts)) alerts.push(...j.alerts.map(String));
+  // RAIMS shows "Alert: Nominee information need updated from profile!" when the worker's profile has no nominee:
+  // the same here — no nominee in RAIMS' answer, only empty nominee fields, or a nominee flag that is off
+  { const nom = []; const nw = (v, path) => { if (Array.isArray(v)) { if (!v.length && path.some(z => /nominee/i.test(z))) nom.push([path, null]); return v.forEach(x => nw(x, path)); }
+      if (v && typeof v === "object") return Object.entries(v).forEach(([k, x]) => nw(x, [...path, k])); if (path.some(z => /nominee/i.test(z))) nom.push([path, v]); };
+    nw(j, [])
+    const filled = nom.some(([p, v]) => v != null && v !== false && !/^(|null|0|false|no)$/i.test(String(v).trim()) && !/(^|_)(is|has)_|updated|status|complete|flag/i.test(p[p.length - 1]));
+    const flagOff = nom.some(([p, v]) => /(^|_)(is|has)_|updated|complete|flag/i.test(p[p.length - 1]) && /^(0|false|no)$/i.test(String(v ?? "").trim()));
+    if (!filled || flagOff) alerts.push("Alert: Nominee information need updated from profile!"); }
   const exp = g("expire_date", "expiry_date", "passport_expiry_date", "date_of_expiry");
   if (exp && /^\d{4}-\d{2}-\d{2}/.test(exp)) { const t = new Date(exp.slice(0, 10)); const lim = new Date(); lim.setMonth(lim.getMonth() + 3); if (t < lim) alerts.push("Alert: Passport expired date must be at least 3 months from today."); }
   const finger = g("bmet_bio_finger", "bio_finger", "is_bio_finger", "finger_status");

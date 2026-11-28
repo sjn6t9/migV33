@@ -98,7 +98,7 @@ export function PreEcCheck({ onClose, onManual }) {
     </form>}
     {res && (res.ok ? <div className="preec-res">
       <h4 className="mt14 mb6">Employee information</h4>
-      {res.alerts.map((a, i) => <div key={i} className="preec-alert"><LuTriangleAlert /> <span data-notr>{a}</span></div>)}
+      {res.alerts.map((a, i) => { const m = /^(alert|warning|notice)\s*:\s*/i.exec(a); return <div key={i} className="preec-alert" role="alert"><LuTriangleAlert /> <span data-notr>{m ? <><b>{m[1][0].toUpperCase() + m[1].slice(1).toLowerCase()}:</b> {a.slice(m[0].length)}</> : a}</span></div>; })}
       {me?.role === "agent" && res.fields.every(([, v]) => !bad(v)) && !res.alerts.length && <ApplyClearance res={res} onDone={() => setRes(null)} />}
       {canAdd && entryName(res) && <AddToEntry res={{ ...res, entry: { ...(res.entry || {}), name: entryName(res), bmet: res.entry?.bmet || {} } }} />}
       <div className="preec-grid">{res.fields.map(([k, v], i) => <div key={i} className={`preec-f${good(v) ? " ok" : bad(v) ? " bad" : ""}`}><span>{k}</span><b data-notr dir="auto">{good(v) ? <LuCircleCheck /> : bad(v) ? <LuCircleX /> : null}{v || "—"}</b></div>)}</div>
