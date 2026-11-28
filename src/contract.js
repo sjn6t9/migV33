@@ -85,16 +85,51 @@ export const CONTRACTS = {
 export const contractFor = country => CONTRACTS[country] || null;
 
 const loadImg = src => new Promise((res, rej) => { const i = new Image(); i.crossOrigin = "anonymous"; i.onload = () => res(i); i.onerror = rej; i.src = src; });
-// a signature cut from a photo: light paper becomes transparent, the ink stays dark blue
+// a scanned passport PDF is usually one picture inside: take the largest JPEG out of the file, so its signature can be used
+export async function pdfPicture(src) {
+  const buf = new Uint8Array(await (await fetch(src)).arrayBuffer()); let best = null;
+  for (let i = 0; i < buf.length - 3; i++) {
+    if (buf[i] !== 0xFF || buf[i + 1] !== 0xD8 || buf[i + 2] !== 0xFF) continue;
+    // the picture ends at the last FFD9 before the stream ends
+    let end = -1; const lim = Math.min(buf.length - 1, i + 40e6);
+    for (let j = i + 4; j < lim; j++) { if (buf[j] === 0x65 && buf[j + 1] === 0x6E && buf[j + 2] === 0x64 && buf[j + 3] === 0x73 && buf[j + 4] === 0x74) break; if (buf[j] === 0xFF && buf[j + 1] === 0xD9) end = j + 2; }
+    if (end > 0 && (!best || end - i > best[1] - best[0])) best = [i, end]; if (end > 0) i = end;
+  }
+  if (!best) return "";
+  return URL.createObjectURL(new Blob([buf.slice(best[0], best[1])], { type: "image/jpeg" }));
+}
+// a signature cut from a photo: the paper and the passport's printed pattern go, the pen ink stays (dark blue)
 export async function inkFrom(src, crop) {
   const img = await loadImg(src), [cx, cy, cw, ch] = crop.map((v, i) => Math.round(v * (i % 2 ? img.height : img.width)));
   const c = document.createElement("canvas"); c.width = Math.max(1, cw); c.height = Math.max(1, ch); const g = c.getContext("2d");
   g.drawImage(img, cx, cy, cw, ch, 0, 0, cw, ch);
-  const px = g.getImageData(0, 0, cw, ch), a = px.data;
-  let lum = []; for (let i = 0; i < a.length; i += 4) lum.push(0.3 * a[i] + 0.59 * a[i + 1] + 0.11 * a[i + 2]);
-  const sorted = [...lum].sort((p, q) => p - q), paper = sorted[Math.floor(sorted.length * 0.6)], cut = paper - 45;
-  for (let i = 0, j = 0; i < a.length; i += 4, j++) { const l = lum[j]; const k = Math.max(0, Math.min(1, (cut - l) / 50)); a[i] = 15; a[i + 1] = 30; a[i + 2] = 90; a[i + 3] = Math.round(k * 255); }
-  g.putImageData(px, 0, 0); return c;
+  const px = g.getImageData(0, 0, cw, ch), a = px.data, n = a.length / 4;
+  const lum = new Float32Array(n); for (let i = 0; i < n; i++) lum[i] = 0.3 * a[i * 4] + 0.59 * a[i * 4 + 1] + 0.11 * a[i * 4 + 2];
+  const sorted = Float32Array.from(lum).sort(), paper = sorted[Math.floor(n * 0.6)], dark = sorted[Math.floor(n * 0.01)];
+  // ink: clearly darker than the paper, and in the darker part of what is there (light security print is left out)
+  const cut = Math.min(paper - 55, dark + (paper - dark) * 0.45);
+  let ink = 0;
+  for (let i = 0; i < n; i++) { const k = Math.max(0, Math.min(1, (cut - lum[i]) / 35)); a[i * 4] = 15; a[i * 4 + 1] = 30; a[i * 4 + 2] = 90; a[i * 4 + 3] = Math.round(k * 255); if (k > 0.5) ink++; }
+  g.putImageData(px, 0, 0); c.inkShare = ink / n; return c;
+}
+/* text copied from the Qatar MOI visa page (Visa Inquiry & Printing) or from the printed visa: visa number, passport, names, company */
+export function parseMoi(text) {
+  const t = String(text || "").replace(/\r/g, ""), lines = t.split("\n").map(l => l.trim()).filter(Boolean), out = {};
+  const after = re => { const i = lines.findIndex(l => re.test(l)); if (i < 0) return ""; const same = lines[i].replace(re, "").replace(/^[\s:：\-]+/, "").trim(); return same || lines[i + 1] || ""; };
+  out.visaNo = (/Visa\s*(?:Number|No\.?)\D{0,20}(\d{8,15})/i.exec(t) || /\b(3\d{11})\b/.exec(t) || [])[1] || "";
+  out.passport = ((/Passport\s*(?:Number|No\.?)\s*[:\-]?\s*([A-Z0-9]{6,15})/i.exec(t) || [])[1] || "").toUpperCase();
+  const ni = lines.findIndex(l => /^Name\b/i.test(l));
+  if (ni >= 0) { // the name words come one per cell: Arabic words, then the English words, until "Nationality"
+    const stop = lines.findIndex((l, i) => i > ni && /^(Nationality|Passport|Gender|Description)/i.test(l));
+    const part = lines.slice(ni, stop > 0 ? stop : ni + 12).map(l => l.replace(/^Name\b\s*:?/i, "").trim()).filter(Boolean).join(" ").split(/[\s\t]+/);
+    const ar = part.filter(w => /[\u0600-\u06FF]/.test(w)), en = part.filter(w => /^[A-Z][A-Z.'-]*$/.test(w));
+    if (ar.length) out.nameAr = ar.join(" "); if (en.length) out.name = en.join(" "); }
+  const coEn = after(/^(Sponsor(?:'s)?\s*Name|Sponsor|Employer(?:\s*Name)?|Company(?:\s*Name)?)\b\s*:?/i);
+  if (coEn && !/[\u0600-\u06FF]/.test(coEn)) out.company = coEn;
+  const coAr = after(/(اسم\s*الكفيل|الكفيل|صاحب\s*العمل|اسم\s*الشركة|الشركة)\s*[:：]?/);
+  if (coAr && /[\u0600-\u06FF]/.test(coAr)) out.companyAr = coAr.replace(/^[:\s]+/, "");
+  else { const arLine = lines.find(l => /[\u0600-\u06FF]/.test(l) && /(شركة|للتجارة|للمقاولات|مؤسسة|ذ\.?م\.?م)/.test(l)); if (arLine) out.companyAr = arLine; }
+  return Object.fromEntries(Object.entries(out).filter(([, v]) => v));
 }
 // a company signature drawn as with a pen when no picture is given: one flowing stroke (a tall first letter,
 // joined loops and humps, a flourish underneath), thicker and thinner like ink, always the same for the same company

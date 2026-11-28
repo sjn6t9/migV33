@@ -2,11 +2,11 @@
 // Arabic words the office can correct, new barcodes, and (if ticked) the worker's signature cut from the
 // passport copy and a company signature. Download as PDF, or keep it with the passport entry.
 import React from "react";
-import { LuDownload, LuSave, LuSignature, LuRefreshCw, LuUpload, LuX } from "react-icons/lu";
+import { LuDownload, LuSave, LuSignature, LuRefreshCw, LuUpload, LuX, LuClipboardPaste, LuExternalLink, LuTriangleAlert } from "react-icons/lu";
 import { store } from "../store.js";
 import { act, toast, closeModal, readAsDataUrl } from "../actions.js";
 import { Field } from "./shared.jsx";
-import { drawContract, canvasPdf, inkFrom, nameAr, jobAr, companyAr, newBarcodes, contractFor } from "../contract.js";
+import { drawContract, canvasPdf, inkFrom, nameAr, jobAr, companyAr, newBarcodes, contractFor, pdfPicture, parseMoi } from "../contract.js";
 import { isImgCopy } from "./Passports.jsx";
 
 const saveBlob = (blob, name) => { const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 4000); };
@@ -30,18 +30,28 @@ export function ContractMaker({ v, sig: sig0 }) {
     visaNo: J.visaNo || "", jobTitle: J.jobTitle || "", company: J.company || "", ...(J.attNo ? { attNo: J.attNo } : {}), ...(J.contractNo ? { contractNo: J.contractNo } : {}) }));
   const [sig, setSig] = React.useState(!!sig0), [crop, setCropS] = React.useState([0.05, 0.62, 0.42, 0.14]), [cropDone, setCropDone] = React.useState(0);
   const [coSig, setCoSig] = React.useState(null), [url, setUrl] = React.useState(""), [busy, setBusy] = React.useState(false), canvas = React.useRef(null);
-  const copy = v.ppCopy?.data ? v.ppCopy : v.ppCopyRef || null, copyImg = isImgCopy(copy) ? copy.data : "";
+  const copy = v.ppCopy?.data ? v.ppCopy : v.ppCopyRef || null;
+  // a PDF passport copy: the scanned picture inside it is used
+  const [copyImg, setCopyImg] = React.useState(isImgCopy(copy) ? copy.data : ""), [pdfNote, setPdfNote] = React.useState("");
+  React.useEffect(() => { if (!copy || isImgCopy(copy)) return; let live = true;
+    pdfPicture(copy.data).then(u => { if (!live) return; if (u) setCopyImg(u); else setPdfNote("This PDF has no scanned picture inside, so the signature cannot be taken from it. Upload the passport copy as a photo (JPG/PNG)."); })
+      .catch(() => live && setPdfNote("The passport copy PDF could not be read. Upload it as a photo (JPG/PNG).")); return () => { live = false; }; }, []);
+  const [sigPrev, setSigPrev] = React.useState(null), [moi, setMoi] = React.useState(false), [moiText, setMoiText] = React.useState("");
+  const fromMoi = () => { const m = parseMoi(moiText); if (!Object.keys(m).length) return toast("Nothing was found. Copy the whole Visa Number Information page (Ctrl+A, Ctrl+C) and paste it here.");
+    if (m.passport && v.passport && m.passport !== String(v.passport).toUpperCase()) toast(`Careful: the MOI page is for passport ${m.passport}, this entry is ${v.passport}.`);
+    set({ ...(m.visaNo ? { visaNo: m.visaNo } : {}), ...(m.nameAr ? { nameAr: m.nameAr } : {}), ...(m.company ? { company: m.company, ...(m.companyAr ? {} : { companyAr: companyAr(m.company) }) } : {}), ...(m.companyAr ? { companyAr: m.companyAr } : {}) });
+    toast(`From the MOI page: ${[m.visaNo && "visa number", m.nameAr && "Arabic name", m.company && "company", m.companyAr && "company (Arabic)"].filter(Boolean).join(", ")}.`); setMoi(false); setMoiText(""); };
   const set = x => setD(o => ({ ...o, ...x }));
   const setCrop = (c, done) => { if (c) setCropS(c); if (done) setCropDone(n => n + 1); };
   // the preview is drawn again shortly after any change
   React.useEffect(() => { let live = true; const t = setTimeout(async () => {
     try {
-      const workerSig = sig && copyImg ? await inkFrom(copyImg, crop) : null;
+      const workerSig = sig && copyImg ? await inkFrom(copyImg, crop) : null; if (live) setSigPrev(workerSig ? { url: workerSig.toDataURL("image/png"), ink: workerSig.inkShare } : null);
       const companySig = sig && coSig ? await new Promise(r => { const i = new Image(); i.onload = () => r(i); i.src = coSig; }) : null;
       const c = await drawContract(v.country, { ...d, signatures: sig, workerSig, companySig }); if (!live) return;
       canvas.current = c; setUrl(c.toDataURL("image/jpeg", 0.7));
     } catch (e) { if (live) toast(e.message || "Could not draw the contract."); }
-  }, 350); return () => { live = false; clearTimeout(t); }; }, [JSON.stringify(d), sig, cropDone, coSig]);
+  }, 350); return () => { live = false; clearTimeout(t); }; }, [JSON.stringify(d), sig, cropDone, coSig, copyImg]);
   const file = `Employment contract ${v.passport || v.name}.pdf`;
   const download = async () => { if (!canvas.current) return; saveBlob(await canvasPdf(canvas.current), file); };
   const keep = async () => { if (!canvas.current) return; if (!v.id) return toast("Save the passport first, then save the contract with it.");
@@ -57,6 +67,14 @@ export function ContractMaker({ v, sig: sig0 }) {
     <div className="ctm-grid">
       <div className="ctm-form">
         <p className="muted small">Check the Arabic words — they are written from the English and can be corrected here.</p>
+        {/* Qatar MOI: visa number, the Arabic name and the company, copied from the MOI visa page or the printed visa */}
+        <div className="ctm-moi">
+          {!moi ? <div className="row6"><button type="button" className="btn sm" onClick={() => setMoi(true)}><LuClipboardPaste /> Paste from Qatar MOI</button>
+            <a className="btn sm link" href="https://portal.moi.gov.qa/wps/portal/MOIInternet/services/inquiries/visaservices/enquiryandprinting" target="_blank" rel="noopener noreferrer"><LuExternalLink /> Open MOI visa inquiry</a></div>
+          : <div className="stack6"><span className="muted small">On the MOI page search by passport number, then select all (Ctrl+A / ⌘A), copy and paste here. Text copied from the printed visa works too (for the company name).</span>
+            <textarea rows={5} value={moiText} onChange={e => setMoiText(e.target.value)} placeholder="Visa Number (382026…) Information …" autoFocus />
+            <div className="row6"><button type="button" className="btn sm pri" onClick={fromMoi}>Fill</button><button type="button" className="btn sm" onClick={() => setMoi(false)}><LuX /> Cancel</button></div></div>}
+        </div>
         <div className="fgrid">
           <Field label="Name (English)"><input type="text" value={d.name} onChange={e => set({ name: e.target.value })} /></Field>
           <Field label="Name (Arabic)"><input type="text" dir="rtl" value={d.nameAr} onChange={e => set({ nameAr: e.target.value })} /></Field>
@@ -73,8 +91,11 @@ export function ContractMaker({ v, sig: sig0 }) {
         <label className="chk mt12"><input type="checkbox" checked={sig} onChange={e => setSig(e.target.checked)} /> Worker and company signatures</label>
         {sig && <div className="ctm-sig">
           <b>Worker's signature</b>
-          {copyImg ? <><p className="muted small">Drag on the passport copy around the signature.</p><SigCrop src={copyImg} crop={crop} setCrop={setCrop} /></>
-            : <p className="muted small">{copy ? "The passport copy is a PDF — upload it as a photo (JPG/PNG) to take the signature from it." : "No passport copy in this entry, so the worker's signature space stays empty."}</p>}
+          {copyImg ? <><p className={cropDone ? "muted small" : "small ctm-warn"}>{cropDone ? "Drag again to change it." : "Drag on the passport copy around the worker's signature (the red box shows what is taken)."}</p>
+              <SigCrop src={copyImg} crop={crop} setCrop={setCrop} />
+              <div className="ctm-sigprev"><span className="muted small">On the contract:</span>{sigPrev?.url && <img src={sigPrev.url} alt="Worker's signature" />}
+                {sigPrev && sigPrev.ink < 0.004 && <span className="ctm-warn small"><LuTriangleAlert /> No signature found in the box — drag around the signature.</span>}</div></>
+            : <p className="muted small">{pdfNote || (copy ? "Reading the passport copy…" : "No passport copy in this entry, so the worker's signature space stays empty. Add the passport copy in the passport entry.")}</p>}
           <b className="mt12">Company signature</b>
           <p className="muted small">{coSig ? "Your signature picture is used." : "A pen signature is drawn for the company. Or upload a picture of the real one:"}</p>
           <div className="row6"><label className="btn sm"><LuUpload /> Signature picture<input type="file" accept="image/*" hidden onChange={pickCo} /></label>{coSig && <button type="button" className="btn sm" onClick={() => setCoSig(null)}><LuX /> Remove</button>}</div>
