@@ -76,7 +76,7 @@ export function ContractMaker({ v, sig: sig0 }) {
           {copyImg ? <><p className="muted small">Drag on the passport copy around the signature.</p><SigCrop src={copyImg} crop={crop} setCrop={setCrop} /></>
             : <p className="muted small">{copy ? "The passport copy is a PDF — upload it as a photo (JPG/PNG) to take the signature from it." : "No passport copy in this entry, so the worker's signature space stays empty."}</p>}
           <b className="mt12">Company signature</b>
-          <p className="muted small">{coSig ? "Your signature picture is used." : "A signature is written from the company name. Or upload a picture of the real one:"}</p>
+          <p className="muted small">{coSig ? "Your signature picture is used." : "A pen signature is drawn for the company. Or upload a picture of the real one:"}</p>
           <div className="row6"><label className="btn sm"><LuUpload /> Signature picture<input type="file" accept="image/*" hidden onChange={pickCo} /></label>{coSig && <button type="button" className="btn sm" onClick={() => setCoSig(null)}><LuX /> Remove</button>}</div>
           <p className="muted small">Under it: {[d.company, d.companyReg && `Reg. ${d.companyReg}`, d.companyMobile].filter(Boolean).join(" · ") || "add the company details in the passport entry"}</p>
         </div>}

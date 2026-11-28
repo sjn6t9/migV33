@@ -96,13 +96,34 @@ export async function inkFrom(src, crop) {
   for (let i = 0, j = 0; i < a.length; i += 4, j++) { const l = lum[j]; const k = Math.max(0, Math.min(1, (cut - l) / 50)); a[i] = 15; a[i + 1] = 30; a[i + 2] = 90; a[i + 3] = Math.round(k * 255); }
   g.putImageData(px, 0, 0); return c;
 }
-// a company signature written by hand-style lettering when no picture is given
-function scriptSig(g, text, x, y, w, h) {
-  const t = String(text || "").trim().split(/\s+/).slice(0, 2).join(" ") || "Authorized";
-  g.save(); g.fillStyle = "#132a7a"; g.textAlign = "center"; g.textBaseline = "middle";
-  let s = 96; do { g.font = `italic ${s}px 'Brush Script MT','Segoe Script','Lucida Handwriting','Apple Chancery','Snell Roundhand',cursive`; s -= 4; } while (g.measureText(t).width > w && s > 30);
-  g.translate(x + w / 2, y + h / 2); g.rotate(-0.06); g.fillText(t, 0, 0);
-  g.lineWidth = 3; g.strokeStyle = "#132a7a"; g.beginPath(); const tw = Math.min(w, g.measureText(t).width); g.moveTo(-tw / 2, s * 0.55); g.quadraticCurveTo(0, s * 0.85, tw / 2 + 20, s * 0.35); g.stroke();
+// a company signature drawn as with a pen when no picture is given: one flowing stroke (a tall first letter,
+// joined loops and humps, a flourish underneath), thicker and thinner like ink, always the same for the same company
+function penSig(g, text, x, y, w, h) {
+  let seed = [...String(text || "Company")].reduce((t, ch) => (t * 31 + ch.charCodeAt(0)) >>> 0, 7);
+  const rnd = () => ((seed = (seed * 1664525 + 1013904223) >>> 0) / 4294967296);
+  const mid = y + h * 0.55, P = [];
+  // first letter: a tall loop
+  const x0 = x + w * 0.06; P.push([x0 - 10, mid + h * 0.1], [x0 + w * 0.05, y + h * 0.2], [x0 + w * 0.09, mid - h * 0.1], [x0 + w * 0.02, mid + h * 0.15], [x0 + w * 0.08, mid + h * 0.05]);
+  // joined humps and small loops, like handwriting
+  let cx = x0 + w * 0.1; const n = 6 + Math.floor(rnd() * 4), step = (w * 0.62) / n;
+  for (let i = 0; i < n; i++) {
+    const up = h * (0.18 + rnd() * 0.32), loop = rnd() < 0.3;
+    if (loop) { P.push([cx + step * 0.3, mid - up], [cx + step * 0.15, mid - up * 0.3], [cx + step * 0.5, mid + h * 0.06]); }
+    else P.push([cx + step * 0.35, mid - up], [cx + step * 0.7, mid + h * 0.08]);
+    cx += step;
+  }
+  // flourish: down under the name, then a sweep up to the right
+  P.push([cx + w * 0.04, mid - h * 0.12], [cx - w * 0.1, mid + h * 0.3], [x + w * 0.22, mid + h * 0.36], [x + w * 0.55, mid + h * 0.26], [x + w * 0.96, mid + h * 0.02]);
+  // smooth line through the points (Catmull–Rom)
+  const S = []; for (let i = 0; i < P.length - 1; i++) { const p0 = P[i - 1] || P[i], p1 = P[i], p2 = P[i + 1], p3 = P[i + 2] || p2;
+    for (let t = 0; t < 1; t += 0.04) { const t2 = t * t, t3 = t2 * t;
+      S.push([0.5 * (2 * p1[0] + (-p0[0] + p2[0]) * t + (2 * p0[0] - 5 * p1[0] + 4 * p2[0] - p3[0]) * t2 + (-p0[0] + 3 * p1[0] - 3 * p2[0] + p3[0]) * t3),
+              0.5 * (2 * p1[1] + (-p0[1] + p2[1]) * t + (2 * p0[1] - 5 * p1[1] + 4 * p2[1] - p3[1]) * t2 + (-p0[1] + 3 * p1[1] - 3 * p2[1] + p3[1]) * t3)]); } }
+  g.save(); g.strokeStyle = "#13247a"; g.lineCap = "round"; g.lineJoin = "round";
+  for (let i = 1; i < S.length; i++) { const [ax, ay] = S[i - 1], [bx, by] = S[i], f = i / S.length;
+    // the pen presses harder on down-strokes and lifts at the start and end
+    const down = by > ay ? 1.25 : 0.8, taper = Math.min(1, f * 12, (1 - f) * 8);
+    g.lineWidth = Math.max(1.2, 6.5 * down * taper); g.globalAlpha = 0.88 + 0.12 * taper; g.beginPath(); g.moveTo(ax, ay); g.lineTo(bx, by); g.stroke(); }
   g.restore();
 }
 const fitIn = (g, el, x, y, w, h) => { const s = Math.min(w / el.width, h / el.height); g.drawImage(el, x + (w - el.width * s) / 2, y + (h - el.height * s) / 2, el.width * s, el.height * s); };
@@ -120,7 +141,7 @@ export async function drawContract(country, d) {
   if (d.signatures) {
     const [wx, wy, ww, wh] = T.sig.worker, [kx, ky, kw, kh] = T.sig.company;
     if (d.workerSig) fitIn(g, d.workerSig, wx, wy, ww, wh);
-    if (d.companySig) fitIn(g, d.companySig, kx, ky, kw, kh); else scriptSig(g, d.company || d.companyAr, kx, ky, kw, kh);
+    if (d.companySig) fitIn(g, d.companySig, kx, ky, kw, kh); else penSig(g, d.company || d.companyAr, kx, ky, kw, kh);
     const [tx, ty] = T.sig.companyText; g.fillStyle = "#111"; g.textAlign = "center"; g.direction = "ltr";
     [[d.company, 36, "bold"], [d.companyReg && `Registration No: ${d.companyReg}`, 32, ""], [d.companyMobile && `Mobile: ${d.companyMobile}`, 32, ""]].filter(([t]) => t)
       .forEach(([t, z, wt], i) => fit(t, tx, ty + i * 46, 760, z, LATIN, wt));
