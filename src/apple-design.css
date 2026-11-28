@@ -357,3 +357,11 @@ img.badge-ic{display:inline-block;vertical-align:-0.15em;object-fit:contain}
 .me-card .idn-name{white-space:normal;overflow:visible}.me-card .idn-top{flex-wrap:wrap}
 .ag-rn{display:inline-flex;align-items:center;gap:6px;flex-wrap:wrap}
 .ag-rn-f{display:flex;gap:6px;flex-wrap:wrap;align-items:center}.ag-rn-f input{flex:1 1 180px;min-height:0;padding:6px 10px}.ag-rn-f .full{flex-basis:100%}
+/* admin: the gold of the A badge; level: a plain grey pill with a thin border, the same for everyone */
+.idn-admin{--idc:#c48f0a}
+:root[data-theme="dark"] .idn-admin{--idc:#f0bd3a}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .idn-admin{--idc:#f0bd3a}}
+.idn-lv{background:transparent!important;color:var(--muted)!important;border:1px solid var(--line);font-weight:700}
+.me-card-link{cursor:pointer;border:0;text-align:start;width:100%;font:inherit;color:inherit;transition:background .15s}
+.me-card-link:hover{background:var(--line)}
+.me-card-link:focus-visible{outline:2px solid var(--logo-g,#05613e);outline-offset:2px}

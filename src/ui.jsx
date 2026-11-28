@@ -258,5 +258,7 @@ export function XpBar({ idc }) {
 export function MeCard() {
   const u = me(); if (!u?.idc) return null;
   const photo = u.idc.photo || (store.S.team || []).find(m => m.id === u.memberId)?.photo?.data;
-  return <div className="me-card"><Avatar name={u.name} src={photo} size={44} /><div className="me-card-x"><IdName name={u.name} idc={u.idc} /><XpBar idc={u.idc} /></div></div>;
+  // a click on one's own name opens one's own Settings
+  const open = () => { store.ui.tab[u.role] = "mysettings"; store.ui.railOpen = false; go("dashboard"); touch(); window.scrollTo({ top: 0, behavior: "smooth" }); };
+  return <button type="button" className="me-card me-card-link" onClick={open} title="My settings" aria-label={`${u.name}: open my settings`}><Avatar name={u.name} src={photo} size={44} /><span className="me-card-x"><IdName name={u.name} idc={u.idc} /><XpBar idc={u.idc} /></span></button>;
 }
