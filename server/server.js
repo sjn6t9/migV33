@@ -3591,7 +3591,7 @@ async function ppFillRun() {
 }
 const PP_BMET = ["regNo", "finger", "available", "nameBn", "nid", "dob", "father", "mother", "mobile", "profession", "address", "training", "pdo", "issueDate", "expiryDate"];
 // work details for the employment contract (all optional)
-const PP_JOB = ["visaNo", "jobTitle", "jobAr", "company", "companyAr", "companyReg", "companyEmail", "companyMobile", "companyAddress", "nameAr", "nameEn", "attNo", "contractNo"];
+const PP_JOB = ["visaNo", "jobTitle", "jobAr", "company", "companyAr", "companyReg", "companyEmail", "companyMobile", "companyAddress", "nameAr", "nameEn", "attNo", "contractNo", "sigSalt"];
 const PP_INFO = ["fatherName", "motherName", "dob", "birthPlace", "prevNationality", "nationality", "marital", "sect", "religion", "address", "mofaId", "oldMofaId", "issuePlace", "issueDate", "expiryDate", "validity"];
 // a passenger's mobile on a passport entry: digits (with an optional +), checked loosely; matched on the last 10 digits
 const ppMobile = v => { const m = String(v || "").replace(/[^\d+]/g, "").slice(0, 16); must(!m || m.replace(/\D/g, "").length >= 10, "Check the passenger's mobile number."); return m; };

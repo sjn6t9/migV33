@@ -68,7 +68,12 @@ export const CONTRACTS = {
       // left (Bangla form, Latin values)
       g.textAlign = "left"; fit(A.zone, 330, 611, 46, 36, LATIN); fit(A.street, 491, 611, 80, 36, LATIN); fit(A.bldg, 691, 611, 60, 36, LATIN);
       fit(d.name.toUpperCase(), 340, 720, 870, 39, LATIN); fit(d.visaNo, 526, 882, 680, 38, LATIN);
-      g.textAlign = "center"; fit(d.jobTitle.toUpperCase(), 690, 1044, 146, 40, LATIN);
+      // the job title at its own size; the rest of the line ("পদে চাকুরী করবে") moves right or left to follow it
+      { const job = String(d.jobTitle || "").toUpperCase(), L = 606, gap = 18, rx = 772, rw = 1060 - rx, ry = 1005, rh = 60, maxRight = 1232; // 1240: the line between the columns
+        let z = 34; g.font = `${z}px ${LATIN}`; while (job && L + g.measureText(job).width + gap + rw > maxRight && z > 20) { z -= 1; g.font = `${z}px ${LATIN}`; }
+        const jw = job ? g.measureText(job).width : 146, nx = Math.round(L + jw + gap);
+        if (nx !== rx) { const rest = g.getImageData(rx, ry, rw, rh); g.fillStyle = "#fff"; g.fillRect(rx, ry, rw, rh); g.putImageData(rest, nx, ry); g.fillStyle = "#111"; }
+        g.textAlign = "left"; if (job) g.fillText(job, L, 1044); }
       // right (Arabic)
       // Arabic sized from the height of an alif in the form (about 24 px), whatever Arabic font the browser has
       const az = arSize(g, 24);
@@ -187,7 +192,7 @@ export async function drawContract(country, d) {
   if (d.signatures) {
     const [wx, wy, ww, wh] = T.sig.worker, [kx, ky, kw, kh] = T.sig.company;
     if (d.workerSig) fitIn(g, d.workerSig, wx, wy, ww, wh);
-    if (d.companySig) fitIn(g, d.companySig, kx, ky, kw, kh); else penSig(g, d.company || d.companyAr, kx, ky, kw, kh, d.sigSalt || 0);
+    if (d.companySig) fitIn(g, d.companySig, kx, ky, kw, kh); else penSig(g, d.company || d.companyAr, kx, ky, kw, kh, +d.sigSalt || 0);
     const [tx, ty] = T.sig.companyText; g.fillStyle = "#111"; g.textAlign = "center"; g.direction = "ltr";
     [[d.company, 36, "bold"], [d.companyReg && `Registration No: ${d.companyReg}`, 32, ""], [d.companyMobile && `Mobile: ${d.companyMobile}`, 32, ""]].filter(([t]) => t)
       .forEach(([t, z, wt], i) => fit(t, tx, ty + i * 46, 760, z, LATIN, wt));

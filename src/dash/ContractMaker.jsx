@@ -26,7 +26,7 @@ function SigCrop({ src, crop, setCrop }) {
 
 export function ContractMaker({ v, sig: sig0 }) {
   const J = v.job || {}, T = contractFor(v.country);
-  const [d, setD] = React.useState(() => ({ ...newBarcodes(), ...J, name: J.nameEn || v.name || "", nameAr: J.nameAr || nameAr(J.nameEn || v.name), sigSalt: (Math.random() * 4294967296) >>> 0, jobAr: J.jobAr || jobAr(J.jobTitle), companyAr: J.companyAr || companyAr(J.company),
+  const [d, setD] = React.useState(() => ({ ...newBarcodes(), ...J, name: J.nameEn || v.name || "", nameAr: J.nameAr || nameAr(J.nameEn || v.name), sigSalt: String(J.sigSalt || ""), jobAr: J.jobAr || jobAr(J.jobTitle), companyAr: J.companyAr || companyAr(J.company),
     visaNo: J.visaNo || "", jobTitle: J.jobTitle || "", company: J.company || "", ...(J.attNo ? { attNo: J.attNo } : {}), ...(J.contractNo ? { contractNo: J.contractNo } : {}) }));
   const [sig, setSig] = React.useState(!!sig0), [crop, setCropS] = React.useState([0.05, 0.62, 0.42, 0.14]), [cropDone, setCropDone] = React.useState(0);
   const [coSig, setCoSig] = React.useState(null), [url, setUrl] = React.useState(""), [busy, setBusy] = React.useState(false), canvas = React.useRef(null);
@@ -87,7 +87,7 @@ export function ContractMaker({ v, sig: sig0 }) {
             : <p className="muted small">{pdfNote || (copy ? "Reading the passport copy…" : "No passport copy in this entry, so the worker's signature space stays empty. Add the passport copy in the passport entry.")}</p>}
           <b className="mt12">Company signature</b>
           <p className="muted small">{coSig ? "Your signature picture is used." : "A pen signature is drawn for the company. Or upload a picture of the real one:"}</p>
-          <div className="row6">{!coSig && <button type="button" className="btn sm" onClick={() => set({ sigSalt: (Math.random() * 4294967296) >>> 0 })}><LuRefreshCw /> Another pen signature</button>}<label className="btn sm"><LuUpload /> Signature picture<input type="file" accept="image/*" hidden onChange={pickCo} /></label>{coSig && <button type="button" className="btn sm" onClick={() => setCoSig(null)}><LuX /> Remove</button>}</div>
+          <div className="row6">{!coSig && <button type="button" className="btn sm" onClick={() => set({ sigSalt: String(((Math.random() * 4294967296) >>> 0) || 1) })}><LuRefreshCw /> Another pen signature</button>}<label className="btn sm"><LuUpload /> Signature picture<input type="file" accept="image/*" hidden onChange={pickCo} /></label>{coSig && <button type="button" className="btn sm" onClick={() => setCoSig(null)}><LuX /> Remove</button>}</div>
           <p className="muted small">Under it: {[d.company, d.companyReg && `Reg. ${d.companyReg}`, d.companyMobile].filter(Boolean).join(" · ") || "add the company details in the passport entry"}</p>
         </div>}
       </div>
