@@ -244,12 +244,14 @@ export function IdName({ name, idc, compact = false, title = true, as: Tag = "sp
     {title && idc.title && <span className="idn-title">{idc.title}</span>}
   </Tag>;
 }
+// large XP numbers short, so the line fits: 119200 → 119.2k, 1500000 → 1.5M
+const xpShort = n => { n = Number(n) || 0; return n >= 1e6 ? `${+(n / 1e6).toFixed(1)}M` : n >= 1e4 ? `${+(n / 1e3).toFixed(1)}k` : String(n); };
 /* level progress for a staff ID: XP into this level, XP needed for the next */
 export function XpBar({ idc }) {
   if (!idc || idc.need == null) return null;
   const pct = idc.need ? Math.min(100, Math.round((idc.into / idc.need) * 100)) : 100;
   return <div className={`xpbar idn-${idc.kind === "admin" ? "admin" : "staff"}`} title={`${idc.xp} XP in all`}>
-    <div className="xpbar-t"><span>Lv {idc.level}</span><span className="num">{idc.into} / {idc.need} XP</span><span>{idc.max ? "Max" : `Lv ${idc.level + 1}`}</span></div>
+    <div className="xpbar-t"><span>Lv {idc.level}</span><span className="num xpbar-n">{xpShort(idc.into)} / {xpShort(idc.need)} XP</span><span>{idc.max ? "Max" : `Lv ${idc.level + 1}`}</span></div>
     <div className="xpbar-b"><i style={{ width: `${pct}%` }} /></div>
   </div>;
 }
@@ -260,7 +262,7 @@ export function MeCard() {
   const photo = u.idc.photo || (store.S.team || []).find(m => m.id === u.memberId)?.photo?.data;
   // a click on one's own name opens one's own Settings
   const open = () => { store.ui.tab[u.role] = "mysettings"; store.ui.railOpen = false; go("dashboard"); touch(); window.scrollTo({ top: 0, behavior: "smooth" }); };
-  return <button type="button" className="me-card me-card-link" onClick={open} title="My settings" aria-label={`${u.name}: open my settings`}><Avatar name={u.name} src={photo} size={44} /><span className="me-card-x"><IdName name={u.name} idc={u.idc} /><XpBar idc={u.idc} /></span></button>;
+  return <button type="button" className="me-card me-card-link" onClick={open} title="My settings" aria-label={`${u.name}: open my settings`}><Avatar name={u.name} src={photo} size={44} /><span className="me-card-x"><IdName name={u.name} idc={u.idc} /></span><XpBar idc={u.idc} /></button>;
 }
 
 /* admin IDs: the level is set by hand (1–1000) */

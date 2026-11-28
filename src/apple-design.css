@@ -366,3 +366,10 @@ img.badge-ic{display:inline-block;vertical-align:-0.15em;object-fit:contain}
 .me-card-link:hover{background:var(--line)}
 .me-card-link:focus-visible{outline:2px solid var(--logo-g,#05613e);outline-offset:2px}
 .lv-set input{width:90px;min-height:0;padding:4px 8px}
+/* XP line: one line always — Lv · XP · Lv */
+.xpbar-t{flex-wrap:nowrap;align-items:baseline}
+.xpbar-t>span{white-space:nowrap;flex:none}
+.xpbar-t .xpbar-n{flex:1 1 auto;text-align:center;min-width:0;overflow:hidden;text-overflow:ellipsis;padding:0 4px}
+/* the XP line runs the full width of the ID card, under the photo and the name */
+.me-card{flex-wrap:wrap;row-gap:10px}
+.me-card>.xpbar{flex:1 0 100%}
