@@ -1,3 +1,4 @@
+import { LevelSet } from "../ui.jsx";
 import { StaffRank } from "./StaffRank.jsx";
 // Admin / staff: own Settings (signature, Day/Night/System, password, language, log out), Office attendance, and the admin's attendance settings.
 import React from "react";
@@ -26,6 +27,7 @@ export function MySettings() {
         <button key={l} type="button" role="radio" aria-checked={theme === k} className={theme === k ? "on" : ""} onClick={() => { setTheme(k); setN(n => n + 1); }}><I /> {l}</button>)}</div>
       <p className="small muted mt8">System follows the setting of this phone or computer.</p></div>
     {u.idc && <UsernameBox u={u} />}
+    {u.role === "admin" && <div className="card set-sec"><h3>My level</h3><p className="small muted">An admin ID's level is set by hand (1 to 1000). Staff levels grow with XP: 400 XP per level.</p><LevelSet id={u.id} level={u.idc?.level || 1} /></div>}
     <div className="card set-sec"><h3><LuKeyRound /> Change password</h3>
       <form className="stack12" onSubmit={pw}>
         <Field label="Current password"><input type="password" name="old" required autoComplete="current-password" /></Field>

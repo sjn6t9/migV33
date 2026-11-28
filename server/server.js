@@ -2812,18 +2812,20 @@ A["me.username"] = async ({ username }, u) => {
 A["admin.setLevel"] = async ({ id: uid, level }, u) => {
   must(u?.role === "admin", "Only an admin can set a level.", 403);
   const x = user(uid); must(x && x.role === "admin", "Levels are set by hand only for admin IDs. Staff levels grow with XP.");
-  const lv = Math.floor(+level); must(lv >= 1 && lv <= 100, "Choose a level from 1 to 100.");
+  const lv = Math.floor(+level); must(lv >= 1 && lv <= LEVEL_MAX, `Choose a level from 1 to ${LEVEL_MAX}.`);
   x.level = lv; return { msg: `${x.name} is now Level ${lv}.` };
 };
 /* ---- staff XP and levels ----
    daily sign-in 10 · each piece of work 50 (what the Work done ranking counts, manual work too) · a reply in live chat 10 per customer per day ·
-   first to the office 100 / second 50 / third 20 that day. Levels: 1→2 100 XP, 2→3 200, 3→4 400, then +200 per level (… 9→10 1600).
+   first to the office 100 / second 50 / third 20 that day. Levels: 400 XP each, from 1 to 1000.
    Admin IDs: the level is set by hand. History older than the kept staff log is carried in db.xpCarry so XP never drops. */
 if (!db.xpCarry) db.xpCarry = {};
 const bdDate = iso => new Date(Date.parse(iso) + 6 * 3600e3).toISOString().slice(0, 10);
 function xpCarryOut(gone) { for (const e of gone) { const c = (db.xpCarry[e.uid] ||= { work: 0, days: [] }); if (e.area !== "Sign-in") c.work++; const d = bdDate(e.at); if (!c.days.includes(d)) c.days.push(d); } }
-const LEVEL_STEP = i => [100, 200, 400, 600, 800, 1000, 1200, 1400, 1600][i] ?? 1600 + 200 * (i - 8);
-function levelOf(xp) { let lv = 1, left = Math.max(0, xp); for (let i = 0; i < 200; i++) { const need = LEVEL_STEP(i); if (left < need) return { level: lv, into: left, need }; left -= need; lv++; } return { level: lv, into: 0, need: 0 }; }
+// every level takes 400 XP; levels go from 1 to 1000
+const LEVEL_XP = 400, LEVEL_MAX = 1000;
+function levelOf(xp) { const x = Math.max(0, Math.floor(xp)), lv = Math.min(LEVEL_MAX, 1 + Math.floor(x / LEVEL_XP));
+  return lv >= LEVEL_MAX ? { level: LEVEL_MAX, into: LEVEL_XP, need: LEVEL_XP, max: true } : { level: lv, into: x - (lv - 1) * LEVEL_XP, need: LEVEL_XP }; }
 let xpMemo = { key: "", map: null };
 function xpAll() {
   const key = `${REV}|${bdDay()}`; if (xpMemo.key === key) return xpMemo.map;

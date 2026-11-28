@@ -6,7 +6,7 @@ import {
   LuHeartPulse, LuShield, LuSparkles, LuWheat, LuShoppingBag, LuMonitor, LuStar, LuDownload, LuBadgeCheck, LuMenu, LuChevronDown
 } from "react-icons/lu";
 import { store, touch, me, company, money, num, bdtMin, isHourly, fdate, bdtFmt, LABEL, STAGES, CL_STAGES } from "./store.js";
-import { toggleSave, downloadFile, cardFileName, go } from "./actions.js";
+import { toggleSave, downloadFile, cardFileName, go, act } from "./actions.js";
 import { ShareButton } from "./Share.jsx";
 import { SITE } from "./site.js";
 
@@ -249,7 +249,7 @@ export function XpBar({ idc }) {
   if (!idc || idc.kind !== "staff") return null;
   const pct = idc.need ? Math.min(100, Math.round((idc.into / idc.need) * 100)) : 100;
   return <div className="xpbar idn-staff" title={`${idc.xp} XP in all`}>
-    <div className="xpbar-t"><span>Lv {idc.level}</span><span className="num">{idc.into} / {idc.need} XP</span><span>Lv {idc.level + 1}</span></div>
+    <div className="xpbar-t"><span>Lv {idc.level}</span><span className="num">{idc.into} / {idc.need} XP</span><span>{idc.max ? "Max" : `Lv ${idc.level + 1}`}</span></div>
     <div className="xpbar-b"><i style={{ width: `${pct}%` }} /></div>
   </div>;
 }
@@ -261,4 +261,13 @@ export function MeCard() {
   // a click on one's own name opens one's own Settings
   const open = () => { store.ui.tab[u.role] = "mysettings"; store.ui.railOpen = false; go("dashboard"); touch(); window.scrollTo({ top: 0, behavior: "smooth" }); };
   return <button type="button" className="me-card me-card-link" onClick={open} title="My settings" aria-label={`${u.name}: open my settings`}><Avatar name={u.name} src={photo} size={44} /><span className="me-card-x"><IdName name={u.name} idc={u.idc} /><XpBar idc={u.idc} /></span></button>;
+}
+
+/* admin IDs: the level is set by hand (1–1000) */
+export function LevelSet({ id, level }) {
+  const [v, setV] = React.useState(String(level)); React.useEffect(() => setV(String(level)), [level]);
+  const n = Math.floor(+v), ok = n >= 1 && n <= 1000 && n !== level;
+  const save = async e => { e?.preventDefault?.(); if (ok) await act("admin.setLevel", { id, level: n }); };
+  return <form className="lv-set small" onSubmit={save}>Level <input type="number" min={1} max={1000} value={v} inputMode="numeric" onFocus={e => e.target.select()} onChange={e => setV(e.target.value)} aria-label="Level (1 to 1000)" />
+    <button className="btn sm" type="submit" disabled={!ok}>Set</button></form>;
 }

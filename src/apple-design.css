@@ -365,3 +365,4 @@ img.badge-ic{display:inline-block;vertical-align:-0.15em;object-fit:contain}
 .me-card-link{cursor:pointer;border:0;text-align:start;width:100%;font:inherit;color:inherit;transition:background .15s}
 .me-card-link:hover{background:var(--line)}
 .me-card-link:focus-visible{outline:2px solid var(--logo-g,#05613e);outline-offset:2px}
+.lv-set input{width:90px;min-height:0;padding:4px 8px}
