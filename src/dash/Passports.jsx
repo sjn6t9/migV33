@@ -4,9 +4,8 @@ import React from "react";
 import { LuPlus, LuX, LuSearch, LuPencil, LuTrash2, LuCheck, LuReceipt, LuBookUser, LuFileSpreadsheet, LuShieldCheck, LuRefreshCw, LuSignature, LuUpload, LuFileText } from "react-icons/lu";
 import { store } from "../store.js";
 import { act, openModal, toast, confirmBox, readUpload } from "../actions.js";
-import { contractFor, companyAr as coAr, companyEn } from "../contract.js";
+import { contractFor, companyEn } from "../contract.js";
 import { Field } from "./shared.jsx";
-import { MoiFetch } from "./MoiFetch.jsx";
 import { Empty } from "../ui.jsx";
 import { COUNTRIES, MIDDLE_EAST, ASIA } from "../constants.js";
 import { xlsx } from "../receipt.js";
@@ -130,15 +129,11 @@ function JobFields({ v, set }) {
     if (x.passport && v.passport && x.passport !== v.passport.replace(/\s+/g, "").toUpperCase()) toast(`Careful: this visa is for passport ${x.passport}.`);
     const company = x.company || (x.companyAr ? companyEn(x.companyAr) : "");
     set({ visaCopy: up, job: { ...J, ...(x.visaNo ? { visaNo: x.visaNo } : {}), ...(x.jobTitle ? { jobTitle: x.jobTitle.charAt(0) + x.jobTitle.slice(1).toLowerCase() } : {}), ...(x.jobAr ? { jobAr: x.jobAr } : {}),
-      ...(x.companyAr ? { companyAr: x.companyAr } : {}), ...(company ? { company } : {}), ...(x.nameAr ? { nameAr: x.nameAr } : {}) }, ...(!v.name.trim() && x.name ? { name: x.name } : {}) });
+      ...(x.companyAr ? { companyAr: x.companyAr } : {}), ...(company ? { company } : {}), ...(x.nameAr ? { nameAr: x.nameAr } : {}), ...(x.name ? { nameEn: x.name } : {}) }, ...(!v.name.trim() && x.name ? { name: x.name } : {}) });
     toast(`From the visa: ${[x.visaNo && "visa number", x.jobTitle && "job title", company && "company"].filter(Boolean).join(", ")}.`); };
-  const fromMoi = m => {
-    setJ({ ...(m.visaNo ? { visaNo: m.visaNo } : {}), ...(m.nameAr ? { nameAr: m.nameAr } : {}), ...(m.company ? { company: m.company } : {}), ...(m.companyAr || m.company ? { companyAr: m.companyAr || coAr(m.company) } : {}) });
-    if (!v.passport && m.passport) set({ passport: m.passport }); };
   const T = contractFor(v.country);
   return <>
     {T && <><div className="full pp-sec"><b>{`Work & company · ${v.country}`}</b><span className="muted small"> — optional; used in the employment contract</span>
-      {v.country === "Qatar" && <MoiFetch passport={v.passport} onFill={fromMoi} />}
     </div>
     {JOB_FIELDS.map(([k, l, ph]) => <Field key={k} label={l} full={k === "companyAddress" || k === "company"}><input type={k === "companyEmail" ? "email" : k === "companyMobile" ? "tel" : "text"} value={J[k] || ""} maxLength={k === "companyAddress" ? 300 : 160} placeholder={ph}
       onChange={e => setJ({ [k]: k === "visaNo" ? e.target.value.replace(/\s+/g, "") : e.target.value })} /></Field>)}</>}

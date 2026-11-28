@@ -112,53 +112,64 @@ export async function inkFrom(src, crop) {
   for (let i = 0; i < n; i++) { const k = Math.max(0, Math.min(1, (cut - lum[i]) / 35)); a[i * 4] = 15; a[i * 4 + 1] = 30; a[i * 4 + 2] = 90; a[i * 4 + 3] = Math.round(k * 255); if (k > 0.5) ink++; }
   g.putImageData(px, 0, 0); c.inkShare = ink / n; return c;
 }
-/* text copied from the Qatar MOI visa page (Visa Inquiry & Printing) or from the printed visa: visa number, passport, names, company */
-export function parseMoi(text) {
-  const t = String(text || "").replace(/\r/g, ""), lines = t.split("\n").map(l => l.trim()).filter(Boolean), out = {};
-  const after = re => { const i = lines.findIndex(l => re.test(l)); if (i < 0) return ""; const same = lines[i].replace(re, "").replace(/^[\s:：\-]+/, "").trim(); return same || lines[i + 1] || ""; };
-  out.visaNo = (/Visa\s*(?:Number|No\.?)\D{0,20}(\d{8,15})/i.exec(t) || /\b(3\d{11})\b/.exec(t) || [])[1] || "";
-  out.passport = ((/Passport\s*(?:Number|No\.?)\s*[:\-]?\s*([A-Z0-9]{6,15})/i.exec(t) || [])[1] || "").toUpperCase();
-  const ni = lines.findIndex(l => /^Name\b/i.test(l));
-  if (ni >= 0) { // the name words come one per cell: Arabic words, then the English words, until "Nationality"
-    const stop = lines.findIndex((l, i) => i > ni && /^(Nationality|Passport|Gender|Description)/i.test(l));
-    const part = lines.slice(ni, stop > 0 ? stop : ni + 12).map(l => l.replace(/^Name\b\s*:?/i, "").trim()).filter(Boolean).join(" ").split(/[\s\t]+/);
-    const ar = part.filter(w => /[\u0600-\u06FF]/.test(w)), en = part.filter(w => /^[A-Z][A-Z.'-]*$/.test(w));
-    if (ar.length) out.nameAr = ar.join(" "); if (en.length) out.name = en.join(" "); }
-  const coEn = after(/^(Sponsor(?:'s)?\s*Name|Sponsor|Employer(?:\s*Name)?|Company(?:\s*Name)?)\b\s*:?/i);
-  if (coEn && !/[\u0600-\u06FF]/.test(coEn)) out.company = coEn;
-  const coAr = after(/(اسم\s*الكفيل|الكفيل|صاحب\s*العمل|اسم\s*الشركة|الشركة)\s*[:：]?/);
-  if (coAr && /[\u0600-\u06FF]/.test(coAr)) out.companyAr = coAr.replace(/^[:\s]+/, "");
-  else { const arLine = lines.find(l => /[\u0600-\u06FF]/.test(l) && /(شركة|للتجارة|للمقاولات|مؤسسة|ذ\.?م\.?م)/.test(l)); if (arLine) out.companyAr = arLine; }
-  return Object.fromEntries(Object.entries(out).filter(([, v]) => v));
-}
-// a company signature drawn as with a pen when no picture is given: one flowing stroke (a tall first letter,
-// joined loops and humps, a flourish underneath), thicker and thinner like ink, always the same for the same company
-function penSig(g, text, x, y, w, h) {
-  let seed = [...String(text || "Company")].reduce((t, ch) => (t * 31 + ch.charCodeAt(0)) >>> 0, 7);
-  const rnd = () => ((seed = (seed * 1664525 + 1013904223) >>> 0) / 4294967296);
-  const mid = y + h * 0.55, P = [];
-  // first letter: a tall loop
-  const x0 = x + w * 0.06; P.push([x0 - 10, mid + h * 0.1], [x0 + w * 0.05, y + h * 0.2], [x0 + w * 0.09, mid - h * 0.1], [x0 + w * 0.02, mid + h * 0.15], [x0 + w * 0.08, mid + h * 0.05]);
-  // joined humps and small loops, like handwriting
-  let cx = x0 + w * 0.1; const n = 6 + Math.floor(rnd() * 4), step = (w * 0.62) / n;
-  for (let i = 0; i < n; i++) {
-    const up = h * (0.18 + rnd() * 0.32), loop = rnd() < 0.3;
-    if (loop) { P.push([cx + step * 0.3, mid - up], [cx + step * 0.15, mid - up * 0.3], [cx + step * 0.5, mid + h * 0.06]); }
-    else P.push([cx + step * 0.35, mid - up], [cx + step * 0.7, mid + h * 0.08]);
-    cx += step;
+// a company signature drawn as with a pen when no picture is given: one of several hands (loops and humps, a round
+// initial with a zigzag, an oval with a tail, slanted letters, initials and a name), its slant, size and ink drawn from
+// the company name and a fresh number each time, so it differs from company to company and from time to time
+function penSig(g, text, x, y, w, h, salt = 0) {
+  let seed = ([...String(text || "Company")].reduce((t, ch) => (t * 31 + ch.charCodeAt(0)) >>> 0, 7) ^ (salt >>> 0)) >>> 0 || 1;
+  const rnd = () => ((seed = (seed * 1664525 + 1013904223) >>> 0) / 4294967296), R = (a, b) => a + rnd() * (b - a);
+  for (let i = 0; i < 5; i++) rnd();
+  const mid = y + h * R(0.45, 0.62), strokes = [];
+  const style = Math.floor(rnd() * 5);
+  if (style === 0) { // tall first letter, joined humps and loops, a flourish under it
+    const P = [], x0 = x + w * R(0.03, 0.1); P.push([x0 - 10, mid + h * 0.1], [x0 + w * 0.05, y + h * R(0.05, 0.25)], [x0 + w * 0.09, mid - h * 0.1], [x0 + w * 0.02, mid + h * 0.15], [x0 + w * 0.08, mid + h * 0.05]);
+    let cx = x0 + w * 0.1; const n = 5 + Math.floor(rnd() * 5), step = (w * R(0.5, 0.66)) / n;
+    for (let i = 0; i < n; i++) { const up = h * R(0.15, 0.5); if (rnd() < 0.3) P.push([cx + step * 0.3, mid - up], [cx + step * 0.15, mid - up * 0.3], [cx + step * 0.5, mid + h * 0.06]); else P.push([cx + step * 0.35, mid - up], [cx + step * 0.7, mid + h * 0.08]); cx += step; }
+    P.push([cx + w * 0.04, mid - h * 0.12], [cx - w * 0.1, mid + h * 0.3], [x + w * R(0.15, 0.3), mid + h * 0.36], [x + w * 0.55, mid + h * R(0.2, 0.32)], [x + w * R(0.85, 0.98), mid - h * R(0, 0.15)]);
+    strokes.push(P);
+  } else if (style === 1) { // big round initial, a fast zigzag, a line struck through
+    const P = [], cx = x + w * R(0.12, 0.2), r = h * R(0.28, 0.4);
+    for (let t = 0; t <= 1.15; t += 0.08) { const a = Math.PI * 0.9 - t * Math.PI * 2; P.push([cx + Math.cos(a) * r * 1.2, mid - h * 0.05 + Math.sin(a) * r]); }
+    let zx = cx + r; const n = 7 + Math.floor(rnd() * 6), st = (w * R(0.5, 0.62)) / n;
+    for (let i = 0; i < n; i++) { P.push([zx + st * 0.5, mid - h * R(0.1, 0.32)], [zx + st, mid + h * R(0.02, 0.12)]); zx += st; }
+    strokes.push(P);
+    strokes.push([[x + w * R(0.05, 0.15), mid + h * R(-0.05, 0.08)], [x + w * 0.5, mid - h * R(0, 0.1)], [x + w * R(0.85, 0.97), mid - h * R(0.1, 0.25)]]);
+  } else if (style === 2) { // a long oval loop with a tail and a dot
+    const P = [], cx = x + w * R(0.3, 0.42), rx = w * R(0.18, 0.28), ry = h * R(0.25, 0.38);
+    P.push([x + w * 0.04, mid + h * 0.2]);
+    for (let t = 0; t <= 1.6; t += 0.07) { const a = Math.PI - t * Math.PI * 2; P.push([cx + Math.cos(a) * rx * (1 - t * 0.15), mid + Math.sin(a) * ry]); }
+    P.push([cx + rx * 1.3, mid + h * 0.15], [x + w * R(0.75, 0.85), mid - h * R(0.05, 0.2)], [x + w * R(0.9, 0.97), mid + h * R(0.05, 0.2)]);
+    strokes.push(P); const dx = x + w * R(0.85, 0.95), dy = mid - h * R(0.2, 0.35); strokes.push([[dx, dy], [dx + 3, dy + 2], [dx + 5, dy]]);
+  } else if (style === 3) { // slanted tall strokes like several letters, two underlines
+    const P = [], n = 4 + Math.floor(rnd() * 4), st = (w * R(0.55, 0.7)) / n; let cx = x + w * R(0.06, 0.12);
+    P.push([cx, mid + h * 0.12]);
+    for (let i = 0; i < n; i++) { const tall = rnd() < 0.5; P.push([cx + st * 0.25, mid - h * (tall ? R(0.35, 0.5) : R(0.1, 0.22))], [cx + st * 0.4, mid + h * 0.1], [cx + st * 0.75, mid - h * R(0.02, 0.12)], [cx + st, mid + h * 0.08]); cx += st; }
+    strokes.push(P);
+    const u = mid + h * R(0.22, 0.3); strokes.push([[x + w * 0.08, u], [x + w * 0.5, u + R(-4, 4)], [cx + w * 0.05, u - h * 0.04]]); strokes.push([[x + w * 0.2, u + h * 0.1], [cx - w * 0.05, u + h * 0.08]]);
+  } else { // two separate words: initials and a short scribbled name
+    const P1 = [], i0 = x + w * R(0.04, 0.1); P1.push([i0, mid + h * 0.2], [i0 + w * 0.06, y + h * R(0.08, 0.2)], [i0 + w * 0.1, mid + h * 0.2], [i0 + w * 0.04, mid], [i0 + w * 0.16, mid - h * 0.05]);
+    strokes.push(P1);
+    const P2 = []; let cx = x + w * R(0.3, 0.38); const n = 4 + Math.floor(rnd() * 4), st = (w * R(0.38, 0.5)) / n;
+    P2.push([cx, mid]); for (let i = 0; i < n; i++) { P2.push([cx + st * 0.4, mid - h * R(0.08, 0.38)], [cx + st * 0.8, mid + h * R(0.02, 0.15)]); cx += st; }
+    P2.push([cx + w * 0.05, mid + h * 0.25], [x + w * R(0.3, 0.45), mid + h * R(0.3, 0.4)]); strokes.push(P2);
   }
-  // flourish: down under the name, then a sweep up to the right
-  P.push([cx + w * 0.04, mid - h * 0.12], [cx - w * 0.1, mid + h * 0.3], [x + w * 0.22, mid + h * 0.36], [x + w * 0.55, mid + h * 0.26], [x + w * 0.96, mid + h * 0.02]);
-  // smooth line through the points (Catmull–Rom)
-  const S = []; for (let i = 0; i < P.length - 1; i++) { const p0 = P[i - 1] || P[i], p1 = P[i], p2 = P[i + 1], p3 = P[i + 2] || p2;
-    for (let t = 0; t < 1; t += 0.04) { const t2 = t * t, t3 = t2 * t;
-      S.push([0.5 * (2 * p1[0] + (-p0[0] + p2[0]) * t + (2 * p0[0] - 5 * p1[0] + 4 * p2[0] - p3[0]) * t2 + (-p0[0] + 3 * p1[0] - 3 * p2[0] + p3[0]) * t3),
-              0.5 * (2 * p1[1] + (-p0[1] + p2[1]) * t + (2 * p0[1] - 5 * p1[1] + 4 * p2[1] - p3[1]) * t2 + (-p0[1] + 3 * p1[1] - 3 * p2[1] + p3[1]) * t3)]); } }
-  g.save(); g.strokeStyle = "#13247a"; g.lineCap = "round"; g.lineJoin = "round";
-  for (let i = 1; i < S.length; i++) { const [ax, ay] = S[i - 1], [bx, by] = S[i], f = i / S.length;
-    // the pen presses harder on down-strokes and lifts at the start and end
-    const down = by > ay ? 1.25 : 0.8, taper = Math.min(1, f * 12, (1 - f) * 8);
-    g.lineWidth = Math.max(1.2, 6.5 * down * taper); g.globalAlpha = 0.88 + 0.12 * taper; g.beginPath(); g.moveTo(ax, ay); g.lineTo(bx, by); g.stroke(); }
+  // a little slant and a size of its own, like a real hand
+  const slant = R(-0.25, 0.1), sc = R(0.88, 1);
+  const tf = ([px, py]) => [x + (px - x) * sc + (mid - py) * slant, mid + (py - mid) * sc];
+  const ink = ["#13247a", "#0d1f6b", "#1b2f8f", "#111a4d", "#1a1a1a"][Math.floor(rnd() * 5)], wid = R(4.5, 7.5);
+  g.save(); g.strokeStyle = ink; g.lineCap = "round"; g.lineJoin = "round";
+  for (const P0 of strokes) {
+    const P = P0.map(tf), S = [];
+    for (let i = 0; i < P.length - 1; i++) { const p0 = P[i - 1] || P[i], p1 = P[i], p2 = P[i + 1], p3 = P[i + 2] || p2;
+      for (let t = 0; t < 1; t += 0.05) { const t2 = t * t, t3 = t2 * t;
+        S.push([0.5 * (2 * p1[0] + (-p0[0] + p2[0]) * t + (2 * p0[0] - 5 * p1[0] + 4 * p2[0] - p3[0]) * t2 + (-p0[0] + 3 * p1[0] - 3 * p2[0] + p3[0]) * t3),
+                0.5 * (2 * p1[1] + (-p0[1] + p2[1]) * t + (2 * p0[1] - 5 * p1[1] + 4 * p2[1] - p3[1]) * t2 + (-p0[1] + 3 * p1[1] - 3 * p2[1] + p3[1]) * t3)]); } }
+    S.push(P[P.length - 1]);
+    for (let i = 1; i < S.length; i++) { const [ax, ay] = S[i - 1], [bx, by] = S[i], f = i / S.length;
+      // the pen presses harder on down-strokes and lifts at the start and end
+      const down = by > ay ? 1.25 : 0.8, taper = Math.min(1, f * 12, (1 - f) * 8);
+      g.lineWidth = Math.max(1.2, wid * down * taper); g.globalAlpha = 0.88 + 0.12 * taper; g.beginPath(); g.moveTo(ax, ay); g.lineTo(bx, by); g.stroke(); }
+  }
   g.restore();
 }
 const fitIn = (g, el, x, y, w, h) => { const s = Math.min(w / el.width, h / el.height); g.drawImage(el, x + (w - el.width * s) / 2, y + (h - el.height * s) / 2, el.width * s, el.height * s); };
@@ -176,7 +187,7 @@ export async function drawContract(country, d) {
   if (d.signatures) {
     const [wx, wy, ww, wh] = T.sig.worker, [kx, ky, kw, kh] = T.sig.company;
     if (d.workerSig) fitIn(g, d.workerSig, wx, wy, ww, wh);
-    if (d.companySig) fitIn(g, d.companySig, kx, ky, kw, kh); else penSig(g, d.company || d.companyAr, kx, ky, kw, kh);
+    if (d.companySig) fitIn(g, d.companySig, kx, ky, kw, kh); else penSig(g, d.company || d.companyAr, kx, ky, kw, kh, d.sigSalt || 0);
     const [tx, ty] = T.sig.companyText; g.fillStyle = "#111"; g.textAlign = "center"; g.direction = "ltr";
     [[d.company, 36, "bold"], [d.companyReg && `Registration No: ${d.companyReg}`, 32, ""], [d.companyMobile && `Mobile: ${d.companyMobile}`, 32, ""]].filter(([t]) => t)
       .forEach(([t, z, wt], i) => fit(t, tx, ty + i * 46, 760, z, LATIN, wt));

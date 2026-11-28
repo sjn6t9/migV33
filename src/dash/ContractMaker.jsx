@@ -2,11 +2,10 @@
 // Arabic words the office can correct, new barcodes, and (if ticked) the worker's signature cut from the
 // passport copy and a company signature. Download as PDF, or keep it with the passport entry.
 import React from "react";
-import { LuDownload, LuSave, LuSignature, LuRefreshCw, LuUpload, LuX, LuClipboardPaste, LuExternalLink, LuTriangleAlert } from "react-icons/lu";
+import { LuDownload, LuSave, LuSignature, LuRefreshCw, LuUpload, LuX, LuTriangleAlert } from "react-icons/lu";
 import { store } from "../store.js";
 import { act, toast, closeModal, readAsDataUrl } from "../actions.js";
 import { Field } from "./shared.jsx";
-import { MoiFetch } from "./MoiFetch.jsx";
 import { drawContract, canvasPdf, inkFrom, nameAr, jobAr, companyAr, newBarcodes, contractFor, pdfPicture } from "../contract.js";
 import { isImgCopy } from "./Passports.jsx";
 
@@ -27,7 +26,7 @@ function SigCrop({ src, crop, setCrop }) {
 
 export function ContractMaker({ v, sig: sig0 }) {
   const J = v.job || {}, T = contractFor(v.country);
-  const [d, setD] = React.useState(() => ({ ...newBarcodes(), ...J, name: v.name || "", nameAr: J.nameAr || nameAr(v.name), jobAr: J.jobAr || jobAr(J.jobTitle), companyAr: J.companyAr || companyAr(J.company),
+  const [d, setD] = React.useState(() => ({ ...newBarcodes(), ...J, name: J.nameEn || v.name || "", nameAr: J.nameAr || nameAr(J.nameEn || v.name), sigSalt: (Math.random() * 4294967296) >>> 0, jobAr: J.jobAr || jobAr(J.jobTitle), companyAr: J.companyAr || companyAr(J.company),
     visaNo: J.visaNo || "", jobTitle: J.jobTitle || "", company: J.company || "", ...(J.attNo ? { attNo: J.attNo } : {}), ...(J.contractNo ? { contractNo: J.contractNo } : {}) }));
   const [sig, setSig] = React.useState(!!sig0), [crop, setCropS] = React.useState([0.05, 0.62, 0.42, 0.14]), [cropDone, setCropDone] = React.useState(0);
   const [coSig, setCoSig] = React.useState(null), [url, setUrl] = React.useState(""), [busy, setBusy] = React.useState(false), canvas = React.useRef(null);
@@ -38,7 +37,6 @@ export function ContractMaker({ v, sig: sig0 }) {
     pdfPicture(copy.data).then(u => { if (!live) return; if (u) setCopyImg(u); else setPdfNote("This PDF has no scanned picture inside, so the signature cannot be taken from it. Upload the passport copy as a photo (JPG/PNG)."); })
       .catch(() => live && setPdfNote("The passport copy PDF could not be read. Upload it as a photo (JPG/PNG).")); return () => { live = false; }; }, []);
   const [sigPrev, setSigPrev] = React.useState(null);
-  const fromMoi = m => set({ ...(m.visaNo ? { visaNo: m.visaNo } : {}), ...(m.nameAr ? { nameAr: m.nameAr } : {}), ...(m.company ? { company: m.company, ...(m.companyAr ? {} : { companyAr: companyAr(m.company) }) } : {}), ...(m.companyAr ? { companyAr: m.companyAr } : {}) });
   const set = x => setD(o => ({ ...o, ...x }));
   const setCrop = (c, done) => { if (c) setCropS(c); if (done) setCropDone(n => n + 1); };
   // the preview is drawn again shortly after any change
@@ -66,7 +64,6 @@ export function ContractMaker({ v, sig: sig0 }) {
       <div className="ctm-form">
         <p className="muted small">Check the Arabic words — they are written from the English and can be corrected here.</p>
         {/* Qatar MOI: visa number, the Arabic name and the company, copied from the MOI visa page or the printed visa */}
-        <div className="ctm-moi"><MoiFetch passport={v.passport} onFill={fromMoi} /></div>
         <div className="fgrid">
           <Field label="Name (English)"><input type="text" value={d.name} onChange={e => set({ name: e.target.value })} /></Field>
           <Field label="Name (Arabic)"><input type="text" dir="rtl" value={d.nameAr} onChange={e => set({ nameAr: e.target.value })} /></Field>
@@ -90,7 +87,7 @@ export function ContractMaker({ v, sig: sig0 }) {
             : <p className="muted small">{pdfNote || (copy ? "Reading the passport copy…" : "No passport copy in this entry, so the worker's signature space stays empty. Add the passport copy in the passport entry.")}</p>}
           <b className="mt12">Company signature</b>
           <p className="muted small">{coSig ? "Your signature picture is used." : "A pen signature is drawn for the company. Or upload a picture of the real one:"}</p>
-          <div className="row6"><label className="btn sm"><LuUpload /> Signature picture<input type="file" accept="image/*" hidden onChange={pickCo} /></label>{coSig && <button type="button" className="btn sm" onClick={() => setCoSig(null)}><LuX /> Remove</button>}</div>
+          <div className="row6">{!coSig && <button type="button" className="btn sm" onClick={() => set({ sigSalt: (Math.random() * 4294967296) >>> 0 })}><LuRefreshCw /> Another pen signature</button>}<label className="btn sm"><LuUpload /> Signature picture<input type="file" accept="image/*" hidden onChange={pickCo} /></label>{coSig && <button type="button" className="btn sm" onClick={() => setCoSig(null)}><LuX /> Remove</button>}</div>
           <p className="muted small">Under it: {[d.company, d.companyReg && `Reg. ${d.companyReg}`, d.companyMobile].filter(Boolean).join(" · ") || "add the company details in the passport entry"}</p>
         </div>}
       </div>
