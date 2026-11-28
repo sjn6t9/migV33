@@ -23,6 +23,7 @@ import { currentTheme, toggleTheme } from "./theme.js";
 import { SITE } from "./site.js";
 import { LuPencil, LuUser, LuBuilding2, LuExternalLink, LuShieldCheck, LuUpload, LuTrash2, LuLock, LuEye, LuEyeOff, LuStamp, LuPlaneTakeoff, LuWallet, LuUsers, LuFileCheck2, LuBadgeCheck } from "react-icons/lu";
 import { AgentBookEdit, AgentAliasEdit } from "./dash/AgentBook.jsx";
+import { ContractMaker } from "./dash/ContractMaker.jsx";
 
 let navSeq = 0, dashSeq = -1, dashFromAddr = false; // navSeq counts address changes (link, Back/Forward); dashSeq is the last one applied to the dashboard
 function useHash() {
@@ -404,7 +405,7 @@ function ModalHost() {
   const m = store.ui.modal; if (!m) return null;
   const close = closeModal;
   return (
-    <ModalFrame onClose={close} wide={m.type === "docView" || m.type === "dueView" || m.type === "share" || m.type === "vcard" || m.type === "mrEntry" || m.type === "dueReceipt" || m.type === "mrView" || m.type === "mrAccount" || m.type === "salaryPay" || m.type === "salaryView" || m.type === "visaFile"} className={m.type === "memberCheck" ? "modal-verify" : ""}>
+    <ModalFrame onClose={close} wide={m.type === "contract" || m.type === "docView" || m.type === "dueView" || m.type === "share" || m.type === "vcard" || m.type === "mrEntry" || m.type === "dueReceipt" || m.type === "mrView" || m.type === "mrAccount" || m.type === "salaryPay" || m.type === "salaryView" || m.type === "visaFile"} className={m.type === "memberCheck" ? "modal-verify" : ""}>
       {m.type === "confirm" && <>
         <h3>Please confirm</h3><p className="confirm-msg">{m.msg}</p>
         <div className="row"><button className="btn pri" autoFocus onClick={() => { closeModal(); m.onYes(); }}>{m.yes}</button><button className="btn" onClick={close}>Cancel</button></div>
@@ -424,6 +425,7 @@ function ModalHost() {
       {m.type === "visaFile" && <VisaFileForm key={m.id || "new"} id={m.id} />}
       {m.type === "agentBook" && <AgentBookEdit id={m.id} />}
       {m.type === "agentAlias" && <AgentAliasEdit id={m.id} />}
+      {m.type === "contract" && <ContractMaker v={m.v} sig={m.sig} />}
       {m.type === "docView" && <DocView src={m.src} name={m.name} label={m.label} />}
       {m.type === "dueView" && <DueView agentKey={m.agentKey} />}
       {m.type === "dueReceipt" && <DueReceipt agentId={m.agentId} book={m.book} />}

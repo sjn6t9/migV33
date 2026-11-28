@@ -1328,7 +1328,7 @@ async function preEcCheck({ passport, returnee, otherPassport }) {
       else if (!nm && bi >= 0 && !/[\u0980-\u09FF]/.test(fields[bi][1])) fields.splice(bi, 0, ["Name", fields[bi][1]]); }
     if (fields.length <= 2 && fields.some(([k, v]) => /^(message|error)$/i.test(k) && /unauth|login|expired|forbidden|csrf/i.test(v))) return { ok: false, problem: `RAIMS answered: ${fields.map(([, v]) => v).join(" ")}`, tried, page: htmlText(pg.text).slice(0, 600) };
     if (!fields.length && !fx.alerts.length) return { ok: false, problem: "RAIMS did not show a result for this passport.", tried, page: htmlText(res?.text || pg.text).slice(0, 800) };
-    const entry = fx.entry || (() => { const v = l => (fields.find(([k]) => new RegExp(`^${l}`, "i").test(k)) || [])[1] || ""; return { name: v("Name") || v("Bang") || v("Employee Name") || v("Full Name"), gender: /female/i.test(v("Gender")) ? "Female" : /male/i.test(v("Gender")) ? "Male" : "", bmet: { regNo: v("BMET Registration"), finger: v("BIO Finger"), available: v("Availability"), nameBn: v("Bangali Name"), nid: v("NID"), dob: v("Date of Birth"), checked: true } }; })();
+    const entry = fx.entry || (() => { const v = l => (fields.find(([k]) => new RegExp(`^${l}`, "i").test(k)) || [])[1] || ""; return { name: v("Name") || v("Bang") || v("Employee Name") || v("Full Name"), gender: /female/i.test(v("Gender")) ? "Female" : /male/i.test(v("Gender")) ? "Male" : "", bmet: { regNo: v("BMET Registration"), finger: v("BIO Finger"), available: v("Availability"), nameBn: v("Bangali Name"), nid: v("NID"), dob: v("Date of Birth"), address: v("Permanent Address") || v("Present Address") || v("Address"), checked: true } }; })();
     const have = db.passports.find(p => p.passport === pp);
     return { ok: true, passport: pp, alerts: fx.alerts, fields, entry, inList: !!(have && ppLists(have).includes("bmet")) };
   }
@@ -3589,6 +3589,8 @@ async function ppFillRun() {
   } finally { ppFilling = false; }
 }
 const PP_BMET = ["regNo", "finger", "available", "nameBn", "nid", "dob", "father", "mother", "mobile", "profession", "address", "training", "pdo", "issueDate", "expiryDate"];
+// work details for the employment contract (all optional)
+const PP_JOB = ["visaNo", "jobTitle", "jobAr", "company", "companyAr", "companyReg", "companyEmail", "companyMobile", "companyAddress", "nameAr", "attNo", "contractNo"];
 const PP_INFO = ["fatherName", "motherName", "dob", "birthPlace", "prevNationality", "nationality", "marital", "sect", "religion", "address", "mofaId", "oldMofaId", "issuePlace", "issueDate", "expiryDate", "validity"];
 // a passenger's mobile on a passport entry: digits (with an optional +), checked loosely; matched on the last 10 digits
 const ppMobile = v => { const m = String(v || "").replace(/[^\d+]/g, "").slice(0, 16); must(!m || m.replace(/\D/g, "").length >= 10, "Check the passenger's mobile number."); return m; };
@@ -3609,7 +3611,12 @@ A["admin.passport"] = async (d, u) => {
     // BMET details (from Pre EC Check, or typed): registration, finger, availability, Bangla name, NID, parents, mobile …
     const bm = x.bmet && typeof x.bmet === "object" ? Object.fromEntries(PP_BMET.map(k => [k, str(x.bmet[k], k === "address" ? 600 : 160)]).filter(([, v]) => v)) : undefined;
     const ref = ag ? agentName(ag) : str(x.ref, 120), mobile = ag || ref ? "" : ppMobile(x.mobile); // no agent: the passenger's own mobile, so their portal account finds the passport
-    return { name, passport, country, gender, ref, agentId: ag ? ag.id : null, mobile, ...(info ? { info } : {}), ...(bm && Object.keys(bm).length ? { bmet: { ...bm, ...(x.bmet.checked ? { checked: now() } : {}) } } : {}) };
+    const job = x.job && typeof x.job === "object" ? Object.fromEntries(PP_JOB.map(k => [k, str(x.job[k], k === "companyAddress" ? 300 : 160)]).filter(([, v]) => v)) : null;
+    if (job?.companyEmail) must(/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(job.companyEmail), "Check the company e-mail.");
+    // the passport copy (optional): a new upload is stored; null removes it; leaving it out keeps the one there
+    const copy = x.ppCopy?.data ? storeFile(x.ppCopy, u.id, { images: true, pdf: true }) : x.ppCopy === null ? null : undefined;
+    return { name, passport, country, gender, ref, agentId: ag ? ag.id : null, mobile, ...(info ? { info } : {}), ...(bm && Object.keys(bm).length ? { bmet: { ...bm, ...(x.bmet.checked ? { checked: now() } : {}) } } : {}),
+      ...(job ? { job } : {}), ...(copy !== undefined ? { ppCopy: copy } : {}) };
   };
   if (d.op === "add") {
     const list = (Array.isArray(d.rows) ? d.rows : [d]).slice(0, 100); must(list.length, "Add at least one passport.");
@@ -3638,7 +3645,16 @@ A["admin.passport"] = async (d, u) => {
   if (d.op === "update") {
     const p = db.passports.find(x => x.id === d.id); must(p, "Passport not found."); const v = read(d);
     must(!db.passports.some(x => x !== p && x.passport === v.passport), `Passport ${v.passport} is already in the list.`);
+    if (v.ppCopy !== undefined && p.ppCopy?.id && p.ppCopy.id !== v.ppCopy?.id) dropFile(p.ppCopy);
+    if (v.ppCopy === null) { delete p.ppCopy; delete v.ppCopy; }
     Object.assign(p, v, { updated: now() }); if (v.info) p.lists = [...new Set([...ppLists(p), "ksa"])]; return { msg: "Passport updated." };
+  }
+  if (d.op === "contract") { // the employment contract made in the browser, kept with the passport entry
+    const p = db.passports.find(x => x.id === d.id); must(p, "Passport not found.");
+    const f = storeFile({ ...d.file, name: `Employment contract ${p.passport}.pdf` }, u.id, { images: false, pdf: true });
+    if (p.contract?.id) dropFile(p.contract);
+    p.contract = { ...f, at: now(), by: u.name }; p.job = { ...(p.job || {}), ...Object.fromEntries(PP_JOB.map(k => [k, str(d.job?.[k], 300)]).filter(([, v]) => v)) };
+    return { msg: `Employment contract saved with passport ${p.passport}.` };
   }
   if (d.op === "delete") { // from one list; the passport is removed when it is in no list any more
     const p = db.passports.find(x => x.id === d.id); must(p, "Passport not found.");

@@ -1506,3 +1506,20 @@ P110|E dolava na WhatsApp vei +{0}
 2738|Only the office sees this name; the agent still sees their own agency name.
 2739|Agency name (from the agent)
 2740|Set a starting level (1 to 1000). From there the level grows with XP, like staff: the next level takes 100, 200, 400 XP, then 400 more each level (800, 1200, 1600 …).
+2741|Job title / occupation
+2742|Department / work company name
+2743|Company registration
+2744|Company e-mail
+2745|Company mobile
+2746|Company address
+2747|Worker's address
+2748|Filled from RAIMS Pre EC Check
+2749|Work & company
+2750|Passport copy (optional)
+2751|Generate Employment Contract
+2752|Worker and company signatures on the contract
+2753|Save with passport
+2754|Worker's signature
+2755|Company signature
+2756|Drag on the passport copy around the signature.
+2757|Check the Arabic words — they are written from the English and can be corrected here.

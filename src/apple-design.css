@@ -373,3 +373,19 @@ img.badge-ic{display:inline-block;vertical-align:-0.15em;object-fit:contain}
 /* the XP line runs the full width of the ID card, under the photo and the name */
 .me-card{flex-wrap:wrap;row-gap:10px}
 .me-card>.xpbar{flex:1 0 100%}
+
+/* ---------- Passport Entry: work & company, contract ---------- */
+.pp-sec{margin-top:8px;padding-top:10px;border-top:1px solid var(--line)}
+.pp-save-row{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.pp-contract{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-inline-start:auto}
+.ctm-head{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
+.ctm-head h3{display:flex;align-items:center;gap:8px;margin:0}
+.ctm-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:18px;margin-top:12px}
+@media (max-width:900px){.ctm-grid{grid-template-columns:1fr}}
+.ctm-form .fgrid{grid-template-columns:1fr 1fr}
+.ctm-prev{background:var(--surface-2);border-radius:14px;padding:10px;max-height:78vh;overflow:auto}
+.ctm-prev img{width:100%;display:block;box-shadow:0 4px 18px rgba(0,0,0,.15);background:#fff}
+.ctm-sig{display:flex;flex-direction:column;gap:6px;margin-top:10px;padding:12px;border-radius:14px;background:var(--surface-2)}
+.sigcrop{position:relative;touch-action:none;cursor:crosshair;user-select:none;border-radius:10px;overflow:hidden;background:#fff}
+.sigcrop img{display:block;width:100%;pointer-events:none}
+.sigcrop-r{position:absolute;border:2px solid #fd0404;background:rgba(253,4,4,.08);pointer-events:none;border-radius:3px}

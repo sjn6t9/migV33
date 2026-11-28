@@ -1,9 +1,10 @@
 // BMET Clearance › Passport entry: the office's list of passports (full name, passport number, country, gender, reference).
 // The same list is offered when making money receipts, account entries and BMET clearance applications.
 import React from "react";
-import { LuPlus, LuX, LuSearch, LuPencil, LuTrash2, LuCheck, LuReceipt, LuBookUser, LuFileSpreadsheet, LuShieldCheck, LuRefreshCw } from "react-icons/lu";
+import { LuPlus, LuX, LuSearch, LuPencil, LuTrash2, LuCheck, LuReceipt, LuBookUser, LuFileSpreadsheet, LuShieldCheck, LuRefreshCw, LuSignature, LuUpload, LuFileText } from "react-icons/lu";
 import { store } from "../store.js";
-import { act, openModal, toast, confirmBox } from "../actions.js";
+import { act, openModal, toast, confirmBox, readUpload } from "../actions.js";
+import { contractFor } from "../contract.js";
 import { Field } from "./shared.jsx";
 import { Empty } from "../ui.jsx";
 import { COUNTRIES, MIDDLE_EAST, ASIA } from "../constants.js";
@@ -53,6 +54,8 @@ export function PassportEntry({ title } = {}) {
         <td className="num small">{fdate(p.at)}<div className="muted">{p.by}</div></td>
         <td><div className="row6 nowrap">
           <button className="btn sm" title="Money receipt for this passport" onClick={() => openModal("mrEntry", { pp: p.id })}><LuReceipt /> Receipt</button>
+          {contractFor(p.country) && <button className="btn sm" title={p.contract ? "Employment contract saved — open or make again" : "Generate Employment Contract"}
+            onClick={() => openModal("contract", { v: { ...p, id: p.id, job: p.job || {}, ppCopyRef: p.ppCopy ? { ...p.ppCopy, data: `/api/files/${p.ppCopy.id}` } : null }, sig: true })}><LuSignature /> {p.contract ? "Contract ✓" : "Contract"}</button>}
           <button className="ec-ico view" aria-label="Edit" title="Edit" onClick={() => setEdit(p.id)}><LuPencil /></button>
           <button className="ec-ico pdf" aria-label="Delete" title="Delete" onClick={() => confirmBox(`Delete passport ${p.passport} (${p.name}) from the list?`, () => act("admin.passport", { op: "delete", id: p.id, list: "bmet" }), "Delete")}><LuTrash2 /></button>
         </div></td>
@@ -91,9 +94,45 @@ function Fields({ v, set, idx }) {
     {(B.finger || B.available) && <Field label="BIO Finger · Availability"><div className="row6"><span className={`ec-badge ${/success/i.test(B.finger) ? "s-approved" : "s-rejected"}`}>{B.finger || "—"}</span><span className={`ec-badge ${/^available/i.test(B.available) ? "s-approved" : "s-rejected"}`}>{B.available || "—"}</span></div></Field>}
     <Field label="Ref." hint={refAgent ? `${refAgent.name} can use this passport in the agent panel.` : "An agent, or who referred the person"}>
       <input type="text" value={v.ref} list="pp-ref-agents" onChange={e => { const a = ags.find(x => x.name === e.target.value); set({ ref: e.target.value, agentId: a ? a.id : "" }); }} maxLength={120} placeholder="Agent or reference" /></Field>
+    <Field label="Worker's address" hint="Filled from RAIMS Pre EC Check" full><input type="text" value={B.address || ""} maxLength={600} onChange={e => setB({ address: e.target.value })} placeholder="Village, post office, upazila, district" /></Field>
+    <JobFields v={v} set={set} />
   </>;
 }
-const blank = (k = Math.random().toString(36).slice(2), country = "") => ({ k, name: "", passport: "", country, gender: "", ref: "", agentId: "", bmet: {} });
+export const isImgCopy = c => !!c && (/^data:image\//.test(c.data || "") || (/^\/api\/files\//.test(c.data || "") && !/\.pdf$/i.test(c.name || "")));
+/* work and company details for the employment contract, and the passport copy (all optional) */
+export const JOB_FIELDS = [["visaNo", "Visa Number", "e.g. 382026213657"], ["jobTitle", "Job title / occupation", "e.g. Driver"], ["company", "Department / work company name", "e.g. Red Mango Trading & Contracting"],
+  ["companyReg", "Company registration", ""], ["companyEmail", "Company e-mail", "name@company.com"], ["companyMobile", "Company mobile", "+974 …"], ["companyAddress", "Company address", "e.g. Zone 31, Street 8111, Building 11"]];
+function JobFields({ v, set }) {
+  const J = v.job || {}, setJ = x => set({ job: { ...J, ...x } });
+  const pick = async e => { const f = e.target.files?.[0]; e.target.value = ""; if (!f) return;
+    try { set({ ppCopy: await readUpload(f, { imageMax: 2200 }) }); } catch (err) { toast(err.message); } };
+  const copy = v.ppCopy === null ? null : v.ppCopy?.data ? v.ppCopy : v.ppCopyRef || null;
+  return <>
+    <div className="full pp-sec"><b>Work & company</b><span className="muted small"> — optional; used in the employment contract</span></div>
+    {JOB_FIELDS.map(([k, l, ph]) => <Field key={k} label={l} full={k === "companyAddress" || k === "company"}><input type={k === "companyEmail" ? "email" : k === "companyMobile" ? "tel" : "text"} value={J[k] || ""} maxLength={k === "companyAddress" ? 300 : 160} placeholder={ph}
+      onChange={e => setJ({ [k]: k === "visaNo" ? e.target.value.replace(/\s+/g, "") : e.target.value })} /></Field>)}
+    <Field label="Passport copy (optional)" hint="A photo or scan of the passport page; its signature can go on the contract" full>
+      <div className="fpick has-or-not">
+        <label className="fpick-btn"><input className="fpick-in" type="file" accept=".jpg,.jpeg,.png,.webp,.pdf" onChange={pick} /><LuUpload /><span>{copy ? "Change file" : "Choose file"}</span></label>
+        {copy && <div className="fpick-files"><div className="fpick-item">{isImgCopy(copy) ? <img src={copy.data} alt="" /> : <span className="fpick-doc"><LuFileText /><em>PDF</em></span>}
+          <span className="fpick-meta"><b data-notr>{copy.name || "Passport copy"}</b></span></div>
+          <button type="button" className="fpick-x" onClick={() => set({ ppCopy: null })} aria-label="Remove file"><LuX /></button></div>}
+      </div></Field>
+  </>;
+}
+/* Generate Employment Contract: the tick for signatures, and the button (opens the contract with these details) */
+function ContractBar({ v, id }) {
+  const [sig, setSig] = React.useState(true); const T = contractFor(v.country);
+  const go = () => { if (!v.country) return toast("Choose the country first.");
+    if (!T) return toast(`There is no employment contract form for ${v.country} yet. Only Qatar has one now.`);
+    if (!v.name.trim()) return toast("Enter the full name first.");
+    openModal("contract", { v: { ...v, id }, sig }); };
+  return <div className="pp-contract">
+    <label className="chk"><input type="checkbox" checked={sig} onChange={e => setSig(e.target.checked)} /> Worker and company signatures on the contract</label>
+    <button type="button" className="btn" onClick={go} title={T ? "Make the employment contract" : "Only Qatar has a contract form now"}><LuSignature /> Generate Employment Contract</button>
+  </div>;
+}
+const blank = (k = Math.random().toString(36).slice(2), country = "") => ({ k, name: "", passport: "", country, gender: "", ref: "", agentId: "", bmet: {}, job: {} });
 function PassportForm() {
   const [rows, setRows] = React.useState(() => [blank()]); const [busy, setBusy] = React.useState(false);
   const set = (i, v) => setRows(rows.map((r, j) => (j === i ? { ...r, ...v } : r)));
@@ -117,15 +156,18 @@ function PassportForm() {
     </div>)}
     <AgentDatalist id="pp-ref-agents" />
     <div className="row6 mt8"><button type="button" className="btn sm" onClick={() => { const l = rows[rows.length - 1]; setRows([...rows, blank(undefined, l.country)]); }}><LuPlus /> Add another passport</button></div>
-    <div className="mt14"><button className="btn pri" disabled={busy}>{rows.length > 1 ? `Save ${rows.length} passports` : "Save passport"}</button></div>
+    <div className="mt14 pp-save-row"><button className="btn pri" disabled={busy}>{rows.length > 1 ? `Save ${rows.length} passports` : "Save passport"}</button>
+      {rows.length === 1 && <ContractBar v={rows[0]} id={passports().find(p => p.passport === rows[0].passport.replace(/\s+/g, ""))?.id} />}</div>
   </form>;
 }
 function EditRow({ p, onDone }) {
-  const [v, setV] = React.useState({ name: p.name, passport: p.passport, country: p.country, gender: p.gender, ref: p.ref || "", agentId: p.agentId || "", bmet: { ...(p.bmet || {}) } });
-  const save = async () => { if (await act("admin.passport", { op: "update", id: p.id, ...v })) onDone(); };
+  const [v, setV] = React.useState({ name: p.name, passport: p.passport, country: p.country, gender: p.gender, ref: p.ref || "", agentId: p.agentId || "", bmet: { ...(p.bmet || {}) }, job: { ...(p.job || {}) },
+    ppCopyRef: p.ppCopy ? { ...p.ppCopy, data: `/api/files/${p.ppCopy.id}` } : null });
+  const save = async () => { const { ppCopyRef, ...rest } = v; if (await act("admin.passport", { op: "update", id: p.id, ...rest })) onDone(); };
   return <tr className="sel"><td colSpan={13}><div className="fgrid pp-edit"><Fields v={v} set={x => setV({ ...v, ...x })} />
     <AgentDatalist id="pp-ref-agents" />
-    <div className="full row6"><button type="button" className="btn sm pri" onClick={save}><LuCheck /> Save</button><button type="button" className="btn sm" onClick={onDone}><LuX /> Cancel</button></div></div></td></tr>;
+    <div className="full row6 pp-save-row"><button type="button" className="btn sm pri" onClick={save}><LuCheck /> Save</button><button type="button" className="btn sm" onClick={onDone}><LuX /> Cancel</button>
+      <ContractBar v={v} id={p.id} /></div></div></td></tr>;
 }
 
 /* a small search to pick a passport; used in account entry forms ("details" gets the passport line) */

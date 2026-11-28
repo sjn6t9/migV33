@@ -43,3 +43,5 @@ export function nameIn(m, lang) {
   if (!parts.length || COL[lang] == null || !parts.every(p => P[p])) return m.name || "";
   return parts.map(p => P[p][COL[lang]]).join(" ").replace(/ ال /g, " ال").replace(/^ال /, "ال");
 }
+// a name part in Arabic, if it is one of the common parts above
+export const arPart = w => P[String(w).toLowerCase()]?.[2];
