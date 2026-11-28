@@ -355,3 +355,5 @@ footer.bot .social a:hover{border-color:var(--ink);color:var(--ink)}
 .idn .badges{display:inline-flex;align-items:center;gap:2px;flex:none}
 img.badge-ic{display:inline-block;vertical-align:-0.15em;object-fit:contain}
 .me-card .idn-name{white-space:normal;overflow:visible}.me-card .idn-top{flex-wrap:wrap}
+.ag-rn{display:inline-flex;align-items:center;gap:6px;flex-wrap:wrap}
+.ag-rn-f{display:flex;gap:6px;flex-wrap:wrap;align-items:center}.ag-rn-f input{flex:1 1 180px;min-height:0;padding:6px 10px}.ag-rn-f .full{flex-basis:100%}

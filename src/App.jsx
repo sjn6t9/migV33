@@ -21,8 +21,8 @@ import { LANGS, getLang, setLang, t, onLang } from "./i18n.js";
 import { VisitingCard, VerifyMember, VerifyBody } from "./VCard.jsx";
 import { currentTheme, toggleTheme } from "./theme.js";
 import { SITE } from "./site.js";
-import { LuUser, LuBuilding2, LuExternalLink, LuShieldCheck, LuUpload, LuTrash2, LuLock, LuEye, LuEyeOff, LuStamp, LuPlaneTakeoff, LuWallet, LuUsers, LuFileCheck2, LuBadgeCheck } from "react-icons/lu";
-import { AgentBookEdit } from "./dash/AgentBook.jsx";
+import { LuPencil, LuUser, LuBuilding2, LuExternalLink, LuShieldCheck, LuUpload, LuTrash2, LuLock, LuEye, LuEyeOff, LuStamp, LuPlaneTakeoff, LuWallet, LuUsers, LuFileCheck2, LuBadgeCheck } from "react-icons/lu";
+import { AgentBookEdit, AgentAliasEdit } from "./dash/AgentBook.jsx";
 
 let navSeq = 0, dashSeq = -1, dashFromAddr = false; // navSeq counts address changes (link, Back/Forward); dashSeq is the last one applied to the dashboard
 function useHash() {
@@ -423,6 +423,7 @@ function ModalHost() {
       {m.type === "wafidHelp" && <WafidBookmarkHelp />}
       {m.type === "visaFile" && <VisaFileForm key={m.id || "new"} id={m.id} />}
       {m.type === "agentBook" && <AgentBookEdit id={m.id} />}
+      {m.type === "agentAlias" && <AgentAliasEdit id={m.id} />}
       {m.type === "docView" && <DocView src={m.src} name={m.name} label={m.label} />}
       {m.type === "dueView" && <DueView agentKey={m.agentKey} />}
       {m.type === "dueReceipt" && <DueReceipt agentId={m.agentId} book={m.book} />}
@@ -578,16 +579,28 @@ function ClDocUpload({ c }) {
   return <div className="row tight mt8 cl-docup"><select value={kind} onChange={e => setKind(e.target.value)}>{[["passport", "Passport copy"], ["visa", "Visa copy"], ["contract", "Employment contract"]].map(([k, l]) => <option key={k} value={k}>{l}</option>)}</select>
     <label className={`btn sm${busy ? " disabled" : ""}`}><LuUpload /> {busy ? "Uploading…" : c.files?.[kind] ? "Replace file" : "Upload file"}<input type="file" hidden accept={DOC_TYPES} onChange={up} disabled={busy} /></label></div>;
 }
+/* office only: rename the agent who filed a file ("Agent Name") — shown to the office everywhere, never to the agent */
+function AgentRename({ id, name }) {
+  const [ed, setEd] = useState(false), [v, setV] = useState(name || "");
+  const a = store.S.users.find(x => x.id === id), own = a?.agent?.ownName;
+  if (!ed) return <span className="ag-rn"><span data-notr>{name}</span>{own && own !== name && <span className="muted small" data-notr>{` (agency: ${own})`}</span>}
+    <button type="button" className="btn sm link" onClick={() => { setV(name || ""); setEd(true); }} aria-label="Rename the agent" title="Rename (only the office sees it)"><LuPencil /> Rename</button></span>;
+  const save = async e => { e.preventDefault(); if (await act("admin.agentAlias", { id, alias: v })) setEd(false); };
+  return <form className="ag-rn-f" onSubmit={save}><input type="text" value={v} onChange={e => setV(e.target.value)} maxLength={120} autoFocus placeholder={own || name} />
+    <button className="btn sm pri" type="submit">Save</button><button type="button" className="btn sm" onClick={() => setEd(false)}>Cancel</button>
+    <span className="muted small full">Only the office sees this name; the agent still sees their own agency name.</span></form>;
+}
 function ClearanceCard({ cid, admin }) {
   const c = store.S.clearances.find(x => x.id === cid); if (!c) return null;
   const w = clPerson(c);
-  const rows = [["Applicant", w.name], ["Filed by", w.via], ["Father's name", w.father], ["Passport no.", w.passport], ["Passport expiry", fdate(w.passportExpiry)], ["Date of birth", fdate(w.dob)], ["Mobile", w.phone], ["District", w.district], ["Trade", w.trade], ["Destination", c.country], ["Employer / sponsor", c.employer], ["Visa no.", c.visaNo], ["Visa type", c.visaType], ["Planned flight", c.flightDate ? fdate(c.flightDate) : ""], ...(c.icNo ? [["IC No.", c.icNo]] : []), ...(c.raimsId ? [["RAIMS ID No.", c.raimsId]] : []), ...(c.fee ? [["Processing fee", bdtFmt(c.fee)]] : []), ...(c.due ? [["Previous due", bdtFmt(c.due)]] : []), ["Notes", c.notes]];
+  const via = admin && c.agentId ? <AgentRename id={c.agentId} name={w.via} /> : w.via;
+  const rows = [["Applicant", w.name], ["Filed by", via], ["Father's name", w.father], ["Passport no.", w.passport], ["Passport expiry", fdate(w.passportExpiry)], ["Date of birth", fdate(w.dob)], ["Mobile", w.phone], ["District", w.district], ["Trade", w.trade], ["Destination", c.country], ["Employer / sponsor", c.employer], ["Visa no.", c.visaNo], ["Visa type", c.visaType], ["Planned flight", c.flightDate ? fdate(c.flightDate) : ""], ...(c.icNo ? [["IC No.", c.icNo]] : []), ...(c.raimsId ? [["RAIMS ID No.", c.raimsId]] : []), ...(c.fee ? [["Processing fee", bdtFmt(c.fee)]] : []), ...(c.due ? [["Previous due", bdtFmt(c.due)]] : []), ["Notes", c.notes]];
   // an Approved file (office side): only what is needed to send the card, one under the other
   if (admin && c.status === "approved") return (
     <div className="cl-approved">
       <h3>BMET clearance: {w.name}</h3>
       <div className="row6"><b>Status</b> <Pill s={c.status} /></div>
-      <table className="mt8"><tbody>{[["Applicant", w.name], ["Filed by", w.via], ["Passport no.", w.passport], ["Destination", c.country], ["IC No.", c.icNo || c.ref]].map(([k, v]) => <tr key={k}><th>{k}</th><td data-notr>{v || "—"}</td></tr>)}</tbody></table>
+      <table className="mt8"><tbody>{[["Applicant", w.name], ["Filed by", via], ["Passport no.", w.passport], ["Destination", c.country], ["IC No.", c.icNo || c.ref]].map(([k, v]) => <tr key={k}><th>{k}</th><td data-notr>{v || "—"}</td></tr>)}</tbody></table>
       <h4 className="mt16 mb6">Documents</h4>
       {c.files && (["passport", "visa", "contract"].some(k => c.files[k]) || c.files.others?.length)
         ? <div className="stack8">{[["passport", "Passport copy"], ["visa", "Visa copy"], ["contract", "Employment contract"]].filter(([k]) => c.files[k]).map(([k, l]) => <ClFile key={k} c={c} f={c.files[k]} label={l} />)}

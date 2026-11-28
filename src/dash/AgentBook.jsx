@@ -100,7 +100,7 @@ export function AgentsPage({ AddForm, canLedger, canMr }) {
 function AgentDetail({ reg, book, AddForm, canLedger, canMr }) {
   const S = store.S, ui = store.ui;
   const name = reg ? reg.agent?.business || reg.name : book.name;
-  const info = reg ? [reg.name, reg.agent?.phone || reg.phone, reg.email, reg.agent?.address].filter(Boolean) : [book.fullName, book.mobile, book.email, book.agency, book.address].filter(Boolean);
+  const info = reg ? [reg.agent?.ownName && `Agency: ${reg.agent.ownName}`, reg.name, reg.agent?.phone || reg.phone, reg.email, reg.agent?.address].filter(Boolean) : [book.fullName, book.mobile, book.email, book.agency, book.address].filter(Boolean);
   const pps = agentPassports(reg ? { reg: { id: reg.id } } : { book });
   const rows = reg ? agentRows(S.ledger || [], reg.id) : bookRows(book);
   const back = () => { ui.agentView = null; commit(); };
@@ -109,6 +109,7 @@ function AgentDetail({ reg, book, AddForm, canLedger, canMr }) {
     <div className="ec-head"><div><button className="btn sm link" onClick={back}><LuArrowLeft /> Agents</button>
       <h2 data-notr>{name} {reg && <span className="ec-badge s-approved">Registered</span>}</h2><p className="muted small" data-notr>{info.join(" · ") || "No details yet"}</p></div>
       <div className="row6">{book && <button className="btn" onClick={() => openModal("agentBook", { id: book.id })}><LuPencil /> Update</button>}
+        {reg && <button className="btn" onClick={() => openModal("agentAlias", { id: reg.id })}><LuPencil /> Agent Name</button>}
         {(canLedger || canMr) && <button className="btn" onClick={() => openModal("dueReceipt", reg ? { agentId: reg.id } : { book: book.id })}><LuReceipt /> Due receipt</button>}
         {canMr && <button className="btn pri" onClick={mr}><LuReceipt /> Money receipt</button>}</div></div>
     <div className="card">
@@ -146,7 +147,7 @@ export function AgentBookEdit({ id }) {
     <h3>{a ? `Update agent: ${a.name}` : "Add agent"}</h3>
     <p className="muted small mb14">All fields are optional.</p>
     <div className="fgrid">
-      {!a && <Field label="Agent name" hint="As it is written in entries" full><input type="text" value={v.name} maxLength={120} onChange={e => setV({ ...v, name: e.target.value })} /></Field>}
+      <Field label="Agent Name" hint={a ? "The name the office knows this agent by — every entry, file and receipt under the old name follows it" : "As it is written in entries"} full><input type="text" value={v.name} maxLength={120} onChange={e => setV({ ...v, name: e.target.value })} /></Field>
       {FIELDS.map(([k, l, t]) => <Field key={k} label={l} full={k === "address"}>{k === "address" ? <textarea className="short" value={v[k]} maxLength={500} onChange={e => setV({ ...v, [k]: e.target.value })} />
         : <input type={t} value={v[k]} maxLength={k === "agency" ? 150 : 120} onChange={e => setV({ ...v, [k]: e.target.value })} />}</Field>)}
     </div>
@@ -169,4 +170,22 @@ export function VStatusCell({ p, list }) {
   return <div><select className={`vs-sel${cur ? " on" : ""}`} style={cur ? { "--vs": vsColor(cur) } : undefined} value={cur} aria-label="Status" onChange={e => { if (e.target.value === "__custom") { setT(VSTATUS.includes(cur) ? "" : cur); setCustom(true); } else set(e.target.value); }}>
     <option value="">— Set status —</option>{[...VSTATUS, ...(cur && !VSTATUS.includes(cur) ? [cur] : [])].map(x => <option key={x} value={x}>{x}</option>)}<option value="__custom">Custom…</option></select>
     {cur && <div className="muted tiny-d">{fdate(p.vstatus[list].at)}</div>}</div>;
+}
+
+/* modal: the office's own name for a registered agent — shown to the office everywhere, never to the agent */
+export function AgentAliasEdit({ id }) {
+  const a = (store.S.users || []).find(x => x.id === id); const own = a?.agent?.ownName || a?.agent?.business || a?.name || "";
+  const [v, setV] = React.useState(a?.agent?.ownName ? a.agent.business : ""); const [busy, setBusy] = React.useState(false);
+  if (!a) return null;
+  const save = async e => { e.preventDefault(); setBusy(true); const r = await act("admin.agentAlias", { id, alias: v }); setBusy(false); if (r) closeModal(); };
+  return <form onSubmit={save} noValidate>
+    <h3>{`Agent Name: ${own}`}</h3>
+    <p className="muted small mb14">The name the office knows this agent by. It is shown to the office everywhere (lists, files, accounts); the agent still sees their own agency name ({own}). Leave empty to use the agency name.</p>
+    <div className="fgrid">
+      <Field label="Agent Name" full><input type="text" value={v} maxLength={120} placeholder={own} autoFocus onChange={e => setV(e.target.value)} /></Field>
+      <Field label="Agency name (from the agent)"><input type="text" value={own} disabled /></Field>
+      <Field label="Full name"><input type="text" value={a.name || ""} disabled /></Field>
+    </div>
+    <div className="row between mt14"><button type="button" className="btn" onClick={closeModal}><LuX /> Cancel</button><button className="btn pri" disabled={busy}><LuCheck /> Save</button></div>
+  </form>;
 }

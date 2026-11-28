@@ -268,6 +268,9 @@ function viewFor(u) {
     if (can(u, "receipts")) pub.mr = { accounts: db.mr.accounts, receipts: db.mr.receipts.map(r => mrOut(r)), charges: db.mr.charges };
     if (u.role === "admin") { const c = smtpConf(); pub.smtp = { host: c.host || "", port: c.port || 465, user: c.user || "", from: c.from || "", hasPass: !!c.pass, local: !!c.local }; }
   }
+  // the office sees the Agent Name it gave an agent in place of the agency name; the agent never sees it
+  if (isStaffRole(u)) pub.users = pub.users.map(x => x.role === "agent" && x.agent?.alias ? { ...x, agent: { ...x.agent, business: x.agent.alias, ownName: x.agent.business } } : x);
+  else pub.users = pub.users.map(x => x.agent?.alias ? { ...x, agent: (({ alias, ...r }) => r)(x.agent) } : x);
   return pub;
 }
 
@@ -644,7 +647,7 @@ A["agent.upload"] = async ({ key, file }, u) => {
   must(u?.role === "agent", "Not allowed.", 403); must(AGENT_DOC_KEYS.includes(key), "Unknown document.");
   u.agent.docs = u.agent.docs || {}; const ref = storeFile(file, u.id, key === "photo" ? { pdf: false } : {});
   dropFile(u.agent.docs[key]); u.agent.docs[key] = { ...ref, at: now() };
-  if (u.status === "pending" && AGENT_DOC_KEYS.every(k => u.agent.docs[k])) notifyAdmins(`${u.agent.business} uploaded all documents (photo, NID, trade licence).`, "users");
+  if (u.status === "pending" && AGENT_DOC_KEYS.every(k => u.agent.docs[k])) notifyAdmins(`${agentName(u)} uploaded all documents (photo, NID, trade licence).`, "users");
   return { msg: `${{ photo: "Photo", nid: "NID", tradeLicense: "Trade License" }[key]} uploaded.` };
 };
 A["agent.removeDoc"] = async ({ key }, u) => { must(u?.role === "agent" && AGENT_DOC_KEYS.includes(key), "Not allowed.", 403); dropFile(u.agent.docs?.[key]); u.agent.docs[key] = null; return { msg: "Removed." }; };
@@ -687,7 +690,7 @@ A["agent.clearance"] = async (d, u) => {
   { const c = db.clearances[db.clearances.length - 1]; c.ref = ecRef(c); }
   const fee = Number(db.settings.clearanceFee || 0);
   if (fee > 0) db.ledger.push(clCharge(u.id, db.clearances[db.clearances.length - 1], "BMET clearance processing", fee));
-  notifyAdmins(`New BMET clearance application: ${w.name} (${d.country}) from ${u.agent.business}. See Applications › Clearance applications.`, "clearance");
+  notifyAdmins(`New BMET clearance application: ${w.name} (${d.country}) from ${agentName(u)}. See Applications › Clearance applications.`, "clearance");
   return { msg: "Clearance application submitted." };
 };
 /* the agency creates a clearance file itself: for a registered agent (the agent sees it in their portal) or for a custom agent / reference name typed in */
@@ -778,7 +781,7 @@ A["agent.ticket"] = async (d, u) => {
   const fl = flightSnap(d.flight);
   const lead = trav?.[0];
   db.tickets.push({ id: id("t"), agentId: u.id, workerId: w?.id || null, ...(trav ? { travellers: trav, name: `${lead.title} ${lead.given} ${lead.surname}${trav.length > 1 ? ` +${trav.length - 1}` : ""}`, passport: lead.passport } : {}), from: str(d.from, 80), to: str(d.to, 80), prefDate: str(d.prefDate, 10), returnDate: str(d.returnDate, 10), pax: str(d.pax, 60), notes: str(d.notes, 500), ...(fl ? { flight: fl } : {}), status: "requested", fare: "", pnr: "", airline: "", flightDate: "", created: now() });
-  notifyAdmins(`Air ticket booking: ${w?.name || `${lead.given} ${lead.surname}`}, ${str(d.from, 80)} → ${str(d.to, 80)}${fl ? ` (${fl.airline}, ৳ ${fl.price})` : ""} (${u.agent.business}).`, "tickets");
+  notifyAdmins(`Air ticket booking: ${w?.name || `${lead.given} ${lead.surname}`}, ${str(d.from, 80)} → ${str(d.to, 80)}${fl ? ` (${fl.airline}, ৳ ${fl.price})` : ""} (${agentName(u)}).`, "tickets");
   return { msg: "Booking request sent. The agency will book the ticket and confirm." };
 };
 /* ======================= Air tickets: live fares from WFTT BD (b2b.wfttbd.com), the agency's own B2B account =======================
@@ -920,8 +923,8 @@ A["agent.payment"] = async (d, u) => {
   const lead = d.paidTo ? leaders().find(x => x.k === d.paidTo) : null, m0 = str(d.method, 60);
   const method = lead ? `Person · ${lead.k}${m0 && !/^cash/i.test(m0) ? ` | ${m0}` : ""}` : m0;
   db.ledger.push({ id: id("l"), at: now(), agentId: u.id, type: "payment", desc: str(d.desc, 200) || (lead ? `Payment given to ${lead.name} · ${lead.title}` : "Payment sent by agent"), amount, date: str(d.date, 10) || now().slice(0, 10), method, ref: str(d.ref, 80), status: "pending", ...(d.proof?.data ? { proof: storeFile(d.proof, u.id) } : {}) });
-  notifyAdmins(`Payment reported by ${u.agent.business}: ${bdt(amount)} ${lead ? `given to ${lead.name} (${lead.title})` : `via ${m0}`}.`, "ledger");
-  if (lead?.uid) notify(lead.uid, `${u.agent.business} says they gave you ${bdt(amount)}. It counts as money with you once the agency confirms it.`);
+  notifyAdmins(`Payment reported by ${agentName(u)}: ${bdt(amount)} ${lead ? `given to ${lead.name} (${lead.title})` : `via ${m0}`}.`, "ledger");
+  if (lead?.uid) notify(lead.uid, `${agentName(u)} says they gave you ${bdt(amount)}. It counts as money with you once the agency confirms it.`);
   return { msg: "Payment submitted. It appears in your balance after confirmation." };
 };
 
@@ -1949,7 +1952,7 @@ A["agent.clPayment"] = async (d, u) => {
   if (c.payment?.file) dropFile(c.payment.file);
   c.payment = { status: "submitted", amount, method: str(d.method, 40), ref: str(d.ref, 80), file: storeFile(d.file, u.id), at: now(), note: "" };
   const w = worker(c.workerId);
-  notifyAdmins(`Clearance payment receipt: ${w?.name || "worker"} (${c.ref}), BDT ${amount} from ${u.agent?.business || u.name}.`, "clearance");
+  notifyAdmins(`Clearance payment receipt: ${w?.name || "worker"} (${c.ref}), BDT ${amount} from ${agentName(u)}.`, "clearance");
   return { msg: "Payment receipt sent. The agency will check it and mark the file Paid." };
 };
 A["admin.clPayment"] = async ({ id: cid, op, note }, u) => {
@@ -2369,7 +2372,7 @@ function mayReadChatFile(u, f, k) {
 }
 function chatWho(c) {
   if (c.uid) { const x = user(c.uid); const role = { candidate: "Job seeker", employer: "Employer", agent: "Agent" }[x?.role] || "Account";
-    return { name: x ? (x.role === "agent" ? x.agent?.business || x.name : x.role === "employer" ? x.company?.name || x.name : x.name) : "Removed account", sub: `${role}${x ? ` · ${x.role === "candidate" ? x.profile?.phone || x.email : x.email}` : ""}`, role: x?.role || "", contact: x?.name || "" }; }
+    return { name: x ? (x.role === "agent" ? agentName(x) : x.role === "employer" ? x.company?.name || x.name : x.name) : "Removed account", sub: `${role}${x ? ` · ${x.role === "candidate" ? x.profile?.phone || x.email : x.email}` : ""}`, role: x?.role || "", contact: x?.name || "" }; }
   return { name: c.guest?.name || "Visitor", sub: `Visitor · ${c.guest?.phone || ""}`, role: "guest", contact: "" };
 }
 function msgView(c, m, staff, k) {
@@ -2610,7 +2613,10 @@ const mrOut = (r, pub) => {
 const MR_METHODS = ["Cash", "Bank transfer", "Mobile banking", "Cheque", "Card"];
 const MR_CHANNEL = ["Bank transfer", "Mobile banking", "Cheque"]; // these name a bank or a mobile banking service
 const agentDue = aid => db.ledger.filter(l => l.agentId === aid && l.status === "confirmed").reduce((s, l) => s + (l.type === "charge" ? 1 : -1) * Number(l.amount), 0);
-const agentName = a => a?.agent?.business || a?.name || "";
+// an agent's name as the office knows it: the "Agent Name" the office gave (rename), else the agency name the agent wrote
+const agentName = a => a?.agent?.alias || a?.agent?.business || a?.name || "";
+// the agent's own agency name — for anything the agent sees or receives (receipts, statements, messages to them)
+const agentReal = a => a?.agent?.business || a?.name || "";
 const r2 = n => Math.round(n * 100) / 100;
 const mrPayable = acc => r2((acc?.price || 0) + db.mr.charges.filter(c => c.accountId === acc?.id).reduce((s, c) => s + c.amount, 0));
 const mrNorm = { mobile: v => String(v || "").replace(/[^\d+]/g, ""), passport: v => String(v || "").replace(/\s+/g, "").toUpperCase(), email: v => String(v || "").trim().toLowerCase() };
@@ -2638,7 +2644,7 @@ A["admin.mr"] = async (d, u) => {
       return { amount, method, channel, date, ref: str(L.ref, 80), purpose: str(L.purpose ?? d.purpose, 160), ...(paidTo ? { paidTo } : {}) };
     });
     const ag = d.agentId ? user(d.agentId) : null; must(!d.agentId || ag?.role === "agent", "Agent not found.");
-    if (ag) x.agent = agentName(ag);
+    if (ag) x.agent = agentReal(ag); // goes on the receipt the agent gets
     const price = d.price === "" || d.price == null ? null : r2(Number(d.price)); must(price === null || (price >= 0 && price < 1e9), "Check the price.");
     let acc = d.accountId ? M.accounts.find(a => a.id === d.accountId) : mrFind(x);
     if (d.accountId) must(acc, "Account not found.");
@@ -2688,7 +2694,7 @@ A["admin.mr"] = async (d, u) => {
     const ag = r.agentId && user(r.agentId), acc = M.accounts.find(a => a.id === r.accountId);
     if (ag) {
       const before = agentDue(ag.id); const l = { id: id("l"), agentId: ag.id, type: "payment", desc: `Money receipt ${r.no}${r.payer.name ? ": " + r.payer.name : ""}`, amount: r.amount, date: r.date, method: [r.method, r.channel].filter(Boolean).join(" · "), ref: r.ref, status: "confirmed", mr: r.id };
-      db.ledger.push(l); r.ledgerId = l.id; r.balance = { kind: "agent", agent: agentName(ag), before: r2(before), paid: r.amount, after: r2(before - r.amount) };
+      db.ledger.push(l); r.ledgerId = l.id; r.balance = { kind: "agent", agent: agentReal(ag), before: r2(before), paid: r.amount, after: r2(before - r.amount) };
       notify(ag.id, `Payment received: BDT ${r.amount.toLocaleString("en-US")} (money receipt ${r.no}).`);
     } else if (mrPayable(acc) > 0) {
       const before = r2(M.receipts.filter(x => x !== r && x.accountId === acc.id && x.status === "approved" && !x.void).reduce((s, x) => s + x.amount, 0)), pay = mrPayable(acc);
@@ -3096,7 +3102,7 @@ A["admin.dueReceipt"] = async (d, u) => {
     const amount = r2(Number(d.amount)); must(amount > 0 && amount < 1e10, "Enter the due amount.");
     const date = okDate(d.date), yr = date.slice(0, 4); D.seq[yr] = (D.seq[yr] || 0) + 1;
     const x = { id: id("dr"), no: `DR-${yr}-${String(D.seq[yr]).padStart(4, "0")}`, kind: "due", date, amount, agentId: ag ? ag.id : null, book: bk ? bk.id : null,
-      payer: ag ? { name: agentName(ag), mobile: ag.agent?.phone || ag.phone || "", email: ag.email || "", passport: "", agent: agentName(ag) } : { name: bk.fullName || bk.name, mobile: bk.mobile || "", email: bk.email || "", passport: "", agent: bk.name },
+      payer: ag ? { name: agentReal(ag), mobile: ag.agent?.phone || ag.phone || "", email: ag.email || "", passport: "", agent: agentReal(ag) } : { name: bk.fullName || bk.name, mobile: bk.mobile || "", email: bk.email || "", passport: "", agent: bk.name },
       purpose: str(d.purpose, 160) || "Due from before", note: str(d.note, 300), status: "approved", received: mrSigner(u), created: now() };
     D.list.unshift(x); if (D.list.length > 5000) D.list.length = 5000;
     const sig = x.received.sig && db.files[x.received.sig] ? `/api/files/${x.received.sig}` : "";
@@ -3258,7 +3264,7 @@ const fmtN = n => Number(n || 0).toLocaleString("en-US", { maximumFractionDigits
 function stmtSource(kind, ref) {
   if (kind === "agent") {
     const a = user(ref); must(a?.role === "agent", "Agent not found.");
-    return { title: agentName(a), sub: [a.name, a.agent?.phone, a.email].filter(Boolean).join(" · "), email: a.email, label: "PAYMENT HISTORY",
+    return { title: agentReal(a), sub: [a.name, a.agent?.phone, a.email].filter(Boolean).join(" · "), email: a.email, label: "PAYMENT HISTORY",
       rows: db.ledger.filter(l => l.agentId === a.id && l.status === "confirmed").map(l => ({ date: l.date, details: l.desc, rate: l.type === "charge" ? `${fmtN(l.rate || l.amount)}X${l.qty || 1}` : short(l.method), debit: l.type === "charge" ? Number(l.amount) : 0, credit: l.type === "payment" ? Number(l.amount) : 0 })) };
   }
   if (kind === "payer") {
@@ -3741,12 +3747,39 @@ function linkAgentAccount(x) {
   return done;
 }
 A["admin.agentBook"] = async (d, u) => { const r = await agentBookOp(d, u); const n = autoLinkBooks(); if (n && r?.msg) r.msg += ` This agent already has an agent ID with the same mobile or email: the records are now in that account.`; return r; };
+/* the office's own name for a registered agent ("Agent Name"): shown to the office everywhere, never to the agent */
+A["admin.agentAlias"] = async (d, u) => {
+  must(PP_PERMS.some(k => can(u, k)) || can(u, "clearance") || can(u, "ledger"), "You do not have permission for this.", 403);
+  const x = user(d.id); must(x?.role === "agent", "Agent not found.");
+  const nn = str(d.alias, 120).replace(/\s+/g, " ").trim(), before = agentName(x);
+  if (nn) { must(nn.length >= 2, "Enter the agent name.");
+    must(!db.users.some(y => y !== x && y.role === "agent" && bookKey(agentName(y)) === bookKey(nn)) && !db.agentBook.some(b => bookKey(b.name) === bookKey(nn)), `${nn} is already in the agent list.`);
+    x.agent.alias = nn; } else delete x.agent.alias;
+  const after = agentName(x);
+  for (const p2 of db.passports) if (p2.agentId === x.id) p2.ref = after; // the office's lists follow the new name
+  for (const ac of db.mr.accounts || []) if (ac.agentId === x.id) ac.agent = after;
+  return { msg: nn ? `${before} is now shown as ${after} (only to the office).` : `Agent Name removed: shown as ${after}.` };
+};
 async function agentBookOp(d, u) {
   must(PP_PERMS.some(k => can(u, k)), "You do not have permission for this.", 403);
   const F = x => ({ fullName: str(x.fullName, 120), mobile: str(x.mobile, 30), email: str(x.email, 120).toLowerCase(), agency: str(x.agency, 150), address: str(x.address, 500) });
   if (d.op === "save") {
     const v = F(d); must(!v.email || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v.email), "Check the email address.");
-    if (d.id) { const a = db.agentBook.find(x => x.id === d.id); must(a, "Agent not found."); Object.assign(a, v, { updated: now() }); return { msg: "Agent updated." }; }
+    if (d.id) { const a = db.agentBook.find(x => x.id === d.id); must(a, "Agent not found.");
+      // a new Agent Name: every passport, file, receipt and account written under the old name follows it
+      const nn = str(d.name, 120).replace(/\s+/g, " ");
+      if (nn && nn !== a.name) {
+        must(nn.length >= 2, "Enter the agent name.");
+        must(!db.agentBook.some(b => b !== a && bookKey(b.name) === bookKey(nn)) && !db.users.some(x => x.role === "agent" && bookKey(agentName(x)) === bookKey(nn)), `${nn} is already in the agent list.`);
+        const k = bookKey(a.name);
+        for (const p2 of db.passports) if (!p2.agentId && bookKey(p2.ref) === k) p2.ref = nn;
+        for (const w of db.workers) if (!w.agentId && bookKey(w.agentName) === k) w.agentName = nn;
+        for (const c of db.clearances) if (!c.agentId && bookKey(c.agentName) === k) c.agentName = nn;
+        for (const r of db.mr.receipts) if (!r.agentId && bookKey(r.payer?.agent) === k) r.payer.agent = nn;
+        for (const ac of db.mr.accounts || []) if (!ac.agentId && bookKey(ac.agent) === k) ac.agent = nn;
+        a.name = nn;
+      }
+      Object.assign(a, v, { updated: now() }); return { msg: "Agent updated." }; }
     const name = str(d.name, 120).replace(/\s+/g, " ") || v.agency || v.fullName; must(name.length >= 2, "Enter the agent name.");
     must(!db.agentBook.some(a => bookKey(a.name) === bookKey(name)) && !db.users.some(x => x.role === "agent" && bookKey(agentName(x)) === bookKey(name)), `${name} is already in the agent list.`);
     db.agentBook.push({ id: id("ab"), name, ...v, created: now(), by: u.name }); return { msg: `${name} added to the agent list.` };
