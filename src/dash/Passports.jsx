@@ -4,8 +4,9 @@ import React from "react";
 import { LuPlus, LuX, LuSearch, LuPencil, LuTrash2, LuCheck, LuReceipt, LuBookUser, LuFileSpreadsheet, LuShieldCheck, LuRefreshCw, LuSignature, LuUpload, LuFileText } from "react-icons/lu";
 import { store } from "../store.js";
 import { act, openModal, toast, confirmBox, readUpload } from "../actions.js";
-import { contractFor, parseMoi, companyAr as coAr } from "../contract.js";
+import { contractFor, companyAr as coAr } from "../contract.js";
 import { Field } from "./shared.jsx";
+import { MoiFetch } from "./MoiFetch.jsx";
 import { Empty } from "../ui.jsx";
 import { COUNTRIES, MIDDLE_EAST, ASIA } from "../constants.js";
 import { xlsx } from "../receipt.js";
@@ -107,19 +108,12 @@ function JobFields({ v, set }) {
   const pick = async e => { const f = e.target.files?.[0]; e.target.value = ""; if (!f) return;
     try { set({ ppCopy: await readUpload(f, { imageMax: 2200 }) }); } catch (err) { toast(err.message); } };
   const copy = v.ppCopy === null ? null : v.ppCopy?.data ? v.ppCopy : v.ppCopyRef || null;
-  const [moi, setMoi] = React.useState(false), [txt, setTxt] = React.useState("");
-  const fromMoi = () => { const m = parseMoi(txt); if (!Object.keys(m).length) return toast("Nothing was found. Copy the whole Visa Number Information page and paste it here.");
-    if (m.passport && v.passport && m.passport !== v.passport.replace(/\s+/g, "").toUpperCase()) toast(`Careful: the MOI page is for passport ${m.passport}.`);
+  const fromMoi = m => {
     setJ({ ...(m.visaNo ? { visaNo: m.visaNo } : {}), ...(m.nameAr ? { nameAr: m.nameAr } : {}), ...(m.company ? { company: m.company } : {}), ...(m.companyAr || m.company ? { companyAr: m.companyAr || coAr(m.company) } : {}) });
-    if (!v.passport && m.passport) set({ passport: m.passport });
-    toast(`From the MOI page: ${[m.visaNo && "visa number", m.nameAr && "Arabic name", m.company && "company"].filter(Boolean).join(", ")}.`); setMoi(false); setTxt(""); };
+    if (!v.passport && m.passport) set({ passport: m.passport }); };
   return <>
     <div className="full pp-sec"><b>Work & company</b><span className="muted small"> — optional; used in the employment contract</span>
-      {!moi ? <span className="row6 mt6"><button type="button" className="btn sm" onClick={() => setMoi(true)}>Paste from Qatar MOI</button>
-        <a className="btn sm link" href="https://portal.moi.gov.qa/wps/portal/MOIInternet/services/inquiries/visaservices/enquiryandprinting" target="_blank" rel="noopener noreferrer">Open MOI visa inquiry</a></span>
-      : <div className="stack6 mt6"><span className="muted small">On the MOI page search by passport number, select all (Ctrl+A / ⌘A), copy and paste here. Text copied from the printed visa works too (for the company name).</span>
-        <textarea rows={4} value={txt} onChange={e => setTxt(e.target.value)} placeholder="Visa Number (382026…) Information …" autoFocus />
-        <div className="row6"><button type="button" className="btn sm pri" onClick={fromMoi}>Fill</button><button type="button" className="btn sm" onClick={() => setMoi(false)}>Cancel</button></div></div>}
+      <MoiFetch passport={v.passport} onFill={fromMoi} />
     </div>
     {JOB_FIELDS.map(([k, l, ph]) => <Field key={k} label={l} full={k === "companyAddress" || k === "company"}><input type={k === "companyEmail" ? "email" : k === "companyMobile" ? "tel" : "text"} value={J[k] || ""} maxLength={k === "companyAddress" ? 300 : 160} placeholder={ph}
       onChange={e => setJ({ [k]: k === "visaNo" ? e.target.value.replace(/\s+/g, "") : e.target.value })} /></Field>)}

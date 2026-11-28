@@ -7,6 +7,7 @@ import http from "node:http";
 import fs from "node:fs";
 import path from "node:path";
 import crypto from "node:crypto";
+import zlib from "node:zlib";
 import { fileURLToPath } from "node:url";
 import { AsyncLocalStorage } from "node:async_hooks";
 import { COUNTRIES, HOURLY, STAGES, CL_STAGES, STAFF_PERMS, LABEL, INITIAL, TEAM_DEPTS, VISA_FIELDS, VISA_DATES, clCountryOk, CL_REGIONS } from "../src/constants.js";
@@ -3600,6 +3601,80 @@ const myPassports = u => { const M = last10(u.profile?.phone || u.phone), P = St
   return db.passports.filter(p => (M.length === 10 && p.mobile && last10(p.mobile) === M) || (P.length >= 6 && p.passport === P))
     .map(p => ({ id: p.id, name: p.name, passport: p.passport, country: p.country || "", lists: ppLists(p), vstatus: p.vstatus || {}, profession: p.fiji?.profession || "", at: p.at,
       clearance: (() => { const c = db.clearances.find(c => String(worker(c.workerId)?.passport || c.passport || "").replace(/\s+/g, "").toUpperCase() === p.passport); return c ? { status: c.status, statusText: c.statusText || "", country: c.country } : null; })() })); };
+/* Qatar MOI "Visa Inquiry & Printing": the office types the CAPTCHA shown from MOI's own page, the portal sends the
+   passport number with it (as the page's own form does) and reads back the visa number, the names and the printed visa */
+const MOI_PAGE = process.env.MOI_PAGE || "https://portal.moi.gov.qa/wps/portal/MOIInternet/services/inquiries/visaservices/enquiryandprinting";
+const MOI_SS = new Map(); // sid -> { c: cookies, base, track, at }
+const MOI_NS = "IZ7_N90A19O0KG80B0A1F3NMPT10T7=CZ6_N90A19O0KG80B0A1F3NMPT10D2=NJ";
+async function moiReq(S, url, opt = {}) {
+  let u = url, r;
+  for (let hop = 0; hop < 6; hop++) {
+    r = await fetch(u, { ...opt, redirect: "manual", signal: AbortSignal.timeout(30000), headers: { "User-Agent": UA, Accept: opt.accept || "text/html,application/xhtml+xml,*/*", "Accept-Language": "en-US,en;q=0.9",
+      Cookie: Object.entries(S.c).map(([k, v]) => `${k}=${v}`).join("; "), ...(opt.body ? { "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8", Origin: "https://portal.moi.gov.qa", Referer: S.base || MOI_PAGE, "X-Requested-With": "XMLHttpRequest" } : {}) } });
+    for (const h of r.headers.getSetCookie?.() || []) { const [kv] = h.split(";"), i = kv.indexOf("="); if (i > 0) S.c[kv.slice(0, i).trim()] = kv.slice(i + 1).trim(); }
+    const loc = r.headers.get("location"); if (!(r.status >= 300 && r.status < 400 && loc)) break;
+    u = new URL(loc, u).href; opt = { ...opt, method: "GET", body: undefined };
+  }
+  return { r, url: u };
+}
+const moiText = html => String(html || "").replace(/<(script|style)[\s\S]*?<\/\1>/gi, " ").replace(/<br\s*\/?>|<\/(td|th|tr|div|p|li|h\d|label|span)>/gi, "\n").replace(/<[^>]+>/g, " ")
+  .replace(/&nbsp;/g, " ").replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&quot;/g, '"').replace(/&#(\d+);/g, (_, n) => String.fromCharCode(+n)).replace(/&#x([0-9a-f]+);/gi, (_, n) => String.fromCharCode(parseInt(n, 16)))
+  .split("\n").map(l => l.replace(/[ \t]+/g, " ").trim()).filter(Boolean).join("\n");
+async function moiCaptcha(S) {
+  const { r } = await moiReq(S, S.base + `p0/${MOI_NS}captchaRefreshAction=/`, { method: "POST", body: "type=image", accept: "*/*" });
+  const b = (await r.text()).trim(); must(r.ok && /^[A-Za-z0-9+/=\s]{200,}$/.test(b), "The MOI site did not send the verification picture. Try again.");
+  return "data:image/png;base64," + b.replace(/\s+/g, "");
+}
+// text inside a PDF the MOI site makes (the printed visa): the strings of its text streams
+function pdfStrings(buf) {
+  const out = []; let i = 0; const s = buf.toString("latin1");
+  while ((i = s.indexOf("stream", i)) >= 0) {
+    let a = i + 6; if (s[a] === "\r") a++; if (s[a] === "\n") a++; const e = s.indexOf("endstream", a); if (e < 0) break;
+    let d = buf.subarray(a, e); try { d = zlib.inflateSync(d); } catch { try { d = zlib.inflateRawSync(d.subarray(2)); } catch { i = e; continue; } }
+    const t = d.toString("latin1"); if (/\bBT\b/.test(t)) { const line = []; t.replace(/\((?:\\.|[^\\)])*\)\s*Tj|\[(?:[^\]]*)\]\s*TJ|\bT\*|\bTd\b|\bTD\b|\bET\b/g, m => {
+      if (/Tj$|TJ$/.test(m)) line.push((m.match(/\((?:\\.|[^\\)])*\)/g) || []).map(x => x.slice(1, -1).replace(/\\([()\\])/g, "$1")).join("")); else if (line.length) { out.push(line.join("")); line.length = 0; } return m; }); if (line.length) out.push(line.join("")); }
+    i = e;
+  }
+  return out.map(x => x.trim()).filter(x => x && /[A-Za-z0-9]/.test(x)).join("\n");
+}
+A["moi.start"] = async (d, u) => {
+  must(can(u, "clearance") || can(u, "visa"), "You do not have permission for this.", 403); limit(u.id, "moi", 120, 3600e3);
+  for (const [k, v] of MOI_SS) if (Date.now() - v.at > 15 * 60e3) MOI_SS.delete(k);
+  const S = { c: {}, base: "", track: "", at: Date.now() };
+  let page;
+  try { const { r, url } = await moiReq(S, MOI_PAGE); page = await r.text(); must(r.ok, `The MOI site answered ${r.status}.`);
+    const b = /<base\s+href="([^"]+)"/i.exec(page)?.[1]; S.base = b ? new URL(b, url).href : url.endsWith("/") ? url : url + "/"; }
+  catch (e) { if (e instanceof Fail) throw e; throw new Fail("The Qatar MOI site could not be reached from the server. Try again, or use Paste text."); }
+  must(/VisaEnquiryForm/.test(page), "The MOI visa inquiry page has changed or is not available now. Use Paste text.");
+  S.track = /name="fromVsAtracking"[^>]*value="([^"]*)"/i.exec(page)?.[1] || /id="fromVsAtracking"[^>]*value="([^"]*)"/i.exec(page)?.[1] || "";
+  const img = await moiCaptcha(S), sid = crypto.randomBytes(12).toString("hex"); MOI_SS.set(sid, S);
+  return { sid, img };
+};
+A["moi.captcha"] = async (d, u) => { must(can(u, "clearance") || can(u, "visa"), "You do not have permission for this.", 403);
+  const S = MOI_SS.get(String(d.sid || "")); must(S, "The MOI check expired. Start again."); S.at = Date.now(); return { img: await moiCaptcha(S) }; };
+A["moi.lookup"] = async (d, u) => {
+  must(can(u, "clearance") || can(u, "visa"), "You do not have permission for this.", 403); limit(u.id, "moiq", 120, 3600e3);
+  const S = MOI_SS.get(String(d.sid || "")); must(S, "The MOI check expired. Start again.");
+  const passport = ppNorm(d.passport).replace(/[^A-Z0-9]/g, "").slice(0, 20), code = String(d.captcha || "").trim().slice(0, 8), nat = /^\d{3}$/.test(d.nationality || "") ? d.nationality : "050";
+  must(passport.length >= 4, "Enter the passport number first."); must(code.length === 5, "Type the 5 characters from the picture.");
+  S.at = Date.now();
+  const body = new URLSearchParams({ language: "", lang: "en", SearchBy: "radioByPaspNo", visaNo: "", PasspNo: passport, Nationality: nat, captchaResponse: code, fromVsAtracking: S.track }).toString();
+  let html;
+  try { const { r } = await moiReq(S, S.base + `p0/${MOI_NS}submitAjaxEnquiryAction=/`, { method: "POST", body, accept: "text/html, */*; q=0.01" }); html = await r.text(); must(r.ok, `The MOI site answered ${r.status}.`); }
+  catch (e) { if (e instanceof Fail) throw e; throw new Fail("The Qatar MOI site did not answer. Try again."); }
+  const text = moiText(html);
+  const visa = (/\b(\d{12})\b/.exec(text) || [])[1];
+  if (!visa) { const img = await moiCaptcha(S).catch(() => null);
+    const bad = /verification|captcha|رمز التحقق/i.test(text), none = /no\s*(data|record|result)|not\s*found|لا\s*توجد|غير\s*موجود/i.test(text);
+    return { ok: false, img, problem: bad ? "The verification code was not right. Type the new one." : none ? `MOI has no visa for passport ${passport} (nationality code ${nat}).` : (text.slice(0, 300) || "MOI sent no visa details. Type the new code and try again.") }; }
+  // the printed visa (it carries the company / sponsor); kept only for this answer
+  let pdf = null, pdfText = "";
+  try { const { r } = await moiReq(S, S.base + `p0/${MOI_NS}getVisaPrintPDF=/`, { method: "POST", body: "x=1", accept: "application/pdf,*/*" });
+    let b = Buffer.from(await r.arrayBuffer()); if (!/^%PDF/.test(b.subarray(0, 5).toString("latin1"))) { const s = b.toString("latin1").trim(); if (/^[A-Za-z0-9+/=\s]{400,}$/.test(s)) b = Buffer.from(s, "base64"); }
+    if (/^%PDF/.test(b.subarray(0, 5).toString("latin1")) && b.length < 6e6) { pdf = "data:application/pdf;base64," + b.toString("base64"); try { pdfText = pdfStrings(b); } catch {} } } catch {}
+  MOI_SS.delete(String(d.sid));
+  return { ok: true, text, pdf, pdfText, visaNo: visa };
+};
 A["admin.passport"] = async (d, u) => {
   must(can(u, "clearance") || can(u, "visa"), "You do not have permission for this.", 403);
   const read = x => {

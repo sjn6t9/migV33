@@ -6,7 +6,8 @@ import { LuDownload, LuSave, LuSignature, LuRefreshCw, LuUpload, LuX, LuClipboar
 import { store } from "../store.js";
 import { act, toast, closeModal, readAsDataUrl } from "../actions.js";
 import { Field } from "./shared.jsx";
-import { drawContract, canvasPdf, inkFrom, nameAr, jobAr, companyAr, newBarcodes, contractFor, pdfPicture, parseMoi } from "../contract.js";
+import { MoiFetch } from "./MoiFetch.jsx";
+import { drawContract, canvasPdf, inkFrom, nameAr, jobAr, companyAr, newBarcodes, contractFor, pdfPicture } from "../contract.js";
 import { isImgCopy } from "./Passports.jsx";
 
 const saveBlob = (blob, name) => { const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 4000); };
@@ -36,11 +37,8 @@ export function ContractMaker({ v, sig: sig0 }) {
   React.useEffect(() => { if (!copy || isImgCopy(copy)) return; let live = true;
     pdfPicture(copy.data).then(u => { if (!live) return; if (u) setCopyImg(u); else setPdfNote("This PDF has no scanned picture inside, so the signature cannot be taken from it. Upload the passport copy as a photo (JPG/PNG)."); })
       .catch(() => live && setPdfNote("The passport copy PDF could not be read. Upload it as a photo (JPG/PNG).")); return () => { live = false; }; }, []);
-  const [sigPrev, setSigPrev] = React.useState(null), [moi, setMoi] = React.useState(false), [moiText, setMoiText] = React.useState("");
-  const fromMoi = () => { const m = parseMoi(moiText); if (!Object.keys(m).length) return toast("Nothing was found. Copy the whole Visa Number Information page (Ctrl+A, Ctrl+C) and paste it here.");
-    if (m.passport && v.passport && m.passport !== String(v.passport).toUpperCase()) toast(`Careful: the MOI page is for passport ${m.passport}, this entry is ${v.passport}.`);
-    set({ ...(m.visaNo ? { visaNo: m.visaNo } : {}), ...(m.nameAr ? { nameAr: m.nameAr } : {}), ...(m.company ? { company: m.company, ...(m.companyAr ? {} : { companyAr: companyAr(m.company) }) } : {}), ...(m.companyAr ? { companyAr: m.companyAr } : {}) });
-    toast(`From the MOI page: ${[m.visaNo && "visa number", m.nameAr && "Arabic name", m.company && "company", m.companyAr && "company (Arabic)"].filter(Boolean).join(", ")}.`); setMoi(false); setMoiText(""); };
+  const [sigPrev, setSigPrev] = React.useState(null);
+  const fromMoi = m => set({ ...(m.visaNo ? { visaNo: m.visaNo } : {}), ...(m.nameAr ? { nameAr: m.nameAr } : {}), ...(m.company ? { company: m.company, ...(m.companyAr ? {} : { companyAr: companyAr(m.company) }) } : {}), ...(m.companyAr ? { companyAr: m.companyAr } : {}) });
   const set = x => setD(o => ({ ...o, ...x }));
   const setCrop = (c, done) => { if (c) setCropS(c); if (done) setCropDone(n => n + 1); };
   // the preview is drawn again shortly after any change
@@ -68,13 +66,7 @@ export function ContractMaker({ v, sig: sig0 }) {
       <div className="ctm-form">
         <p className="muted small">Check the Arabic words — they are written from the English and can be corrected here.</p>
         {/* Qatar MOI: visa number, the Arabic name and the company, copied from the MOI visa page or the printed visa */}
-        <div className="ctm-moi">
-          {!moi ? <div className="row6"><button type="button" className="btn sm" onClick={() => setMoi(true)}><LuClipboardPaste /> Paste from Qatar MOI</button>
-            <a className="btn sm link" href="https://portal.moi.gov.qa/wps/portal/MOIInternet/services/inquiries/visaservices/enquiryandprinting" target="_blank" rel="noopener noreferrer"><LuExternalLink /> Open MOI visa inquiry</a></div>
-          : <div className="stack6"><span className="muted small">On the MOI page search by passport number, then select all (Ctrl+A / ⌘A), copy and paste here. Text copied from the printed visa works too (for the company name).</span>
-            <textarea rows={5} value={moiText} onChange={e => setMoiText(e.target.value)} placeholder="Visa Number (382026…) Information …" autoFocus />
-            <div className="row6"><button type="button" className="btn sm pri" onClick={fromMoi}>Fill</button><button type="button" className="btn sm" onClick={() => setMoi(false)}><LuX /> Cancel</button></div></div>}
-        </div>
+        <div className="ctm-moi"><MoiFetch passport={v.passport} onFill={fromMoi} /></div>
         <div className="fgrid">
           <Field label="Name (English)"><input type="text" value={d.name} onChange={e => set({ name: e.target.value })} /></Field>
           <Field label="Name (Arabic)"><input type="text" dir="rtl" value={d.nameAr} onChange={e => set({ nameAr: e.target.value })} /></Field>
