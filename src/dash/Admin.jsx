@@ -1026,7 +1026,7 @@ function StaffAdmin({ u }) {
     </form>
     {ids.length ? ids.map(x => { const tm = member(x); return (
       <div className="card stack8" key={x.id}>
-        <div className="row between"><div className="row">{tm?.photo?.data ? <img className="mr-av" src={tm.photo.data} alt="" /> : <Avatar name={x.name} size={40} />}<div><IdName name={x.name} idc={x.idc} /><RoleBadges role={x.role} /> <span className="ec-badge">{x.role === "admin" ? "Admin" : "Staff"}</span><div className="muted small" data-notr>{x.email}</div>
+        <div className="row between"><div className="row">{tm?.photo?.data ? <img className="mr-av" src={tm.photo.data} alt="" /> : <Avatar name={x.name} size={40} />}<div><IdName name={x.name} idc={x.idc} /> <span className="ec-badge">{x.role === "admin" ? "Admin" : "Staff"}</span><div className="muted small" data-notr>{x.email}</div>
           {x.role === "admin" && <label className="lv-set small">Level <select value={x.idc?.level || 1} onChange={e => act("admin.setLevel", { id: x.id, level: +e.target.value })}>{Array.from({ length: 100 }, (_, i) => <option key={i} value={i + 1}>{i + 1}</option>)}</select></label>}
           {x.role === "staff" && x.idc && <span className="muted small">{`Level ${x.idc.level} · ${x.idc.xp} XP`}</span>}</div><Pill s={x.status} /></div>
           <div className="row tight">{x.status === "active" ? <button className="btn sm" onClick={() => act("admin.userState", { id: x.id, status: "suspended" })}><LuBan /> Suspend</button> : <button className="btn sm" onClick={() => act("admin.userState", { id: x.id, status: "active" })}>Reactivate</button>}<button className="btn sm danger" onClick={() => deleteUser(x.id)} aria-label={`Delete ${x.name}`}><LuTrash2 /></button></div></div>

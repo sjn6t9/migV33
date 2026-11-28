@@ -1,7 +1,6 @@
 import React from "react";
 import { createPortal } from "react-dom";
 import { LuUpload, LuFileText, LuRefreshCw } from "react-icons/lu";
-import { HiCheckBadge } from "react-icons/hi2";
 import {
   LuBookmark, LuBookmarkCheck, LuMapPin, LuClock, LuBriefcase, LuX, LuHardHat, LuHotel, LuTruck, LuFactory,
   LuHeartPulse, LuShield, LuSparkles, LuWheat, LuShoppingBag, LuMonitor, LuStar, LuDownload, LuBadgeCheck, LuMenu, LuChevronDown
@@ -195,20 +194,11 @@ export function CardDownload({ c }) {
   );
 }
 
-/* account badges: admin = A + verified, staff = S */
-const Petals = () => { const p = []; for (let i = 0; i < 8; i++) { const a = (i * Math.PI) / 4; p.push(<circle key={i} cx={12 + 6.9 * Math.cos(a)} cy={12 + 6.9 * Math.sin(a)} r="4.6" />); } return p; };
-export function VerifiedBadge({ size = 16, title = "Verified" }) {
-  return <svg className="badge-ic" width={size} height={size} viewBox="0 0 24 24" role="img" aria-label={title}><title>{title}</title>
-    <g fill="#0aa1ff"><circle cx="12" cy="12" r="8.4" /><Petals /></g>
-    <path d="M7.4 12.3l3.1 3.1 6.2-6.2" fill="none" stroke="#fff" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" /></svg>;
-}
-function LetterBadge({ letter, color, size, title }) {
-  return <svg className="badge-ic" width={size} height={size} viewBox="0 0 24 24" role="img" aria-label={title}><title>{title}</title>
-    <circle cx="12" cy="12" r="11.5" fill={color} /><circle cx="12" cy="12" r="9.6" fill="none" stroke="#fff" strokeWidth="0.9" />
-    <text x="12" y="16.3" textAnchor="middle" fontFamily="Inter, Arial, sans-serif" fontWeight="800" fontSize="12.5" fill="#fff">{letter}</text></svg>;
-}
-export const AdminBadge = ({ size = 16 }) => <LetterBadge letter="A" color="#ff6406" size={size} title="Admin" />;
-export const StaffBadge = ({ size = 16 }) => <LetterBadge letter="S" color="#0a9e22" size={size} title="Staff" />;
+/* account badges (the agency's own badge pictures): admin = A + verified, staff = S */
+const BadgeImg = ({ src, size, title }) => <img className="badge-ic" src={src} width={size} height={size} alt={title} title={title} draggable={false} />;
+export const VerifiedBadge = ({ size = 16, title = "Verified" }) => <BadgeImg src="/brand/badge-verified.webp?v=1" size={size} title={title} />;
+export const AdminBadge = ({ size = 16 }) => <BadgeImg src="/brand/badge-admin.webp?v=1" size={size} title="Admin" />;
+export const StaffBadge = ({ size = 16 }) => <BadgeImg src="/brand/badge-staff.webp?v=1" size={size} title="Staff" />;
 /** badges after a name: admin → A + verified, staff → S */
 export function RoleBadges({ role, size = 16 }) {
   if (role === "admin") return <span className="badges"><AdminBadge size={size} /><VerifiedBadge size={size} /></span>;
@@ -245,10 +235,10 @@ export function FilePick({ name, accept, multiple, required, label }) {
 export const levelTier = lv => (lv >= 11 ? "ruby" : lv >= 9 ? "violet" : lv >= 7 ? "emerald" : lv >= 5 ? "gold" : lv >= 3 ? "silver" : "bronze");
 export function IdName({ name, idc, compact = false, title = true, as: Tag = "span" }) {
   if (!idc) return <Tag className="idn" data-notr>{name}</Tag>;
-  const tier = idc.kind === "admin" ? "verified" : levelTier(idc.level || 1);
-  return <Tag className={`idn idn-${tier}${compact ? " compact" : ""}`}>
+  // admin: the blue of the Verified badge; staff: the green of the S badge
+  return <Tag className={`idn idn-${idc.kind === "admin" ? "admin" : "staff"}${compact ? " compact" : ""}`}>
     <span className="idn-top"><b className="idn-name" data-notr>{name}</b>
-      <HiCheckBadge className="idn-badge" aria-label={idc.kind === "admin" ? "Verified admin" : `Staff badge, level ${idc.level}`} />
+      <RoleBadges role={idc.kind} size={compact ? 15 : 17} />
       <span className="idn-lv" title={idc.kind === "staff" ? `${idc.xp} XP` : undefined}>Lv {idc.level}</span></span>
     {idc.username && <span className="idn-user" data-notr>@{idc.username}</span>}
     {title && idc.title && <span className="idn-title">{idc.title}</span>}
@@ -258,7 +248,7 @@ export function IdName({ name, idc, compact = false, title = true, as: Tag = "sp
 export function XpBar({ idc }) {
   if (!idc || idc.kind !== "staff") return null;
   const pct = idc.need ? Math.min(100, Math.round((idc.into / idc.need) * 100)) : 100;
-  return <div className={`xpbar idn-${levelTier(idc.level)}`} title={`${idc.xp} XP in all`}>
+  return <div className="xpbar idn-staff" title={`${idc.xp} XP in all`}>
     <div className="xpbar-t"><span>Lv {idc.level}</span><span className="num">{idc.into} / {idc.need} XP</span><span>Lv {idc.level + 1}</span></div>
     <div className="xpbar-b"><i style={{ width: `${pct}%` }} /></div>
   </div>;
@@ -267,6 +257,6 @@ export function XpBar({ idc }) {
 /* admin / staff: who is signed in, at the top of the side menu (name, badge, level, @username, title; XP for staff) */
 export function MeCard() {
   const u = me(); if (!u?.idc) return null;
-  const photo = (store.S.team || []).find(m => m.id === u.memberId)?.photo?.data;
+  const photo = u.idc.photo || (store.S.team || []).find(m => m.id === u.memberId)?.photo?.data;
   return <div className="me-card"><Avatar name={u.name} src={photo} size={44} /><div className="me-card-x"><IdName name={u.name} idc={u.idc} /><XpBar idc={u.idc} /></div></div>;
 }

@@ -21,7 +21,7 @@ export function StaffRank() {
   const team = store.S.team || [], me = meUser()?.id, admin = meUser()?.role === "admin";
   const addManual = async e => { const [dd] = formData(e); const r = await act("admin.manualWork", dd); if (r) { e.target.reset(); setAdding(false); setReload(x => x + 1); } };
   const delManual = x => confirmBox(`Remove the manual work "${x.note}" (${x.count}) of ${x.name}?`, async () => { if (await act("admin.manualWork", { op: "del", id: x.id })) setReload(n => n + 1); }, "Remove");
-  const photo = r => team.find(m => m.id === r.memberId)?.photo?.data;
+  const photo = r => r.idc?.photo || team.find(m => m.id === r.memberId)?.photo?.data;
   const rows = d?.period === period && d?.back === back ? d.rows : null;
   const isToday = period === "day" && back === 0;
   const fmt = (x, o) => new Date(x + "T00:00:00Z").toLocaleDateString("en-GB", { timeZone: "UTC", ...o });

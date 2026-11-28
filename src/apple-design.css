@@ -348,3 +348,10 @@ footer.bot .social a:hover{border-color:var(--ink);color:var(--ink)}
 .lv-set{display:inline-flex;align-items:center;gap:6px;font-weight:600;margin-top:4px}
 .lv-set select{min-height:0;padding:3px 8px;width:auto}
 .tc-idn{display:flex;align-items:center;gap:4px;min-width:0}.tc-idn .idn{font-size:14.5px}
+/* ID colours from the badges: staff = green of the S badge, admin = blue of the Verified badge */
+.idn-staff{--idc:#3f9f2b}.idn-admin{--idc:#0a9fd8}
+:root[data-theme="dark"] .idn-staff{--idc:#6cc04a}:root[data-theme="dark"] .idn-admin{--idc:#45c6f5}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .idn-staff{--idc:#6cc04a}:root:not([data-theme="light"]) .idn-admin{--idc:#45c6f5}}
+.idn .badges{display:inline-flex;align-items:center;gap:2px;flex:none}
+img.badge-ic{display:inline-block;vertical-align:-0.15em;object-fit:contain}
+.me-card .idn-name{white-space:normal;overflow:visible}.me-card .idn-top{flex-wrap:wrap}

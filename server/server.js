@@ -2461,7 +2461,8 @@ const isOnline = uid => Date.now() - (seen.get(uid) || 0) < 70e3;
 const teamMembers = () => db.users.filter(x => isStaffRole(x) && x.status !== "suspended");
 function teamPerson(x) {
   const m = x.memberId && db.team.find(t => t.id === x.memberId);
-  return { id: x.id, name: x.name, role: x.role, title: m?.title || "", idc: idCard(x), photo: m?.photo?.data || "", online: isOnline(x.id), seen: seen.has(x.id) ? new Date(seen.get(x.id)).toISOString() : x.lastSeen || "" };
+  const ic = idCard(x);
+  return { id: x.id, name: x.name, role: x.role, title: ic?.title || m?.title || "", idc: ic, photo: ic?.photo || m?.photo?.data || "", online: isOnline(x.id), seen: seen.has(x.id) ? new Date(seen.get(x.id)).toISOString() : x.lastSeen || "" };
 }
 const tUnread = (c, uid) => c.msgs.filter(m => m.from !== uid && m.at > (c.reads?.[uid] || "")).length;
 function tSummary(c, uid) {
@@ -2827,10 +2828,20 @@ function xpAll() {
   xpMemo = { key, map }; return map;
 }
 /* what is shown with a staff / admin name: badge kind, level (and XP for staff), username, job title */
+const nameKey = n => String(n || "").toLowerCase().replace(/^(md\.?|mohammad|mohammed|muhammad)\s+/, "").replace(/[^a-z]/g, "");
+/* an admin / staff ID not linked to an Expert Team profile is linked by itself when exactly one unlinked profile has the same name */
+function teamOf(x) {
+  if (x.memberId) return db.team.find(y => y.id === x.memberId) || null;
+  const k = nameKey(x.name); if (!k) return null;
+  const hits = db.team.filter(y => nameKey(y.name) === k && !db.users.some(u => u.memberId === y.id));
+  if (hits.length === 1) { x.memberId = hits[0].id; save(); return hits[0]; }
+  return null;
+}
 function idCard(x) {
   if (!x || !isStaffRole(x)) return null;
-  const m = x.memberId && db.team.find(y => y.id === x.memberId);
-  const base = { username: x.username || "", title: m?.title || x.title || (x.role === "admin" ? "Admin" : "Staff") };
+  const m = teamOf(x);
+  // name, photo and designation come from the Expert Team profile the ID is linked to
+  const base = { username: x.username || "", title: m?.title || x.title || (x.role === "admin" ? "Admin" : "Staff"), photo: m?.photo ? `/api/files/${m.photo.id}` : "", member: m?.id || "" };
   if (x.role === "admin") return { ...base, kind: "admin", level: x.level || 1 };
   const l = xpAll()[x.id] || { xp: 0, ...levelOf(0) };
   return { ...base, kind: "staff", level: l.level, xp: l.xp, into: l.into, need: l.need, parts: l.parts };
