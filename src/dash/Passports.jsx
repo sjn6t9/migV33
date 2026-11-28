@@ -4,7 +4,7 @@ import React from "react";
 import { LuPlus, LuX, LuSearch, LuPencil, LuTrash2, LuCheck, LuReceipt, LuBookUser, LuFileSpreadsheet, LuShieldCheck, LuRefreshCw, LuSignature, LuUpload, LuFileText } from "react-icons/lu";
 import { store } from "../store.js";
 import { act, openModal, toast, confirmBox, readUpload } from "../actions.js";
-import { contractFor, companyAr as coAr } from "../contract.js";
+import { contractFor, companyAr as coAr, companyEn } from "../contract.js";
 import { Field } from "./shared.jsx";
 import { MoiFetch } from "./MoiFetch.jsx";
 import { Empty } from "../ui.jsx";
@@ -106,11 +106,32 @@ export const isImgCopy = c => !!c && (/^data:image\//.test(c.data || "") || (/^\
 /* work and company details for the employment contract, and the passport copy (all optional) */
 export const JOB_FIELDS = [["visaNo", "Visa Number", "e.g. 382026213657"], ["jobTitle", "Job title / occupation", "e.g. Driver"], ["company", "Department / work company name", "e.g. Red Mango Trading & Contracting"],
   ["companyReg", "Company registration", ""], ["companyEmail", "Company e-mail", "name@company.com"], ["companyMobile", "Company mobile", "+974 …"], ["companyAddress", "Company address", "e.g. Zone 31, Street 8111, Building 11"]];
+function CopyPick({ copy, onPick, onClear, label, busy }) {
+  return <div className="fpick has-or-not">
+    <label className="fpick-btn"><input className="fpick-in" type="file" accept=".jpg,.jpeg,.png,.webp,.pdf" onChange={onPick} aria-label={label} />{busy ? <LuRefreshCw className="spin" /> : <LuUpload />}<span>{busy ? "Reading…" : copy ? "Change file" : "Choose file"}</span></label>
+    {copy && <div className="fpick-files"><div className="fpick-item">{isImgCopy(copy) ? <img src={copy.data} alt="" /> : <span className="fpick-doc"><LuFileText /><em>PDF</em></span>}
+      <span className="fpick-meta"><b data-notr>{copy.name || label}</b></span></div>
+      <button type="button" className="fpick-x" onClick={onClear} aria-label="Remove file"><LuX /></button></div>}
+  </div>;
+}
 function JobFields({ v, set }) {
   const J = v.job || {}, setJ = x => set({ job: { ...J, ...x } });
   const pick = async e => { const f = e.target.files?.[0]; e.target.value = ""; if (!f) return;
     try { set({ ppCopy: await readUpload(f, { imageMax: 2200 }) }); } catch (err) { toast(err.message); } };
   const copy = v.ppCopy === null ? null : v.ppCopy?.data ? v.ppCopy : v.ppCopyRef || null;
+  const vcopy = v.visaCopy === null ? null : v.visaCopy?.data ? v.visaCopy : v.visaCopyRef || null;
+  const [reading, setReading] = React.useState(false);
+  const pickVisa = async e => { const f = e.target.files?.[0]; e.target.value = ""; if (!f) return;
+    let up; try { up = await readUpload(f, { imageMax: 2200 }); } catch (err) { return toast(err.message); }
+    set({ visaCopy: up });
+    if (v.country !== "Qatar" || !/^data:application\/pdf/.test(up.data || "")) return;
+    setReading(true); const r = await act("visa.read", { data: up.data }, { quiet: true }); setReading(false);
+    const x = r?.visa; if (!x) return;
+    if (x.passport && v.passport && x.passport !== v.passport.replace(/\s+/g, "").toUpperCase()) toast(`Careful: this visa is for passport ${x.passport}.`);
+    const company = x.company || (x.companyAr ? companyEn(x.companyAr) : "");
+    set({ visaCopy: up, job: { ...J, ...(x.visaNo ? { visaNo: x.visaNo } : {}), ...(x.jobTitle ? { jobTitle: x.jobTitle.charAt(0) + x.jobTitle.slice(1).toLowerCase() } : {}), ...(x.jobAr ? { jobAr: x.jobAr } : {}),
+      ...(x.companyAr ? { companyAr: x.companyAr } : {}), ...(company ? { company } : {}), ...(x.nameAr ? { nameAr: x.nameAr } : {}) }, ...(!v.name.trim() && x.name ? { name: x.name } : {}) });
+    toast(`From the visa: ${[x.visaNo && "visa number", x.jobTitle && "job title", company && "company"].filter(Boolean).join(", ")}.`); };
   const fromMoi = m => {
     setJ({ ...(m.visaNo ? { visaNo: m.visaNo } : {}), ...(m.nameAr ? { nameAr: m.nameAr } : {}), ...(m.company ? { company: m.company } : {}), ...(m.companyAr || m.company ? { companyAr: m.companyAr || coAr(m.company) } : {}) });
     if (!v.passport && m.passport) set({ passport: m.passport }); };
@@ -121,13 +142,10 @@ function JobFields({ v, set }) {
     </div>
     {JOB_FIELDS.map(([k, l, ph]) => <Field key={k} label={l} full={k === "companyAddress" || k === "company"}><input type={k === "companyEmail" ? "email" : k === "companyMobile" ? "tel" : "text"} value={J[k] || ""} maxLength={k === "companyAddress" ? 300 : 160} placeholder={ph}
       onChange={e => setJ({ [k]: k === "visaNo" ? e.target.value.replace(/\s+/g, "") : e.target.value })} /></Field>)}</>}
-    <Field label="Passport copy (optional)" hint="A photo or scan of the passport page; its signature can go on the contract" full>
-      <div className="fpick has-or-not">
-        <label className="fpick-btn"><input className="fpick-in" type="file" accept=".jpg,.jpeg,.png,.webp,.pdf" onChange={pick} /><LuUpload /><span>{copy ? "Change file" : "Choose file"}</span></label>
-        {copy && <div className="fpick-files"><div className="fpick-item">{isImgCopy(copy) ? <img src={copy.data} alt="" /> : <span className="fpick-doc"><LuFileText /><em>PDF</em></span>}
-          <span className="fpick-meta"><b data-notr>{copy.name || "Passport copy"}</b></span></div>
-          <button type="button" className="fpick-x" onClick={() => set({ ppCopy: null })} aria-label="Remove file"><LuX /></button></div>}
-      </div></Field>
+    <Field label="Passport copy (optional)" hint="A photo or scan of the passport page; its signature can go on the contract">
+      <CopyPick copy={copy} onPick={pick} onClear={() => set({ ppCopy: null })} label="Passport copy" /></Field>
+    <Field label="Visa copy (optional)" hint={v.country === "Qatar" ? "The visa PDF printed from MOI: visa number, job title and company are read from it" : "The visa PDF or a photo of it"}>
+      <CopyPick copy={vcopy} onPick={pickVisa} onClear={() => set({ visaCopy: null })} label="Visa copy" busy={reading} /></Field>
   </>;
 }
 /* Generate Employment Contract: the tick for signatures, and the button (opens the contract with these details) */
@@ -172,8 +190,8 @@ function PassportForm() {
 }
 function EditRow({ p, onDone }) {
   const [v, setV] = React.useState({ name: p.name, passport: p.passport, country: p.country, gender: p.gender, ref: p.ref || "", agentId: p.agentId || "", bmet: { ...(p.bmet || {}) }, job: { ...(p.job || {}) },
-    ppCopyRef: p.ppCopy ? { ...p.ppCopy, data: `/api/files/${p.ppCopy.id}` } : null });
-  const save = async () => { const { ppCopyRef, ...rest } = v; if (await act("admin.passport", { op: "update", id: p.id, ...rest })) onDone(); };
+    ppCopyRef: p.ppCopy ? { ...p.ppCopy, data: `/api/files/${p.ppCopy.id}` } : null, visaCopyRef: p.visaCopy ? { ...p.visaCopy, data: `/api/files/${p.visaCopy.id}` } : null });
+  const save = async () => { const { ppCopyRef, visaCopyRef, ...rest } = v; if (await act("admin.passport", { op: "update", id: p.id, ...rest })) onDone(); };
   return <tr className="sel"><td colSpan={13}><div className="fgrid pp-edit"><Fields v={v} set={x => setV({ ...v, ...x })} />
     <AgentDatalist id="pp-ref-agents" />
     <div className="full row6 pp-save-row"><button type="button" className="btn sm pri" onClick={save}><LuCheck /> Save</button><button type="button" className="btn sm" onClick={onDone}><LuX /> Cancel</button>

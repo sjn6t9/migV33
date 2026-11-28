@@ -8,6 +8,7 @@ import fs from "node:fs";
 import path from "node:path";
 import crypto from "node:crypto";
 import zlib from "node:zlib";
+import { pdfLines, qatarVisa } from "./pdftext.js";
 import { fileURLToPath } from "node:url";
 import { AsyncLocalStorage } from "node:async_hooks";
 import { COUNTRIES, HOURLY, STAGES, CL_STAGES, STAFF_PERMS, LABEL, INITIAL, TEAM_DEPTS, VISA_FIELDS, VISA_DATES, clCountryOk, CL_REGIONS } from "../src/constants.js";
@@ -3675,6 +3676,18 @@ A["moi.lookup"] = async (d, u) => {
   MOI_SS.delete(String(d.sid));
   return { ok: true, text, pdf, pdfText, visaNo: visa };
 };
+// the visa copy (the Qatar MOI printed visa PDF): visa number, job title (English/Arabic), sponsor (company, Arabic), names
+A["visa.read"] = async (d, u) => {
+  must(can(u, "clearance") || can(u, "visa"), "You do not have permission for this.", 403); limit(u.id, "visaread", 300, 3600e3);
+  const m = /^data:([^;,]+);base64,(.+)$/.exec(String(d.data || ""));
+  must(m, "Choose the visa file."); must(/pdf/i.test(m[1]), "Upload the visa as the PDF from MOI — a photo cannot be read.");
+  const buf = Buffer.from(m[2], "base64"); must(buf.length < 15e6 && /^%PDF/.test(buf.subarray(0, 5).toString("latin1")), "This is not a PDF file.");
+  let lines = [];
+  try { lines = pdfLines(buf); } catch { throw new Fail("The visa PDF could not be read."); }
+  const v = qatarVisa(lines);
+  must(Object.keys(v).length, "No visa details were found in this PDF. Is it the visa printed from MOI?");
+  return { visa: v };
+};
 A["admin.passport"] = async (d, u) => {
   must(can(u, "clearance") || can(u, "visa"), "You do not have permission for this.", 403);
   const read = x => {
@@ -3690,8 +3703,9 @@ A["admin.passport"] = async (d, u) => {
     if (job?.companyEmail) must(/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(job.companyEmail), "Check the company e-mail.");
     // the passport copy (optional): a new upload is stored; null removes it; leaving it out keeps the one there
     const copy = x.ppCopy?.data ? storeFile(x.ppCopy, u.id, { images: true, pdf: true }) : x.ppCopy === null ? null : undefined;
+    const vcopy = x.visaCopy?.data ? storeFile(x.visaCopy, u.id, { images: true, pdf: true }) : x.visaCopy === null ? null : undefined;
     return { name, passport, country, gender, ref, agentId: ag ? ag.id : null, mobile, ...(info ? { info } : {}), ...(bm && Object.keys(bm).length ? { bmet: { ...bm, ...(x.bmet.checked ? { checked: now() } : {}) } } : {}),
-      ...(job ? { job } : {}), ...(copy !== undefined ? { ppCopy: copy } : {}) };
+      ...(job ? { job } : {}), ...(copy !== undefined ? { ppCopy: copy } : {}), ...(vcopy !== undefined ? { visaCopy: vcopy } : {}) };
   };
   if (d.op === "add") {
     const list = (Array.isArray(d.rows) ? d.rows : [d]).slice(0, 100); must(list.length, "Add at least one passport.");
@@ -3722,6 +3736,8 @@ A["admin.passport"] = async (d, u) => {
     must(!db.passports.some(x => x !== p && x.passport === v.passport), `Passport ${v.passport} is already in the list.`);
     if (v.ppCopy !== undefined && p.ppCopy?.id && p.ppCopy.id !== v.ppCopy?.id) dropFile(p.ppCopy);
     if (v.ppCopy === null) { delete p.ppCopy; delete v.ppCopy; }
+    if (v.visaCopy !== undefined && p.visaCopy?.id && p.visaCopy.id !== v.visaCopy?.id) dropFile(p.visaCopy);
+    if (v.visaCopy === null) { delete p.visaCopy; delete v.visaCopy; }
     Object.assign(p, v, { updated: now() }); if (v.info) p.lists = [...new Set([...ppLists(p), "ksa"])]; return { msg: "Passport updated." };
   }
   if (d.op === "contract") { // the employment contract made in the browser, kept with the passport entry

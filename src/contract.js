@@ -202,3 +202,47 @@ export async function canvasPdf(c) {
 }
 // numbers for the two barcodes when none are given: attestation (10 digits) and contract (12 digits), like the form's own
 export const newBarcodes = () => { const y = new Date().getFullYear(), r = n => String(Math.floor(Math.random() * 10 ** n)).padStart(n, "0"); return { attNo: `${y}${r(6)}`, contractNo: `1${y}${r(7)}` }; };
+
+/* English company name from the Arabic one (as on the Qatar visa "Sponsor Name"): known words are translated,
+   the proper name is written out in Latin letters */
+const CO_EN = { "تجارة": "Trading", "التجارة": "Trading", "خدمات": "Services", "الخدمات": "Services", "مقاولات": "Contracting", "المقاولات": "Contracting", "شركة": "Company", "مجموعة": "Group",
+  "انشاءات": "Construction", "الانشاءات": "Construction", "إنشاءات": "Construction", "الإنشاءات": "Construction", "تنظيف": "Cleaning", "التنظيف": "Cleaning", "نقل": "Transport", "النقل": "Transport",
+  "هندسة": "Engineering", "الهندسة": "Engineering", "العامة": "General", "عامة": "General", "صيانة": "Maintenance", "الصيانة": "Maintenance", "مطعم": "Restaurant", "فندق": "Hotel", "مقهى": "Cafe",
+  "الدولية": "International", "دولية": "International", "القابضة": "Holding", "صناعات": "Industries", "الصناعات": "Industries", "الصناعية": "Industrial", "الكهربائية": "Electrical", "كهرباء": "Electrical",
+  "أمن": "Security", "الأمن": "Security", "الامن": "Security", "توظيف": "Recruitment", "التوظيف": "Recruitment", "مزرعة": "Farm", "العقارية": "Real Estate", "عقارات": "Real Estate", "قطر": "Qatar", "الدوحة": "Doha",
+  "استيراد": "Import", "الاستيراد": "Import", "تصدير": "Export", "التصدير": "Export", "التسويق": "Marketing", "تسويق": "Marketing", "الاستشارات": "Consulting", "استشارات": "Consulting", "مؤسسة": "Establishment",
+  "ذ.م.م": "W.L.L", "ذمم": "W.L.L", "الضيافة": "Hospitality", "ضيافة": "Hospitality", "الأغذية": "Foodstuff", "المواد": "Materials", "مواد": "Materials", "البناء": "Building", "بناء": "Building", "الحديثة": "Modern",
+  "التكنولوجيا": "Technology", "تكنولوجيا": "Technology", "الزراعة": "Agriculture", "زراعة": "Agriculture", "السيارات": "Cars", "تأجير": "Rental", "لتأجير": "Rental", "الليموزين": "Limousine", "ليموزين": "Limousine",
+  "التوريدات": "Supplies", "توريدات": "Supplies", "الالكترونيات": "Electronics", "المحدودة": "Limited", "الخليج": "Gulf", "العربية": "Arabia", "الشرق": "East", "الأوسط": "Middle", "وشركاه": "& Partners", "وشركاؤه": "& Partners" };
+const AR_LAT = { "ا": "a", "أ": "a", "إ": "i", "آ": "a", "ب": "b", "ت": "t", "ث": "th", "ج": "j", "ح": "h", "خ": "kh", "د": "d", "ذ": "dh", "ر": "r", "ز": "z", "س": "s", "ش": "sh", "ص": "s", "ض": "d", "ط": "t", "ظ": "z",
+  "ع": "a", "غ": "gh", "ف": "f", "ق": "q", "ك": "k", "ل": "l", "م": "m", "ن": "n", "ه": "h", "ة": "a", "و": "o", "ي": "i", "ى": "a", "ئ": "e", "ؤ": "o", "ء": "" };
+function latin(w) {
+  let s = ""; const vow = (w.slice(1).match(/[اويى]/g) || []).length, lastW = w.lastIndexOf("و");
+  for (let i = 0; i < w.length; i++) { const c = w[i], n = w[i + 1];
+    if (c === "ي" && i === 0) { s += "y"; continue; }
+    if (c === "و" && i === 0) { s += "w"; continue; }
+    if (c === "ي" && i === 1 && n === "و") { s += "e"; continue; } // جيو… is "Geo…"
+    if (c === "ي" && n && /[اوي]/.test(n)) { s += "y"; continue; }
+    if (c === "ج" && n === "ي" && w[i + 2] === "و") { s += "g"; continue; }
+    if (c === "و") { s += vow === 1 ? "oo" : i === lastW && vow > 1 ? "u" : "o"; continue; }
+    s += AR_LAT[c] ?? ""; }
+  s = s.replace(/aa+/g, "a").replace(/ii+/g, "ee").replace(/([bcdfghjklmnpqrstvwxz])\1+/g, "$1");
+  if (/^[^aeiou]{2}/.test(s) && !/^(th|sh|kh|gh|dh)/.test(s)) s = s[0] + "a" + s.slice(1);
+  else if (/^[^aeiou]+$/.test(s)) s = s.replace(/^(.)/, "$1a");
+  return s.charAt(0).toUpperCase() + s.slice(1);
+}
+export function companyEn(ar) {
+  const words = String(ar || "").replace(/[ً-ٟـ]/g, "").trim().split(/\s+/).filter(Boolean); if (!words.length) return "";
+  const out = [];
+  for (let w of words) {
+    let and = false;
+    if (CO_EN[w]) { out.push(CO_EN[w]); continue; }
+    if (/^و/.test(w) && w.length > 3 && (CO_EN[w.slice(1)] || CO_EN[w.slice(1).replace(/^ل/, "ال")])) { and = true; w = w.slice(1); }
+    let base = CO_EN[w] || CO_EN[w.replace(/^لل/, "ال")] || CO_EN[w.replace(/^ل/, "")] || CO_EN[w.replace(/^ال/, "")];
+    if (base) { out.push((and ? "& " : "") + base); continue; }
+    out.push(/^ال../.test(w) ? "Al " + latin(w.slice(2)) : latin(w));
+  }
+  // "شركة النور للمقاولات" reads "Al Noor Contracting Company" in English
+  while (out.length > 1 && /^(Company|Group|Establishment)$/.test(out[0])) { const t = out.shift(); out.splice(out[out.length - 1] === "W.L.L" ? out.length - 1 : out.length, 0, t); }
+  return out.join(" ").replace(/\s+/g, " ").trim();
+}
