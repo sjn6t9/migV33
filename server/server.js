@@ -2829,7 +2829,7 @@ function levelOf(xp) { const x = Math.max(0, Math.floor(xp)), lv = Math.min(LEVE
 let xpMemo = { key: "", map: null };
 function xpAll() {
   const key = `${REV}|${bdDay()}`; if (xpMemo.key === key) return xpMemo.map;
-  const map = {}, staff = db.users.filter(x => x.role === "staff"), ids = new Set(staff.map(x => x.id));
+  const map = {}, staff = db.users.filter(x => isStaffRole(x)), ids = new Set(staff.map(x => x.id)), onlyStaff = new Set(staff.filter(x => x.role === "staff").map(x => x.id));
   const W = uid => (map[uid] ||= { days: new Set(db.xpCarry[uid]?.days || []), work: db.xpCarry[uid]?.work || 0, replies: new Set(), office: 0 });
   for (const x of staff) W(x.id);
   for (const e of db.staffLog) if (ids.has(e.uid)) { const w = W(e.uid); w.days.add(bdDate(e.at)); if (e.area !== "Sign-in") w.work++; }
@@ -2837,7 +2837,7 @@ function xpAll() {
   for (const c of db.chats || []) for (const m of c.msgs || []) if (m.from === "agency" && ids.has(m.by)) W(m.by).replies.add(`${c.id}|${bdDate(m.at)}`);
   const byDay = {};
   for (const [uid, days] of Object.entries(ATT.marks || {})) { if (!ids.has(uid)) continue;
-    for (const [d, m] of Object.entries(days)) { if (!m) continue; W(uid).days.add(d); if (m.at && (m.by === "auto" || m.by === "self")) (byDay[d] ||= []).push([m.at, uid]); } }
+    for (const [d, m] of Object.entries(days)) { if (!m) continue; W(uid).days.add(d); if (onlyStaff.has(uid) && m.at && (m.by === "auto" || m.by === "self")) (byDay[d] ||= []).push([m.at, uid]); } }
   for (const list of Object.values(byDay)) list.sort((a, b) => a[0].localeCompare(b[0])).slice(0, 3).forEach(([, uid], i) => { W(uid).office += [100, 50, 20][i]; });
   for (const [uid, w] of Object.entries(map)) { const xp = w.days.size * 10 + w.work * 50 + w.replies.size * 10 + w.office;
     map[uid] = { xp, ...levelOf(xp), parts: { login: w.days.size * 10, work: w.work * 50, replies: w.replies.size * 10, office: w.office } }; }
@@ -2858,7 +2858,8 @@ function idCard(x) {
   const m = teamOf(x);
   // name, photo and designation come from the Expert Team profile the ID is linked to
   const base = { username: x.username || "", title: m?.title || x.title || (x.role === "admin" ? "Admin" : "Staff"), photo: m?.photo ? `/api/files/${m.photo.id}` : "", member: m?.id || "" };
-  if (x.role === "admin") return { ...base, kind: "admin", level: x.level || 1 };
+  // admin: the level set by hand; the XP bar shows the XP earned the same way as staff, toward the next level
+  if (x.role === "admin") { const xp = xpAll()[x.id]?.xp || 0, lv = x.level || 1; return { ...base, kind: "admin", level: lv, xp, into: xp % LEVEL_XP, need: LEVEL_XP, max: lv >= LEVEL_MAX }; }
   const l = xpAll()[x.id] || { xp: 0, ...levelOf(0) };
   return { ...base, kind: "staff", level: l.level, xp: l.xp, into: l.into, need: l.need, parts: l.parts };
 }

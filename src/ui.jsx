@@ -246,9 +246,9 @@ export function IdName({ name, idc, compact = false, title = true, as: Tag = "sp
 }
 /* level progress for a staff ID: XP into this level, XP needed for the next */
 export function XpBar({ idc }) {
-  if (!idc || idc.kind !== "staff") return null;
+  if (!idc || idc.need == null) return null;
   const pct = idc.need ? Math.min(100, Math.round((idc.into / idc.need) * 100)) : 100;
-  return <div className="xpbar idn-staff" title={`${idc.xp} XP in all`}>
+  return <div className={`xpbar idn-${idc.kind === "admin" ? "admin" : "staff"}`} title={`${idc.xp} XP in all`}>
     <div className="xpbar-t"><span>Lv {idc.level}</span><span className="num">{idc.into} / {idc.need} XP</span><span>{idc.max ? "Max" : `Lv ${idc.level + 1}`}</span></div>
     <div className="xpbar-b"><i style={{ width: `${pct}%` }} /></div>
   </div>;
